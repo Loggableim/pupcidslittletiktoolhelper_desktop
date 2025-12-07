@@ -28,10 +28,10 @@
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME_SHORT}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 
-; Paths (relative to build-src directory)
+; Paths (relative to build-src/installer directory)
 !define BUILD_DIR ".."
-!define APP_DIR "..\..\app"
-!define ASSETS_DIR "..\assets"
+!define APP_DIR "../../app"
+!define ASSETS_DIR "../assets"
 
 ; Installer Properties
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
@@ -50,8 +50,8 @@ BrandingText "${PRODUCT_NAME} ${PRODUCT_VERSION} © ${PRODUCT_PUBLISHER}"
 
 ; Modern UI Settings
 !define MUI_ABORTWARNING
-!define MUI_ICON "${BUILD_DIR}\icon.ico"
-!define MUI_UNICON "${BUILD_DIR}\icon.ico"
+!define MUI_ICON "${BUILD_DIR}/icon.ico"
+!define MUI_UNICON "${BUILD_DIR}/icon.ico"
 
 ; Header and Sidebar Images
 !define MUI_HEADERIMAGE
@@ -164,19 +164,19 @@ Section "!LTTH Core Application" SEC_CORE
   Banner::show /NOUNLOAD "Installing Core Files" "Installing launcher and executables..."
   
   ; Install launcher executable
-  File "${BUILD_DIR}\launcher.exe"
-  File "${BUILD_DIR}\icon.ico"
+  File "${BUILD_DIR}/launcher.exe"
+  File "${BUILD_DIR}/icon.ico"
   
   ; Install ltthgit.exe (optional cloud launcher)
-  IfFileExists "${BUILD_DIR}\ltthgit.exe" 0 +2
-    File "${BUILD_DIR}\ltthgit.exe"
+  IfFileExists "${BUILD_DIR}/ltthgit.exe" 0 +2
+    File "${BUILD_DIR}/ltthgit.exe"
   
   Banner::destroy
   
   ; Install app directory
   Banner::show /NOUNLOAD "Installing Application" "Copying application files..."
   SetOutPath "$INSTDIR\app"
-  File /r "${APP_DIR}\*.*"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}/*.*"
   Banner::destroy
   
   ; Create uninstaller
@@ -204,8 +204,8 @@ Section "Node.js Portable Runtime" SEC_NODEJS
   SetOutPath "$INSTDIR\node"
   
   ; Check if Node.js portable exists
-  IfFileExists "${ASSETS_DIR}\node\node.exe" 0 nodejs_missing
-    File /r "${ASSETS_DIR}\node\*.*"
+  IfFileExists "${ASSETS_DIR}/node/node.exe" 0 nodejs_missing
+    File /r "${ASSETS_DIR}/node/*.*"
     Goto nodejs_done
     
 nodejs_missing:
