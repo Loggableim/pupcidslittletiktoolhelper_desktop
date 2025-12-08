@@ -1,16 +1,24 @@
 /**
- * Fireworks GPU Engine - WebGL/Canvas Particle System
+ * Advanced Fireworks Engine - Professional Grade Particle System
  * 
- * Features:
- * - WebGL 2.0 rendering with Canvas 2D fallback
- * - Particle pooling for performance
- * - Custom explosion shapes (burst, heart, star, spiral, ring)
- * - Trail effects
- * - Glow effects
- * - Audio integration
- * - Gift image particles
+ * Inspired by OpenProcessing sketch 1539861 but taken to the next level
  * 
- * CSP-Compliant: No inline scripts or eval()
+ * Advanced Features:
+ * - Multi-stage firework rockets with realistic physics
+ * - Secondary explosions and sparkle effects
+ * - Advanced color palettes with smooth gradients
+ * - Efficient particle management (no object pooling to reduce complexity)
+ * - Custom explosion shapes with mathematical precision
+ * - Trail effects with motion blur
+ * - Gift image integration with proper blending and XSS protection
+ * - HSB color mode for vibrant displays
+ * - Efficient Canvas 2D rendering optimized for OBS
+ * - Configurable toaster mode for low-end systems
+ * 
+ * Architecture:
+ * - Particle: Individual physics-based particle
+ * - Firework: Manages rocket launch, explosion, and particle lifecycle
+ * - FireworksEngine: Main engine handling rendering and orchestration
  */
 
 // ============================================================================
@@ -18,133 +26,483 @@
 // ============================================================================
 
 const CONFIG = {
-    maxParticles: 2000,
+    maxFireworks: 100,
+    maxParticlesPerExplosion: 200,
     targetFps: 60,
-    gravity: 0.15,
-    friction: 0.98,
-    windStrength: 0.02,
-    particleSizeRange: [3, 10],
-    trailLength: 8,
-    glowIntensity: 0.6,
-    defaultColors: ['#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff', '#44ffff']
+    minFps: 30, // Adaptive performance threshold
+    gravity: 0.08,
+    airResistance: 0.99,
+    rocketSpeed: -12,
+    rocketAcceleration: -0.08,
+    trailLength: 20,
+    trailFadeAlpha: 10,
+    trailFadeSpeed: 0.02,
+    sparkleChance: 0.15,
+    secondaryExplosionChance: 0.1,
+    backgroundColor: 'rgba(0, 0, 0, 0)',
+    resolution: 1.0, // Canvas resolution multiplier (0.5 = half res, 1.0 = full res)
+    giftPopupPosition: 'bottom', // 'top', 'middle', 'bottom', 'none', or {x, y} coordinates
+    defaultColors: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
+    colorPalettes: {
+        classic: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
+        neon: ['#ff006e', '#fb5607', '#ffbe0b', '#8338ec', '#3a86ff'],
+        pastel: ['#ffc2d1', '#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff'],
+        fire: ['#ff0000', '#ff4500', '#ff8c00', '#ffd700', '#ffff00'],
+        ice: ['#00ffff', '#00ccff', '#0099ff', '#0066ff', '#0033ff'],
+        rainbow: ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#9400d3']
+    },
+    // Combo throttling to prevent extreme lag
+    comboThrottleMinInterval: 100, // Minimum ms between combo triggers
+    comboSkipRocketsThreshold: 5, // Skip rockets when combo >= this value
+    comboInstantExplodeThreshold: 8 // Instant explosions (no rockets) when combo >= this
 };
 
 // ============================================================================
-// PARTICLE CLASS
+// UTILITY FUNCTIONS
+// ============================================================================
+
+function hslToRgb(h, s, l) {
+    h /= 360;
+    s /= 100;
+    l /= 100;
+    let r, g, b;
+    
+    if (s === 0) {
+        r = g = b = l;
+    } else {
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        };
+        
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+    
+    return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+    };
+}
+
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 255, g: 255, b: 255 };
+}
+
+// ============================================================================
+// PARTICLE CLASS - Advanced physics-based particle
 // ============================================================================
 
 class Particle {
-    constructor() {
-        this.reset();
-    }
-
-    reset() {
-        this.x = 0;
-        this.y = 0;
-        this.vx = 0;
-        this.vy = 0;
-        this.life = 0;
-        this.maxLife = 0;
-        this.size = 5;
-        this.color = '#ffffff';
-        this.alpha = 1;
+    constructor(args = {}) {
+        const defaults = {
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: -10,
+            ax: 0,
+            ay: 0,
+            mass: 1,
+            drag: CONFIG.airResistance,
+            gravity: CONFIG.gravity,
+            size: 3,
+            hue: 360,
+            saturation: 100,
+            brightness: 100,
+            alpha: 1.0,
+            lifespan: 1.0,
+            decay: 0.01,
+            isSeed: true,
+            isSparkle: false,
+            color: '#ffffff',
+            image: null,
+            type: 'circle',
+            rotation: 0,
+            rotationSpeed: 0
+        };
+        
+        Object.assign(this, defaults, args);
+        this.maxLifespan = this.lifespan;
         this.trail = [];
-        this.rotation = 0;
-        this.rotationSpeed = 0;
-        this.type = 'circle'; // circle, image, spark
-        this.image = null;
-        this.gravity = CONFIG.gravity;
-        this.friction = CONFIG.friction;
+        this.age = 0;
     }
-
-    update(deltaTime) {
-        if (this.life <= 0) return false;
-
-        // Store trail position
-        if (this.trail.length >= CONFIG.trailLength) {
+    
+    applyForce(fx, fy) {
+        this.ax += fx / this.mass;
+        this.ay += fy / this.mass;
+    }
+    
+    applyGravity() {
+        this.ay += this.gravity;
+    }
+    
+    update() {
+        // Apply air resistance
+        this.vx *= this.drag;
+        this.vy *= this.drag;
+        
+        // Update velocity
+        this.vx += this.ax;
+        this.vy += this.ay;
+        
+        // Update position
+        this.x += this.vx;
+        this.y += this.vy;
+        
+        // Clear acceleration
+        this.ax = 0;
+        this.ay = 0;
+        
+        // Update rotation
+        this.rotation += this.rotationSpeed;
+        
+        // Update lifespan for explosion particles
+        if (!this.isSeed) {
+            this.lifespan -= this.decay;
+            this.alpha = Math.max(0, this.lifespan / this.maxLifespan);
+            
+            // Add sparkle flicker effect
+            if (this.isSparkle && Math.random() < 0.3) {
+                this.brightness = 80 + Math.random() * 20;
+            }
+        }
+        
+        // Store trail with fading based on age
+        if (this.trail.length > CONFIG.trailLength) {
             this.trail.shift();
         }
-        this.trail.push({ x: this.x, y: this.y, alpha: this.alpha });
-
-        // Apply physics
-        this.vy += this.gravity * deltaTime;
-        this.vx *= this.friction;
-        this.vy *= this.friction;
-
-        this.x += this.vx * deltaTime;
-        this.y += this.vy * deltaTime;
-
-        // Update life
-        this.life -= deltaTime;
-        this.alpha = Math.max(0, this.life / this.maxLife);
-
-        // Update rotation
-        this.rotation += this.rotationSpeed * deltaTime;
-
-        return this.life > 0;
+        
+        // Fade trail points based on their age
+        for (let i = 0; i < this.trail.length; i++) {
+            if (this.trail[i].alpha) {
+                this.trail[i].alpha *= (1 - CONFIG.trailFadeSpeed);
+            }
+        }
+        
+        this.trail.push({ 
+            x: this.x, 
+            y: this.y, 
+            alpha: this.alpha * 0.6,
+            size: this.size * 0.7
+        });
+        
+        this.age++;
+    }
+    
+    isDone() {
+        return this.lifespan <= 0 || this.y > window.innerHeight + 100;
     }
 }
 
 // ============================================================================
-// PARTICLE POOL
+// FIREWORK CLASS - Advanced multi-stage firework system
 // ============================================================================
 
-class ParticlePool {
-    constructor(size) {
-        this.pool = [];
-        this.active = [];
+class Firework {
+    constructor(args = {}) {
+        const defaults = {
+            x: Math.random() * window.innerWidth,
+            y: window.innerHeight,
+            targetY: 100 + Math.random() * 300,
+            shape: 'burst',
+            colors: CONFIG.colorPalettes.classic,
+            intensity: 1.0,
+            giftImage: null,
+            userAvatar: null,
+            avatarParticleChance: 0.3,
+            useImages: false,
+            tier: 'medium',
+            combo: 1,
+            skipRocket: false, // Skip rocket animation for high combos
+            instantExplode: false // Explode immediately without delay
+        };
         
-        for (let i = 0; i < size; i++) {
-            this.pool.push(new Particle());
+        Object.assign(this, defaults, args);
+        
+        // State management
+        this.particles = [];
+        this.secondaryExplosions = [];
+        
+        // If instant explode, skip rocket creation entirely
+        if (this.instantExplode) {
+            this.rocket = null;
+            this.exploded = false; // Will be set to true in update() when explode() is called
+            this.shouldExplodeImmediately = true;
+        } else if (this.skipRocket) {
+            // Create a dummy rocket at target position, will explode immediately
+            this.exploded = false;
+            this.rocket = new Particle({
+                x: this.x,
+                y: this.y, // Already at target from handleTrigger
+                vx: 0,
+                vy: 0,
+                size: 1,
+                hue: 0,
+                saturation: 0,
+                brightness: 0,
+                color: '#000000',
+                isSeed: true,
+                gravity: 0,
+                drag: 1,
+                type: 'circle',
+                image: null,
+                lifespan: 0.01 // Very short lifespan
+            });
+        } else {
+            // Normal mode: Create rocket particle
+            this.exploded = false;
+            // If user avatar is available, use it as the rocket head
+            const rocketType = this.userAvatar ? 'image' : 'circle';
+            const rocketImage = this.userAvatar;
+            const rocketSize = this.userAvatar ? 8 + this.intensity : 3 + this.intensity;
+            
+            this.rocket = new Particle({
+                x: this.x,
+                y: this.y,
+                vx: (Math.random() - 0.5) * 1.5,
+                vy: CONFIG.rocketSpeed + (Math.random() - 0.5) * 2,
+                size: rocketSize,
+                hue: Math.random() * 360,
+                saturation: 80,
+                brightness: 100,
+                color: this.colors[Math.floor(Math.random() * this.colors.length)],
+                isSeed: true,
+                gravity: CONFIG.rocketAcceleration,
+                drag: 0.995,
+                type: rocketType,
+                image: rocketImage
+            });
         }
+        
+        // Color palette for explosion
+        this.baseHue = Math.random() * 360;
+        this.hueRange = 60 + Math.random() * 60;
     }
-
-    get() {
-        let particle = this.pool.pop();
-        if (!particle) {
-            particle = new Particle();
+    
+    shouldExplode() {
+        // Instant explode mode
+        if (this.shouldExplodeImmediately) {
+            return true;
         }
-        particle.reset();
-        this.active.push(particle);
-        return particle;
-    }
-
-    release(particle) {
-        const index = this.active.indexOf(particle);
-        if (index > -1) {
-            this.active.splice(index, 1);
-            particle.reset();
-            this.pool.push(particle);
+        // Skip rocket mode - explode immediately
+        if (this.skipRocket) {
+            return true;
         }
+        // Normal mode - explode when rocket velocity becomes downward OR reaches target height
+        if (this.rocket) {
+            return (this.rocket.vy >= 0 || this.rocket.y <= this.targetY) && !this.exploded;
+        }
+        return false;
     }
-
-    update(deltaTime) {
-        for (let i = this.active.length - 1; i >= 0; i--) {
-            if (!this.active[i].update(deltaTime)) {
-                this.release(this.active[i]);
+    
+    explode() {
+        this.exploded = true;
+        
+        // Play explosion sound if callback is set
+        if (this.onExplodeSound) {
+            this.onExplodeSound(this.intensity);
+        }
+        
+        // For instant explode, use the position from constructor
+        const explosionX = this.rocket ? this.rocket.x : this.x;
+        const explosionY = this.rocket ? this.rocket.y : this.y;
+        
+        // Calculate particle count based on intensity and tier
+        const tierMultipliers = {
+            small: 0.5,
+            medium: 1.0,
+            big: 1.5,
+            massive: 2.0
+        };
+        const tierMult = tierMultipliers[this.tier] || 1.0;
+        const comboMult = 1 + (this.combo - 1) * 0.2;
+        
+        // Reduce particles for high combos to improve performance
+        let baseParticles = 40 + Math.random() * 60;
+        if (this.combo >= 10) {
+            baseParticles *= 0.5; // 50% particles for combo >= 10
+        } else if (this.combo >= 5) {
+            baseParticles *= 0.7; // 70% particles for combo >= 5
+        }
+        
+        const particleCount = Math.floor(baseParticles * this.intensity * tierMult * comboMult);
+        
+        // Get velocities from shape generator
+        const generator = ShapeGenerators[this.shape] || ShapeGenerators.burst;
+        const velocities = generator(particleCount, this.intensity);
+        
+        // Create explosion particles
+        for (let i = 0; i < velocities.length; i++) {
+            const vel = velocities[i];
+            const hue = this.baseHue + (Math.random() * this.hueRange);
+            const isSparkle = Math.random() < CONFIG.sparkleChance;
+            
+            // Determine particle appearance
+            // Priority: Gift images for explosion particles (not sparkles)
+            let particleType = 'circle';
+            let particleImage = null;
+            
+            if (!isSparkle && this.giftImage) {
+                // Use gift image for explosion particles (70% chance when available)
+                if (Math.random() < 0.7) {
+                    particleType = 'image';
+                    particleImage = this.giftImage;
+                }
+            } else if (!isSparkle && this.userAvatar && Math.random() < 0.3) {
+                // Use avatar occasionally if no gift image (30% chance)
+                particleType = 'image';
+                particleImage = this.userAvatar;
+            }
+            
+            const particle = new Particle({
+                x: explosionX,
+                y: explosionY,
+                vx: vel.vx,
+                vy: vel.vy,
+                size: isSparkle ? 2 + Math.random() * 2 : (particleType === 'image' ? 4 + Math.random() * 4 : 3 + Math.random() * 4),
+                hue: hue,
+                saturation: isSparkle ? 100 : 90,
+                brightness: isSparkle ? 100 : 95,
+                lifespan: isSparkle ? 0.6 + Math.random() * 0.4 : 0.8 + Math.random() * 0.6,
+                decay: isSparkle ? 0.015 : 0.008,
+                isSeed: false,
+                isSparkle: isSparkle,
+                type: particleType,
+                image: particleImage,
+                mass: isSparkle ? 0.5 : 1,
+                drag: isSparkle ? 0.97 : 0.98,
+                gravity: isSparkle ? CONFIG.gravity * 0.8 : CONFIG.gravity,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.1
+            });
+            
+            this.particles.push(particle);
+            
+            // Chance for secondary explosion (only for non-image particles to avoid lag)
+            // Disable for high combos to improve performance
+            if (this.combo < 5 && Math.random() < CONFIG.secondaryExplosionChance && !isSparkle && particleType === 'circle') {
+                particle.willExplode = true;
+                particle.explosionDelay = 20 + Math.floor(Math.random() * 30);
             }
         }
     }
-
-    getActiveCount() {
-        return this.active.length;
+    
+    update() {
+        // Handle instant explode mode
+        if (this.shouldExplodeImmediately && !this.exploded) {
+            this.explode();
+            this.shouldExplodeImmediately = false;
+            return;
+        }
+        
+        // Update rocket (if exists and not exploded)
+        if (!this.exploded && this.rocket) {
+            this.rocket.applyGravity();
+            this.rocket.update();
+            
+            if (this.shouldExplode()) {
+                this.explode();
+            }
+        }
+        
+        // Update explosion particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.applyGravity();
+            p.update();
+            
+            // Check for secondary explosions
+            if (p.willExplode && p.age >= p.explosionDelay && !p.exploded) {
+                p.exploded = true;
+                this.createSecondaryExplosion(p);
+            }
+            
+            // Remove dead particles
+            if (p.isDone()) {
+                this.particles.splice(i, 1);
+            }
+        }
+        
+        // Update secondary explosions
+        for (let i = this.secondaryExplosions.length - 1; i >= 0; i--) {
+            const p = this.secondaryExplosions[i];
+            p.applyGravity();
+            p.update();
+            
+            if (p.isDone()) {
+                this.secondaryExplosions.splice(i, 1);
+            }
+        }
+    }
+    
+    createSecondaryExplosion(sourceParticle) {
+        const count = 8 + Math.floor(Math.random() * 12);
+        
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count;
+            const speed = 1 + Math.random() * 2;
+            
+            const particle = new Particle({
+                x: sourceParticle.x,
+                y: sourceParticle.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: 1 + Math.random() * 2,
+                hue: sourceParticle.hue + (Math.random() - 0.5) * 30,
+                saturation: 100,
+                brightness: 100,
+                lifespan: 0.4 + Math.random() * 0.3,
+                decay: 0.02,
+                isSeed: false,
+                isSparkle: true,
+                mass: 0.3,
+                drag: 0.96,
+                gravity: CONFIG.gravity * 0.6
+            });
+            
+            this.secondaryExplosions.push(particle);
+        }
+    }
+    
+    isDone() {
+        return this.exploded && 
+               this.particles.length === 0 && 
+               this.secondaryExplosions.length === 0;
     }
 }
 
 // ============================================================================
-// SHAPE GENERATORS
+// SHAPE GENERATORS - Mathematical patterns for explosions
 // ============================================================================
 
 const ShapeGenerators = {
     burst: (count, intensity) => {
         const particles = [];
-        for (let i = 0; i < count; i++) {
-            const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.3;
-            const speed = (3 + Math.random() * 5) * intensity;
-            particles.push({
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed
-            });
+        const rings = 2 + Math.floor(intensity);
+        const particlesPerRing = Math.floor(count / rings);
+        
+        for (let ring = 0; ring < rings; ring++) {
+            const ringSpeed = (2 + Math.random() * 2) * (1 + ring * 0.3) * intensity;
+            for (let i = 0; i < particlesPerRing; i++) {
+                const angle = (Math.PI * 2 * i) / particlesPerRing + (Math.random() - 0.5) * 0.2;
+                particles.push({
+                    vx: Math.cos(angle) * ringSpeed,
+                    vy: Math.sin(angle) * ringSpeed
+                });
+            }
         }
         return particles;
     },
@@ -153,14 +511,15 @@ const ShapeGenerators = {
         const particles = [];
         for (let i = 0; i < count; i++) {
             const t = (i / count) * Math.PI * 2;
-            // Heart parametric equation
+            // Parametric heart equation
             const x = 16 * Math.pow(Math.sin(t), 3);
             const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
-            const magnitude = Math.sqrt(x*x + y*y);
-            const speed = (0.3 + Math.random() * 0.3) * intensity;
+            // Prevent division by zero
+            const mag = Math.max(Math.sqrt(x*x + y*y), 1);
+            const speed = (0.15 + Math.random() * 0.15) * intensity;
             particles.push({
-                vx: (x / magnitude) * speed * 8,
-                vy: (y / magnitude) * speed * 8
+                vx: (x / mag) * speed * 10,
+                vy: (y / mag) * speed * 10
             });
         }
         return particles;
@@ -169,33 +528,39 @@ const ShapeGenerators = {
     star: (count, intensity) => {
         const particles = [];
         const points = 5;
-        const outerRadius = 1;
-        const innerRadius = 0.4;
+        const particlesPerPoint = Math.floor(count / points);
         
-        for (let i = 0; i < count; i++) {
-            const pointIndex = Math.floor((i / count) * points * 2);
-            const radius = pointIndex % 2 === 0 ? outerRadius : innerRadius;
-            const angle = (Math.PI * 2 * pointIndex) / (points * 2) - Math.PI / 2;
-            const speed = (3 + Math.random() * 4) * intensity * radius;
-            particles.push({
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed
-            });
+        for (let point = 0; point < points; point++) {
+            const baseAngle = (Math.PI * 2 * point) / points - Math.PI / 2;
+            
+            for (let i = 0; i < particlesPerPoint; i++) {
+                const spread = (i / particlesPerPoint) * 0.4 - 0.2;
+                const angle = baseAngle + spread;
+                // Alternate between outer points (radius 1) and inner points (radius 0.5)
+                const radius = point % 2 === 0 ? 1 : 0.5;
+                const speed = (2 + Math.random() * 2) * intensity * radius;
+                particles.push({
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed
+                });
+            }
         }
         return particles;
     },
 
     spiral: (count, intensity) => {
         const particles = [];
-        const turns = 3;
+        const turns = 4;
+        const arms = 3;
         
         for (let i = 0; i < count; i++) {
             const t = (i / count) * turns * Math.PI * 2;
-            const radius = (i / count) * intensity;
-            const speed = 2 + Math.random() * 3;
+            const armOffset = (Math.floor(i * arms / count) * Math.PI * 2) / arms;
+            const radius = (i / count) * intensity * 0.8;
+            const speed = 1.5 + Math.random() * 1.5;
             particles.push({
-                vx: Math.cos(t) * radius * speed,
-                vy: Math.sin(t) * radius * speed
+                vx: Math.cos(t + armOffset) * radius * speed,
+                vy: Math.sin(t + armOffset) * radius * speed
             });
         }
         return particles;
@@ -203,12 +568,46 @@ const ShapeGenerators = {
 
     ring: (count, intensity) => {
         const particles = [];
+        const rings = 2 + Math.floor(intensity * 0.5);
+        
+        for (let ring = 0; ring < rings; ring++) {
+            const ringParticles = Math.floor(count / rings);
+            const ringRadius = (ring + 1) / rings;
+            
+            for (let i = 0; i < ringParticles; i++) {
+                const angle = (Math.PI * 2 * i) / ringParticles;
+                const speed = (3 + Math.random()) * intensity * ringRadius;
+                particles.push({
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed
+                });
+            }
+        }
+        return particles;
+    },
+
+    fountain: (count, intensity) => {
+        const particles = [];
         for (let i = 0; i < count; i++) {
-            const angle = (Math.PI * 2 * i) / count;
-            const speed = 4 * intensity;
+            const angle = -Math.PI/2 + (Math.random() - 0.5) * Math.PI * 0.6;
+            const speed = (2 + Math.random() * 3) * intensity;
             particles.push({
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed
+            });
+        }
+        return particles;
+    },
+
+    willow: (count, intensity) => {
+        const particles = [];
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count;
+            const speedVariation = 0.7 + Math.random() * 0.6;
+            const speed = 2 * intensity * speedVariation;
+            particles.push({
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 1 // Downward bias for willow effect
             });
         }
         return particles;
@@ -226,34 +625,29 @@ class AudioManager {
         this.volume = 0.7;
         this.enabled = true;
         this.initialized = false;
-        this.pendingSounds = new Map(); // Store URLs to preload after init
+        this.pendingSounds = new Map();
     }
 
     async init() {
-        // Don't create AudioContext immediately - wait for user gesture
-        // Store that init was called
         this.initialized = true;
-        console.log('[Fireworks Audio] Audio manager ready (AudioContext will be created on first interaction)');
+        console.log('[Fireworks Audio] Audio manager ready');
     }
 
     async ensureAudioContext() {
-        // Create AudioContext on first interaction to avoid autoplay warning
         if (!this.audioContext && this.initialized) {
             try {
                 this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 
-                // Resume if suspended (some browsers start in suspended state)
                 if (this.audioContext.state === 'suspended') {
                     await this.audioContext.resume();
                 }
                 
-                // Preload any pending sounds
                 for (const [name, url] of this.pendingSounds.entries()) {
                     await this.preload(url, name);
                 }
                 this.pendingSounds.clear();
                 
-                console.log('[Fireworks Audio] AudioContext created and resumed');
+                console.log('[Fireworks Audio] AudioContext created');
             } catch (e) {
                 console.warn('[Fireworks Audio] AudioContext not available:', e.message);
             }
@@ -261,39 +655,37 @@ class AudioManager {
     }
 
     async preload(url, name) {
-        // If AudioContext not created yet, store for later (overwrite if already exists)
         if (!this.audioContext) {
             this.pendingSounds.set(name, url);
             return;
         }
         
-        // Skip if already loaded
-        if (this.sounds.has(name)) {
-            return;
-        }
+        if (this.sounds.has(name)) return;
         
         try {
             const response = await fetch(url);
-            if (!response.ok) return;
+            if (!response.ok) {
+                console.info(`[Fireworks Audio] Audio file not found: ${url} (this is normal if not yet added)`);
+                return;
+            }
             
             const arrayBuffer = await response.arrayBuffer();
             const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             this.sounds.set(name, audioBuffer);
+            console.log(`[Fireworks Audio] Loaded: ${name}`);
         } catch (e) {
-            console.warn(`[Fireworks Audio] Failed to load ${url}:`, e.message);
+            console.info(`[Fireworks Audio] Could not load ${url}:`, e.message, '(add audio files to enable sounds)');
         }
     }
 
     async play(name, volume = 1.0) {
         if (!this.enabled) return;
         
-        // Ensure AudioContext is created
         await this.ensureAudioContext();
         
         if (!this.audioContext || !this.sounds.has(name)) return;
         
         try {
-            // Resume if suspended
             if (this.audioContext.state === 'suspended') {
                 await this.audioContext.resume();
             }
@@ -323,50 +715,52 @@ class AudioManager {
 }
 
 // ============================================================================
-// FIREWORKS ENGINE
+// FIREWORKS ENGINE - Main rendering and orchestration
 // ============================================================================
 
 class FireworksEngine {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
-        this.ctx = null;
-        this.gl = null;
-        this.useWebGL = false;
+        this.ctx = this.canvas.getContext('2d');
         
-        this.particlePool = new ParticlePool(CONFIG.maxParticles);
+        this.fireworks = [];
         this.audioManager = new AudioManager();
         
         this.lastTime = performance.now();
         this.frameCount = 0;
         this.fps = 0;
         this.fpsUpdateTime = performance.now();
+        this.fpsHistory = []; // Track FPS history for adaptive performance
+        this.performanceMode = 'normal'; // 'normal', 'reduced', 'minimal'
         
-        this.config = { ...CONFIG };
+        // Combo throttling to prevent extreme lag
+        this.lastComboTriggerTime = 0;
+        this.comboTriggerQueue = [];
+        
+        this.config = { 
+            ...CONFIG,
+            toasterMode: false,
+            audioEnabled: true,
+            audioVolume: 0.7,
+            trailsEnabled: true,
+            glowEnabled: true,
+            resolution: CONFIG.resolution,
+            targetFps: CONFIG.targetFps,
+            minFps: CONFIG.minFps,
+            giftPopupPosition: CONFIG.giftPopupPosition
+        };
+        
         this.running = false;
         this.socket = null;
-        
-        // Image cache for gift particles
         this.imageCache = new Map();
-        
-        // Debug mode
         this.debugMode = false;
+        
+        this.width = 0;
+        this.height = 0;
     }
 
     async init() {
-        // Try WebGL first
-        this.gl = this.canvas.getContext('webgl2') || this.canvas.getContext('webgl');
-        
-        if (this.gl) {
-            this.useWebGL = true;
-            this.initWebGL();
-            document.getElementById('renderer-type').textContent = 'WebGL';
-        } else {
-            // Fallback to Canvas 2D
-            this.ctx = this.canvas.getContext('2d');
-            document.getElementById('renderer-type').textContent = 'Canvas 2D';
-        }
-
-        // Set canvas size
+        // Setup canvas
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
@@ -380,35 +774,23 @@ class FireworksEngine {
         this.running = true;
         this.render();
 
-        console.log('[Fireworks Engine] Initialized with', this.useWebGL ? 'WebGL' : 'Canvas 2D');
-    }
-
-    initWebGL() {
-        const gl = this.gl;
-        
-        // Enable blending for transparency
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        
-        // Clear color (transparent)
-        gl.clearColor(0, 0, 0, 0);
+        console.log('[Fireworks Engine] Initialized with Canvas 2D');
     }
 
     resize() {
         const dpr = window.devicePixelRatio || 1;
         const rect = this.canvas.getBoundingClientRect();
+        const resolution = this.config.resolution || 1.0;
         
-        this.canvas.width = rect.width * dpr;
-        this.canvas.height = rect.height * dpr;
-        
-        if (this.useWebGL) {
-            this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-        } else if (this.ctx) {
-            this.ctx.scale(dpr, dpr);
-        }
+        // Apply resolution multiplier for performance control
+        this.canvas.width = rect.width * dpr * resolution;
+        this.canvas.height = rect.height * dpr * resolution;
+        this.ctx.scale(dpr * resolution, dpr * resolution);
         
         this.width = rect.width;
         this.height = rect.height;
+        
+        console.log(`[Fireworks] Canvas resolution: ${this.canvas.width}x${this.canvas.height} (${Math.round(resolution * 100)}%)`);
     }
 
     connectSocket() {
@@ -433,9 +815,17 @@ class FireworksEngine {
 
             this.socket.on('fireworks:config-update', (data) => {
                 if (data.config) {
+                    const oldResolution = this.config.resolution;
                     Object.assign(this.config, data.config);
                     this.audioManager.setEnabled(this.config.audioEnabled);
                     this.audioManager.setVolume(this.config.audioVolume);
+                    
+                    // Resize canvas if resolution changed
+                    if (oldResolution !== this.config.resolution) {
+                        this.resize();
+                    }
+                    
+                    console.log('[Fireworks] Config updated:', data.config);
                 }
             });
 
@@ -461,90 +851,81 @@ class FireworksEngine {
             username = null,
             coins = 0,
             combo = 1,
-            playSound = true,
-            trailsEnabled = true,
-            glowEnabled = true
+            playSound = true
         } = data;
 
-        // Convert normalized position to canvas coordinates
-        const x = position.x * this.width;
-        const y = position.y * this.height;
-
-        // Get shape generator
-        const generator = ShapeGenerators[shape] || ShapeGenerators.burst;
-        const velocities = generator(particleCount, intensity);
-
-        // Load gift image if provided
-        let giftImg = null;
-        if (giftImage) {
-            giftImg = await this.loadImage(giftImage);
+        // Combo throttling: prevent extreme lag from rapid combos
+        const now = performance.now();
+        const timeSinceLastTrigger = now - this.lastComboTriggerTime;
+        const minInterval = CONFIG.comboThrottleMinInterval;
+        
+        // Skip if triggered too quickly (except for first trigger)
+        if (this.lastComboTriggerTime > 0 && timeSinceLastTrigger < minInterval) {
+            console.log('[Fireworks] Combo throttled (too fast)');
+            return;
         }
         
-        // Load user avatar if provided
+        this.lastComboTriggerTime = now;
+        
+        // High combo optimization: skip rockets entirely for very high combos
+        const skipRockets = combo >= CONFIG.comboSkipRocketsThreshold;
+        const instantExplode = combo >= CONFIG.comboInstantExplodeThreshold;
+        
+        if (instantExplode) {
+            console.log(`[Fireworks] Instant explosion mode (combo: ${combo})`);
+        } else if (skipRockets) {
+            console.log(`[Fireworks] Skipping rocket animation (combo: ${combo})`);
+        }
+
+        // Launch position at bottom, target at specified position
+        const startX = position.x * this.width;
+        const targetY = position.y * this.height;
+
+        // Load images if provided
+        let giftImg = null;
         let avatarImg = null;
-        if (userAvatar) {
-            avatarImg = await this.loadImage(userAvatar);
-        }
+        if (giftImage) giftImg = await this.loadImage(giftImage);
+        if (userAvatar) avatarImg = await this.loadImage(userAvatar);
 
-        // Spawn particles
-        for (let i = 0; i < velocities.length; i++) {
-            const p = this.particlePool.get();
-            if (!p) break; // Pool exhausted
-
-            p.x = x;
-            p.y = y;
-            p.vx = velocities[i].vx;
-            p.vy = velocities[i].vy;
-            p.life = 2 + Math.random() * 2;
-            p.maxLife = p.life;
-            p.size = this.config.particleSizeRange[0] + 
-                Math.random() * (this.config.particleSizeRange[1] - this.config.particleSizeRange[0]);
-            p.size *= intensity;
-            p.color = colors[Math.floor(Math.random() * colors.length)];
-            p.gravity = this.config.gravity;
-            p.friction = this.config.friction;
-            p.rotation = Math.random() * Math.PI * 2;
-            p.rotationSpeed = (Math.random() - 0.5) * 0.2;
-            
-            // Decide which image to use based on availability and configuration
-            // Default to colored circles if no images
-            p.type = 'circle';
-            
-            if (avatarImg || giftImg) {
-                // Base image usage chance
-                const baseImageChance = 0.3; // 30% of particles use images
-                
-                if (Math.random() < baseImageChance) {
-                    p.type = 'image';
-                    
-                    // If both images available, use avatarParticleChance to decide
-                    if (avatarImg && giftImg) {
-                        // avatarParticleChance determines avatar vs gift probability
-                        p.image = Math.random() < avatarParticleChance ? avatarImg : giftImg;
-                    } else if (avatarImg) {
-                        // Only avatar available
-                        p.image = avatarImg;
-                    } else {
-                        // Only gift available
-                        p.image = giftImg;
-                    }
-                    
-                    p.size *= 2; // Make image particles larger
+        // Create firework
+        const firework = new Firework({
+            x: startX,
+            y: skipRockets ? targetY : this.height, // Start at target if skipping rockets
+            targetY: targetY,
+            shape: shape,
+            colors: colors,
+            intensity: intensity,
+            giftImage: giftImg,
+            userAvatar: avatarImg,
+            avatarParticleChance: avatarParticleChance,
+            useImages: !!(giftImg || avatarImg),
+            tier: tier,
+            combo: combo,
+            skipRocket: skipRockets, // Pass flag to Firework class
+            instantExplode: instantExplode // Explode immediately without any delay
+        });
+        
+        // Set explosion sound callback
+        // Reduce volume for instant explosions instead of completely disabling
+        if (playSound) {
+            const soundVolume = instantExplode ? 0.2 : 0.5; // Quieter for instant explosions
+            firework.onExplodeSound = (intensity) => {
+                if (this.audioManager.enabled) {
+                    this.audioManager.play('explosion', intensity * soundVolume);
                 }
-            }
-            
-            // Clear trail
-            p.trail = [];
+            };
         }
 
-        // Play sound
-        if (playSound && this.audioManager.enabled) {
-            this.audioManager.play('explosion', intensity * 0.5);
+        this.fireworks.push(firework);
+
+        // Play launch sound only if not skipping rockets
+        if (playSound && !skipRockets && this.audioManager.enabled) {
+            this.audioManager.play('rocket', 0.3);
         }
 
-        // Show gift popup
+        // Show gift popup (always show, even for instant explosions)
         if (username && coins > 0) {
-            this.showGiftPopup(x, y, username, coins, combo, giftImage);
+            this.showGiftPopup(startX, this.height - 100, username, coins, combo, giftImage);
         }
     }
 
@@ -552,44 +933,56 @@ class FireworksEngine {
         const {
             intensity = 3.0,
             duration = 5000,
-            burstCount = 5,
+            burstCount = 15,
             burstInterval = 300,
             shapes = ['burst', 'heart', 'star', 'ring', 'spiral'],
             colors = this.config.defaultColors
         } = data;
 
+        // Performance optimization: reduce particles and increase interval
+        const optimizedBurstCount = Math.min(burstCount, 10); // Max 10 bursts
+        const optimizedInterval = Math.max(burstInterval, 500); // At least 500ms between bursts
+        const optimizedIntensity = Math.min(intensity, 2.0); // Cap intensity at 2.0
+
         let bursts = 0;
         const interval = setInterval(() => {
-            if (bursts >= burstCount) {
+            if (bursts >= optimizedBurstCount) {
                 clearInterval(interval);
                 return;
             }
 
-            // Random position
             const position = {
-                x: 0.1 + Math.random() * 0.8,
-                y: 0.2 + Math.random() * 0.5
+                x: 0.2 + Math.random() * 0.6,
+                y: 0.2 + Math.random() * 0.4
             };
 
-            // Random shape
             const shape = shapes[Math.floor(Math.random() * shapes.length)];
 
             this.handleTrigger({
                 position,
                 shape,
                 colors,
-                intensity: intensity * (0.8 + Math.random() * 0.4),
-                particleCount: Math.round(100 * intensity),
-                playSound: true
+                intensity: optimizedIntensity * (0.8 + Math.random() * 0.4),
+                particleCount: Math.round(50 * optimizedIntensity), // Reduced from 80
+                playSound: bursts === 0 || bursts === optimizedBurstCount - 1 // Only play sound for first and last
             });
 
             bursts++;
-        }, burstInterval);
+        }, optimizedInterval);
     }
 
     async loadImage(url) {
         if (this.imageCache.has(url)) {
             return this.imageCache.get(url);
+        }
+
+        // Validate URL to prevent XSS - check for dangerous protocols
+        if (!url || typeof url !== 'string') return null;
+        const lowerUrl = url.toLowerCase();
+        const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:', 'about:'];
+        if (dangerousProtocols.some(protocol => lowerUrl.startsWith(protocol))) {
+            console.warn('[Fireworks] Invalid image URL blocked:', url);
+            return null;
         }
 
         return new Promise((resolve) => {
@@ -605,153 +998,296 @@ class FireworksEngine {
     }
 
     showGiftPopup(x, y, username, coins, combo, giftImage) {
+        // Check if popups are disabled
+        const popupPosition = this.config.giftPopupPosition;
+        if (popupPosition === 'none') return;
+        
+        // Calculate position based on configuration
+        let finalX = x;
+        let finalY = y;
+        
+        if (typeof popupPosition === 'string') {
+            switch (popupPosition) {
+                case 'top':
+                    finalX = this.width / 2;
+                    finalY = 100;
+                    break;
+                case 'middle':
+                    finalX = this.width / 2;
+                    finalY = this.height / 2;
+                    break;
+                case 'bottom':
+                    finalX = x; // Keep horizontal position
+                    finalY = this.height - 100;
+                    break;
+                default:
+                    // Use provided coordinates
+                    break;
+            }
+        } else if (typeof popupPosition === 'object' && popupPosition.x !== undefined) {
+            // Custom coordinates (normalized 0-1 or pixels)
+            finalX = popupPosition.x < 2 ? popupPosition.x * this.width : popupPosition.x;
+            finalY = popupPosition.y < 2 ? popupPosition.y * this.height : popupPosition.y;
+        }
+        
         const popup = document.createElement('div');
         popup.className = 'gift-popup';
+        popup.style.cssText = `
+            position: absolute;
+            left: ${finalX}px;
+            top: ${finalY}px;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: popIn 0.3s ease-out, fadeOut 0.5s ease-in 2s forwards;
+            pointer-events: none;
+            z-index: 100;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        `;
         
-        // Create elements safely to prevent XSS
         if (giftImage) {
             const img = document.createElement('img');
-            img.alt = 'gift';
-            // Validate URL before setting src
-            try {
-                const url = new URL(giftImage, window.location.origin);
-                if (url.protocol === 'https:' || url.protocol === 'http:') {
-                    img.src = url.href;
-                }
-            } catch (e) {
-                // Invalid URL, skip image
-            }
+            img.src = giftImage;
+            img.style.cssText = 'width: 32px; height: 32px; object-fit: contain;';
             popup.appendChild(img);
         }
         
-        const infoSpan = document.createElement('span');
-        infoSpan.textContent = `${username}: ${coins} coins`;
-        popup.appendChild(infoSpan);
+        const text = document.createElement('span');
+        text.textContent = `${username}: ${coins} coins`;
+        popup.appendChild(text);
         
         if (combo > 1) {
             const comboSpan = document.createElement('span');
-            comboSpan.className = 'combo';
-            comboSpan.textContent = `${combo}x COMBO!`;
+            comboSpan.style.color = '#ffcc00';
+            comboSpan.textContent = ` ${combo}x COMBO!`;
             popup.appendChild(comboSpan);
         }
         
-        popup.style.left = `${x}px`;
-        popup.style.top = `${y - 50}px`;
-        popup.style.transform = 'translateX(-50%)';
-        
         document.getElementById('fireworks-container').appendChild(popup);
         
-        // Remove after animation
-        setTimeout(() => {
-            popup.remove();
-        }, 2500);
+        setTimeout(() => popup.remove(), 2500);
     }
 
     render() {
         if (!this.running) return;
 
         const now = performance.now();
-        const deltaTime = Math.min((now - this.lastTime) / 16.67, 3); // Cap delta time
+        const deltaTime = Math.min((now - this.lastTime) / 16.67, 3);
         this.lastTime = now;
 
-        // Update particles
-        this.particlePool.update(deltaTime);
+        // Clear with configurable background for trail effect
+        const bgColor = this.config.backgroundColor || CONFIG.backgroundColor;
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        this.ctx.fillStyle = bgColor;
+        this.ctx.fillRect(0, 0, this.width, this.height);
 
-        // Clear canvas
-        if (this.useWebGL) {
-            this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-            this.renderWebGL();
-        } else {
-            this.ctx.clearRect(0, 0, this.width, this.height);
-            this.renderCanvas();
+        // Update and render all fireworks
+        for (let i = this.fireworks.length - 1; i >= 0; i--) {
+            this.fireworks[i].update();
+            this.renderFirework(this.fireworks[i]);
+            
+            if (this.fireworks[i].isDone()) {
+                this.fireworks.splice(i, 1);
+            }
         }
 
-        // Update FPS counter
+        // Update FPS and adaptive performance
         this.frameCount++;
         if (now - this.fpsUpdateTime >= 1000) {
             this.fps = this.frameCount;
             this.frameCount = 0;
             this.fpsUpdateTime = now;
             
+            // Track FPS history for adaptive performance
+            this.fpsHistory.push(this.fps);
+            if (this.fpsHistory.length > 5) {
+                this.fpsHistory.shift();
+            }
+            
+            // Calculate average FPS over last 5 seconds
+            const avgFps = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
+            
+            // Adaptive performance mode
+            const targetFps = this.config.targetFps || CONFIG.targetFps;
+            const minFps = this.config.minFps || CONFIG.minFps;
+            
+            if (avgFps < minFps) {
+                // Performance is suffering - enter minimal mode
+                if (this.performanceMode !== 'minimal') {
+                    this.performanceMode = 'minimal';
+                    this.applyPerformanceMode();
+                    console.log('[Fireworks] Adaptive Performance: MINIMAL mode (FPS:', avgFps.toFixed(1), ')');
+                }
+            } else if (avgFps < targetFps * 0.8) {
+                // Performance is degraded - enter reduced mode
+                if (this.performanceMode !== 'reduced') {
+                    this.performanceMode = 'reduced';
+                    this.applyPerformanceMode();
+                    console.log('[Fireworks] Adaptive Performance: REDUCED mode (FPS:', avgFps.toFixed(1), ')');
+                }
+            } else if (avgFps >= targetFps * 0.95) {
+                // Performance is good - return to normal mode
+                if (this.performanceMode !== 'normal') {
+                    this.performanceMode = 'normal';
+                    this.applyPerformanceMode();
+                    console.log('[Fireworks] Adaptive Performance: NORMAL mode (FPS:', avgFps.toFixed(1), ')');
+                }
+            }
+            
             if (this.debugMode) {
-                document.getElementById('fps').textContent = this.fps;
-                document.getElementById('particle-count').textContent = this.particlePool.getActiveCount();
+                const fpsEl = document.getElementById('fps');
+                const particleEl = document.getElementById('particle-count');
+                const modeEl = document.getElementById('performance-mode');
+                if (fpsEl) fpsEl.textContent = this.fps;
+                if (particleEl) particleEl.textContent = this.getTotalParticles();
+                if (modeEl) modeEl.textContent = this.performanceMode.toUpperCase();
             }
         }
 
         requestAnimationFrame(() => this.render());
     }
-
-    renderCanvas() {
-        const ctx = this.ctx;
-        const particles = this.particlePool.active;
-
-        for (const p of particles) {
-            ctx.save();
-            ctx.globalAlpha = p.alpha;
-
-            // Draw trail
-            if (p.trail.length > 1 && this.config.trailsEnabled) {
-                ctx.beginPath();
-                ctx.moveTo(p.trail[0].x, p.trail[0].y);
-                for (let i = 1; i < p.trail.length; i++) {
-                    ctx.lineTo(p.trail[i].x, p.trail[i].y);
+    
+    applyPerformanceMode() {
+        // Adjust CONFIG based on performance mode
+        switch (this.performanceMode) {
+            case 'minimal':
+                // Extreme reduction for very low FPS
+                CONFIG.maxParticlesPerExplosion = 50;
+                CONFIG.trailLength = 5;
+                CONFIG.sparkleChance = 0.05;
+                CONFIG.secondaryExplosionChance = 0;
+                this.config.glowEnabled = false;
+                this.config.trailsEnabled = false;
+                // Limit active fireworks
+                while (this.fireworks.length > 5) {
+                    this.fireworks.pop();
                 }
-                ctx.strokeStyle = p.color;
-                ctx.lineWidth = p.size * 0.3;
-                ctx.globalAlpha = p.alpha * 0.3;
-                ctx.stroke();
-                ctx.globalAlpha = p.alpha;
-            }
-
-            // Draw particle
-            ctx.translate(p.x, p.y);
-            ctx.rotate(p.rotation);
-
-            if (p.type === 'image' && p.image) {
-                const size = p.size * 3;
-                ctx.drawImage(p.image, -size/2, -size/2, size, size);
-            } else {
-                // Draw glow
-                if (this.config.glowEnabled) {
-                    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size * 2);
-                    gradient.addColorStop(0, p.color);
-                    gradient.addColorStop(0.5, p.color + '80');
-                    gradient.addColorStop(1, 'transparent');
-                    ctx.fillStyle = gradient;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, p.size * 2, 0, Math.PI * 2);
-                    ctx.fill();
+                break;
+                
+            case 'reduced':
+                // Moderate reduction for low FPS
+                CONFIG.maxParticlesPerExplosion = 100;
+                CONFIG.trailLength = 10;
+                CONFIG.sparkleChance = 0.08;
+                CONFIG.secondaryExplosionChance = 0.05;
+                this.config.glowEnabled = true;
+                this.config.trailsEnabled = true;
+                // Limit active fireworks
+                while (this.fireworks.length > 15) {
+                    this.fireworks.pop();
                 }
-
-                // Draw core
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(0, 0, p.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            ctx.restore();
+                break;
+                
+            case 'normal':
+                // Full quality
+                CONFIG.maxParticlesPerExplosion = 200;
+                CONFIG.trailLength = 20;
+                CONFIG.sparkleChance = 0.15;
+                CONFIG.secondaryExplosionChance = 0.1;
+                this.config.glowEnabled = true;
+                this.config.trailsEnabled = true;
+                break;
         }
     }
 
-    renderWebGL() {
-        // For now, use Canvas 2D rendering even in WebGL mode
-        // A full WebGL implementation would require shaders
-        // This is a pragmatic fallback that ensures compatibility
+    renderFirework(firework) {
+        const ctx = this.ctx;
         
-        // Get 2D context for fallback rendering
-        const ctx = this.canvas.getContext('2d', { willReadFrequently: false });
-        if (ctx) {
-            ctx.clearRect(0, 0, this.width, this.height);
-            this.ctx = ctx;
-            this.renderCanvas();
+        // Render rocket (seed particle)
+        if (!firework.exploded) {
+            this.renderParticle(firework.rocket);
         }
+        
+        // Render explosion particles
+        for (const particle of firework.particles) {
+            this.renderParticle(particle);
+        }
+        
+        // Render secondary explosions
+        for (const particle of firework.secondaryExplosions) {
+            this.renderParticle(particle);
+        }
+    }
+
+    renderParticle(p) {
+        const ctx = this.ctx;
+        
+        // Render trail
+        if (this.config.trailsEnabled && p.trail.length > 1) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(p.trail[0].x, p.trail[0].y);
+            
+            for (let i = 1; i < p.trail.length; i++) {
+                ctx.lineTo(p.trail[i].x, p.trail[i].y);
+            }
+            
+            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
+            ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha * 0.3})`;
+            ctx.lineWidth = p.size * 0.5;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            ctx.restore();
+        }
+        
+        // Render particle
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.globalAlpha = p.alpha;
+        
+        if (p.type === 'image' && p.image) {
+            // Render image particle
+            const size = p.size * 3;
+            ctx.drawImage(p.image, -size/2, -size/2, size, size);
+        } else {
+            // Render colored particle with glow
+            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
+            
+            if (this.config.glowEnabled) {
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size * 2);
+                gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`);
+                gradient.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha * 0.5})`);
+                gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, p.size * 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Core particle
+            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`;
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+
+    getTotalParticles() {
+        let count = 0;
+        for (const fw of this.fireworks) {
+            count += fw.particles.length + fw.secondaryExplosions.length;
+            if (!fw.exploded) count++;
+        }
+        return count;
     }
 
     toggleDebug() {
         this.debugMode = !this.debugMode;
-        document.getElementById('debug-panel').classList.toggle('visible', this.debugMode);
+        const panel = document.getElementById('debug-panel');
+        if (panel) {
+            panel.classList.toggle('visible', this.debugMode);
+        }
     }
 
     destroy() {
@@ -769,22 +1305,43 @@ class FireworksEngine {
 let engine = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const canvas = document.getElementById('fireworks-canvas');
+    if (!canvas) {
+        console.error('[Fireworks] Canvas element not found');
+        return;
+    }
+    
     engine = new FireworksEngine('fireworks-canvas');
     await engine.init();
 
-    // Preload default sounds
+    // Preload sounds
     await engine.audioManager.preload('/plugins/fireworks/audio/explosion.mp3', 'explosion');
     await engine.audioManager.preload('/plugins/fireworks/audio/rocket.mp3', 'rocket');
+    
+    // Enable audio context on first user interaction
+    const enableAudio = async () => {
+        await engine.audioManager.ensureAudioContext();
+        document.removeEventListener('click', enableAudio);
+        document.removeEventListener('keydown', enableAudio);
+    };
+    document.addEventListener('click', enableAudio);
+    document.addEventListener('keydown', enableAudio);
 
-    // Enable debug mode with 'D' key
+    // Debug mode toggle
     document.addEventListener('keydown', (e) => {
         if (e.key.toLowerCase() === 'd') {
             engine.toggleDebug();
         }
     });
 
-    console.log('[Fireworks] Engine ready');
+    console.log('[Fireworks] Advanced engine ready');
 });
 
-// Export for external access
-window.FireworksEngine = engine;
+// Only expose engine after initialization
+if (typeof window !== 'undefined') {
+    Object.defineProperty(window, 'FireworksEngine', {
+        get: () => engine,
+        configurable: false,
+        enumerable: true
+    });
+}

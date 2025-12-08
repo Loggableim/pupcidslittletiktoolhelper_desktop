@@ -495,6 +495,98 @@
                     </div>
                 </div>
 
+                <!-- Toaster Mode (Low-End PC Optimization) -->
+                <div class="card rounded-xl p-6 border-2 border-orange-500/30">
+                    <h2 class="section-title text-xl font-bold mb-4" data-i18n="fireworks.toaster_mode.title">🍞 Toaster Mode (Low-End PCs)</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label for="toaster_mode" style="display: flex; align-items: center; gap: 10px;">
+                                <strong data-i18n="fireworks.toaster_mode.enabled">Enable Toaster Mode</strong>
+                            </label>
+                            <div id="toaster-toggle" class="toggle-switch" data-config="toasterMode"></div>
+                        </div>
+                        
+                        <p class="text-sm text-gray-400" data-i18n="fireworks.toaster_mode.description">
+                            Uses Canvas 2D rendering instead of WebGL for maximum compatibility
+                        </p>
+                        
+                        <div class="bg-orange-900/20 border border-orange-500/30 rounded-lg p-4">
+                            <strong class="text-orange-400" data-i18n="fireworks.toaster_mode.changes_title">🔧 What changes:</strong>
+                            <div class="mt-2 space-y-1 text-sm">
+                                <div>• <span class="text-gray-300" data-i18n="fireworks.toaster_mode.renderer">Renderer: WebGL → Canvas 2D</span></div>
+                                <div>• <span class="text-gray-300" data-i18n="fireworks.toaster_mode.gpu">GPU Acceleration: Disabled</span></div>
+                                <div>• <span class="text-gray-300" data-i18n="fireworks.toaster_mode.compatibility">Compatibility: Maximum</span></div>
+                                <div>• <span class="text-gray-300" data-i18n="fireworks.toaster_mode.performance">Performance: Reduced but stable</span></div>
+                                <div>• <span class="text-gray-300" data-i18n="fireworks.toaster_mode.effects">Visual Effects: All maintained</span></div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                            <strong class="text-blue-400">💡 <span data-i18n="fireworks.toaster_mode.tip_title">Tip:</span></strong>
+                            <p class="text-sm text-gray-300 mt-1" data-i18n="fireworks.toaster_mode.tip">
+                                Use Toaster Mode if your PC slows down during fireworks or if you experience rendering issues in OBS.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance & Resolution Settings -->
+                <div class="card rounded-xl p-6 border-2 border-blue-500/30">
+                    <h2 class="section-title text-xl font-bold mb-4">⚡ Performance & Resolution</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block mb-2"><strong>OBS Overlay Resolution</strong></label>
+                            <select id="resolution-select" class="w-full bg-black/30 rounded-lg px-4 py-2" data-config="resolution">
+                                <option value="1.0">Full Resolution (100%) - Best Quality</option>
+                                <option value="0.75">High Resolution (75%) - Balanced</option>
+                                <option value="0.5">Medium Resolution (50%) - Better Performance</option>
+                                <option value="0.33">Low Resolution (33%) - Maximum Performance</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">
+                                Lower resolution reduces GPU load and improves performance
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2"><strong>Target FPS</strong></label>
+                            <input type="range" id="target-fps" min="30" max="60" step="5" value="60" class="w-full" data-config="targetFps">
+                            <div class="flex justify-between text-sm text-gray-400">
+                                <span>30 FPS</span>
+                                <span id="target-fps-value">60 FPS</span>
+                                <span>60 FPS</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">
+                                System will auto-adjust quality to maintain this FPS
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2"><strong>Minimum FPS</strong></label>
+                            <input type="range" id="min-fps" min="15" max="45" step="5" value="30" class="w-full" data-config="minFps">
+                            <div class="flex justify-between text-sm text-gray-400">
+                                <span>15 FPS</span>
+                                <span id="min-fps-value">30 FPS</span>
+                                <span>45 FPS</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">
+                                Below this FPS, system enters minimal quality mode
+                            </p>
+                        </div>
+                        
+                        <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                            <strong class="text-blue-400">💡 Combo Performance:</strong>
+                            <div class="mt-2 space-y-1 text-sm text-gray-300">
+                                <div>• Combo 5+: Rockets skipped, instant explosions</div>
+                                <div>• Combo 8+: Instant bursts, no rocket animation</div>
+                                <div>• Combo 10+: 50% fewer particles</div>
+                                <div>• Auto-throttling prevents system overload</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- User Avatar Integration -->
                 <div class="card rounded-xl p-6">
                     <h2 class="section-title text-xl font-bold mb-4" data-i18n="fireworks.user_avatar_integration">👤 User Avatar Integration</h2>

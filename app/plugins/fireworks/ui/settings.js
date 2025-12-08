@@ -229,6 +229,31 @@ function updateUI() {
     if (avatarChanceValue) {
         avatarChanceValue.textContent = avatarChance + '%';
     }
+    
+    // Performance & Resolution settings
+    updateToggle('toaster-toggle', config.toasterMode);
+    const resolutionSelect = document.getElementById('resolution-select');
+    if (resolutionSelect) {
+        resolutionSelect.value = config.resolution || 1.0;
+    }
+    const targetFps = config.targetFps || 60;
+    const targetFpsSlider = document.getElementById('target-fps');
+    const targetFpsValue = document.getElementById('target-fps-value');
+    if (targetFpsSlider) {
+        targetFpsSlider.value = targetFps;
+    }
+    if (targetFpsValue) {
+        targetFpsValue.textContent = targetFps + ' FPS';
+    }
+    const minFps = config.minFps || 30;
+    const minFpsSlider = document.getElementById('min-fps');
+    const minFpsValue = document.getElementById('min-fps-value');
+    if (minFpsSlider) {
+        minFpsSlider.value = minFps;
+    }
+    if (minFpsValue) {
+        minFpsValue.textContent = minFps + ' FPS';
+    }
 }
 
 function updateToggle(id, value) {
@@ -318,6 +343,23 @@ function setupEventListeners() {
     
     setupRangeSlider('avatar-chance', 'avatar-chance-value', '%', (val) => {
         config.avatarParticleChance = val / 100;
+    });
+    
+    // Performance & Resolution settings
+    document.getElementById('resolution-select')?.addEventListener('change', function() {
+        config.resolution = parseFloat(this.value);
+        // Notify engine to resize canvas
+        if (socket) {
+            socket.emit('fireworks:config-update', { config: { resolution: config.resolution } });
+        }
+    });
+    
+    setupRangeSlider('target-fps', 'target-fps-value', ' FPS', (val) => {
+        config.targetFps = parseInt(val);
+    });
+    
+    setupRangeSlider('min-fps', 'min-fps-value', ' FPS', (val) => {
+        config.minFps = parseInt(val);
     });
     
     // Number inputs
