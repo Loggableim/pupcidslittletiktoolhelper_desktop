@@ -660,6 +660,12 @@ class AudioManager {
         // Audio selection constants for performance
         this.TINY_BANG_SOUNDS = ['combined-whistle-tiny1', 'combined-whistle-tiny2', 'combined-whistle-tiny3', 'combined-whistle-tiny4'];
         this.SMALL_SOUNDS = ['combined-whistle-tiny1', 'combined-whistle-tiny2', 'combined-whistle-tiny3'];
+        
+        // Volume constants for consistent audio levels
+        this.COMBINED_AUDIO_VOLUME = 0.6;        // Volume for combined (launch+explosion) audio
+        this.LAUNCH_AUDIO_VOLUME = 0.4;          // Volume for separate launch sounds
+        this.NORMAL_EXPLOSION_VOLUME = 0.6;      // Volume for normal explosions
+        this.INSTANT_EXPLODE_VOLUME = 0.2;       // Volume for instant explosions (high combos)
     }
 
     async init() {
@@ -838,15 +844,16 @@ class AudioManager {
                     return {
                         useCombinedAudio: true,
                         combinedSound: 'combined-whistle-normal',
-                        explosionDelay: 2.2  // Normal bang has explosion at ~2.2s
+                        explosionDelay: 2.2  // Normal bang has explosion at ~2.2s in the audio file
                     };
                 } else {
-                    // 40% chance: smooth launch + separate explosion
+                    // 40% chance: smooth launch (~1.3-1.5s) + separate explosion
+                    // Explosion triggers via callback when visual firework explodes
                     return {
                         useCombinedAudio: false,
                         launchSound: Math.random() < 0.5 ? 'launch-smooth' : 'launch-smooth2',
                         explosionSound: 'explosion-basic',
-                        explosionDelay: 1.0  // Smooth launches are ~1.3-1.5s, explosion at 1.0s
+                        explosionDelay: 0  // Not used; explosion triggers via callback
                     };
                 }
 
@@ -857,15 +864,16 @@ class AudioManager {
                     return {
                         useCombinedAudio: true,
                         combinedSound: 'combined-crackling-bang',
-                        explosionDelay: 3.2  // Crackling bang has explosion at ~3.2s
+                        explosionDelay: 3.2  // Crackling bang has explosion at ~3.2s in the audio file
                     };
                 } else {
-                    // 50% chance: whistle launch + explosion
+                    // 50% chance: whistle launch (~1.3s) + explosion
+                    // Explosion triggers via callback when visual firework explodes
                     return {
                         useCombinedAudio: false,
                         launchSound: 'launch-whistle',
                         explosionSound: 'explosion-basic',
-                        explosionDelay: 1.0  // Whistle launch is ~1.3s, explosion at 1.0s
+                        explosionDelay: 0  // Not used; explosion triggers via callback
                     };
                 }
 
@@ -1131,7 +1139,7 @@ class FireworksEngine {
             if (audioConfig.useCombinedAudio) {
                 // Play combined audio (launch + explosion in one file)
                 // The audio is already synchronized internally
-                this.audioManager.play(audioConfig.combinedSound, 0.6);
+                this.audioManager.play(audioConfig.combinedSound, this.audioManager.COMBINED_AUDIO_VOLUME);
                 
                 // For combined audio, we don't need the explosion callback
                 // because the explosion sound is already in the combined file
@@ -1139,11 +1147,13 @@ class FireworksEngine {
                 // Play separate launch and explosion sounds
                 if (audioConfig.launchSound && !skipRockets) {
                     // Play launch sound immediately
-                    this.audioManager.play(audioConfig.launchSound, 0.4);
+                    this.audioManager.play(audioConfig.launchSound, this.audioManager.LAUNCH_AUDIO_VOLUME);
                 }
                 
                 // Set explosion sound callback to trigger when firework explodes
-                const soundVolume = instantExplode ? 0.2 : 0.6;
+                const soundVolume = instantExplode 
+                    ? this.audioManager.INSTANT_EXPLODE_VOLUME 
+                    : this.audioManager.NORMAL_EXPLOSION_VOLUME;
                 if (audioConfig.explosionSound) {
                     firework.onExplodeSound = (intensity) => {
                         this.audioManager.play(audioConfig.explosionSound, intensity * soundVolume);
