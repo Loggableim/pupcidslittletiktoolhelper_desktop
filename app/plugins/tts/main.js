@@ -5,6 +5,7 @@ const GoogleEngine = require('./engines/google-engine');
 const SpeechifyEngine = require('./engines/speechify-engine');
 const ElevenLabsEngine = require('./engines/elevenlabs-engine');
 const OpenAIEngine = require('./engines/openai-engine');
+const TikTokRapidAPIEngine = require('./engines/tiktok-rapidapi-engine');
 const LanguageDetector = require('./utils/language-detector');
 const ProfanityFilter = require('./utils/profanity-filter');
 const PermissionManager = require('./utils/permission-manager');
@@ -20,7 +21,7 @@ class TTSPlugin {
     static EMOJI_PATTERN = /(?:[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F1FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1FA00}-\u{1FAFF}]|[\u{FE00}-\u{FE0F}]|[\u{200D}]|[\u{20E3}])+/gu;
     
     // Error message constant for missing engines
-    static NO_ENGINES_ERROR = 'No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, or OpenAI)';
+    static NO_ENGINES_ERROR = 'No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, OpenAI, or TikTok RapidAPI)';
 
     constructor(api) {
         this.api = api;
@@ -43,7 +44,8 @@ class TTSPlugin {
             google: null, // Initialized if API key is available AND engine is enabled
             speechify: null, // Initialized if API key is available AND engine is enabled
             elevenlabs: null, // Initialized if API key is available AND engine is enabled
-            openai: null // Initialized if API key is available AND engine is enabled
+            openai: null, // Initialized if API key is available AND engine is enabled
+            tiktokrapidapi: null // Initialized if API key is available AND engine is enabled
         };
 
         // Helper function to check if an engine should be loaded
@@ -62,6 +64,8 @@ class TTSPlugin {
                     return this.config.enableElevenlabsFallback === true;
                 case 'openai':
                     return this.config.enableOpenAIFallback === true;
+                case 'tiktokrapidapi':
+                    return this.config.enableTikTokRapidAPIFallback === true;
                 default:
                     return false;
             }
@@ -135,6 +139,23 @@ class TTSPlugin {
             this._logDebug('INIT', 'OpenAI TTS engine NOT initialized', { hasApiKey: false });
         }
 
+        // Initialize TikTok RapidAPI engine if API key is configured AND engine is enabled
+        if (this.config.tiktokRapidApiKey && shouldLoadEngine('tiktokrapidapi')) {
+            this.engines.tiktokrapidapi = new TikTokRapidAPIEngine(
+                this.config.tiktokRapidApiKey,
+                this.logger,
+                { performanceMode: this.config.performanceMode }
+            );
+            this.logger.info('TTS: ✅ TikTok RapidAPI TTS engine initialized');
+            this._logDebug('INIT', 'TikTok RapidAPI TTS engine initialized', { hasApiKey: true, isDefault: this.config.defaultEngine === 'tiktokrapidapi', isFallback: this.config.enableTikTokRapidAPIFallback });
+        } else if (this.config.tiktokRapidApiKey) {
+            this.logger.info('TTS: ⏸️  TikTok RapidAPI TTS engine NOT loaded (disabled as fallback)');
+            this._logDebug('INIT', 'TikTok RapidAPI TTS engine NOT loaded', { hasApiKey: true, disabled: true });
+        } else {
+            this.logger.info('TTS: ⚠️  TikTok RapidAPI TTS engine NOT initialized (no API key)');
+            this._logDebug('INIT', 'TikTok RapidAPI TTS engine NOT initialized', { hasApiKey: false });
+        }
+
         // Initialize utilities
         this.languageDetector = new LanguageDetector(this.logger, {
             confidenceThreshold: this.config.languageConfidenceThreshold,
@@ -152,10 +173,11 @@ class TTSPlugin {
         // Define fallback chains for each engine (TikTok removed)
         // Each engine has a preferred order of fallback engines based on quality and reliability
         this.fallbackChains = {
-            'google': ['openai', 'elevenlabs', 'speechify'],      // Google → OpenAI → Premium engines
-            'elevenlabs': ['openai', 'speechify', 'google'],      // Premium → OpenAI → Good → Standard
-            'speechify': ['openai', 'elevenlabs', 'google'],      // Speechify → OpenAI → Premium → Standard
-            'openai': ['elevenlabs', 'google', 'speechify']       // OpenAI → Premium → Standard → Good
+            'google': ['openai', 'elevenlabs', 'speechify', 'tiktokrapidapi'],      // Google → OpenAI → Premium engines → TikTok
+            'elevenlabs': ['openai', 'speechify', 'google', 'tiktokrapidapi'],      // Premium → OpenAI → Good → Standard → TikTok
+            'speechify': ['openai', 'elevenlabs', 'google', 'tiktokrapidapi'],      // Speechify → OpenAI → Premium → Standard → TikTok
+            'openai': ['elevenlabs', 'google', 'speechify', 'tiktokrapidapi'],       // OpenAI → Premium → Standard → Good → TikTok
+            'tiktokrapidapi': ['google', 'openai', 'elevenlabs', 'speechify']       // TikTok → Standard → OpenAI → Premium → Good
         };
 
         this._logDebug('INIT', 'TTS Plugin initialized', {
@@ -168,7 +190,8 @@ class TTSPlugin {
                 google: this.config.enableGoogleFallback,
                 speechify: this.config.enableSpeechifyFallback,
                 elevenlabs: this.config.enableElevenlabsFallback,
-                openai: this.config.enableOpenAIFallback
+                openai: this.config.enableOpenAIFallback,
+                tiktokrapidapi: this.config.enableTikTokRapidAPIFallback
             },
             startupTimestamp: this.startupTimestamp
         });
@@ -179,6 +202,7 @@ class TTSPlugin {
         if (this.engines.speechify) availableEngines.push('Speechify');
         if (this.engines.elevenlabs) availableEngines.push('ElevenLabs');
         if (this.engines.openai) availableEngines.push('OpenAI');
+        if (this.engines.tiktokrapidapi) availableEngines.push('TikTok RapidAPI');
         
         this.logger.info(`TTS Plugin initialized successfully`);
         this.logger.info(`TTS: Available engines: ${availableEngines.length > 0 ? availableEngines.join(', ') : 'None configured'}`);
@@ -255,6 +279,20 @@ class TTSPlugin {
                 } else {
                     // User had assigned voice - use engine's default for fallback language
                     fallbackVoice = OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted for ${engineName} (preserving user assignment intent)`, { fallbackVoice, hasUserAssignedVoice });
+                }
+            }
+        } else if (engineName === 'tiktokrapidapi') {
+            const tiktokVoices = TikTokRapidAPIEngine.getVoices();
+            if (!fallbackVoice || !tiktokVoices[fallbackVoice]) {
+                // Only use language detection if user doesn't have an assigned voice
+                if (!hasUserAssignedVoice) {
+                    const langResult = this.languageDetector.detectAndGetVoice(text, TikTokRapidAPIEngine, this.config.fallbackLanguage);
+                    fallbackVoice = langResult?.voiceId || TikTokRapidAPIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted via language detection for ${engineName}`, { fallbackVoice, langResult });
+                } else {
+                    // User had assigned voice - use engine's default for fallback language
+                    fallbackVoice = TikTokRapidAPIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
                     this._logDebug('FALLBACK', `Voice adjusted for ${engineName} (preserving user assignment intent)`, { fallbackVoice, hasUserAssignedVoice });
                 }
             }
@@ -356,6 +394,7 @@ class TTSPlugin {
             speechifyApiKey: null,
             elevenlabsApiKey: null,
             openaiApiKey: null,
+            tiktokRapidApiKey: null, // RapidAPI TikTok TTS API key
             tiktokSessionId: null, // Deprecated but kept for backwards compatibility
             enabledForChat: true,
             autoLanguageDetection: true,
@@ -370,7 +409,8 @@ class TTSPlugin {
             enableGoogleFallback: true, // Enable Google as fallback engine
             enableSpeechifyFallback: false, // Enable Speechify as fallback engine
             enableElevenlabsFallback: false, // Enable ElevenLabs as fallback engine
-            enableOpenAIFallback: false // Enable OpenAI as fallback engine
+            enableOpenAIFallback: false, // Enable OpenAI as fallback engine
+            enableTikTokRapidAPIFallback: false // Enable TikTok RapidAPI as fallback engine
         };
 
         // Try to load from database
@@ -440,6 +480,7 @@ class TTSPlugin {
                     speechifyApiKey: this.config.speechifyApiKey ? '***REDACTED***' : null,
                     elevenlabsApiKey: this.config.elevenlabsApiKey ? '***REDACTED***' : null,
                     openaiApiKey: this.config.openaiApiKey ? '***REDACTED***' : null,
+                    tiktokRapidApiKey: this.config.tiktokRapidApiKey ? '***REDACTED***' : null,
                     tiktokSessionId: this.config.tiktokSessionId ? '***HIDDEN***' : null
                 }
             });
@@ -601,6 +642,15 @@ class TTSPlugin {
                             { ...this.config, performanceMode: updates.performanceMode }
                         );
                     }
+                    
+                    // Reinitialize TikTok RapidAPI engine with new performance mode
+                    if (this.engines.tiktokrapidapi) {
+                        this.engines.tiktokrapidapi = new TikTokRapidAPIEngine(
+                            this.config.tiktokRapidApiKey,
+                            this.logger,
+                            { ...this.config, performanceMode: updates.performanceMode }
+                        );
+                    }
                 }
 
                 // Handle fallback engine enable/disable changes
@@ -611,6 +661,7 @@ class TTSPlugin {
                     updates.enableSpeechifyFallback !== undefined ||
                     updates.enableElevenlabsFallback !== undefined ||
                     updates.enableOpenAIFallback !== undefined ||
+                    updates.enableTikTokRapidAPIFallback !== undefined ||
                     updates.defaultEngine !== undefined
                 );
                 
@@ -620,6 +671,7 @@ class TTSPlugin {
                         enableSpeechifyFallback: updates.enableSpeechifyFallback,
                         enableElevenlabsFallback: updates.enableElevenlabsFallback,
                         enableOpenAIFallback: updates.enableOpenAIFallback,
+                        enableTikTokRapidAPIFallback: updates.enableTikTokRapidAPIFallback,
                         defaultEngine: updates.defaultEngine
                     });
                     
@@ -637,6 +689,8 @@ class TTSPlugin {
                                 return (updates.enableElevenlabsFallback !== undefined ? updates.enableElevenlabsFallback : this.config.enableElevenlabsFallback) === true;
                             case 'openai':
                                 return (updates.enableOpenAIFallback !== undefined ? updates.enableOpenAIFallback : this.config.enableOpenAIFallback) === true;
+                            case 'tiktokrapidapi':
+                                return (updates.enableTikTokRapidAPIFallback !== undefined ? updates.enableTikTokRapidAPIFallback : this.config.enableTikTokRapidAPIFallback) === true;
                             default:
                                 return false;
                         }
@@ -685,6 +739,17 @@ class TTSPlugin {
                             this.logger.info('TTS: ⏸️  OpenAI engine disabled via config update');
                         }
                     }
+                    
+                    // Enable/Disable TikTok RapidAPI engine based on new settings
+                    if (this.config.tiktokRapidApiKey) {
+                        if (shouldLoadEngine('tiktokrapidapi') && !this.engines.tiktokrapidapi) {
+                            this.engines.tiktokrapidapi = new TikTokRapidAPIEngine(this.config.tiktokRapidApiKey, this.logger, { performanceMode: this.config.performanceMode });
+                            this.logger.info('TTS: ✅ TikTok RapidAPI engine enabled via config update');
+                        } else if (!shouldLoadEngine('tiktokrapidapi') && this.engines.tiktokrapidapi) {
+                            this.engines.tiktokrapidapi = null;
+                            this.logger.info('TTS: ⏸️  TikTok RapidAPI engine disabled via config update');
+                        }
+                    }
                 }
 
                 this._saveConfig();
@@ -729,6 +794,10 @@ class TTSPlugin {
 
             if ((engine === 'all' || engine === 'openai') && this.engines.openai) {
                 voices.openai = OpenAIEngine.getVoices();
+            }
+
+            if ((engine === 'all' || engine === 'tiktokrapidapi') && this.engines.tiktokrapidapi) {
+                voices.tiktokrapidapi = TikTokRapidAPIEngine.getVoices();
             }
 
             res.json({ success: true, voices });
