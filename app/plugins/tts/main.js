@@ -949,90 +949,99 @@ class TTSPlugin {
         });
 
         // Voice Cloning Routes - Using multipart/form-data instead of JSON for efficiency
-        this.api.registerRoute('POST', '/api/tts/voice-clones/create', voiceCloneUpload.single('audioFile'), async (req, res) => {
-            try {
-                // Extract form data
-                const { voiceName, language, consentConfirmation } = req.body;
-                const audioFile = req.file;
+        this.api.registerRoute('POST', '/api/tts/voice-clones/create', (req, res) => {
+            // Execute multer middleware inside the handler (registerRoute only accepts 3 params)
+            voiceCloneUpload.single('audioFile')(req, res, async (err) => {
+                try {
+                    // Handle multer errors
+                    if (err) {
+                        if (err.code === 'LIMIT_FILE_SIZE') {
+                            return res.status(400).json({
+                                success: false,
+                                error: 'Audio file is too large. Maximum size is 5MB.'
+                            });
+                        }
+                        return res.status(400).json({
+                            success: false,
+                            error: err.message
+                        });
+                    }
 
-                // Validate required fields
-                if (!audioFile) {
-                    return res.status(400).json({
+                    // Extract form data
+                    const { voiceName, language, consentConfirmation } = req.body;
+                    const audioFile = req.file;
+
+                    // Validate required fields
+                    if (!audioFile) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Missing audio file. Please upload an audio file.'
+                        });
+                    }
+
+                    if (!voiceName) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Missing voice name. Please provide a name for the voice clone.'
+                        });
+                    }
+
+                    if (!consentConfirmation) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Missing consent confirmation. You must confirm consent to create a voice clone.'
+                        });
+                    }
+
+                    // Validate voice name length
+                    if (voiceName.length > 100) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Voice name is too long. Maximum 100 characters.'
+                        });
+                    }
+
+                    // Check if Speechify engine is available
+                    if (!this.engines.speechify) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Speechify engine is not configured. Please add your Speechify API key in the Configuration tab.'
+                        });
+                    }
+
+                    // Convert buffer to base64 for Speechify API
+                    // Note: Speechify's API currently expects base64-encoded audio in JSON format
+                    // (verified in speechify-engine.js line 613-619). While this requires conversion,
+                    // using multipart upload from client to server still provides benefits:
+                    // - No HTTP 413 errors (multipart bypasses express.json() limits)
+                    // - Reduced client-to-server bandwidth (33% savings)
+                    // - Better browser memory efficiency (no client-side base64 encoding)
+                    const audioBase64 = audioFile.buffer.toString('base64');
+
+                    this.logger.info(`Creating voice clone "${voiceName}" (${audioFile.size} bytes, ${audioFile.mimetype})`);
+
+                    const result = await this.engines.speechify.createVoiceClone({
+                        audioData: audioBase64,
+                        voiceName,
+                        language: language || 'en',
+                        consentConfirmation
+                    });
+
+                    this.logger.info(`Voice clone "${voiceName}" created successfully (ID: ${result.voice_id})`);
+
+                    res.json({
+                        success: true,
+                        voice: result
+                    });
+                } catch (error) {
+                    this.logger.error(`Failed to create voice clone: ${error.message}`);
+                    
+                    res.status(500).json({
                         success: false,
-                        error: 'Missing audio file. Please upload an audio file.'
+                        error: error.message
                     });
                 }
-
-                if (!voiceName) {
-                    return res.status(400).json({
-                        success: false,
-                        error: 'Missing voice name. Please provide a name for the voice clone.'
-                    });
-                }
-
-                if (!consentConfirmation) {
-                    return res.status(400).json({
-                        success: false,
-                        error: 'Missing consent confirmation. You must confirm consent to create a voice clone.'
-                    });
-                }
-
-                // Validate voice name length
-                if (voiceName.length > 100) {
-                    return res.status(400).json({
-                        success: false,
-                        error: 'Voice name is too long. Maximum 100 characters.'
-                    });
-                }
-
-                // Check if Speechify engine is available
-                if (!this.engines.speechify) {
-                    return res.status(400).json({
-                        success: false,
-                        error: 'Speechify engine is not configured. Please add your Speechify API key in the Configuration tab.'
-                    });
-                }
-
-                // Convert buffer to base64 for Speechify API
-                // Note: Speechify's API currently expects base64-encoded audio in JSON format
-                // (verified in speechify-engine.js line 613-619). While this requires conversion,
-                // using multipart upload from client to server still provides benefits:
-                // - No HTTP 413 errors (multipart bypasses express.json() limits)
-                // - Reduced client-to-server bandwidth (33% savings)
-                // - Better browser memory efficiency (no client-side base64 encoding)
-                const audioBase64 = audioFile.buffer.toString('base64');
-
-                this.logger.info(`Creating voice clone "${voiceName}" (${audioFile.size} bytes, ${audioFile.mimetype})`);
-
-                const result = await this.engines.speechify.createVoiceClone({
-                    audioData: audioBase64,
-                    voiceName,
-                    language: language || 'en',
-                    consentConfirmation
-                });
-
-                this.logger.info(`Voice clone "${voiceName}" created successfully (ID: ${result.voice_id})`);
-
-                res.json({
-                    success: true,
-                    voice: result
-                });
-            } catch (error) {
-                this.logger.error(`Failed to create voice clone: ${error.message}`);
-                
-                // Handle multer errors
-                if (error.code === 'LIMIT_FILE_SIZE') {
-                    return res.status(400).json({
-                        success: false,
-                        error: 'Audio file is too large. Maximum size is 5MB.'
-                    });
-                }
-
-                res.status(500).json({
-                    success: false,
-                    error: error.message
-                });
-            }
+            });
         });
 
         this.api.registerRoute('GET', '/api/tts/voice-clones/list', async (req, res) => {
