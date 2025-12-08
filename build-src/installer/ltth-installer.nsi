@@ -50,8 +50,8 @@ BrandingText "${PRODUCT_NAME} ${PRODUCT_VERSION} © ${PRODUCT_PUBLISHER}"
 
 ; Modern UI Settings
 !define MUI_ABORTWARNING
-!define MUI_ICON "${BUILD_DIR}/icon.ico"
-!define MUI_UNICON "${BUILD_DIR}/icon.ico"
+!define MUI_ICON "${BUILD_DIR}\icon.ico"
+!define MUI_UNICON "${BUILD_DIR}\icon.ico"
 
 ; Header and Sidebar Images
 !define MUI_HEADERIMAGE
@@ -164,19 +164,47 @@ Section "!LTTH Core Application" SEC_CORE
   Banner::show /NOUNLOAD "Installing Core Files" "Installing launcher and executables..."
   
   ; Install launcher executable
-  File "${BUILD_DIR}/launcher.exe"
-  File "${BUILD_DIR}/icon.ico"
+  File "${BUILD_DIR}\launcher.exe"
+  File "${BUILD_DIR}\icon.ico"
   
   ; Install ltthgit.exe (optional cloud launcher)
-  IfFileExists "${BUILD_DIR}/ltthgit.exe" 0 +2
-    File "${BUILD_DIR}/ltthgit.exe"
+  IfFileExists "${BUILD_DIR}\ltthgit.exe" 0 +2
+    File "${BUILD_DIR}\ltthgit.exe"
   
   Banner::destroy
   
   ; Install app directory
   Banner::show /NOUNLOAD "Installing Application" "Copying application files..."
   SetOutPath "$INSTDIR\app"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}/*.*"
+  
+  ; Copy root-level files first (exclude backup files and git files)
+  File /nonfatal /x "*.md~" /x ".git*" "${APP_DIR}\*.*"
+  
+  ; Copy subdirectories individually, excluding runtime-generated directories:
+  ; - logs: Contains Winston audit files (.*.json) that cause NSIS errors
+  ; - node_modules: Runtime dependencies installed by npm
+  ; Using /nonfatal to skip files that can't be opened (e.g., locked files, permission issues)
+  ; IMPORTANT: If compilation fails with "failed opening file" errors, extract the repo to a SHORT path
+  ;            Windows MAX_PATH limit (260 chars) causes issues with long download paths
+  ;            Recommended: C:\ltth\ or C:\build\ (NOT C:\Users\...\Downloads\...)
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\data"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\docs"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\locales"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\modules"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\plugins"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\public"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\routes"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\scripts"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\test"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\tts"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\user_configs"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\user_data"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\wiki"
+  
+  ; Create runtime directories that were excluded from packaging
+  ; These directories are needed for the application to run properly
+  CreateDirectory "$INSTDIR\app\logs"
+  
   Banner::destroy
   
   ; Create uninstaller
@@ -204,8 +232,8 @@ Section "Node.js Portable Runtime" SEC_NODEJS
   SetOutPath "$INSTDIR\node"
   
   ; Check if Node.js portable exists
-  IfFileExists "${ASSETS_DIR}/node/node.exe" 0 nodejs_missing
-    File /r "${ASSETS_DIR}/node/*.*"
+  IfFileExists "${ASSETS_DIR}\node\node.exe" 0 nodejs_missing
+    File /r "${ASSETS_DIR}\node\*.*"
     Goto nodejs_done
     
 nodejs_missing:
@@ -327,11 +355,12 @@ SectionEnd
 
 ; Check for running instances
 Function CheckRunning
+check_again:
   FindWindow $0 "" "${PRODUCT_NAME}"
   StrCmp $0 0 notrunning
     MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION \
     "${PRODUCT_NAME} is currently running.$\n$\nPlease close it and try again." \
-    IDOK CheckRunning IDCANCEL abort
+    IDOK check_again IDCANCEL abort
 abort:
   Abort
 notrunning:
