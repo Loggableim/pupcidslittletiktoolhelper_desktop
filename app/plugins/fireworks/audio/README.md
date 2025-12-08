@@ -77,6 +77,15 @@ Audio selection is automatic based on:
 
 Used 40-70% of time with Big/Massive callback audio for added atmosphere.
 
+**🎚️ Fade-Out Behavior:**
+Crackling sounds now use intelligent fade-out to match visual firework particle lifespans:
+- **Massive tier**: 2.0s playback + 0.8s fade-out (total ~2.8s)
+- **Big tier**: 1.5s playback + 0.8s fade-out (total ~2.3s)
+- **Medium/Small tier**: 1.2s playback + 0.8s fade-out (total ~2.0s)
+- **Secondary bursts**: 1.0s playback + 0.5s fade-out (total ~1.5s)
+
+This prevents crackling from continuing long after visual particles have faded, providing perfect synchronization between audio and visual effects.
+
 ## 🔊 Volume Balancing
 
 To ensure consistent perceived loudness across all audio files, per-file volume multipliers are applied:
@@ -322,6 +331,13 @@ case 'big':
    ```
 3. Update `selectAudio()` method to use the new audio
 4. Document timing if it's a combined audio file
+5. Ensure audio files don't contain internal repetition or excessive reverb
+
+**⚠️ Audio Quality Guidelines:**
+- Explosion sounds should be clean, single-burst effects
+- Avoid files with internal repetition or looping
+- Reverb/echo should be minimal to prevent perceived repetition
+- Test audio files before integration to ensure they match expected duration
 
 ## 🐛 Troubleshooting
 
@@ -330,3 +346,6 @@ case 'big':
 - **Audio too loud/quiet?** Adjust volume in the plugin settings UI
 - **Sounds out of sync?** Check explosion timing values in `selectAudio()` method
 - **Missing audio?** Check browser console for loading errors
+- **Crackling lasts too long?** Crackling now uses automatic fade-out (1.2-2.0s + 0.5-0.8s fade)
+- **Sound seems to repeat?** Check if audio file contains internal repetition or heavy reverb/echo - audio files should contain single, clean effects without looping
+- **Combined audio not playing?** The system currently uses callback-based audio exclusively for perfect synchronization. Combined audio files are preloaded but not actively used in the current implementation.
