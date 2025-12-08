@@ -29,16 +29,19 @@ const CONFIG = {
     maxFireworks: 100,
     maxParticlesPerExplosion: 200,
     targetFps: 60,
+    minFps: 30, // Adaptive performance threshold
     gravity: 0.08,
     airResistance: 0.99,
     rocketSpeed: -12,
     rocketAcceleration: -0.08,
     trailLength: 20,
     trailFadeAlpha: 10,
-    trailFadeSpeed: 0.02, // How fast trails fade (higher = faster fade)
+    trailFadeSpeed: 0.02,
     sparkleChance: 0.15,
     secondaryExplosionChance: 0.1,
-    backgroundColor: 'rgba(0, 0, 0, 0)', // Transparent background for OBS
+    backgroundColor: 'rgba(0, 0, 0, 0)',
+    resolution: 1.0, // Canvas resolution multiplier (0.5 = half res, 1.0 = full res)
+    giftPopupPosition: 'bottom', // 'top', 'middle', 'bottom', 'none', or {x, y} coordinates
     defaultColors: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
     colorPalettes: {
         classic: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
@@ -596,13 +599,17 @@ class AudioManager {
         
         try {
             const response = await fetch(url);
-            if (!response.ok) return;
+            if (!response.ok) {
+                console.info(`[Fireworks Audio] Audio file not found: ${url} (this is normal if not yet added)`);
+                return;
+            }
             
             const arrayBuffer = await response.arrayBuffer();
             const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             this.sounds.set(name, audioBuffer);
+            console.log(`[Fireworks Audio] Loaded: ${name}`);
         } catch (e) {
-            console.warn(`[Fireworks Audio] Failed to load ${url}:`, e.message);
+            console.info(`[Fireworks Audio] Could not load ${url}:`, e.message, '(add audio files to enable sounds)');
         }
     }
 
@@ -658,6 +665,8 @@ class FireworksEngine {
         this.frameCount = 0;
         this.fps = 0;
         this.fpsUpdateTime = performance.now();
+        this.fpsHistory = []; // Track FPS history for adaptive performance
+        this.performanceMode = 'normal'; // 'normal', 'reduced', 'minimal'
         
         this.config = { 
             ...CONFIG,
@@ -665,7 +674,11 @@ class FireworksEngine {
             audioEnabled: true,
             audioVolume: 0.7,
             trailsEnabled: true,
-            glowEnabled: true
+            glowEnabled: true,
+            resolution: CONFIG.resolution,
+            targetFps: CONFIG.targetFps,
+            minFps: CONFIG.minFps,
+            giftPopupPosition: CONFIG.giftPopupPosition
         };
         
         this.running = false;
@@ -698,13 +711,17 @@ class FireworksEngine {
     resize() {
         const dpr = window.devicePixelRatio || 1;
         const rect = this.canvas.getBoundingClientRect();
+        const resolution = this.config.resolution || 1.0;
         
-        this.canvas.width = rect.width * dpr;
-        this.canvas.height = rect.height * dpr;
-        this.ctx.scale(dpr, dpr);
+        // Apply resolution multiplier for performance control
+        this.canvas.width = rect.width * dpr * resolution;
+        this.canvas.height = rect.height * dpr * resolution;
+        this.ctx.scale(dpr * resolution, dpr * resolution);
         
         this.width = rect.width;
         this.height = rect.height;
+        
+        console.log(`[Fireworks] Canvas resolution: ${this.canvas.width}x${this.canvas.height} (${Math.round(resolution * 100)}%)`);
     }
 
     connectSocket() {
@@ -729,9 +746,17 @@ class FireworksEngine {
 
             this.socket.on('fireworks:config-update', (data) => {
                 if (data.config) {
+                    const oldResolution = this.config.resolution;
                     Object.assign(this.config, data.config);
                     this.audioManager.setEnabled(this.config.audioEnabled);
                     this.audioManager.setVolume(this.config.audioVolume);
+                    
+                    // Resize canvas if resolution changed
+                    if (oldResolution !== this.config.resolution) {
+                        this.resize();
+                    }
+                    
+                    console.log('[Fireworks] Config updated:', data.config);
                 }
             });
 
@@ -877,12 +902,44 @@ class FireworksEngine {
     }
 
     showGiftPopup(x, y, username, coins, combo, giftImage) {
+        // Check if popups are disabled
+        const popupPosition = this.config.giftPopupPosition;
+        if (popupPosition === 'none') return;
+        
+        // Calculate position based on configuration
+        let finalX = x;
+        let finalY = y;
+        
+        if (typeof popupPosition === 'string') {
+            switch (popupPosition) {
+                case 'top':
+                    finalX = this.width / 2;
+                    finalY = 100;
+                    break;
+                case 'middle':
+                    finalX = this.width / 2;
+                    finalY = this.height / 2;
+                    break;
+                case 'bottom':
+                    finalX = x; // Keep horizontal position
+                    finalY = this.height - 100;
+                    break;
+                default:
+                    // Use provided coordinates
+                    break;
+            }
+        } else if (typeof popupPosition === 'object' && popupPosition.x !== undefined) {
+            // Custom coordinates (normalized 0-1 or pixels)
+            finalX = popupPosition.x < 2 ? popupPosition.x * this.width : popupPosition.x;
+            finalY = popupPosition.y < 2 ? popupPosition.y * this.height : popupPosition.y;
+        }
+        
         const popup = document.createElement('div');
         popup.className = 'gift-popup';
         popup.style.cssText = `
             position: absolute;
-            left: ${x}px;
-            top: ${y}px;
+            left: ${finalX}px;
+            top: ${finalY}px;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.8);
             color: white;
@@ -931,7 +988,6 @@ class FireworksEngine {
         this.lastTime = now;
 
         // Clear with configurable background for trail effect
-        // Use transparent background for OBS overlay
         const bgColor = this.config.backgroundColor || CONFIG.backgroundColor;
         this.ctx.clearRect(0, 0, this.width, this.height);
         this.ctx.fillStyle = bgColor;
@@ -947,22 +1003,103 @@ class FireworksEngine {
             }
         }
 
-        // Update FPS
+        // Update FPS and adaptive performance
         this.frameCount++;
         if (now - this.fpsUpdateTime >= 1000) {
             this.fps = this.frameCount;
             this.frameCount = 0;
             this.fpsUpdateTime = now;
             
+            // Track FPS history for adaptive performance
+            this.fpsHistory.push(this.fps);
+            if (this.fpsHistory.length > 5) {
+                this.fpsHistory.shift();
+            }
+            
+            // Calculate average FPS over last 5 seconds
+            const avgFps = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
+            
+            // Adaptive performance mode
+            const targetFps = this.config.targetFps || CONFIG.targetFps;
+            const minFps = this.config.minFps || CONFIG.minFps;
+            
+            if (avgFps < minFps) {
+                // Performance is suffering - enter minimal mode
+                if (this.performanceMode !== 'minimal') {
+                    this.performanceMode = 'minimal';
+                    this.applyPerformanceMode();
+                    console.log('[Fireworks] Adaptive Performance: MINIMAL mode (FPS:', avgFps.toFixed(1), ')');
+                }
+            } else if (avgFps < targetFps * 0.8) {
+                // Performance is degraded - enter reduced mode
+                if (this.performanceMode !== 'reduced') {
+                    this.performanceMode = 'reduced';
+                    this.applyPerformanceMode();
+                    console.log('[Fireworks] Adaptive Performance: REDUCED mode (FPS:', avgFps.toFixed(1), ')');
+                }
+            } else if (avgFps >= targetFps * 0.95) {
+                // Performance is good - return to normal mode
+                if (this.performanceMode !== 'normal') {
+                    this.performanceMode = 'normal';
+                    this.applyPerformanceMode();
+                    console.log('[Fireworks] Adaptive Performance: NORMAL mode (FPS:', avgFps.toFixed(1), ')');
+                }
+            }
+            
             if (this.debugMode) {
                 const fpsEl = document.getElementById('fps');
                 const particleEl = document.getElementById('particle-count');
+                const modeEl = document.getElementById('performance-mode');
                 if (fpsEl) fpsEl.textContent = this.fps;
                 if (particleEl) particleEl.textContent = this.getTotalParticles();
+                if (modeEl) modeEl.textContent = this.performanceMode.toUpperCase();
             }
         }
 
         requestAnimationFrame(() => this.render());
+    }
+    
+    applyPerformanceMode() {
+        // Adjust CONFIG based on performance mode
+        switch (this.performanceMode) {
+            case 'minimal':
+                // Extreme reduction for very low FPS
+                CONFIG.maxParticlesPerExplosion = 50;
+                CONFIG.trailLength = 5;
+                CONFIG.sparkleChance = 0.05;
+                CONFIG.secondaryExplosionChance = 0;
+                this.config.glowEnabled = false;
+                this.config.trailsEnabled = false;
+                // Limit active fireworks
+                while (this.fireworks.length > 5) {
+                    this.fireworks.pop();
+                }
+                break;
+                
+            case 'reduced':
+                // Moderate reduction for low FPS
+                CONFIG.maxParticlesPerExplosion = 100;
+                CONFIG.trailLength = 10;
+                CONFIG.sparkleChance = 0.08;
+                CONFIG.secondaryExplosionChance = 0.05;
+                this.config.glowEnabled = true;
+                this.config.trailsEnabled = true;
+                // Limit active fireworks
+                while (this.fireworks.length > 15) {
+                    this.fireworks.pop();
+                }
+                break;
+                
+            case 'normal':
+                // Full quality
+                CONFIG.maxParticlesPerExplosion = 200;
+                CONFIG.trailLength = 20;
+                CONFIG.sparkleChance = 0.15;
+                CONFIG.secondaryExplosionChance = 0.1;
+                this.config.glowEnabled = true;
+                this.config.trailsEnabled = true;
+                break;
+        }
     }
 
     renderFirework(firework) {
