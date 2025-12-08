@@ -12,9 +12,15 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/pkg/browser"
+)
+
+const (
+	// CREATE_NO_WINDOW flag for Windows to hide console window
+	createNoWindow = 0x08000000
 )
 
 type Launcher struct {
@@ -163,6 +169,10 @@ func (l *Launcher) installDependencies() error {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/C", "npm", "install", "--cache", "false")
+		// Hide the npm install window on Windows using CREATE_NO_WINDOW flag
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			CreationFlags: createNoWindow,
+		}
 	} else {
 		cmd = exec.Command("npm", "install", "--cache", "false")
 	}
