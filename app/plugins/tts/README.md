@@ -6,8 +6,11 @@ Enterprise-grade Text-to-Speech plugin for Pup Cids Little TikTok Helper with mu
 
 ### Core Features
 - **Multi-Engine Support**
-  - TikTok TTS (Free, 75+ voices, multiple languages)
+  - TikTok RapidAPI TTS (API-based, 40+ voices, TikTok-style voices)
   - Google Cloud TTS (Optional, premium quality, 100+ voices)
+  - Speechify TTS (Premium, 1000+ voices)
+  - ElevenLabs TTS (Premium, ultra-realistic voices)
+  - OpenAI TTS (Premium, TTS-1 and TTS-1-HD models)
   - Automatic fallback between engines
   - Engine-specific voice selection
 
@@ -54,22 +57,26 @@ Enterprise-grade Text-to-Speech plugin for Pup Cids Little TikTok Helper with mu
 
 ```
 plugins/tts/
-├── main.js                      # Main plugin class
-├── plugin.json                  # Plugin manifest
-├── README.md                    # This file
+├── main.js                           # Main plugin class
+├── plugin.json                       # Plugin manifest
+├── README.md                         # This file
 ├── engines/
-│   ├── tiktok-engine.js        # TikTok TTS implementation
-│   └── google-engine.js        # Google Cloud TTS implementation
+│   ├── tiktok-rapidapi-engine.js    # TikTok RapidAPI TTS implementation (NEW)
+│   ├── google-engine.js             # Google Cloud TTS implementation
+│   ├── speechify-engine.js          # Speechify TTS implementation
+│   ├── elevenlabs-engine.js         # ElevenLabs TTS implementation
+│   ├── openai-engine.js             # OpenAI TTS implementation
+│   └── tiktok-engine.js             # Legacy TikTok TTS (deprecated)
 ├── utils/
-│   ├── cache-manager.js        # Audio caching system
-│   ├── language-detector.js   # Language detection
-│   ├── profanity-filter.js    # Content filtering
-│   ├── permission-manager.js  # Permission system
-│   └── queue-manager.js       # Queue & rate limiting
+│   ├── cache-manager.js             # Audio caching system
+│   ├── language-detector.js         # Language detection
+│   ├── profanity-filter.js          # Content filtering
+│   ├── permission-manager.js        # Permission system
+│   └── queue-manager.js             # Queue & rate limiting
 ├── ui/
-│   ├── admin-panel.html       # Admin control panel
-│   └── tts-admin.js           # Admin panel logic
-└── cache/                      # Cached audio files (auto-generated)
+│   ├── admin-panel.html             # Admin control panel
+│   └── tts-admin-production.js     # Admin panel logic
+└── cache/                            # Cached audio files (auto-generated)
 ```
 
 ## 🚀 Installation
@@ -85,13 +92,21 @@ The plugin is automatically loaded by the plugin system. No manual installation 
    - Or integrate into main dashboard
 
 2. **Basic Setup**
-   - Select default engine (TikTok is free, no setup needed)
+   - Select default engine (multiple options available)
    - Choose default voice
    - Set team level requirement (0 = everyone)
    - Enable/disable chat TTS
    - Save configuration
 
-3. **Google Cloud TTS (Optional)**
+3. **TikTok RapidAPI TTS (Recommended)**
+   - Sign up at [RapidAPI](https://rapidapi.com/dalamates/api/tts-tiktok)
+   - Subscribe to the TTS TikTok API
+   - Copy your RapidAPI key
+   - Enter API key in admin panel
+   - Select TikTok RapidAPI as default engine
+   - 40+ TikTok-style voices available
+
+4. **Google Cloud TTS (Optional)**
    - Get API key from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
    - Enable "Cloud Text-to-Speech API"
    - Enter API key in admin panel
@@ -101,8 +116,8 @@ The plugin is automatically loaded by the plugin system. No manual installation 
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `defaultEngine` | TTS engine to use | `tiktok` |
-| `defaultVoice` | Fallback voice ID | `en_us_ghostface` |
+| `defaultEngine` | TTS engine to use | `google` |
+| `defaultVoice` | Fallback voice ID | `de-DE-Wavenet-B` |
 | `volume` | Global volume (0-100) | `80` |
 | `speed` | Speech rate (0.5-2.0) | `1.0` |
 | `teamMinLevel` | Minimum team level for TTS | `0` |
@@ -110,11 +125,16 @@ The plugin is automatically loaded by the plugin system. No manual installation 
 | `rateLimitWindow` | Time window in seconds | `60` |
 | `maxQueueSize` | Maximum queue capacity | `100` |
 | `maxTextLength` | Max characters per message | `300` |
-| `cacheTTL` | Cache lifetime in seconds | `86400` (24h) |
 | `profanityFilter` | Filter mode (off/moderate/strict) | `moderate` |
 | `duckOtherAudio` | Lower other audio during TTS | `false` |
 | `enabledForChat` | Enable auto-TTS for chat | `true` |
 | `autoLanguageDetection` | Detect language automatically | `true` |
+| `enableAutoFallback` | Automatic engine fallback | `true` |
+| `tiktokRapidApiKey` | TikTok RapidAPI key | `null` |
+| `googleApiKey` | Google Cloud API key | `null` |
+| `speechifyApiKey` | Speechify API key | `null` |
+| `elevenlabsApiKey` | ElevenLabs API key | `null` |
+| `openaiApiKey` | OpenAI API key | `null` |
 
 ## 🎤 Usage
 
