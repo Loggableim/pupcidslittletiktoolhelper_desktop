@@ -619,13 +619,13 @@ app.get('/api/update/instructions', apiLimiter, (req, res) => {
 });
 
 /**
- * GET /CHANGELOG.txt - Serves the changelog file
+ * GET /CHANGELOG.md - Serves the changelog file
  */
-app.get('/CHANGELOG.txt', (req, res) => {
-    const changelogPath = path.join(__dirname, '..', 'CHANGELOG.txt');
+app.get('/CHANGELOG.md', apiLimiter, (req, res) => {
+    const changelogPath = path.join(__dirname, '..', 'CHANGELOG.md');
     res.sendFile(changelogPath, (err) => {
         if (err) {
-            logger.error(`Failed to serve CHANGELOG.txt: ${err.message}`);
+            logger.error(`Failed to serve CHANGELOG.md: ${err.message}`);
             res.status(404).send('Changelog not found');
         }
     });
