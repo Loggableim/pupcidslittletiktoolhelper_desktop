@@ -254,6 +254,24 @@ function updateUI() {
     if (minFpsValue) {
         minFpsValue.textContent = minFps + ' FPS';
     }
+    
+    // Despawn fade duration
+    const despawnFade = config.despawnFadeDuration || 1.5;
+    const despawnFadeSlider = document.getElementById('despawn-fade');
+    const despawnFadeValue = document.getElementById('despawn-fade-value');
+    if (despawnFadeSlider) {
+        despawnFadeSlider.value = despawnFade;
+    }
+    if (despawnFadeValue) {
+        despawnFadeValue.textContent = despawnFade + 's';
+    }
+    
+    // Gift popup settings
+    updateToggle('gift-popup-enabled-toggle', config.giftPopupEnabled !== false);
+    const giftPopupPositionSelect = document.getElementById('gift-popup-position');
+    if (giftPopupPositionSelect) {
+        giftPopupPositionSelect.value = config.giftPopupPosition || 'bottom';
+    }
 }
 
 function updateToggle(id, value) {
@@ -360,6 +378,20 @@ function setupEventListeners() {
     
     setupRangeSlider('min-fps', 'min-fps-value', ' FPS', (val) => {
         config.minFps = parseInt(val);
+    });
+    
+    setupRangeSlider('despawn-fade', 'despawn-fade-value', 's', (val) => {
+        config.despawnFadeDuration = parseFloat(val);
+    });
+    
+    // Gift popup position
+    document.getElementById('gift-popup-position')?.addEventListener('change', function() {
+        config.giftPopupPosition = this.value;
+        // If set to 'none', also disable the popup
+        if (this.value === 'none') {
+            config.giftPopupEnabled = false;
+            updateToggle('gift-popup-enabled-toggle', false);
+        }
     });
     
     // Number inputs

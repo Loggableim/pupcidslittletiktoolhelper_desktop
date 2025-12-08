@@ -551,27 +551,40 @@
                         
                         <div>
                             <label class="block mb-2"><strong>Target FPS</strong></label>
-                            <input type="range" id="target-fps" min="30" max="60" step="5" value="60" class="w-full" data-config="targetFps">
+                            <input type="range" id="target-fps" min="24" max="60" step="6" value="60" class="w-full" data-config="targetFps">
                             <div class="flex justify-between text-sm text-gray-400">
-                                <span>30 FPS</span>
+                                <span>24 FPS</span>
                                 <span id="target-fps-value">60 FPS</span>
                                 <span>60 FPS</span>
                             </div>
                             <p class="text-xs text-gray-400 mt-1">
-                                System will auto-adjust quality to maintain this FPS
+                                User-selectable target FPS - system will auto-adjust quality to maintain this
                             </p>
                         </div>
                         
                         <div>
-                            <label class="block mb-2"><strong>Minimum FPS</strong></label>
-                            <input type="range" id="min-fps" min="15" max="45" step="5" value="30" class="w-full" data-config="minFps">
+                            <label class="block mb-2"><strong>Minimum FPS (Adaptive Performance)</strong></label>
+                            <input type="range" id="min-fps" min="15" max="45" step="3" value="24" class="w-full" data-config="minFps">
                             <div class="flex justify-between text-sm text-gray-400">
                                 <span>15 FPS</span>
-                                <span id="min-fps-value">30 FPS</span>
+                                <span id="min-fps-value">24 FPS</span>
                                 <span>45 FPS</span>
                             </div>
                             <p class="text-xs text-gray-400 mt-1">
-                                Below this FPS, system enters minimal quality mode
+                                Below this FPS, system enters minimal quality mode (can go down to 24 FPS)
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2"><strong>Despawn Fade Duration</strong></label>
+                            <input type="range" id="despawn-fade" min="0.5" max="3.0" step="0.5" value="1.5" class="w-full" data-config="despawnFadeDuration">
+                            <div class="flex justify-between text-sm text-gray-400">
+                                <span>0.5s</span>
+                                <span id="despawn-fade-value">1.5s</span>
+                                <span>3.0s</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">
+                                How long rockets fade out when despawned due to overload (longer looks better)
                             </p>
                         </div>
                         
@@ -617,6 +630,45 @@
                         <button id="test-avatar-btn" class="w-full btn-primary py-3 rounded-lg font-bold" data-i18n="fireworks.test_avatar_firework">
                             👤 Test Avatar Firework
                         </button>
+                    </div>
+                </div>
+
+                <!-- Gift Animation Text Position -->
+                <div class="card rounded-xl p-6">
+                    <h2 class="section-title text-xl font-bold mb-4">💬 Gift Animation Text</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label><strong>Show Gift Text</strong></label>
+                            <div id="gift-popup-enabled-toggle" class="toggle-switch active" data-config="giftPopupEnabled"></div>
+                        </div>
+                        
+                        <p class="text-sm text-gray-400">
+                            Enable or disable the gift animation text that shows gifter name and coins
+                        </p>
+                        
+                        <div>
+                            <label class="block mb-2"><strong>Gift Text Position</strong></label>
+                            <select id="gift-popup-position" class="w-full bg-black/30 rounded-lg px-4 py-2" data-config="giftPopupPosition">
+                                <option value="top">Top - Centered at top of screen</option>
+                                <option value="middle">Middle - Centered in middle of screen</option>
+                                <option value="bottom">Bottom - At rocket launch position (default)</option>
+                                <option value="none">None - Hide completely</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">
+                                Choose where the gift animation text appears during fireworks
+                            </p>
+                        </div>
+                        
+                        <div class="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                            <strong class="text-green-400">💡 Preview:</strong>
+                            <div class="mt-2 space-y-1 text-sm text-gray-300">
+                                <div>• <strong>Top:</strong> Text appears at top-center of screen</div>
+                                <div>• <strong>Middle:</strong> Text appears in center of screen</div>
+                                <div>• <strong>Bottom:</strong> Text appears at firework launch position</div>
+                                <div>• <strong>None:</strong> No text is shown</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

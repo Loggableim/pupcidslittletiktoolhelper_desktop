@@ -29,7 +29,7 @@ const CONFIG = {
     maxFireworks: 100,
     maxParticlesPerExplosion: 200,
     targetFps: 60,
-    minFps: 30, // Adaptive performance threshold
+    minFps: 24, // Adaptive performance threshold - user configurable down to 24 FPS
     gravity: 0.08,
     airResistance: 0.99,
     rocketSpeed: -12,
@@ -42,6 +42,8 @@ const CONFIG = {
     backgroundColor: 'rgba(0, 0, 0, 0)',
     resolution: 1.0, // Canvas resolution multiplier (0.5 = half res, 1.0 = full res)
     giftPopupPosition: 'bottom', // 'top', 'middle', 'bottom', 'none', or {x, y} coordinates
+    giftPopupEnabled: true, // Whether to show gift popup at all
+    despawnFadeDuration: 1.5, // Duration in seconds for rocket despawn fade effect (when rockets are removed due to overload)
     defaultColors: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
     colorPalettes: {
         classic: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
@@ -131,7 +133,9 @@ class Particle {
             image: null,
             type: 'circle',
             rotation: 0,
-            rotationSpeed: 0
+            rotationSpeed: 0,
+            isDespawning: false, // Flag for despawn fade effect
+            despawnStartTime: 0 // When despawn started
         };
         
         Object.assign(this, defaults, args);
@@ -150,6 +154,21 @@ class Particle {
     }
     
     update() {
+        // Handle despawn fade effect
+        if (this.isDespawning) {
+            const despawnDuration = CONFIG.despawnFadeDuration * 1000; // Convert to ms
+            const elapsed = performance.now() - this.despawnStartTime;
+            const fadeProgress = Math.min(elapsed / despawnDuration, 1.0);
+            
+            // Fade out alpha smoothly
+            this.alpha = Math.max(0, 1.0 - fadeProgress);
+            
+            // If fade is complete, mark as done
+            if (fadeProgress >= 1.0) {
+                this.lifespan = 0;
+            }
+        }
+        
         // Apply air resistance
         this.vx *= this.drag;
         this.vy *= this.drag;
@@ -170,7 +189,7 @@ class Particle {
         this.rotation += this.rotationSpeed;
         
         // Update lifespan for explosion particles
-        if (!this.isSeed) {
+        if (!this.isSeed && !this.isDespawning) {
             this.lifespan -= this.decay;
             this.alpha = Math.max(0, this.lifespan / this.maxLifespan);
             
@@ -204,6 +223,17 @@ class Particle {
     
     isDone() {
         return this.lifespan <= 0 || this.y > window.innerHeight + 100;
+    }
+    
+    /**
+     * Start despawn fade effect
+     * Called when particle needs to be removed due to performance
+     */
+    startDespawn() {
+        if (!this.isDespawning) {
+            this.isDespawning = true;
+            this.despawnStartTime = performance.now();
+        }
     }
 }
 
@@ -820,6 +850,23 @@ class FireworksEngine {
                     this.audioManager.setEnabled(this.config.audioEnabled);
                     this.audioManager.setVolume(this.config.audioVolume);
                     
+                    // Update CONFIG values for despawn and FPS
+                    if (data.config.despawnFadeDuration !== undefined) {
+                        CONFIG.despawnFadeDuration = data.config.despawnFadeDuration;
+                    }
+                    if (data.config.minFps !== undefined) {
+                        CONFIG.minFps = data.config.minFps;
+                    }
+                    if (data.config.targetFps !== undefined) {
+                        CONFIG.targetFps = data.config.targetFps;
+                    }
+                    if (data.config.giftPopupEnabled !== undefined) {
+                        CONFIG.giftPopupEnabled = data.config.giftPopupEnabled;
+                    }
+                    if (data.config.giftPopupPosition !== undefined) {
+                        CONFIG.giftPopupPosition = data.config.giftPopupPosition;
+                    }
+                    
                     // Resize canvas if resolution changed
                     if (oldResolution !== this.config.resolution) {
                         this.resize();
@@ -851,8 +898,36 @@ class FireworksEngine {
             username = null,
             coins = 0,
             combo = 1,
-            playSound = true
+            playSound = true,
+            // New config values from trigger
+            targetFps = null,
+            minFps = null,
+            despawnFadeDuration = null,
+            giftPopupEnabled = null,
+            giftPopupPosition = null
         } = data;
+
+        // Update config values if provided
+        if (targetFps !== null) {
+            this.config.targetFps = targetFps;
+            CONFIG.targetFps = targetFps;
+        }
+        if (minFps !== null) {
+            this.config.minFps = minFps;
+            CONFIG.minFps = minFps;
+        }
+        if (despawnFadeDuration !== null) {
+            this.config.despawnFadeDuration = despawnFadeDuration;
+            CONFIG.despawnFadeDuration = despawnFadeDuration;
+        }
+        if (giftPopupEnabled !== null) {
+            this.config.giftPopupEnabled = giftPopupEnabled;
+            CONFIG.giftPopupEnabled = giftPopupEnabled;
+        }
+        if (giftPopupPosition !== null) {
+            this.config.giftPopupPosition = giftPopupPosition;
+            CONFIG.giftPopupPosition = giftPopupPosition;
+        }
 
         // Combo throttling: prevent extreme lag from rapid combos
         const now = performance.now();
@@ -1000,7 +1075,9 @@ class FireworksEngine {
     showGiftPopup(x, y, username, coins, combo, giftImage) {
         // Check if popups are disabled
         const popupPosition = this.config.giftPopupPosition;
-        if (popupPosition === 'none') return;
+        const popupEnabled = this.config.giftPopupEnabled !== false; // Default to true
+        
+        if (popupPosition === 'none' || !popupEnabled) return;
         
         // Calculate position based on configuration
         let finalX = x;
@@ -1166,9 +1243,24 @@ class FireworksEngine {
                 CONFIG.secondaryExplosionChance = 0;
                 this.config.glowEnabled = false;
                 this.config.trailsEnabled = false;
-                // Limit active fireworks
+                // Limit active fireworks with graceful despawn
                 while (this.fireworks.length > 5) {
-                    this.fireworks.pop();
+                    const fw = this.fireworks[this.fireworks.length - 1];
+                    // Start despawn fade for rocket
+                    if (!fw.exploded && fw.rocket) {
+                        fw.rocket.startDespawn();
+                    }
+                    // Start despawn fade for all particles
+                    fw.particles.forEach(p => p.startDespawn());
+                    fw.secondaryExplosions.forEach(p => p.startDespawn());
+                    // Don't remove immediately - let despawn effect complete
+                    // Only remove if already despawning for a while
+                    if (fw.rocket && fw.rocket.isDespawning && 
+                        performance.now() - fw.rocket.despawnStartTime > 500) {
+                        this.fireworks.pop();
+                    } else {
+                        break; // Wait for despawn to complete
+                    }
                 }
                 break;
                 
@@ -1180,9 +1272,23 @@ class FireworksEngine {
                 CONFIG.secondaryExplosionChance = 0.05;
                 this.config.glowEnabled = true;
                 this.config.trailsEnabled = true;
-                // Limit active fireworks
+                // Limit active fireworks with graceful despawn
                 while (this.fireworks.length > 15) {
-                    this.fireworks.pop();
+                    const fw = this.fireworks[this.fireworks.length - 1];
+                    // Start despawn fade for rocket
+                    if (!fw.exploded && fw.rocket) {
+                        fw.rocket.startDespawn();
+                    }
+                    // Start despawn fade for all particles
+                    fw.particles.forEach(p => p.startDespawn());
+                    fw.secondaryExplosions.forEach(p => p.startDespawn());
+                    // Don't remove immediately - let despawn effect complete
+                    if (fw.rocket && fw.rocket.isDespawning && 
+                        performance.now() - fw.rocket.despawnStartTime > 500) {
+                        this.fireworks.pop();
+                    } else {
+                        break; // Wait for despawn to complete
+                    }
                 }
                 break;
                 
@@ -1314,9 +1420,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     engine = new FireworksEngine('fireworks-canvas');
     await engine.init();
 
-    // Preload sounds
-    await engine.audioManager.preload('/plugins/fireworks/audio/explosion.mp3', 'explosion');
-    await engine.audioManager.preload('/plugins/fireworks/audio/rocket.mp3', 'rocket');
+    // Preload sounds - using demo folder audio files
+    await engine.audioManager.preload('/assets/audio/sound2.mp3', 'explosion');
+    await engine.audioManager.preload('/assets/audio/sound1.mp3', 'rocket');
     
     // Enable audio context on first user interaction
     const enableAudio = async () => {
