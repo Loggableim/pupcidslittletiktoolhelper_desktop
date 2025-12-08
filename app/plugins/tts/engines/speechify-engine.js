@@ -577,6 +577,162 @@ class SpeechifyEngine {
             voiceCount: this.cachedVoices ? Object.keys(this.cachedVoices).length : 0
         };
     }
+
+    /**
+     * Create a custom voice clone
+     * @param {Object} options - Voice clone creation options
+     * @param {string|Buffer} options.audioData - Audio sample (base64 string or Buffer)
+     * @param {string} options.voiceName - Name for the custom voice
+     * @param {string} options.language - Language code (e.g., 'en', 'de')
+     * @param {string} options.consentConfirmation - Consent confirmation text
+     * @returns {Promise<Object>} Created voice object with voice_id
+     */
+    async createVoiceClone(options) {
+        const { audioData, voiceName, language = 'en', consentConfirmation } = options;
+
+        if (!audioData) {
+            throw new Error('Audio data is required for voice cloning');
+        }
+
+        if (!voiceName || typeof voiceName !== 'string') {
+            throw new Error('Voice name is required and must be a string');
+        }
+
+        if (!consentConfirmation || typeof consentConfirmation !== 'string') {
+            throw new Error('Consent confirmation is required');
+        }
+
+        try {
+            this.logger.info(`Speechify: Creating voice clone "${voiceName}" (language: ${language})`);
+
+            // Convert Buffer to base64 if needed
+            const audioBase64 = Buffer.isBuffer(audioData) 
+                ? audioData.toString('base64') 
+                : audioData;
+
+            const response = await axios.post(
+                this.apiVoicesUrl,
+                {
+                    audio_data: audioBase64,
+                    voice_name: voiceName,
+                    language: language,
+                    consent_confirmation: consentConfirmation
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${this.apiKey}`,
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'TikTokLiveStreamTool/2.0'
+                    },
+                    timeout: this.timeout * 3 // Voice cloning may take longer
+                }
+            );
+
+            if (response.data && (response.data.voice_id || response.data.id)) {
+                const voiceId = response.data.voice_id || response.data.id;
+                this.logger.info(`Speechify: Voice clone "${voiceName}" created successfully (ID: ${voiceId})`);
+
+                // Invalidate voice cache to refresh list
+                this.cachedVoices = null;
+                this.cacheTimestamp = null;
+
+                return {
+                    voice_id: voiceId,
+                    voice_name: voiceName,
+                    language: language,
+                    ...response.data
+                };
+            } else {
+                throw new Error('Invalid response format from Speechify voice creation API');
+            }
+        } catch (error) {
+            const statusCode = error.response?.status;
+            const errorMessage = error.response?.data?.error?.message || 
+                               error.response?.data?.message || 
+                               error.message;
+
+            this.logger.error(`Speechify: Failed to create voice clone "${voiceName}" (${statusCode || 'network error'}): ${errorMessage}`);
+            
+            throw new Error(`Failed to create voice clone: ${errorMessage}`);
+        }
+    }
+
+    /**
+     * Get list of custom voice clones
+     * @returns {Promise<Array>} List of custom voices
+     */
+    async getCustomVoices() {
+        try {
+            this.logger.info('Speechify: Fetching custom voice clones');
+
+            const response = await axios.get(this.apiVoicesUrl, {
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'TikTokLiveStreamTool/2.0'
+                },
+                params: {
+                    custom: true // Filter for custom voices only
+                },
+                timeout: this.timeout
+            });
+
+            let customVoices = [];
+
+            // Handle different response formats
+            if (response.data && Array.isArray(response.data.voices)) {
+                customVoices = response.data.voices.filter(v => v.custom === true || v.is_custom === true);
+            } else if (response.data && Array.isArray(response.data)) {
+                customVoices = response.data.filter(v => v.custom === true || v.is_custom === true);
+            }
+
+            this.logger.info(`Speechify: Found ${customVoices.length} custom voice clones`);
+            return customVoices;
+        } catch (error) {
+            this.logger.error(`Speechify: Failed to fetch custom voices: ${error.message}`);
+            return []; // Return empty array on error
+        }
+    }
+
+    /**
+     * Delete a custom voice clone
+     * @param {string} voiceId - Voice ID to delete
+     * @returns {Promise<boolean>} True if successful
+     */
+    async deleteVoiceClone(voiceId) {
+        if (!voiceId || typeof voiceId !== 'string') {
+            throw new Error('Voice ID is required and must be a string');
+        }
+
+        try {
+            this.logger.info(`Speechify: Deleting voice clone ${voiceId}`);
+
+            await axios.delete(`${this.apiVoicesUrl}/${voiceId}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'TikTokLiveStreamTool/2.0'
+                },
+                timeout: this.timeout
+            });
+
+            // Invalidate voice cache to refresh list
+            this.cachedVoices = null;
+            this.cacheTimestamp = null;
+
+            this.logger.info(`Speechify: Voice clone ${voiceId} deleted successfully`);
+            return true;
+        } catch (error) {
+            const statusCode = error.response?.status;
+            const errorMessage = error.response?.data?.error?.message || 
+                               error.response?.data?.message || 
+                               error.message;
+
+            this.logger.error(`Speechify: Failed to delete voice clone ${voiceId} (${statusCode || 'network error'}): ${errorMessage}`);
+            
+            throw new Error(`Failed to delete voice clone: ${errorMessage}`);
+        }
+    }
 }
 
 module.exports = SpeechifyEngine;
