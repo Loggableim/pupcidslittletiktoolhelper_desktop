@@ -7,10 +7,10 @@
  * - Multi-stage firework rockets with realistic physics
  * - Secondary explosions and sparkle effects
  * - Advanced color palettes with smooth gradients
- * - Particle pooling for optimal performance
+ * - Efficient particle management (no object pooling to reduce complexity)
  * - Custom explosion shapes with mathematical precision
  * - Trail effects with motion blur
- * - Gift image integration with proper blending
+ * - Gift image integration with proper blending and XSS protection
  * - HSB color mode for vibrant displays
  * - Efficient Canvas 2D rendering optimized for OBS
  * - Configurable toaster mode for low-end systems
@@ -37,6 +37,7 @@ const CONFIG = {
     trailFadeAlpha: 10,
     sparkleChance: 0.15,
     secondaryExplosionChance: 0.1,
+    defaultColors: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
     colorPalettes: {
         classic: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
         neon: ['#ff006e', '#fb5607', '#ffbe0b', '#8338ec', '#3a86ff'],
@@ -421,7 +422,8 @@ const ShapeGenerators = {
             // Parametric heart equation
             const x = 16 * Math.pow(Math.sin(t), 3);
             const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
-            const mag = Math.sqrt(x*x + y*y) || 1;
+            // Prevent division by zero
+            const mag = Math.max(Math.sqrt(x*x + y*y), 1);
             const speed = (0.15 + Math.random() * 0.15) * intensity;
             particles.push({
                 vx: (x / mag) * speed * 10,
@@ -442,6 +444,7 @@ const ShapeGenerators = {
             for (let i = 0; i < particlesPerPoint; i++) {
                 const spread = (i / particlesPerPoint) * 0.4 - 0.2;
                 const angle = baseAngle + spread;
+                // Alternate between outer points (radius 1) and inner points (radius 0.5)
                 const radius = point % 2 === 0 ? 1 : 0.5;
                 const speed = (2 + Math.random() * 2) * intensity * radius;
                 particles.push({
@@ -814,6 +817,15 @@ class FireworksEngine {
             return this.imageCache.get(url);
         }
 
+        // Validate URL to prevent XSS - check for dangerous protocols
+        if (!url || typeof url !== 'string') return null;
+        const lowerUrl = url.toLowerCase();
+        const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:', 'about:'];
+        if (dangerousProtocols.some(protocol => lowerUrl.startsWith(protocol))) {
+            console.warn('[Fireworks] Invalid image URL blocked:', url);
+            return null;
+        }
+
         return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -1017,6 +1029,12 @@ class FireworksEngine {
 let engine = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const canvas = document.getElementById('fireworks-canvas');
+    if (!canvas) {
+        console.error('[Fireworks] Canvas element not found');
+        return;
+    }
+    
     engine = new FireworksEngine('fireworks-canvas');
     await engine.init();
 
@@ -1034,4 +1052,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('[Fireworks] Advanced engine ready');
 });
 
-window.FireworksEngine = engine;
+// Only expose engine after initialization
+if (typeof window !== 'undefined') {
+    Object.defineProperty(window, 'FireworksEngine', {
+        get: () => engine,
+        configurable: false,
+        enumerable: true
+    });
+}
