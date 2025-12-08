@@ -580,6 +580,10 @@ class SpeechifyEngine {
 
     /**
      * Create a custom voice clone
+     * 
+     * **IMPORTANT**: Voice cloning may not be available in all Speechify API plans.
+     * This feature might require an enterprise/premium API key with voice cloning enabled.
+     * 
      * @param {Object} options - Voice clone creation options
      * @param {string|Buffer} options.audioData - Audio sample (base64 string or Buffer)
      * @param {string} options.voiceName - Name for the custom voice
@@ -610,23 +614,48 @@ class SpeechifyEngine {
                 ? audioData.toString('base64') 
                 : audioData;
 
+            // Prepare request body
+            const requestBody = {
+                audio_data: audioBase64,
+                voice_name: voiceName,
+                language: language,
+                consent_confirmation: consentConfirmation
+            };
+
+            this.logger.info(`Speechify: Sending voice clone request to ${this.apiVoicesUrl}`);
+            this.logger.debug(`Speechify: Request body keys: ${Object.keys(requestBody).join(', ')}`);
+            this.logger.debug(`Speechify: Audio data length: ${audioBase64.length} characters (base64)`);
+
             const response = await axios.post(
                 this.apiVoicesUrl,
-                {
-                    audio_data: audioBase64,
-                    voice_name: voiceName,
-                    language: language,
-                    consent_confirmation: consentConfirmation
-                },
+                requestBody,
                 {
                     headers: {
                         'Authorization': `Bearer ${this.apiKey}`,
                         'Content-Type': 'application/json',
                         'User-Agent': 'TikTokLiveStreamTool/2.0'
                     },
-                    timeout: this.timeout * 3 // Voice cloning may take longer
+                    timeout: this.timeout * 3, // Voice cloning may take longer
+                    validateStatus: function (status) {
+                        // Don't throw on any status, we'll handle errors manually
+                        return true;
+                    }
                 }
             );
+
+            // Check response status
+            if (response.status !== 200 && response.status !== 201) {
+                // Log full response for debugging
+                this.logger.error(`Speechify: Voice clone API returned status ${response.status}`);
+                this.logger.error(`Speechify: Response data:`, JSON.stringify(response.data, null, 2));
+                
+                const errorMessage = response.data?.error?.message || 
+                                   response.data?.message || 
+                                   response.data?.error ||
+                                   `HTTP ${response.status}`;
+                
+                throw new Error(errorMessage);
+            }
 
             if (response.data && (response.data.voice_id || response.data.id)) {
                 const voiceId = response.data.voice_id || response.data.id;
@@ -649,6 +678,7 @@ class SpeechifyEngine {
             const statusCode = error.response?.status;
             const errorMessage = error.response?.data?.error?.message || 
                                error.response?.data?.message || 
+                               error.response?.data?.error ||
                                error.message;
             
             // Log full error response for debugging
@@ -658,7 +688,17 @@ class SpeechifyEngine {
 
             this.logger.error(`Speechify: Failed to create voice clone "${voiceName}" (${statusCode || 'network error'}): ${errorMessage}`);
             
-            throw new Error(`Failed to create voice clone: ${errorMessage}`);
+            // Provide helpful error message based on status code
+            let userFriendlyMessage = errorMessage;
+            if (statusCode === 400) {
+                userFriendlyMessage = `Bad request - The Speechify API rejected the request. This may indicate that voice cloning is not available with your API key, or the request format is incorrect. Error: ${errorMessage}`;
+            } else if (statusCode === 401 || statusCode === 403) {
+                userFriendlyMessage = `Authentication failed - Voice cloning may not be available with your current Speechify API plan. Please check if your API key supports voice cloning. Error: ${errorMessage}`;
+            } else if (statusCode === 404) {
+                userFriendlyMessage = `Endpoint not found - The voice cloning endpoint may have changed or may not be available. Error: ${errorMessage}`;
+            }
+            
+            throw new Error(userFriendlyMessage);
         }
     }
 

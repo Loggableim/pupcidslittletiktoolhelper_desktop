@@ -497,6 +497,29 @@
                 </div>
             </div>
 
+            <!-- Voice Cloning API Plan Warning -->
+            <div class="mb-6 bg-orange-900 border-l-4 border-orange-500 p-4 rounded">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-info-circle text-orange-400 text-xl"></i>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-bold text-orange-100">⚠️ Important: Voice Cloning Availability</h3>
+                        <p class="text-sm text-orange-200 mt-1">
+                            Voice cloning may not be available with all Speechify API plans. If you receive a <strong>400 Bad Request</strong> error, this likely means:
+                        </p>
+                        <ul class="text-xs text-orange-300 mt-2 ml-4 list-disc space-y-1">
+                            <li>Voice cloning is not included in your current API plan</li>
+                            <li>You may need to upgrade to an enterprise or premium plan</li>
+                            <li>Contact Speechify support to enable voice cloning for your API key</li>
+                        </ul>
+                        <p class="text-xs text-orange-300 mt-2">
+                            <strong>Note:</strong> The standard Speechify TTS API (text-to-speech) will continue to work normally even if voice cloning is not available.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Create Voice Clone Card -->
                 <div class="bg-gray-800 rounded-lg p-6 shadow-xl">
