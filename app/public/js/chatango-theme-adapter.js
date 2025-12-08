@@ -297,17 +297,18 @@ class ChatangoThemeAdapter {
         const jsonConfig = JSON.stringify(embedConfig.config);
         
         // Create script element properly for Chatango embed
-        // IMPORTANT: Chatango's emb.js reads the script element's innerHTML
-        // We must set innerHTML BEFORE setting src, and use async loading
+        // IMPORTANT: Chatango's emb.js reads the script element's text content
+        // We must set textContent BEFORE setting src, and use async loading
         const script = document.createElement('script');
         script.id = scriptId;
         script.setAttribute('data-cfasync', 'false');
-        script.setAttribute('async', 'true');
+        script.async = true;
         script.style.cssText = `width: ${embedConfig.width}; height: ${embedConfig.height};`;
         
-        // Set JSON config as innerHTML first, then set src
+        // Set JSON config as textContent first, then set src
         // This ensures Chatango can read the config when emb.js loads
-        script.innerHTML = jsonConfig;
+        // Using textContent instead of innerHTML for security (no HTML parsing)
+        script.textContent = jsonConfig;
         script.src = 'https://st.chatango.com/js/gz/emb.js';
         
         container.appendChild(script);
@@ -336,17 +337,18 @@ class ChatangoThemeAdapter {
         const jsonConfig = JSON.stringify(embedConfig.config);
         
         // Create script element properly for Chatango embed
-        // IMPORTANT: Chatango's emb.js reads the script element's innerHTML
-        // We must set innerHTML BEFORE setting src, and use async loading
+        // IMPORTANT: Chatango's emb.js reads the script element's text content
+        // We must set textContent BEFORE setting src, and use async loading
         const script = document.createElement('script');
         script.id = scriptId;
         script.setAttribute('data-cfasync', 'false');
-        script.setAttribute('async', 'true');
+        script.async = true;
         script.style.cssText = `width: ${embedConfig.width}; height: ${embedConfig.height};`;
         
-        // Set JSON config as innerHTML first, then set src
+        // Set JSON config as textContent first, then set src
         // This ensures Chatango can read the config when emb.js loads
-        script.innerHTML = jsonConfig;
+        // Using textContent instead of innerHTML for security (no HTML parsing)
+        script.textContent = jsonConfig;
         script.src = 'https://st.chatango.com/js/gz/emb.js';
         
         container.appendChild(script);
