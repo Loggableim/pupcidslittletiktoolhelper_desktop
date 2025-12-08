@@ -1128,12 +1128,17 @@
             updatePreviewScale(e.target.value);
         });
 
-        // Load HUD config when HUD tab is opened
-        const hudTab = document.querySelector('[data-tab="hud"]');
-        if (hudTab) {
-            hudTab.addEventListener('click', () => {
+        // Load HUD config and layouts when overlay-config tab is opened
+        const overlayConfigTab = document.querySelector('[data-tab="overlay-config"]');
+        if (overlayConfigTab) {
+            overlayConfigTab.addEventListener('click', () => {
                 setTimeout(() => {
                     loadHUDConfig();
+                    loadLayouts();
+                    // Initialize draggable elements
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(initializeDraggableElements);
+                    });
                 }, 100);
             });
         }
@@ -1707,6 +1712,7 @@
 
     let layouts = [];
     let currentLayout = null;
+    let activeLayoutId = null; // Track active layout
     let isDragging = false;
     let draggedElement = null;
 
@@ -1718,8 +1724,18 @@
             
             if (data.success) {
                 layouts = data.layouts;
-                renderLayoutsList();
             }
+            
+            // Load active layout info
+            const activeResponse = await fetch('/api/quiz-show/layouts/active');
+            const activeData = await activeResponse.json();
+            if (activeData.success && activeData.customLayoutEnabled && activeData.layout) {
+                activeLayoutId = activeData.layout.id;
+            } else {
+                activeLayoutId = null;
+            }
+            
+            renderLayoutsList();
         } catch (error) {
             console.error('Error loading layouts:', error);
         }
@@ -1734,22 +1750,32 @@
             return;
         }
 
-        container.innerHTML = layouts.map(layout => `
-            <div class="layout-item" data-id="${layout.id}">
+        container.innerHTML = layouts.map(layout => {
+            const isActive = activeLayoutId === layout.id;
+            const activeBadge = isActive ? '<span class="badge badge-success">Aktiv</span>' : '';
+            const defaultBadge = layout.is_default ? '<span class="badge">Standard</span>' : '';
+            
+            return `
+            <div class="layout-item ${isActive ? 'active' : ''}" data-id="${layout.id}">
                 <div class="layout-info">
-                    <div class="layout-name">${escapeHtml(layout.name)}</div>
+                    <div class="layout-name">${escapeHtml(layout.name)}${activeBadge}</div>
                     <div class="layout-meta">
                         ${layout.resolution_width}x${layout.resolution_height} | 
                         ${layout.orientation === 'horizontal' ? '🖼️ Landscape' : '📱 Portrait'}
-                        ${layout.is_default ? '<span class="badge">Standard</span>' : ''}
+                        ${defaultBadge}
                     </div>
                 </div>
                 <div class="layout-actions">
+                    ${isActive 
+                        ? `<button class="btn-icon" onclick="window.quizShow.deactivateLayout()" title="Deaktivieren">⏸️</button>`
+                        : `<button class="btn-icon" onclick="window.quizShow.activateLayout(${layout.id})" title="Aktivieren">▶️</button>`
+                    }
                     <button class="btn-icon" onclick="window.quizShow.editLayout(${layout.id})" title="Bearbeiten">✏️</button>
                     <button class="btn-icon" onclick="window.quizShow.deleteLayout(${layout.id})" title="Löschen">🗑️</button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     function createNewLayout() {
@@ -1871,13 +1897,55 @@
         }
     }
 
+    async function activateLayout(layoutId) {
+        try {
+            const response = await fetch(`/api/quiz-show/layouts/${layoutId}/activate`, {
+                method: 'POST'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showMessage('Layout aktiviert - Overlay wurde aktualisiert', 'success', 'layoutSaveMessage');
+                activeLayoutId = layoutId;
+                renderLayoutsList();
+            } else {
+                showMessage('Fehler: ' + data.error, 'error', 'layoutSaveMessage');
+            }
+        } catch (error) {
+            console.error('Error activating layout:', error);
+            showMessage('Fehler beim Aktivieren', 'error', 'layoutSaveMessage');
+        }
+    }
+
+    async function deactivateLayout() {
+        try {
+            const response = await fetch('/api/quiz-show/layouts/deactivate', {
+                method: 'POST'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showMessage('Layout deaktiviert - Overlay verwendet Standard-Positionen', 'success', 'layoutSaveMessage');
+                activeLayoutId = null;
+                renderLayoutsList();
+            } else {
+                showMessage('Fehler: ' + data.error, 'error', 'layoutSaveMessage');
+            }
+        } catch (error) {
+            console.error('Error deactivating layout:', error);
+            showMessage('Fehler beim Deaktivieren', 'error', 'layoutSaveMessage');
+        }
+    }
+
     function collectLayoutConfig() {
-        const elements = {};
+        const config = {};
         const draggables = document.querySelectorAll('#previewCanvas .draggable');
         
         draggables.forEach(el => {
             const elementType = el.dataset.element;
-            elements[elementType] = {
+            config[elementType] = {
                 x: parseInt(el.style.left, 10) || 0,
                 y: parseInt(el.style.top, 10) || 0,
                 width: parseInt(el.style.width, 10) || 300,
@@ -1886,13 +1954,17 @@
             };
         });
         
-        return { elements };
+        return config;
     }
 
     function applyLayoutConfig(config) {
-        if (!config || !config.elements) return;
+        if (!config) return;
         
-        Object.entries(config.elements).forEach(([elementType, props]) => {
+        // TODO: Remove backward compatibility for old format (with elements wrapper) after all existing layouts are migrated
+        // Handle both old format (with elements wrapper) and new format (direct)
+        const elements = config.elements || config;
+        
+        Object.entries(elements).forEach(([elementType, props]) => {
             const el = document.querySelector(`#previewCanvas [data-element="${elementType}"]`);
             if (el) {
                 el.style.left = props.x + 'px';
@@ -1910,14 +1982,14 @@
 
     function resetLayoutPreview() {
         const defaultPositions = {
-            question: { x: 50, y: 50, width: 800, height: 150 },
-            answers: { x: 50, y: 220, width: 800, height: 400 },
-            timer: { x: 900, y: 50, width: 200, height: 200 },
-            leaderboard: { x: 900, y: 300, width: 300, height: 400 },
-            jokerInfo: { x: 50, y: 650, width: 400, height: 100 }
+            question: { x: 50, y: 50, width: 800, height: 150, visible: true },
+            answers: { x: 50, y: 220, width: 800, height: 400, visible: true },
+            timer: { x: 900, y: 50, width: 200, height: 200, visible: true },
+            leaderboard: { x: 900, y: 300, width: 300, height: 400, visible: true },
+            jokerInfo: { x: 50, y: 650, width: 400, height: 100, visible: true }
         };
         
-        applyLayoutConfig({ elements: defaultPositions });
+        applyLayoutConfig(defaultPositions);
     }
 
     function cancelLayoutEdit() {
@@ -1941,20 +2013,6 @@
     }
     if (document.getElementById('cancelLayoutBtn')) {
         document.getElementById('cancelLayoutBtn').addEventListener('click', cancelLayoutEdit);
-    }
-
-    // Load layouts when tab is opened
-    const layoutEditorTab = document.querySelector('[data-tab="layout-editor"]');
-    if (layoutEditorTab) {
-        layoutEditorTab.addEventListener('click', () => {
-            loadLayouts();
-            // Double requestAnimationFrame ensures DOM is fully rendered before initializing
-            // First frame: tab content is made visible
-            // Second frame: elements are fully laid out and ready for interaction
-            requestAnimationFrame(() => {
-                requestAnimationFrame(initializeDraggableElements);
-            });
-        });
     }
 
     // Initialize drag and drop for layout elements
@@ -2253,6 +2311,8 @@
         viewPackageQuestions,
         editLayout,
         deleteLayout,
+        activateLayout,
+        deactivateLayout,
         editGiftJoker,
         deleteGiftJoker
     };
