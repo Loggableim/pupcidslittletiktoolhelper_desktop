@@ -101,23 +101,23 @@ function testCodeChanges() {
   const enginePath = path.join(__dirname, '../plugins/tts/engines/speechify-engine.js');
   const code = fs.readFileSync(enginePath, 'utf8');
   
-  // Check for the specific error handling code
-  const has400Check = code.includes('if (response.status === 400)');
-  const has401Check = code.includes('response.status === 401 || response.status === 403');
-  const has404Check = code.includes('response.status === 404');
+  // Check for the helper function
+  const hasHelperFunction = code.includes('_createVoiceCloneErrorMessage');
+  const hasHelperInResponseCheck = code.includes('this._createVoiceCloneErrorMessage(response.status, baseErrorMessage)');
+  const hasHelperInCatchBlock = code.includes('this._createVoiceCloneErrorMessage(statusCode, baseErrorMessage)');
   const hasBadRequestMessage = code.includes('Bad request - The Speechify API rejected the request');
   const hasAuthFailedMessage = code.includes('Authentication failed - Voice cloning may not be available');
   const hasEndpointNotFoundMessage = code.includes('Endpoint not found - The voice cloning endpoint may have changed');
   
-  console.log(`  Check for HTTP 400 handling: ${has400Check ? '✅' : '✗'}`);
-  console.log(`  Check for HTTP 401/403 handling: ${has401Check ? '✅' : '✗'}`);
-  console.log(`  Check for HTTP 404 handling: ${has404Check ? '✅' : '✗'}`);
+  console.log(`  Check for helper function: ${hasHelperFunction ? '✅' : '✗'}`);
+  console.log(`  Check for helper used in response check: ${hasHelperInResponseCheck ? '✅' : '✗'}`);
+  console.log(`  Check for helper used in catch block: ${hasHelperInCatchBlock ? '✅' : '✗'}`);
   console.log(`  Check for "Bad request" message: ${hasBadRequestMessage ? '✅' : '✗'}`);
   console.log(`  Check for "Authentication failed" message: ${hasAuthFailedMessage ? '✅' : '✗'}`);
   console.log(`  Check for "Endpoint not found" message: ${hasEndpointNotFoundMessage ? '✅' : '✗'}`);
   
-  if (has400Check && has401Check && has404Check && hasBadRequestMessage && hasAuthFailedMessage && hasEndpointNotFoundMessage) {
-    console.log('  ✅ PASSED: All error handling code is in place');
+  if (hasHelperFunction && hasHelperInResponseCheck && hasHelperInCatchBlock && hasBadRequestMessage && hasAuthFailedMessage && hasEndpointNotFoundMessage) {
+    console.log('  ✅ PASSED: All error handling code is in place (using helper function)');
   } else {
     console.log('  ✗ FAILED: Some error handling code is missing');
     process.exit(1);

@@ -579,6 +579,24 @@ class SpeechifyEngine {
     }
 
     /**
+     * Create descriptive error message based on HTTP status code
+     * @private
+     * @param {number} statusCode - HTTP status code
+     * @param {string} baseErrorMessage - Base error message from API
+     * @returns {string} Enhanced error message with helpful context
+     */
+    _createVoiceCloneErrorMessage(statusCode, baseErrorMessage) {
+        if (statusCode === 400) {
+            return `Bad request - The Speechify API rejected the request. This may indicate that voice cloning is not available with your API key, or the request format is incorrect. Details: ${baseErrorMessage}`;
+        } else if (statusCode === 401 || statusCode === 403) {
+            return `Authentication failed - Voice cloning may not be available with your current Speechify API plan. Please check if your API key supports voice cloning. Details: ${baseErrorMessage}`;
+        } else if (statusCode === 404) {
+            return `Endpoint not found - The voice cloning endpoint may have changed or may not be available. Details: ${baseErrorMessage}`;
+        }
+        return baseErrorMessage;
+    }
+
+    /**
      * Create a custom voice clone
      * 
      * **IMPORTANT**: Voice cloning may not be available in all Speechify API plans.
@@ -650,21 +668,13 @@ class SpeechifyEngine {
                 this.logger.error(`Speechify: Voice clone API returned status ${response.status}`);
                 this.logger.error(`Speechify: Response data:`, JSON.stringify(response.data, null, 2));
                 
-                const errorMessage = response.data?.error?.message || 
+                const baseErrorMessage = response.data?.error?.message || 
                                    response.data?.message || 
                                    response.data?.error ||
                                    `HTTP ${response.status}`;
                 
-                // Provide helpful error message based on status code
-                if (response.status === 400) {
-                    throw new Error(`Bad request - The Speechify API rejected the request. This may indicate that voice cloning is not available with your API key, or the request format is incorrect. Details: ${errorMessage}`);
-                } else if (response.status === 401 || response.status === 403) {
-                    throw new Error(`Authentication failed - Voice cloning may not be available with your current Speechify API plan. Please check if your API key supports voice cloning. Details: ${errorMessage}`);
-                } else if (response.status === 404) {
-                    throw new Error(`Endpoint not found - The voice cloning endpoint may have changed or may not be available. Details: ${errorMessage}`);
-                }
-                
-                throw new Error(errorMessage);
+                const enhancedErrorMessage = this._createVoiceCloneErrorMessage(response.status, baseErrorMessage);
+                throw new Error(enhancedErrorMessage);
             }
 
             if (response.data && (response.data.voice_id || response.data.id)) {
@@ -686,7 +696,7 @@ class SpeechifyEngine {
             }
         } catch (error) {
             const statusCode = error.response?.status;
-            const errorMessage = error.response?.data?.error?.message || 
+            const baseErrorMessage = error.response?.data?.error?.message || 
                                error.response?.data?.message || 
                                error.response?.data?.error ||
                                error.message;
@@ -696,19 +706,14 @@ class SpeechifyEngine {
                 this.logger.error(`Speechify: Voice clone creation failed - Full API response:`, JSON.stringify(error.response.data, null, 2));
             }
 
-            this.logger.error(`Speechify: Failed to create voice clone "${voiceName}" (${statusCode || 'network error'}): ${errorMessage}`);
+            this.logger.error(`Speechify: Failed to create voice clone "${voiceName}" (${statusCode || 'network error'}): ${baseErrorMessage}`);
             
-            // Provide helpful error message based on status code
-            if (statusCode === 400) {
-                throw new Error(`Bad request - The Speechify API rejected the request. This may indicate that voice cloning is not available with your API key, or the request format is incorrect. Details: ${errorMessage}`);
-            } else if (statusCode === 401 || statusCode === 403) {
-                throw new Error(`Authentication failed - Voice cloning may not be available with your current Speechify API plan. Please check if your API key supports voice cloning. Details: ${errorMessage}`);
-            } else if (statusCode === 404) {
-                throw new Error(`Endpoint not found - The voice cloning endpoint may have changed or may not be available. Details: ${errorMessage}`);
-            }
+            // Use helper to create enhanced error message
+            const enhancedErrorMessage = statusCode 
+                ? this._createVoiceCloneErrorMessage(statusCode, baseErrorMessage)
+                : baseErrorMessage;
             
-            // Generic error fallback
-            throw new Error(errorMessage);
+            throw new Error(enhancedErrorMessage);
         }
     }
 
