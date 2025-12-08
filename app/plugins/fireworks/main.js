@@ -528,13 +528,13 @@ class FireworksPlugin {
         }
 
         // User avatar integration
+        // When enabled, pass user avatar to engine which will mix it with gift images
         const userProfilePictureUrl = data.profilePictureUrl || data.userProfilePictureUrl || null;
         let avatarImage = null;
         if (this.config.userAvatarEnabled && userProfilePictureUrl) {
-            // Randomly decide whether to use avatar based on avatarParticleChance
-            if (Math.random() < this.config.avatarParticleChance) {
-                avatarImage = userProfilePictureUrl;
-            }
+            // Always pass avatar if enabled and available
+            // The engine will decide the actual particle mix ratio
+            avatarImage = userProfilePictureUrl;
         }
 
         // Calculate final intensity
@@ -711,7 +711,10 @@ class FireworksPlugin {
             trailsEnabled: this.config.trailsEnabled,
             trailLength: this.config.trailLength,
             glowEnabled: this.config.glowEnabled,
-            particleSizeRange: this.config.particleSizeRange
+            particleSizeRange: this.config.particleSizeRange,
+            
+            // Avatar settings
+            avatarParticleChance: this.config.avatarParticleChance || 0.3
         };
 
         this.api.emit('fireworks:trigger', payload);

@@ -261,9 +261,14 @@ class AudioManager {
     }
 
     async preload(url, name) {
-        // If AudioContext not created yet, store for later
+        // If AudioContext not created yet, store for later (overwrite if already exists)
         if (!this.audioContext) {
             this.pendingSounds.set(name, url);
+            return;
+        }
+        
+        // Skip if already loaded
+        if (this.sounds.has(name)) {
             return;
         }
         
@@ -451,6 +456,7 @@ class FireworksEngine {
             particleCount = 50,
             giftImage = null,
             userAvatar = null,
+            avatarParticleChance = 0.3,
             tier = 'medium',
             username = null,
             coins = 0,
@@ -500,27 +506,31 @@ class FireworksEngine {
             p.rotation = Math.random() * Math.PI * 2;
             p.rotationSpeed = (Math.random() - 0.5) * 0.2;
             
-            // Decide which image to use (avatar or gift)
-            const useImage = Math.random() < 0.3; // 30% chance for images
-            if (useImage) {
-                // If both images available, randomly choose
-                if (avatarImg && giftImg) {
+            // Decide which image to use based on availability and configuration
+            // Default to colored circles if no images
+            p.type = 'circle';
+            
+            if (avatarImg || giftImg) {
+                // Base image usage chance
+                const baseImageChance = 0.3; // 30% of particles use images
+                
+                if (Math.random() < baseImageChance) {
                     p.type = 'image';
-                    p.image = Math.random() < 0.5 ? avatarImg : giftImg;
-                    p.size *= 2;
-                } else if (avatarImg) {
-                    p.type = 'image';
-                    p.image = avatarImg;
-                    p.size *= 2;
-                } else if (giftImg) {
-                    p.type = 'image';
-                    p.image = giftImg;
-                    p.size *= 2;
-                } else {
-                    p.type = 'circle';
+                    
+                    // If both images available, use avatarParticleChance to decide
+                    if (avatarImg && giftImg) {
+                        // avatarParticleChance determines avatar vs gift probability
+                        p.image = Math.random() < avatarParticleChance ? avatarImg : giftImg;
+                    } else if (avatarImg) {
+                        // Only avatar available
+                        p.image = avatarImg;
+                    } else {
+                        // Only gift available
+                        p.image = giftImg;
+                    }
+                    
+                    p.size *= 2; // Make image particles larger
                 }
-            } else {
-                p.type = 'circle';
             }
             
             // Clear trail

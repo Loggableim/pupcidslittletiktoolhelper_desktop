@@ -491,7 +491,15 @@ async function triggerTestRandom() {
  */
 async function triggerTestAvatar() {
     try {
-        // Trigger with a placeholder avatar URL
+        // Create a simple data URI for a test avatar (small colored circle SVG)
+        const avatarDataUri = 'data:image/svg+xml;base64,' + btoa(`
+            <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+                <circle cx="50" cy="50" r="45" fill="#FF6B6B"/>
+                <text x="50" y="65" font-size="40" text-anchor="middle" fill="white">👤</text>
+            </svg>
+        `);
+        
+        // Trigger with the test avatar
         await fetch('/api/fireworks/trigger', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -499,8 +507,7 @@ async function triggerTestAvatar() {
                 shape: config.defaultShape || 'burst',
                 intensity: 1.5,
                 position: { x: 0.5, y: 0.5 },
-                // This would normally come from TikTok user data
-                userAvatar: 'https://via.placeholder.com/100/FF6B6B/FFFFFF?text=Avatar'
+                userAvatar: avatarDataUri
             })
         });
         
