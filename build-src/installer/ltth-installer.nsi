@@ -355,11 +355,12 @@ SectionEnd
 
 ; Check for running instances
 Function CheckRunning
+check_again:
   FindWindow $0 "" "${PRODUCT_NAME}"
   StrCmp $0 0 notrunning
     MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION \
     "${PRODUCT_NAME} is currently running.$\n$\nPlease close it and try again." \
-    IDOK CheckRunning IDCANCEL abort
+    IDOK check_again IDCANCEL abort
 abort:
   Abort
 notrunning:
