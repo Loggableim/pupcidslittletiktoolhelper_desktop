@@ -1472,3 +1472,45 @@ code {
     margin-top: 5px;
 }
 
+/* Badge Styles */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 4px;
+    background: var(--color-border);
+    color: var(--color-text-secondary);
+    margin-left: 6px;
+}
+
+.badge-success {
+    background: var(--color-accent-success);
+    color: white;
+}
+
+.badge-primary {
+    background: var(--color-accent-primary);
+    color: white;
+}
+
+.badge-warning {
+    background: var(--color-accent-warning);
+    color: white;
+}
+
+.badge-danger {
+    background: var(--color-accent-danger);
+    color: white;
+}
+
+/* Layout Item Active State */
+.layout-item.active {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: var(--color-accent-success);
+}
+

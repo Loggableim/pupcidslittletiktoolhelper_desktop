@@ -1707,6 +1707,7 @@
 
     let layouts = [];
     let currentLayout = null;
+    let activeLayoutId = null; // Track active layout
     let isDragging = false;
     let draggedElement = null;
 
@@ -1718,8 +1719,18 @@
             
             if (data.success) {
                 layouts = data.layouts;
-                renderLayoutsList();
             }
+            
+            // Load active layout info
+            const activeResponse = await fetch('/api/quiz-show/layouts/active');
+            const activeData = await activeResponse.json();
+            if (activeData.success && activeData.customLayoutEnabled && activeData.layout) {
+                activeLayoutId = activeData.layout.id;
+            } else {
+                activeLayoutId = null;
+            }
+            
+            renderLayoutsList();
         } catch (error) {
             console.error('Error loading layouts:', error);
         }
@@ -1734,10 +1745,12 @@
             return;
         }
 
-        container.innerHTML = layouts.map(layout => `
-            <div class="layout-item" data-id="${layout.id}">
+        container.innerHTML = layouts.map(layout => {
+            const isActive = activeLayoutId === layout.id;
+            return `
+            <div class="layout-item ${isActive ? 'active' : ''}" data-id="${layout.id}">
                 <div class="layout-info">
-                    <div class="layout-name">${escapeHtml(layout.name)}</div>
+                    <div class="layout-name">${escapeHtml(layout.name)} ${isActive ? '<span class="badge badge-success">Aktiv</span>' : ''}</div>
                     <div class="layout-meta">
                         ${layout.resolution_width}x${layout.resolution_height} | 
                         ${layout.orientation === 'horizontal' ? '🖼️ Landscape' : '📱 Portrait'}
@@ -1745,11 +1758,16 @@
                     </div>
                 </div>
                 <div class="layout-actions">
+                    ${isActive 
+                        ? `<button class="btn-icon" onclick="window.quizShow.deactivateLayout()" title="Deaktivieren">⏸️</button>`
+                        : `<button class="btn-icon" onclick="window.quizShow.activateLayout(${layout.id})" title="Aktivieren">▶️</button>`
+                    }
                     <button class="btn-icon" onclick="window.quizShow.editLayout(${layout.id})" title="Bearbeiten">✏️</button>
                     <button class="btn-icon" onclick="window.quizShow.deleteLayout(${layout.id})" title="Löschen">🗑️</button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     function createNewLayout() {
@@ -1868,6 +1886,48 @@
         } catch (error) {
             console.error('Error deleting layout:', error);
             showMessage('Fehler beim Löschen', 'error', 'layoutSaveMessage');
+        }
+    }
+
+    async function activateLayout(layoutId) {
+        try {
+            const response = await fetch(`/api/quiz-show/layouts/${layoutId}/activate`, {
+                method: 'POST'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showMessage('Layout aktiviert - Overlay wurde aktualisiert', 'success', 'layoutSaveMessage');
+                activeLayoutId = layoutId;
+                renderLayoutsList();
+            } else {
+                showMessage('Fehler: ' + data.error, 'error', 'layoutSaveMessage');
+            }
+        } catch (error) {
+            console.error('Error activating layout:', error);
+            showMessage('Fehler beim Aktivieren', 'error', 'layoutSaveMessage');
+        }
+    }
+
+    async function deactivateLayout() {
+        try {
+            const response = await fetch('/api/quiz-show/layouts/deactivate', {
+                method: 'POST'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showMessage('Layout deaktiviert - Overlay verwendet Standard-Positionen', 'success', 'layoutSaveMessage');
+                activeLayoutId = null;
+                renderLayoutsList();
+            } else {
+                showMessage('Fehler: ' + data.error, 'error', 'layoutSaveMessage');
+            }
+        } catch (error) {
+            console.error('Error deactivating layout:', error);
+            showMessage('Fehler beim Deaktivieren', 'error', 'layoutSaveMessage');
         }
     }
 
@@ -2256,6 +2316,8 @@
         viewPackageQuestions,
         editLayout,
         deleteLayout,
+        activateLayout,
+        deactivateLayout,
         editGiftJoker,
         deleteGiftJoker
     };

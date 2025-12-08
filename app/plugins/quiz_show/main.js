@@ -1682,6 +1682,79 @@ class QuizShowPlugin {
             }
         });
 
+        // Activate layout (set as active and broadcast to overlays)
+        this.api.registerRoute('post', '/api/quiz-show/layouts/:id/activate', (req, res) => {
+            try {
+                const layoutId = parseInt(req.params.id);
+                const layout = this.db.prepare('SELECT * FROM overlay_layouts WHERE id = ?').get(layoutId);
+                
+                if (!layout) {
+                    return res.status(404).json({ success: false, error: 'Layout not found' });
+                }
+
+                // Store active layout ID in config
+                this.config.activeLayoutId = layoutId;
+                this.config.customLayoutEnabled = true;
+                this.saveConfig();
+
+                // Parse layout config
+                layout.layout_config = JSON.parse(layout.layout_config);
+
+                // Broadcast to all overlays
+                this.api.emit('quiz-show:layout-updated', {
+                    layout,
+                    customLayoutEnabled: true
+                });
+
+                res.json({ success: true, layout });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Deactivate custom layout (revert to default positioning)
+        this.api.registerRoute('post', '/api/quiz-show/layouts/deactivate', (req, res) => {
+            try {
+                this.config.activeLayoutId = null;
+                this.config.customLayoutEnabled = false;
+                this.saveConfig();
+
+                // Broadcast to all overlays to disable custom layout
+                this.api.emit('quiz-show:layout-updated', {
+                    layout: null,
+                    customLayoutEnabled: false
+                });
+
+                res.json({ success: true });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get active layout
+        this.api.registerRoute('get', '/api/quiz-show/layouts/active', (req, res) => {
+            try {
+                if (!this.config.customLayoutEnabled || !this.config.activeLayoutId) {
+                    return res.json({ success: true, layout: null, customLayoutEnabled: false });
+                }
+
+                const layout = this.db.prepare('SELECT * FROM overlay_layouts WHERE id = ?').get(this.config.activeLayoutId);
+                
+                if (!layout) {
+                    // Active layout was deleted, reset config
+                    this.config.activeLayoutId = null;
+                    this.config.customLayoutEnabled = false;
+                    this.saveConfig();
+                    return res.json({ success: true, layout: null, customLayoutEnabled: false });
+                }
+
+                layout.layout_config = JSON.parse(layout.layout_config);
+                res.json({ success: true, layout, customLayoutEnabled: true });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
         // ===== NEW: TTS Configuration Routes =====
         
         // Get TTS config

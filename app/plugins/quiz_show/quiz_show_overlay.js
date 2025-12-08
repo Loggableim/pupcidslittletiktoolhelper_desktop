@@ -100,6 +100,7 @@
         syncApplicationTheme();
         initializeSocketListeners();
         loadHUDConfig();
+        loadActiveLayout(); // NEW: Load active layout on startup
         initializeDragAndDrop();
         preloadAnimations();
         console.log('Quiz Show Overlay initialized');
@@ -1556,6 +1557,25 @@
             console.log('Custom layout applied:', layout.name);
         } catch (error) {
             console.error('Error applying custom layout:', error);
+        }
+    }
+
+    // ============================================
+    // LOAD ACTIVE LAYOUT ON STARTUP
+    // ============================================
+
+    async function loadActiveLayout() {
+        try {
+            const response = await fetch('/api/quiz-show/layouts/active');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.customLayoutEnabled && data.layout) {
+                    handleLayoutUpdated({ layout: data.layout, customLayoutEnabled: true });
+                    console.log('Active layout loaded:', data.layout.name);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading active layout:', error);
         }
     }
 
