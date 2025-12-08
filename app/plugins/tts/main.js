@@ -84,21 +84,21 @@ class TTSPlugin {
             this._logDebug('INIT', 'Google TTS engine NOT initialized', { hasApiKey: false });
         }
 
-        // Initialize Speechify engine if API key is configured AND engine is enabled
-        if (this.config.speechifyApiKey && shouldLoadEngine('speechify')) {
+        // Initialize Speechify engine if API key is configured
+        // Note: Always initialize when API key is present to support voice cloning feature,
+        // regardless of whether it's used for TTS
+        if (this.config.speechifyApiKey) {
             this.engines.speechify = new SpeechifyEngine(
                 this.config.speechifyApiKey,
                 this.logger,
                 { performanceMode: this.config.performanceMode }
             );
-            this.logger.info('TTS: ✅ Speechify TTS engine initialized');
-            this._logDebug('INIT', 'Speechify TTS engine initialized', { hasApiKey: true, isDefault: this.config.defaultEngine === 'speechify', isFallback: this.config.enableSpeechifyFallback });
-        } else if (this.config.speechifyApiKey) {
-            this.logger.info('TTS: ⏸️  Speechify TTS engine NOT loaded (disabled as fallback)');
-            this._logDebug('INIT', 'Speechify TTS engine NOT loaded', { hasApiKey: true, disabled: true });
+            const isEnabledForTTS = shouldLoadEngine('speechify');
+            this.logger.info(`TTS: ✅ Speechify engine initialized (TTS: ${isEnabledForTTS ? 'enabled' : 'disabled'}, Voice Cloning: enabled)`);
+            this._logDebug('INIT', 'Speechify engine initialized', { hasApiKey: true, isDefault: this.config.defaultEngine === 'speechify', isFallback: this.config.enableSpeechifyFallback, forVoiceCloning: true });
         } else {
-            this.logger.info('TTS: ⚠️  Speechify TTS engine NOT initialized (no API key)');
-            this._logDebug('INIT', 'Speechify TTS engine NOT initialized', { hasApiKey: false });
+            this.logger.info('TTS: ⚠️  Speechify engine NOT initialized (no API key)');
+            this._logDebug('INIT', 'Speechify engine NOT initialized', { hasApiKey: false });
         }
 
         // Initialize ElevenLabs engine if API key is configured AND engine is enabled
@@ -654,14 +654,15 @@ class TTSPlugin {
                     }
                     
                     // Enable/Disable Speechify engine based on new settings
+                    // Note: Always keep Speechify engine initialized when API key is present
+                    // to support voice cloning feature, regardless of TTS settings
                     if (this.config.speechifyApiKey) {
-                        if (shouldLoadEngine('speechify') && !this.engines.speechify) {
+                        if (!this.engines.speechify) {
                             this.engines.speechify = new SpeechifyEngine(this.config.speechifyApiKey, this.logger, { performanceMode: this.config.performanceMode });
                             this.logger.info('TTS: ✅ Speechify engine enabled via config update');
-                        } else if (!shouldLoadEngine('speechify') && this.engines.speechify) {
-                            this.engines.speechify = null;
-                            this.logger.info('TTS: ⏸️  Speechify engine disabled via config update');
                         }
+                        // Do NOT disable Speechify engine even if not needed for TTS
+                        // It's required for voice cloning functionality
                     }
                     
                     // Enable/Disable ElevenLabs engine based on new settings

@@ -650,6 +650,11 @@ class SpeechifyEngine {
             const errorMessage = error.response?.data?.error?.message || 
                                error.response?.data?.message || 
                                error.message;
+            
+            // Log full error response for debugging
+            if (error.response?.data) {
+                this.logger.error(`Speechify: Voice clone creation failed - Full API response:`, JSON.stringify(error.response.data, null, 2));
+            }
 
             this.logger.error(`Speechify: Failed to create voice clone "${voiceName}" (${statusCode || 'network error'}): ${errorMessage}`);
             
