@@ -135,13 +135,26 @@ class Particle {
             rotation: 0,
             rotationSpeed: 0,
             isDespawning: false, // Flag for despawn fade effect
-            despawnStartTime: 0 // When despawn started
+            despawnStartTime: 0, // When despawn started
+            // Secondary explosion properties
+            willBurst: false,      // Will create mini-burst (for burst shape)
+            burstDelay: 0,         // Delay before mini-burst
+            burstTime: 0,          // Time when particle was created
+            hasBurst: false,       // Already triggered burst
+            willSpiral: false,     // Will create spiral burst (for spiral shape)
+            spiralDelay: 0,        // Delay before spiral burst
+            hasSpiraled: false     // Already triggered spiral
         };
         
         Object.assign(this, defaults, args);
         this.maxLifespan = this.lifespan;
         this.trail = [];
         this.age = 0;
+        
+        // Record creation time for secondary explosions
+        if (this.willBurst || this.willSpiral) {
+            this.burstTime = performance.now();
+        }
     }
     
     applyForce(fx, fy) {
@@ -428,17 +441,18 @@ class Firework {
             const isSparkle = Math.random() < CONFIG.sparkleChance;
             
             // Determine particle appearance
-            // Priority: Gift images for explosion particles (not sparkles)
-            let particleType = 'circle';
+            // Priority: shape-specific particle types > gift images > standard circles
+            let particleType = vel.particleType || 'circle'; // Use shape-specific type if provided
             let particleImage = null;
             
-            if (!isSparkle && this.giftImage) {
+            // Override with gift/avatar images for non-shape-specific particles
+            if (particleType === 'circle' && !isSparkle && this.giftImage) {
                 // Use gift image for explosion particles (70% chance when available)
                 if (Math.random() < 0.7) {
                     particleType = 'image';
                     particleImage = this.giftImage;
                 }
-            } else if (!isSparkle && this.userAvatar && Math.random() < 0.3) {
+            } else if (particleType === 'circle' && !isSparkle && this.userAvatar && Math.random() < 0.3) {
                 // Use avatar occasionally if no gift image (30% chance)
                 particleType = 'image';
                 particleImage = this.userAvatar;
@@ -463,7 +477,12 @@ class Firework {
                 drag: isSparkle ? 0.97 : 0.98,
                 gravity: isSparkle ? CONFIG.gravity * 0.8 : CONFIG.gravity,
                 rotation: Math.random() * Math.PI * 2,
-                rotationSpeed: (Math.random() - 0.5) * 0.1
+                rotationSpeed: (Math.random() - 0.5) * 0.1,
+                // Pass through secondary explosion properties from velocity data
+                willBurst: vel.willBurst || false,
+                burstDelay: vel.burstDelay || 0,
+                willSpiral: vel.willSpiral || false,
+                spiralDelay: vel.spiralDelay || 0
             });
             
             this.particles.push(particle);
@@ -500,6 +519,28 @@ class Firework {
             const p = this.particles[i];
             p.applyGravity();
             p.update();
+            
+            // Check for secondary mini-burst (burst shape)
+            if (p.willBurst && !p.hasBurst && performance.now() - p.burstTime >= p.burstDelay) {
+                p.hasBurst = true;
+                this.createMiniBurst(p);
+                // Trigger crackling sound callback
+                if (this.onSecondaryExplosionSound && !this.secondaryAudioPlayed) {
+                    this.secondaryAudioPlayed = true;
+                    this.onSecondaryExplosionSound();
+                }
+            }
+            
+            // Check for secondary spiral burst (spiral shape)
+            if (p.willSpiral && !p.hasSpiraled && performance.now() - p.burstTime >= p.spiralDelay) {
+                p.hasSpiraled = true;
+                this.createSpiralBurst(p);
+                // Trigger crackling sound callback
+                if (this.onSecondaryExplosionSound && !this.secondaryAudioPlayed) {
+                    this.secondaryAudioPlayed = true;
+                    this.onSecondaryExplosionSound();
+                }
+            }
             
             // Check for secondary explosions
             if (p.willExplode && p.age >= p.explosionDelay && !p.exploded) {
@@ -554,6 +595,70 @@ class Firework {
         }
     }
     
+    createMiniBurst(sourceParticle) {
+        // Mini-burst: particle bursts into smaller dots
+        const count = 4 + Math.floor(Math.random() * 5); // 4-8 mini particles
+        
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+            const speed = 0.8 + Math.random() * 1.2;
+            
+            const particle = new Particle({
+                x: sourceParticle.x,
+                y: sourceParticle.y,
+                vx: sourceParticle.vx * 0.3 + Math.cos(angle) * speed,
+                vy: sourceParticle.vy * 0.3 + Math.sin(angle) * speed,
+                size: 1 + Math.random() * 1.5,
+                hue: sourceParticle.hue + (Math.random() - 0.5) * 20,
+                saturation: 90,
+                brightness: 95,
+                lifespan: 0.3 + Math.random() * 0.2,
+                decay: 0.025,
+                isSeed: false,
+                isSparkle: true,
+                mass: 0.2,
+                drag: 0.95,
+                gravity: CONFIG.gravity * 0.5
+            });
+            
+            this.secondaryExplosions.push(particle);
+        }
+    }
+    
+    createSpiralBurst(sourceParticle) {
+        // Spiral burst: particle emits spiral mini-burst
+        const count = 3 + Math.floor(Math.random() * 4); // 3-6 spiral particles
+        const spiralTurns = 1.5;
+        
+        for (let i = 0; i < count; i++) {
+            const t = (i / count) * spiralTurns * Math.PI * 2;
+            const radius = 0.5 + (i / count) * 0.8;
+            const speed = 1.0 + Math.random() * 0.8;
+            
+            const particle = new Particle({
+                x: sourceParticle.x,
+                y: sourceParticle.y,
+                vx: sourceParticle.vx * 0.2 + Math.cos(t) * radius * speed,
+                vy: sourceParticle.vy * 0.2 + Math.sin(t) * radius * speed,
+                size: 1.2 + Math.random() * 1.5,
+                hue: sourceParticle.hue + (Math.random() - 0.5) * 25,
+                saturation: 85,
+                brightness: 90,
+                lifespan: 0.35 + Math.random() * 0.25,
+                decay: 0.022,
+                isSeed: false,
+                isSparkle: true,
+                mass: 0.25,
+                drag: 0.94,
+                gravity: CONFIG.gravity * 0.4,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.15
+            });
+            
+            this.secondaryExplosions.push(particle);
+        }
+    }
+    
     isDone() {
         return this.exploded && 
                this.particles.length === 0 && 
@@ -577,7 +682,9 @@ const ShapeGenerators = {
                 const angle = (Math.PI * 2 * i) / particlesPerRing + (Math.random() - 0.5) * 0.2;
                 particles.push({
                     vx: Math.cos(angle) * ringSpeed,
-                    vy: Math.sin(angle) * ringSpeed
+                    vy: Math.sin(angle) * ringSpeed,
+                    willBurst: true, // Mark for secondary mini-burst
+                    burstDelay: 500 + Math.random() * 300 // 0.5-0.8s delay
                 });
             }
         }
@@ -586,22 +693,23 @@ const ShapeGenerators = {
 
     heart: (count, intensity) => {
         const particles = [];
-        const layers = 3; // Multiple layers for denser heart shape
+        const layers = 4; // More layers for denser, more recognizable heart
         const particlesPerLayer = Math.floor(count / layers);
         
         for (let layer = 0; layer < layers; layer++) {
-            const layerScale = 0.6 + (layer * 0.2); // Different sizes
+            const layerScale = 0.5 + (layer * 0.15); // Tighter sizing for better shape
             for (let i = 0; i < particlesPerLayer; i++) {
                 const t = (i / particlesPerLayer) * Math.PI * 2;
-                // Parametric heart equation (improved)
+                // Enhanced parametric heart equation for better recognition
                 const x = 16 * Math.pow(Math.sin(t), 3);
                 const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
                 
                 const mag = Math.max(Math.sqrt(x*x + y*y), 1);
-                const speed = (0.12 + Math.random() * 0.08) * intensity * layerScale;
+                const speed = (0.15 + Math.random() * 0.05) * intensity * layerScale; // Tighter speed for clustering
                 particles.push({
-                    vx: (x / mag) * speed * 10,
-                    vy: (y / mag) * speed * 10
+                    vx: (x / mag) * speed * 8, // Reduced multiplier for tighter clustering
+                    vy: (y / mag) * speed * 8,
+                    particleType: 'heart' // Mark as heart-shaped particles
                 });
             }
         }
@@ -661,9 +769,60 @@ const ShapeGenerators = {
             const speed = 1.5 + Math.random() * 1.5;
             particles.push({
                 vx: Math.cos(t + armOffset) * radius * speed,
-                vy: Math.sin(t + armOffset) * radius * speed
+                vy: Math.sin(t + armOffset) * radius * speed,
+                willSpiral: true, // Mark for secondary spiral burst
+                spiralDelay: 600 + Math.random() * 400 // 0.6-1.0s delay
             });
         }
+        return particles;
+    },
+    
+    paws: (count, intensity) => {
+        const particles = [];
+        // Paw print layout: 1 large center pad + 4 toe pads
+        const centerPadParticles = Math.floor(count * 0.4); // 40% for center
+        const toeParticles = Math.floor((count - centerPadParticles) / 4); // Split rest among 4 toes
+        
+        // Center pad (large, bottom-center)
+        for (let i = 0; i < centerPadParticles; i++) {
+            const angle = (Math.PI * 2 * i) / centerPadParticles + Math.random() * 0.3;
+            const radius = 0.3 + Math.random() * 0.2;
+            const speed = (0.8 + Math.random() * 0.4) * intensity;
+            const offsetY = 0.6; // Position lower for center pad
+            particles.push({
+                vx: Math.cos(angle) * radius * speed,
+                vy: (Math.sin(angle) * radius * speed) + (offsetY * intensity),
+                particleType: 'paw' // Paw emoji particles
+            });
+        }
+        
+        // 4 toe pads (smaller, arranged around top in arc)
+        const toePositions = [
+            { angle: -2.4, distance: 1.2 }, // Top-left
+            { angle: -1.8, distance: 1.4 }, // Mid-left
+            { angle: -1.3, distance: 1.4 }, // Mid-right
+            { angle: -0.7, distance: 1.2 }  // Top-right
+        ];
+        
+        for (let toe = 0; toe < 4; toe++) {
+            const toePos = toePositions[toe];
+            for (let i = 0; i < toeParticles; i++) {
+                const localAngle = (Math.PI * 2 * i) / toeParticles;
+                const radius = 0.15 + Math.random() * 0.1;
+                const speed = (0.6 + Math.random() * 0.3) * intensity;
+                
+                // Calculate toe pad position
+                const basex = Math.cos(toePos.angle) * toePos.distance;
+                const basey = Math.sin(toePos.angle) * toePos.distance;
+                
+                particles.push({
+                    vx: (basex + Math.cos(localAngle) * radius) * speed,
+                    vy: (basey + Math.sin(localAngle) * radius) * speed,
+                    particleType: 'paw' // Paw emoji particles
+                });
+            }
+        }
+        
         return particles;
     },
 
@@ -1366,6 +1525,16 @@ class FireworksEngine {
                             this.audioManager.play(audioConfig.cracklingSound, this.audioManager.CRACKLING_VOLUME);
                         }
                     };
+                    
+                    // Set secondary explosion sound callback for burst/spiral secondary effects
+                    if (shape === 'burst' || shape === 'spiral') {
+                        firework.onSecondaryExplosionSound = () => {
+                            // Play crackling sound for secondary burst/spiral
+                            const cracklingSound = Math.random() < 0.5 ? 'crackling-medium' : 'crackling-long';
+                            console.log(`[Fireworks] Secondary explosion crackling: ${cracklingSound}`);
+                            this.audioManager.play(cracklingSound, this.audioManager.CRACKLING_VOLUME * 0.4); // Quieter for secondary
+                        };
+                    }
                 } else if (instantExplode) {
                     console.log('[Fireworks] Instant explode - no launch sound needed');
                 }
@@ -1386,7 +1555,7 @@ class FireworksEngine {
             duration = 5000,
             burstCount = 15,
             burstInterval = 300,
-            shapes = ['burst', 'heart', 'star', 'ring', 'spiral'],
+            shapes = ['burst', 'heart', 'star', 'ring', 'spiral', 'paws'],
             colors = this.config.defaultColors
         } = data;
 
@@ -1735,8 +1904,24 @@ class FireworksEngine {
             // Render image particle
             const size = p.size * 3;
             ctx.drawImage(p.image, -size/2, -size/2, size, size);
+        } else if (p.type === 'heart') {
+            // Render heart-shaped particle using Unicode heart symbol
+            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
+            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`;
+            ctx.font = `${p.size * 4}px Arial`; // Hearts are bigger
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('❤', 0, 0);
+        } else if (p.type === 'paw') {
+            // Render paw-shaped particle using paw emoji
+            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
+            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`;
+            ctx.font = `${p.size * 4}px Arial`; // Paws are bigger
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🐾', 0, 0);
         } else {
-            // Render colored particle with glow
+            // Render colored particle with glow (standard circle)
             const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
             
             if (this.config.glowEnabled) {
