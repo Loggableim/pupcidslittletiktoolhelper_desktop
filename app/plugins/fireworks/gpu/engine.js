@@ -2,10 +2,12 @@
  * Fireworks GPU Engine - WebGL/Canvas Particle System
  * 
  * Features:
+ * - Realistic firework rockets with launch trails
+ * - Explosive particle bursts at peak
  * - WebGL 2.0 rendering with Canvas 2D fallback
  * - Particle pooling for performance
  * - Custom explosion shapes (burst, heart, star, spiral, ring)
- * - Trail effects
+ * - Trail effects and sparkles
  * - Glow effects
  * - Audio integration
  * - Gift image particles
@@ -19,15 +21,68 @@
 
 const CONFIG = {
     maxParticles: 2000,
+    maxRockets: 50,
     targetFps: 60,
-    gravity: 0.15,
+    gravity: 0.08,
     friction: 0.98,
-    windStrength: 0.02,
-    particleSizeRange: [3, 10],
-    trailLength: 8,
+    windStrength: 0.01,
+    particleSizeRange: [2, 6],
+    trailLength: 15,
     glowIntensity: 0.6,
-    defaultColors: ['#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff', '#44ffff']
+    rocketSpeed: 8,
+    rocketAcceleration: -0.05,
+    explosionForce: 5,
+    defaultColors: ['#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff', '#44ffff', '#ff8844', '#88ff44']
 };
+
+// ============================================================================
+// ROCKET CLASS - Launches upward and explodes
+// ============================================================================
+
+class Rocket {
+    constructor() {
+        this.reset();
+    }
+
+    reset() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.targetY = 0;
+        this.exploded = false;
+        this.life = 1;
+        this.color = '#ffffff';
+        this.trail = [];
+        this.size = 3;
+        this.explosionData = null; // Store data for explosion
+    }
+
+    update(deltaTime) {
+        if (this.exploded || this.life <= 0) return false;
+
+        // Store trail
+        if (this.trail.length > 20) {
+            this.trail.shift();
+        }
+        this.trail.push({ x: this.x, y: this.y, alpha: 0.8 });
+
+        // Apply acceleration (rocket slows down as it goes up)
+        this.vy += CONFIG.rocketAcceleration * deltaTime;
+        
+        // Update position
+        this.x += this.vx * deltaTime;
+        this.y += this.vy * deltaTime;
+
+        // Check if reached target height or velocity stopped
+        if (this.y <= this.targetY || this.vy >= 0) {
+            this.exploded = true;
+            return false; // Signal to explode
+        }
+
+        return true;
+    }
+}
 
 // ============================================================================
 // PARTICLE CLASS
@@ -60,23 +115,28 @@ class Particle {
     update(deltaTime) {
         if (this.life <= 0) return false;
 
-        // Store trail position
+        // Store trail position (shorter trails for explosion particles)
         if (this.trail.length >= CONFIG.trailLength) {
             this.trail.shift();
         }
         this.trail.push({ x: this.x, y: this.y, alpha: this.alpha });
 
-        // Apply physics
-        this.vy += this.gravity * deltaTime;
+        // Apply physics - stronger gravity for firework particles
+        this.vy += this.gravity * deltaTime * 1.5;
         this.vx *= this.friction;
         this.vy *= this.friction;
 
         this.x += this.vx * deltaTime;
         this.y += this.vy * deltaTime;
 
-        // Update life
-        this.life -= deltaTime;
+        // Update life with faster decay for sparkle effect
+        this.life -= deltaTime * 0.8;
         this.alpha = Math.max(0, this.life / this.maxLife);
+        
+        // Add sparkle/flicker effect
+        if (Math.random() < 0.1) {
+            this.alpha *= 0.7;
+        }
 
         // Update rotation
         this.rotation += this.rotationSpeed * deltaTime;
@@ -124,6 +184,65 @@ class ParticlePool {
                 this.release(this.active[i]);
             }
         }
+    }
+
+    getActiveCount() {
+        return this.active.length;
+    }
+}
+
+// ============================================================================
+// ROCKET POOL
+// ============================================================================
+
+class RocketPool {
+    constructor(size) {
+        this.pool = [];
+        this.active = [];
+        
+        for (let i = 0; i < size; i++) {
+            this.pool.push(new Rocket());
+        }
+    }
+
+    get() {
+        let rocket = this.pool.pop();
+        if (!rocket) {
+            rocket = new Rocket();
+        }
+        rocket.reset();
+        this.active.push(rocket);
+        return rocket;
+    }
+
+    release(rocket) {
+        const index = this.active.indexOf(rocket);
+        if (index > -1) {
+            this.active.splice(index, 1);
+            rocket.reset();
+            this.pool.push(rocket);
+        }
+    }
+
+    update(deltaTime) {
+        const rocketsToExplode = [];
+        
+        for (let i = this.active.length - 1; i >= 0; i--) {
+            const rocket = this.active[i];
+            if (!rocket.update(deltaTime)) {
+                // Rocket should explode
+                if (rocket.exploded && rocket.explosionData) {
+                    rocketsToExplode.push({
+                        x: rocket.x,
+                        y: rocket.y,
+                        data: rocket.explosionData
+                    });
+                }
+                this.release(rocket);
+            }
+        }
+        
+        return rocketsToExplode;
     }
 
     getActiveCount() {
@@ -334,6 +453,7 @@ class FireworksEngine {
         this.useWebGL = false;
         
         this.particlePool = new ParticlePool(CONFIG.maxParticles);
+        this.rocketPool = new RocketPool(CONFIG.maxRockets);
         this.audioManager = new AudioManager();
         
         this.lastTime = performance.now();
@@ -637,27 +757,86 @@ class FireworksEngine {
             glowEnabled = true
         } = data;
 
-        // Convert normalized position to canvas coordinates
-        const x = position.x * this.width;
-        const y = position.y * this.height;
+        // Launch a rocket that will explode at the target position
+        const rocket = this.rocketPool.get();
+        if (!rocket) {
+            console.warn('[Fireworks Engine] Rocket pool exhausted');
+            return;
+        }
+
+        // Start position at bottom of screen
+        const startX = position.x * this.width;
+        const bottomY = this.height;
+        
+        // Target position (where it should explode)
+        const targetY = position.y * this.height;
+
+        // Initialize rocket
+        rocket.x = startX;
+        rocket.y = bottomY;
+        rocket.targetY = targetY;
+        rocket.vx = (Math.random() - 0.5) * 0.5; // Slight horizontal drift
+        rocket.vy = -CONFIG.rocketSpeed; // Negative = upward
+        rocket.color = colors[Math.floor(Math.random() * colors.length)];
+        rocket.size = 3 + intensity;
+        
+        // Load images if provided
+        let giftImg = null;
+        let avatarImg = null;
+        if (giftImage) {
+            giftImg = await this.loadImage(giftImage);
+        }
+        if (userAvatar) {
+            avatarImg = await this.loadImage(userAvatar);
+        }
+
+        // Store explosion data in rocket
+        rocket.explosionData = {
+            shape,
+            colors,
+            intensity,
+            particleCount,
+            giftImg,
+            avatarImg,
+            avatarParticleChance,
+            tier,
+            username,
+            coins,
+            combo,
+            playSound,
+            trailsEnabled,
+            glowEnabled
+        };
+
+        // Play rocket launch sound
+        if (playSound && this.audioManager.enabled) {
+            this.audioManager.play('rocket', 0.3);
+        }
+
+        // Show gift popup if provided
+        if (username && coins > 0) {
+            this.showGiftPopup(startX, bottomY - 100, username, coins, combo, giftImage);
+        }
+    }
+
+    // New method to create explosion from rocket
+    createExplosion(x, y, explosionData) {
+        const {
+            shape,
+            colors,
+            intensity,
+            particleCount,
+            giftImg,
+            avatarImg,
+            avatarParticleChance,
+            playSound
+        } = explosionData;
 
         // Get shape generator
         const generator = ShapeGenerators[shape] || ShapeGenerators.burst;
         const velocities = generator(particleCount, intensity);
 
-        // Load gift image if provided
-        let giftImg = null;
-        if (giftImage) {
-            giftImg = await this.loadImage(giftImage);
-        }
-        
-        // Load user avatar if provided
-        let avatarImg = null;
-        if (userAvatar) {
-            avatarImg = await this.loadImage(userAvatar);
-        }
-
-        // Spawn particles
+        // Spawn explosion particles
         for (let i = 0; i < velocities.length; i++) {
             const p = this.particlePool.get();
             if (!p) break; // Pool exhausted
@@ -673,49 +852,52 @@ class FireworksEngine {
             p.size *= intensity;
             p.color = colors[Math.floor(Math.random() * colors.length)];
             p.gravity = this.config.gravity;
-            p.friction = this.config.friction;
+        for (let i = 0; i < velocities.length; i++) {
+            const p = this.particlePool.get();
+            if (!p) break; // Pool exhausted
+
+            p.x = x;
+            p.y = y;
+            p.vx = velocities[i].vx * CONFIG.explosionForce;
+            p.vy = velocities[i].vy * CONFIG.explosionForce;
+            p.life = 1.5 + Math.random() * 1.5;
+            p.maxLife = p.life;
+            p.size = this.config.particleSizeRange[0] + 
+                Math.random() * (this.config.particleSizeRange[1] - this.config.particleSizeRange[0]);
+            p.size *= intensity;
+            p.color = colors[Math.floor(Math.random() * colors.length)];
+            p.gravity = CONFIG.gravity;
+            p.friction = CONFIG.friction;
             p.rotation = Math.random() * Math.PI * 2;
             p.rotationSpeed = (Math.random() - 0.5) * 0.2;
             
             // Decide which image to use based on availability and configuration
-            // Default to colored circles if no images
             p.type = 'circle';
             
             if (avatarImg || giftImg) {
-                // Base image usage chance
-                const baseImageChance = 0.3; // 30% of particles use images
+                const baseImageChance = 0.3;
                 
                 if (Math.random() < baseImageChance) {
                     p.type = 'image';
                     
-                    // If both images available, use avatarParticleChance to decide
                     if (avatarImg && giftImg) {
-                        // avatarParticleChance determines avatar vs gift probability
                         p.image = Math.random() < avatarParticleChance ? avatarImg : giftImg;
                     } else if (avatarImg) {
-                        // Only avatar available
                         p.image = avatarImg;
                     } else {
-                        // Only gift available
                         p.image = giftImg;
                     }
                     
-                    p.size *= 2; // Make image particles larger
+                    p.size *= 2;
                 }
             }
             
-            // Clear trail
             p.trail = [];
         }
 
-        // Play sound
+        // Play explosion sound
         if (playSound && this.audioManager.enabled) {
             this.audioManager.play('explosion', intensity * 0.5);
-        }
-
-        // Show gift popup
-        if (username && coins > 0) {
-            this.showGiftPopup(x, y, username, coins, combo, giftImage);
         }
     }
 
