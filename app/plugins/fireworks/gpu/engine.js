@@ -450,6 +450,7 @@ class FireworksEngine {
             intensity = 1.0,
             particleCount = 50,
             giftImage = null,
+            userAvatar = null,
             tier = 'medium',
             username = null,
             coins = 0,
@@ -468,9 +469,15 @@ class FireworksEngine {
         const velocities = generator(particleCount, intensity);
 
         // Load gift image if provided
-        let image = null;
+        let giftImg = null;
         if (giftImage) {
-            image = await this.loadImage(giftImage);
+            giftImg = await this.loadImage(giftImage);
+        }
+        
+        // Load user avatar if provided
+        let avatarImg = null;
+        if (userAvatar) {
+            avatarImg = await this.loadImage(userAvatar);
         }
 
         // Spawn particles
@@ -493,11 +500,25 @@ class FireworksEngine {
             p.rotation = Math.random() * Math.PI * 2;
             p.rotationSpeed = (Math.random() - 0.5) * 0.2;
             
-            // Use gift image for some particles
-            if (image && Math.random() < 0.3) {
-                p.type = 'image';
-                p.image = image;
-                p.size *= 2;
+            // Decide which image to use (avatar or gift)
+            const useImage = Math.random() < 0.3; // 30% chance for images
+            if (useImage) {
+                // If both images available, randomly choose
+                if (avatarImg && giftImg) {
+                    p.type = 'image';
+                    p.image = Math.random() < 0.5 ? avatarImg : giftImg;
+                    p.size *= 2;
+                } else if (avatarImg) {
+                    p.type = 'image';
+                    p.image = avatarImg;
+                    p.size *= 2;
+                } else if (giftImg) {
+                    p.type = 'image';
+                    p.image = giftImg;
+                    p.size *= 2;
+                } else {
+                    p.type = 'circle';
+                }
             } else {
                 p.type = 'circle';
             }
