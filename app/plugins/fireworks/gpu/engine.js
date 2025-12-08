@@ -233,17 +233,17 @@ class Firework {
         Object.assign(this, defaults, args);
         
         // State management
-        this.exploded = false;
         this.particles = [];
         this.secondaryExplosions = [];
         
         // If instant explode, skip rocket creation entirely
         if (this.instantExplode) {
             this.rocket = null;
-            this.exploded = false;
+            this.exploded = false; // Will be set to true in update() when explode() is called
             this.shouldExplodeImmediately = true;
         } else if (this.skipRocket) {
             // Create a dummy rocket at target position, will explode immediately
+            this.exploded = false;
             this.rocket = new Particle({
                 x: this.x,
                 y: this.y, // Already at target from handleTrigger
@@ -262,7 +262,8 @@ class Firework {
                 lifespan: 0.01 // Very short lifespan
             });
         } else {
-            // Create rocket (seed particle)
+            // Normal mode: Create rocket particle
+            this.exploded = false;
             // If user avatar is available, use it as the rocket head
             const rocketType = this.userAvatar ? 'image' : 'circle';
             const rocketImage = this.userAvatar;
@@ -905,10 +906,12 @@ class FireworksEngine {
         });
         
         // Set explosion sound callback
-        if (playSound && !instantExplode) { // No sound for instant explosions to reduce audio spam
+        // Reduce volume for instant explosions instead of completely disabling
+        if (playSound) {
+            const soundVolume = instantExplode ? 0.2 : 0.5; // Quieter for instant explosions
             firework.onExplodeSound = (intensity) => {
                 if (this.audioManager.enabled) {
-                    this.audioManager.play('explosion', intensity * 0.5);
+                    this.audioManager.play('explosion', intensity * soundVolume);
                 }
             };
         }
