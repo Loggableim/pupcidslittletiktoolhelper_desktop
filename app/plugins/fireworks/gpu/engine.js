@@ -50,7 +50,11 @@ const CONFIG = {
         fire: ['#ff0000', '#ff4500', '#ff8c00', '#ffd700', '#ffff00'],
         ice: ['#00ffff', '#00ccff', '#0099ff', '#0066ff', '#0033ff'],
         rainbow: ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#9400d3']
-    }
+    },
+    // Combo throttling to prevent extreme lag
+    comboThrottleMinInterval: 100, // Minimum ms between combo triggers
+    comboSkipRocketsThreshold: 5, // Skip rockets when combo >= this value
+    comboInstantExplodeThreshold: 8 // Instant explosions (no rockets) when combo >= this
 };
 
 // ============================================================================
@@ -221,7 +225,9 @@ class Firework {
             avatarParticleChance: 0.3,
             useImages: false,
             tier: 'medium',
-            combo: 1
+            combo: 1,
+            skipRocket: false, // Skip rocket animation for high combos
+            instantExplode: false // Explode immediately without delay
         };
         
         Object.assign(this, defaults, args);
@@ -231,28 +237,54 @@ class Firework {
         this.particles = [];
         this.secondaryExplosions = [];
         
-        // Create rocket (seed particle)
-        // If user avatar is available, use it as the rocket head
-        const rocketType = this.userAvatar ? 'image' : 'circle';
-        const rocketImage = this.userAvatar;
-        const rocketSize = this.userAvatar ? 8 + this.intensity : 3 + this.intensity;
-        
-        this.rocket = new Particle({
-            x: this.x,
-            y: this.y,
-            vx: (Math.random() - 0.5) * 1.5,
-            vy: CONFIG.rocketSpeed + (Math.random() - 0.5) * 2,
-            size: rocketSize,
-            hue: Math.random() * 360,
-            saturation: 80,
-            brightness: 100,
-            color: this.colors[Math.floor(Math.random() * this.colors.length)],
-            isSeed: true,
-            gravity: CONFIG.rocketAcceleration,
-            drag: 0.995,
-            type: rocketType,
-            image: rocketImage
-        });
+        // If instant explode, skip rocket creation entirely
+        if (this.instantExplode) {
+            this.rocket = null;
+            this.exploded = false;
+            this.shouldExplodeImmediately = true;
+        } else if (this.skipRocket) {
+            // Create a dummy rocket at target position, will explode immediately
+            this.rocket = new Particle({
+                x: this.x,
+                y: this.y, // Already at target from handleTrigger
+                vx: 0,
+                vy: 0,
+                size: 1,
+                hue: 0,
+                saturation: 0,
+                brightness: 0,
+                color: '#000000',
+                isSeed: true,
+                gravity: 0,
+                drag: 1,
+                type: 'circle',
+                image: null,
+                lifespan: 0.01 // Very short lifespan
+            });
+        } else {
+            // Create rocket (seed particle)
+            // If user avatar is available, use it as the rocket head
+            const rocketType = this.userAvatar ? 'image' : 'circle';
+            const rocketImage = this.userAvatar;
+            const rocketSize = this.userAvatar ? 8 + this.intensity : 3 + this.intensity;
+            
+            this.rocket = new Particle({
+                x: this.x,
+                y: this.y,
+                vx: (Math.random() - 0.5) * 1.5,
+                vy: CONFIG.rocketSpeed + (Math.random() - 0.5) * 2,
+                size: rocketSize,
+                hue: Math.random() * 360,
+                saturation: 80,
+                brightness: 100,
+                color: this.colors[Math.floor(Math.random() * this.colors.length)],
+                isSeed: true,
+                gravity: CONFIG.rocketAcceleration,
+                drag: 0.995,
+                type: rocketType,
+                image: rocketImage
+            });
+        }
         
         // Color palette for explosion
         this.baseHue = Math.random() * 360;
@@ -260,8 +292,19 @@ class Firework {
     }
     
     shouldExplode() {
-        // Explode when rocket velocity becomes downward OR reaches target height
-        return (this.rocket.vy >= 0 || this.rocket.y <= this.targetY) && !this.exploded;
+        // Instant explode mode
+        if (this.shouldExplodeImmediately) {
+            return true;
+        }
+        // Skip rocket mode - explode immediately
+        if (this.skipRocket) {
+            return true;
+        }
+        // Normal mode - explode when rocket velocity becomes downward OR reaches target height
+        if (this.rocket) {
+            return (this.rocket.vy >= 0 || this.rocket.y <= this.targetY) && !this.exploded;
+        }
+        return false;
     }
     
     explode() {
@@ -272,6 +315,10 @@ class Firework {
             this.onExplodeSound(this.intensity);
         }
         
+        // For instant explode, use the position from constructor
+        const explosionX = this.rocket ? this.rocket.x : this.x;
+        const explosionY = this.rocket ? this.rocket.y : this.y;
+        
         // Calculate particle count based on intensity and tier
         const tierMultipliers = {
             small: 0.5,
@@ -281,7 +328,16 @@ class Firework {
         };
         const tierMult = tierMultipliers[this.tier] || 1.0;
         const comboMult = 1 + (this.combo - 1) * 0.2;
-        const particleCount = Math.floor((40 + Math.random() * 60) * this.intensity * tierMult * comboMult);
+        
+        // Reduce particles for high combos to improve performance
+        let baseParticles = 40 + Math.random() * 60;
+        if (this.combo >= 10) {
+            baseParticles *= 0.5; // 50% particles for combo >= 10
+        } else if (this.combo >= 5) {
+            baseParticles *= 0.7; // 70% particles for combo >= 5
+        }
+        
+        const particleCount = Math.floor(baseParticles * this.intensity * tierMult * comboMult);
         
         // Get velocities from shape generator
         const generator = ShapeGenerators[this.shape] || ShapeGenerators.burst;
@@ -311,8 +367,8 @@ class Firework {
             }
             
             const particle = new Particle({
-                x: this.rocket.x,
-                y: this.rocket.y,
+                x: explosionX,
+                y: explosionY,
                 vx: vel.vx,
                 vy: vel.vy,
                 size: isSparkle ? 2 + Math.random() * 2 : (particleType === 'image' ? 4 + Math.random() * 4 : 3 + Math.random() * 4),
@@ -335,7 +391,8 @@ class Firework {
             this.particles.push(particle);
             
             // Chance for secondary explosion (only for non-image particles to avoid lag)
-            if (Math.random() < CONFIG.secondaryExplosionChance && !isSparkle && particleType === 'circle') {
+            // Disable for high combos to improve performance
+            if (this.combo < 5 && Math.random() < CONFIG.secondaryExplosionChance && !isSparkle && particleType === 'circle') {
                 particle.willExplode = true;
                 particle.explosionDelay = 20 + Math.floor(Math.random() * 30);
             }
@@ -343,8 +400,15 @@ class Firework {
     }
     
     update() {
-        // Update rocket
-        if (!this.exploded) {
+        // Handle instant explode mode
+        if (this.shouldExplodeImmediately && !this.exploded) {
+            this.explode();
+            this.shouldExplodeImmediately = false;
+            return;
+        }
+        
+        // Update rocket (if exists and not exploded)
+        if (!this.exploded && this.rocket) {
             this.rocket.applyGravity();
             this.rocket.update();
             
@@ -668,6 +732,10 @@ class FireworksEngine {
         this.fpsHistory = []; // Track FPS history for adaptive performance
         this.performanceMode = 'normal'; // 'normal', 'reduced', 'minimal'
         
+        // Combo throttling to prevent extreme lag
+        this.lastComboTriggerTime = 0;
+        this.comboTriggerQueue = [];
+        
         this.config = { 
             ...CONFIG,
             toasterMode: false,
@@ -785,6 +853,29 @@ class FireworksEngine {
             playSound = true
         } = data;
 
+        // Combo throttling: prevent extreme lag from rapid combos
+        const now = performance.now();
+        const timeSinceLastTrigger = now - this.lastComboTriggerTime;
+        const minInterval = CONFIG.comboThrottleMinInterval;
+        
+        // Skip if triggered too quickly (except for first trigger)
+        if (this.lastComboTriggerTime > 0 && timeSinceLastTrigger < minInterval) {
+            console.log('[Fireworks] Combo throttled (too fast)');
+            return;
+        }
+        
+        this.lastComboTriggerTime = now;
+        
+        // High combo optimization: skip rockets entirely for very high combos
+        const skipRockets = combo >= CONFIG.comboSkipRocketsThreshold;
+        const instantExplode = combo >= CONFIG.comboInstantExplodeThreshold;
+        
+        if (instantExplode) {
+            console.log(`[Fireworks] Instant explosion mode (combo: ${combo})`);
+        } else if (skipRockets) {
+            console.log(`[Fireworks] Skipping rocket animation (combo: ${combo})`);
+        }
+
         // Launch position at bottom, target at specified position
         const startX = position.x * this.width;
         const targetY = position.y * this.height;
@@ -798,7 +889,7 @@ class FireworksEngine {
         // Create firework
         const firework = new Firework({
             x: startX,
-            y: this.height,
+            y: skipRockets ? targetY : this.height, // Start at target if skipping rockets
             targetY: targetY,
             shape: shape,
             colors: colors,
@@ -808,11 +899,13 @@ class FireworksEngine {
             avatarParticleChance: avatarParticleChance,
             useImages: !!(giftImg || avatarImg),
             tier: tier,
-            combo: combo
+            combo: combo,
+            skipRocket: skipRockets, // Pass flag to Firework class
+            instantExplode: instantExplode // Explode immediately without any delay
         });
         
         // Set explosion sound callback
-        if (playSound) {
+        if (playSound && !instantExplode) { // No sound for instant explosions to reduce audio spam
             firework.onExplodeSound = (intensity) => {
                 if (this.audioManager.enabled) {
                     this.audioManager.play('explosion', intensity * 0.5);
@@ -822,12 +915,12 @@ class FireworksEngine {
 
         this.fireworks.push(firework);
 
-        // Play launch sound
-        if (playSound && this.audioManager.enabled) {
+        // Play launch sound only if not skipping rockets
+        if (playSound && !skipRockets && this.audioManager.enabled) {
             this.audioManager.play('rocket', 0.3);
         }
 
-        // Show gift popup
+        // Show gift popup (always show, even for instant explosions)
         if (username && coins > 0) {
             this.showGiftPopup(startX, this.height - 100, username, coins, combo, giftImage);
         }

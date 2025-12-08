@@ -1,16 +1,31 @@
 # Fireworks Audio Files
 
-This directory should contain:
-- `rocket.mp3` - Rocket launch/whistle sound
-- `explosion.mp3` - Explosion/burst sound
+This directory contains audio files for the fireworks plugin:
+- `rocket.mp3` - Rocket launch/whistle sound ✅ **INSTALLED**
+- `explosion.mp3` - Explosion/burst sound ✅ **INSTALLED**
 
-## Adding Your Own Sounds
+## Audio Status
+
+✅ **Audio files are installed and ready to use!**
+
+The plugin will automatically play these sounds during fireworks animations:
+- Rocket sound plays when a firework launches
+- Explosion sound plays when a firework bursts
+
+Audio requires user interaction (click/keypress) to enable due to browser autoplay policies.
+
+## Replacing Audio Files
+
+You can replace these files with your own sounds:
 
 1. Find royalty-free firework sound effects
 2. Convert to MP3 format
 3. Recommended: Keep files under 100KB for performance
-4. Place in this directory
+4. Replace `rocket.mp3` and/or `explosion.mp3` in this directory
+5. Reload the overlay page to use new sounds
 
-## Fallback
+## Troubleshooting
 
-If audio files are missing, the plugin will work silently without errors.
+- **No sound?** Click anywhere on the overlay page to enable audio (browser requirement)
+- **Wrong sounds?** Clear browser cache and reload the page
+- **Audio too loud/quiet?** Adjust volume in the plugin settings UI
