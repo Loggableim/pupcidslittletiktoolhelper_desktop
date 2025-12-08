@@ -2618,6 +2618,16 @@ function closeModal(modalId) {
     if (modal) {
         modal.classList.remove('active');
         document.body.style.overflow = '';
+        
+        // Clean up modal state based on modal type
+        if (modalId === 'goalModal') {
+            currentEditingGoal = null;
+        } else if (modalId === 'chainModal') {
+            currentEditingChain = null;
+            chainSteps = [];
+        } else if (modalId === 'stepModal') {
+            currentEditingStep = null;
+        }
     }
 }
 
@@ -2646,6 +2656,12 @@ function showNotification(message, type = 'info') {
         notification.classList.remove('show');
         setTimeout(() => notification.remove(), 300);
     }, 3000);
+}
+
+// Alias for showNotification to support both naming conventions
+function showToast(type, message) {
+    // Note: showToast uses (type, message) while showNotification uses (message, type)
+    showNotification(message, type);
 }
 
 function confirmAction(message) {
@@ -3554,59 +3570,78 @@ let currentEditingGoal = null;
 let currentEditingChain = null;
 let currentEditingStep = null;
 let chainSteps = [];
+let zappieHellInitialized = false;
 
 /**
- * Initialize ZappieHell tab
+ * Initialize ZappieHell tab event listeners (once)
  */
-function initZappieHellTab() {
-    // Set overlay URL
-    const overlayUrl = `${window.location.origin}/openshock/overlay/zappiehell-overlay.html`;
-    document.getElementById('zappiehellOverlayUrl').value = overlayUrl;
+function initZappieHellEventListeners() {
+    if (zappieHellInitialized) return;
+    
+    // Button handlers - use safe references to avoid ID conflicts
+    const addGoalBtn = document.getElementById('addGoalBtn');
+    const saveGoalBtn = document.getElementById('saveGoalBtn');
+    const cancelGoalBtn = document.getElementById('cancelGoalBtn');
+    const closeGoalModalBtn = document.getElementById('closeGoalModal');
+    
+    const addChainBtn = document.getElementById('addChainBtn');
+    const saveChainBtn = document.getElementById('saveChainBtn');
+    const cancelChainBtn = document.getElementById('cancelChainBtn');
+    const closeChainModalBtn = document.getElementById('closeChainModal');
+    
+    const addChainStepBtn = document.getElementById('addChainStepBtn');
+    const saveStepBtn = document.getElementById('saveStepBtn');
+    const cancelStepBtn = document.getElementById('cancelStepBtn');
+    const closeStepModalBtn = document.getElementById('closeStepModal');
+    
+    const copyZappieHellOverlayUrl = document.getElementById('copyZappieHellOverlayUrl');
+    const stepTypeSelect = document.getElementById('stepTypeSelect');
+    
+    if (addGoalBtn) addGoalBtn.addEventListener('click', () => openGoalModal());
+    if (saveGoalBtn) saveGoalBtn.addEventListener('click', saveGoal);
+    if (cancelGoalBtn) cancelGoalBtn.addEventListener('click', () => closeModal('goalModal'));
+    if (closeGoalModalBtn) closeGoalModalBtn.addEventListener('click', () => closeModal('goalModal'));
 
-    // Load goals and chains
-    loadGoals();
-    loadEventChains();
+    if (addChainBtn) addChainBtn.addEventListener('click', () => openChainModal());
+    if (saveChainBtn) saveChainBtn.addEventListener('click', saveChain);
+    if (cancelChainBtn) cancelChainBtn.addEventListener('click', () => closeModal('chainModal'));
+    if (closeChainModalBtn) closeChainModalBtn.addEventListener('click', () => closeModal('chainModal'));
 
-    // Button handlers
-    document.getElementById('addGoalBtn').addEventListener('click', () => openGoalModal());
-    document.getElementById('saveGoalBtn').addEventListener('click', saveGoal);
-    document.getElementById('cancelGoalBtn').addEventListener('click', closeGoalModal);
-    document.getElementById('closeGoalModal').addEventListener('click', closeGoalModal);
+    if (addChainStepBtn) addChainStepBtn.addEventListener('click', () => openStepModal());
+    if (saveStepBtn) saveStepBtn.addEventListener('click', saveChainStep);
+    if (cancelStepBtn) cancelStepBtn.addEventListener('click', () => closeModal('stepModal'));
+    if (closeStepModalBtn) closeStepModalBtn.addEventListener('click', () => closeModal('stepModal'));
 
-    document.getElementById('addChainBtn').addEventListener('click', () => openChainModal());
-    document.getElementById('saveChainBtn').addEventListener('click', saveChain);
-    document.getElementById('cancelChainBtn').addEventListener('click', closeChainModal);
-    document.getElementById('closeChainModal').addEventListener('click', closeChainModal);
-
-    document.getElementById('addChainStepBtn').addEventListener('click', () => openStepModal());
-    document.getElementById('saveStepBtn').addEventListener('click', saveChainStep);
-    document.getElementById('cancelStepBtn').addEventListener('click', closeStepModal);
-    document.getElementById('closeStepModal').addEventListener('click', closeStepModal);
-
-    document.getElementById('copyZappieHellOverlayUrl').addEventListener('click', () => {
-        const input = document.getElementById('zappiehellOverlayUrl');
-        input.select();
-        
-        // Use modern Clipboard API with fallback
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(input.value)
-                .then(() => showToast('success', 'Overlay URL copied to clipboard!'))
-                .catch(() => {
-                    // Fallback to deprecated method
-                    document.execCommand('copy');
-                    showToast('success', 'Overlay URL copied to clipboard!');
-                });
-        } else {
-            // Fallback for older browsers
-            document.execCommand('copy');
-            showToast('success', 'Overlay URL copied to clipboard!');
-        }
-    });
+    if (copyZappieHellOverlayUrl) {
+        copyZappieHellOverlayUrl.addEventListener('click', () => {
+            const input = document.getElementById('zappiehellOverlayUrl');
+            if (!input) return;
+            
+            input.select();
+            
+            // Use modern Clipboard API with fallback
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(input.value)
+                    .then(() => showToast('success', 'Overlay URL copied to clipboard!'))
+                    .catch(() => {
+                        // Fallback to deprecated method
+                        document.execCommand('copy');
+                        showToast('success', 'Overlay URL copied to clipboard!');
+                    });
+            } else {
+                // Fallback for older browsers
+                document.execCommand('copy');
+                showToast('success', 'Overlay URL copied to clipboard!');
+            }
+        });
+    }
 
     // Step type selector handler
-    document.getElementById('stepTypeSelect').addEventListener('change', (e) => {
-        updateStepFieldsVisibility(e.target.value);
-    });
+    if (stepTypeSelect) {
+        stepTypeSelect.addEventListener('change', (e) => {
+            updateStepFieldsVisibility(e.target.value);
+        });
+    }
 
     // Socket.io listeners for ZappieHell
     if (socket) {
@@ -3616,7 +3651,29 @@ function initZappieHellTab() {
         });
     }
 
-    addDebugLog('info', 'ZappieHell tab initialized');
+    zappieHellInitialized = true;
+    addDebugLog('info', 'ZappieHell event listeners initialized');
+}
+
+/**
+ * Initialize/refresh ZappieHell tab data
+ */
+function initZappieHellTab() {
+    // Initialize event listeners once
+    initZappieHellEventListeners();
+    
+    // Set overlay URL
+    const overlayUrlInput = document.getElementById('zappiehellOverlayUrl');
+    if (overlayUrlInput) {
+        const overlayUrl = `${window.location.origin}/openshock/overlay/zappiehell-overlay.html`;
+        overlayUrlInput.value = overlayUrl;
+    }
+
+    // Load goals and chains
+    loadGoals();
+    loadEventChains();
+
+    addDebugLog('info', 'ZappieHell tab data loaded');
 }
 
 /**
@@ -3799,15 +3856,7 @@ function openGoalModal(goalId = null) {
         document.getElementById('goalActive').checked = true;
     }
     
-    document.getElementById('goalModal').classList.add('active');
-}
-
-/**
- * Close goal modal
- */
-function closeGoalModal() {
-    document.getElementById('goalModal').classList.remove('active');
-    currentEditingGoal = null;
+    openModal('goalModal');
 }
 
 /**
@@ -3843,7 +3892,7 @@ async function saveGoal() {
         
         if (data.success) {
             showToast('success', goalId ? 'Goal updated' : 'Goal created');
-            closeGoalModal();
+            closeModal('goalModal');
             loadGoals();
         } else {
             showToast('error', data.error || 'Failed to save goal');
@@ -3932,16 +3981,7 @@ function openChainModal(chainId = null) {
     }
     
     renderChainSteps();
-    document.getElementById('chainModal').classList.add('active');
-}
-
-/**
- * Close chain modal
- */
-function closeChainModal() {
-    document.getElementById('chainModal').classList.remove('active');
-    currentEditingChain = null;
-    chainSteps = [];
+    openModal('chainModal');
 }
 
 /**
@@ -3974,7 +4014,7 @@ async function saveChain() {
         
         if (data.success) {
             showToast('success', chainId ? 'Event chain updated' : 'Event chain created');
-            closeChainModal();
+            closeModal('chainModal');
             loadEventChains();
         } else {
             showToast('error', data.error || 'Failed to save event chain');
@@ -4154,15 +4194,7 @@ function openStepModal(stepIndex = null) {
     updateStepPatternList();
     updateStepDeviceList();
     
-    document.getElementById('stepModal').classList.add('active');
-}
-
-/**
- * Close step modal
- */
-function closeStepModal() {
-    document.getElementById('stepModal').classList.remove('active');
-    currentEditingStep = null;
+    openModal('stepModal');
 }
 
 /**
@@ -4172,25 +4204,31 @@ function updateStepFieldsVisibility(type) {
     const fields = ['openshockStepFields', 'delayStepFields', 'audioStepFields', 'webhookStepFields', 'overlayStepFields'];
     
     fields.forEach(fieldId => {
-        document.getElementById(fieldId).style.display = 'none';
+        const elem = document.getElementById(fieldId);
+        if (elem) elem.style.display = 'none';
     });
     
     switch(type) {
         case 'openshock':
-            document.getElementById('openshockStepFields').style.display = 'block';
+            const openshockFields = document.getElementById('openshockStepFields');
+            if (openshockFields) openshockFields.style.display = 'block';
             break;
         case 'delay':
-            document.getElementById('delayStepFields').style.display = 'block';
+            const delayFields = document.getElementById('delayStepFields');
+            if (delayFields) delayFields.style.display = 'block';
             break;
         case 'audio':
         case 'tts':
-            document.getElementById('audioStepFields').style.display = 'block';
+            const audioFields = document.getElementById('audioStepFields');
+            if (audioFields) audioFields.style.display = 'block';
             break;
         case 'webhook':
-            document.getElementById('webhookStepFields').style.display = 'block';
+            const webhookFields = document.getElementById('webhookStepFields');
+            if (webhookFields) webhookFields.style.display = 'block';
             break;
         case 'overlay':
-            document.getElementById('overlayStepFields').style.display = 'block';
+            const overlayFields = document.getElementById('overlayStepFields');
+            if (overlayFields) overlayFields.style.display = 'block';
             break;
     }
 }
@@ -4263,7 +4301,7 @@ function saveChainStep() {
     }
 
     renderChainSteps();
-    closeStepModal();
+    closeModal('stepModal');
 }
 
 /**
