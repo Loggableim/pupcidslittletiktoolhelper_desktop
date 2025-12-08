@@ -118,48 +118,75 @@
         // Event delegation for dynamically created buttons
         document.addEventListener('click', (e) => {
             // Question actions
-            if (e.target.closest('.btn-edit-question')) {
-                const questionId = parseInt(e.target.closest('.btn-edit-question').dataset.questionId);
+            let btn = e.target.closest('.btn-edit-question');
+            if (btn) {
+                const questionId = parseInt(btn.dataset.questionId);
                 editQuestion(questionId);
-            } else if (e.target.closest('.btn-delete-question')) {
-                const questionId = parseInt(e.target.closest('.btn-delete-question').dataset.questionId);
+                return;
+            }
+            btn = e.target.closest('.btn-delete-question');
+            if (btn) {
+                const questionId = parseInt(btn.dataset.questionId);
                 deleteQuestion(questionId);
+                return;
             }
             // Package actions
-            else if (e.target.closest('.btn-view-package')) {
-                const packageId = parseInt(e.target.closest('.btn-view-package').dataset.packageId);
+            btn = e.target.closest('.btn-view-package');
+            if (btn) {
+                const packageId = parseInt(btn.dataset.packageId);
                 viewPackageQuestions(packageId);
-            } else if (e.target.closest('.btn-delete-package')) {
-                const packageId = parseInt(e.target.closest('.btn-delete-package').dataset.packageId);
+                return;
+            }
+            btn = e.target.closest('.btn-delete-package');
+            if (btn) {
+                const packageId = parseInt(btn.dataset.packageId);
                 deletePackage(packageId);
+                return;
             }
             // Layout actions
-            else if (e.target.closest('.btn-activate-layout')) {
-                const layoutId = parseInt(e.target.closest('.btn-activate-layout').dataset.layoutId);
+            btn = e.target.closest('.btn-activate-layout');
+            if (btn) {
+                const layoutId = parseInt(btn.dataset.layoutId);
                 activateLayout(layoutId);
-            } else if (e.target.closest('.btn-deactivate-layout')) {
+                return;
+            }
+            btn = e.target.closest('.btn-deactivate-layout');
+            if (btn) {
                 deactivateLayout();
-            } else if (e.target.closest('.btn-edit-layout')) {
-                const layoutId = parseInt(e.target.closest('.btn-edit-layout').dataset.layoutId);
+                return;
+            }
+            btn = e.target.closest('.btn-edit-layout');
+            if (btn) {
+                const layoutId = parseInt(btn.dataset.layoutId);
                 editLayout(layoutId);
-            } else if (e.target.closest('.btn-delete-layout')) {
-                const layoutId = parseInt(e.target.closest('.btn-delete-layout').dataset.layoutId);
+                return;
+            }
+            btn = e.target.closest('.btn-delete-layout');
+            if (btn) {
+                const layoutId = parseInt(btn.dataset.layoutId);
                 deleteLayout(layoutId);
+                return;
             }
             // Gift joker actions
-            else if (e.target.closest('.btn-edit-gift-joker')) {
-                const giftId = parseInt(e.target.closest('.btn-edit-gift-joker').dataset.giftId);
+            btn = e.target.closest('.btn-edit-gift-joker');
+            if (btn) {
+                const giftId = parseInt(btn.dataset.giftId);
                 editGiftJoker(giftId);
-            } else if (e.target.closest('.btn-delete-gift-joker')) {
-                const giftId = parseInt(e.target.closest('.btn-delete-gift-joker').dataset.giftId);
+                return;
+            }
+            btn = e.target.closest('.btn-delete-gift-joker');
+            if (btn) {
+                const giftId = parseInt(btn.dataset.giftId);
                 deleteGiftJoker(giftId);
+                return;
             }
         });
 
         // Event delegation for package toggle checkboxes
         document.addEventListener('change', (e) => {
-            if (e.target.closest('.package-toggle-checkbox')) {
-                const packageId = parseInt(e.target.closest('.package-toggle-checkbox').dataset.packageId);
+            const checkbox = e.target.closest('.package-toggle-checkbox');
+            if (checkbox) {
+                const packageId = parseInt(checkbox.dataset.packageId);
                 togglePackage(packageId);
             }
         });
