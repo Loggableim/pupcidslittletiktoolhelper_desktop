@@ -2035,10 +2035,9 @@ function handleAudioFileSelect(event) {
             const objectURL = URL.createObjectURL(file);
             player.src = objectURL;
             
-            // Clean up when audio is loaded or on error
-            player.addEventListener('loadedmetadata', function cleanup() {
+            // Clean up when audio is loaded (once: true handles automatic removal)
+            player.addEventListener('loadedmetadata', () => {
                 // Object URL no longer needed after metadata is loaded
-                player.removeEventListener('loadedmetadata', cleanup);
             }, { once: true });
         }
 
