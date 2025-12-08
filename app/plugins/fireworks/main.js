@@ -313,7 +313,7 @@ class FireworksPlugin {
         // Trigger fireworks manually
         this.api.registerRoute('post', '/api/fireworks/trigger', (req, res) => {
             try {
-                const { type, intensity, shape, colors, position, giftId, duration } = req.body;
+                const { type, intensity, shape, colors, position, giftId, duration, userAvatar } = req.body;
                 
                 this.triggerFirework({
                     type: type || 'burst',
@@ -322,8 +322,10 @@ class FireworksPlugin {
                     colors: colors || null,
                     position: position || { x: 0.5, y: 0.7 },
                     giftId: giftId || null,
+                    userAvatar: userAvatar || null,
                     duration: duration || 2000,
-                    reason: 'manual'
+                    reason: 'manual',
+                    bypassEnabled: true  // Allow test triggers even when disabled
                 });
                 
                 res.json({ success: true, message: 'Firework triggered' });
@@ -336,7 +338,7 @@ class FireworksPlugin {
         this.api.registerRoute('post', '/api/fireworks/finale', (req, res) => {
             try {
                 const { intensity, duration } = req.body;
-                this.triggerFinale(intensity || 3.0, duration || 5000);
+                this.triggerFinale(intensity || 3.0, duration || 5000, true); // true = bypass enabled check
                 res.json({ success: true, message: 'Finale triggered' });
             } catch (error) {
                 res.status(500).json({ success: false, error: error.message });
@@ -346,7 +348,7 @@ class FireworksPlugin {
         // Trigger random firework
         this.api.registerRoute('post', '/api/fireworks/random', (req, res) => {
             try {
-                this.triggerRandomFirework();
+                this.triggerRandomFirework(true); // true = bypass enabled check
                 res.json({ success: true, message: 'Random firework triggered' });
             } catch (error) {
                 res.status(500).json({ success: false, error: error.message });
@@ -680,7 +682,8 @@ class FireworksPlugin {
      * Core firework trigger - emits to overlay
      */
     triggerFirework(options) {
-        if (!this.config.enabled) return;
+        // Allow bypass of enabled check for manual triggers (tests, API calls)
+        if (!this.config.enabled && !options.bypassEnabled) return;
 
         const payload = {
             id: Date.now() + Math.random().toString(36).substr(2, 9),
@@ -729,8 +732,8 @@ class FireworksPlugin {
     /**
      * Trigger finale show (multiple simultaneous fireworks)
      */
-    triggerFinale(intensity = 3.0, duration = 5000) {
-        if (!this.config.enabled) return;
+    triggerFinale(intensity = 3.0, duration = 5000, bypassEnabled = false) {
+        if (!this.config.enabled && !bypassEnabled) return;
 
         this.api.log(`🎆 [FIREWORKS] FINALE! Intensity: ${intensity}, Duration: ${duration}ms`, 'info');
 
@@ -758,7 +761,7 @@ class FireworksPlugin {
     /**
      * Trigger random firework
      */
-    triggerRandomFirework() {
+    triggerRandomFirework(bypassEnabled = false) {
         const shapes = ['burst', 'heart', 'star', 'ring', 'spiral'];
         const intensity = this.config.randomMinIntensity + 
             Math.random() * (this.config.randomMaxIntensity - this.config.randomMinIntensity);
@@ -772,7 +775,8 @@ class FireworksPlugin {
                 x: 0.15 + Math.random() * 0.7,
                 y: 0.25 + Math.random() * 0.5
             },
-            reason: 'random'
+            reason: 'random',
+            bypassEnabled: bypassEnabled
         });
     }
 
