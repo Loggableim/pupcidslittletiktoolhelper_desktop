@@ -176,9 +176,13 @@ Section "!LTTH Core Application" SEC_CORE
   ; Install app directory
   Banner::show /NOUNLOAD "Installing Application" "Copying application files..."
   SetOutPath "$INSTDIR\app"
+  ; Exclude runtime-generated directories:
+  ; - logs: Contains Winston audit files (.*.json) that cause NSIS errors
+  ; - node_modules: Runtime dependencies installed by npm
   File /r /x "*.md~" /x ".git*" /x "logs" /x "node_modules" "${APP_DIR}\*.*"
   
-  ; Create runtime directories that were excluded
+  ; Create runtime directories that were excluded from packaging
+  ; These directories are needed for the application to run properly
   CreateDirectory "$INSTDIR\app\logs"
   
   Banner::destroy
