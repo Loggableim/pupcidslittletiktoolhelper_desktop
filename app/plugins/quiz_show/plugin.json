@@ -1,8 +1,8 @@
 {
   "id": "quiz-show",
-  "name": "Quiz Show",
+  "name": "Pup Cid´s Little Quiz Show Plugin",
   "version": "1.0.0",
-  "description": "Interactive quiz show plugin in the style of 'Who Wants to Be a Millionaire' for TikTok livestreams with chat integration, jokers, and leaderboard",
+  "description": "Interactive quiz show plugin for TikTok livestreams with chat integration, jokers, and leaderboard",
   "author": "TikTok Helper",
   "entry": "main.js",
   "enabled": true,

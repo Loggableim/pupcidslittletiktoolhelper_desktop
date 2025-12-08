@@ -487,7 +487,16 @@
             voterIconCompactMode: document.getElementById('voterIconCompactMode').checked,
             voterIconAnimation: document.getElementById('voterIconAnimation').value,
             voterIconPosition: document.getElementById('voterIconPosition').value,
-            voterIconShowOnScoreboard: document.getElementById('voterIconShowOnScoreboard').checked
+            voterIconShowOnScoreboard: document.getElementById('voterIconShowOnScoreboard').checked,
+            // NEW: Chat Command Settings
+            allowPlainLetters: document.getElementById('allowPlainLetters').checked,
+            allowExclamation: document.getElementById('allowExclamation').checked,
+            allowSlash: document.getElementById('allowSlash').checked,
+            allowFullText: document.getElementById('allowFullText').checked,
+            jokerCommandPrefix: document.getElementById('jokerCommandPrefix').value,
+            jokerSuperfanOnly: document.getElementById('jokerSuperfanOnly').checked,
+            answerPermissionLevel: document.getElementById('answerPermissionLevel').value,
+            useGCCE: document.getElementById('useGCCE').checked
         };
 
         try {
@@ -745,6 +754,16 @@
         document.getElementById('voterIconAnimation').value = config.voterIconAnimation || 'fade';
         document.getElementById('voterIconPosition').value = config.voterIconPosition || 'above';
         document.getElementById('voterIconShowOnScoreboard').checked = config.voterIconShowOnScoreboard || false;
+        
+        // NEW: Chat Command Settings
+        document.getElementById('allowPlainLetters').checked = config.allowPlainLetters !== false;
+        document.getElementById('allowExclamation').checked = config.allowExclamation !== false;
+        document.getElementById('allowSlash').checked = config.allowSlash || false;
+        document.getElementById('allowFullText').checked = config.allowFullText !== false;
+        document.getElementById('jokerCommandPrefix').value = config.jokerCommandPrefix || '!joker';
+        document.getElementById('jokerSuperfanOnly').checked = config.jokerSuperfanOnly !== false;
+        document.getElementById('answerPermissionLevel').value = config.answerPermissionLevel || 'all';
+        document.getElementById('useGCCE').checked = config.useGCCE || false;
         
         // Load AI settings from state
         loadAISettings();
@@ -1123,13 +1142,13 @@
 
             if (data.success) {
                 hudConfig = data.config;
-                showMessage('hudSaveMessage', 'HUD-Konfiguration erfolgreich gespeichert!', 'success');
+                showMessage('HUD-Konfiguration erfolgreich gespeichert!', 'success', 'hudSaveMessage');
                 refreshPreview();
             } else {
-                showMessage('hudSaveMessage', 'Fehler beim Speichern: ' + data.error, 'error');
+                showMessage('Fehler beim Speichern: ' + data.error, 'error', 'hudSaveMessage');
             }
         } catch (error) {
-            showMessage('hudSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+            showMessage('Netzwerkfehler: ' + error.message, 'error', 'hudSaveMessage');
         }
     }
 
@@ -1148,13 +1167,13 @@
             if (data.success) {
                 hudConfig = data.config;
                 applyHUDConfigToForm();
-                showMessage('hudSaveMessage', 'HUD-Konfiguration auf Standard zurückgesetzt!', 'success');
+                showMessage('HUD-Konfiguration auf Standard zurückgesetzt!', 'success', 'hudSaveMessage');
                 refreshPreview();
             } else {
-                showMessage('hudSaveMessage', 'Fehler beim Zurücksetzen: ' + data.error, 'error');
+                showMessage('Fehler beim Zurücksetzen: ' + data.error, 'error', 'hudSaveMessage');
             }
         } catch (error) {
-            showMessage('hudSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+            showMessage('Netzwerkfehler: ' + error.message, 'error', 'hudSaveMessage');
         }
     }
 
@@ -2392,4 +2411,175 @@
     // ============================================
     // END GIFT-JOKER MANAGEMENT
     // ============================================
+
+    // ============================================
+    // ACCORDION FUNCTIONALITY FOR OVERLAY CONFIG
+    // ============================================
+
+    function initializeAccordion() {
+        const accordionHeaders = document.querySelectorAll('.accordion-header');
+        
+        accordionHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const section = header.dataset.section;
+                const content = document.querySelector(`[data-content="${section}"]`);
+                const isActive = header.classList.contains('active');
+                
+                // Toggle active state
+                if (isActive) {
+                    header.classList.remove('active');
+                    content.classList.remove('active');
+                } else {
+                    header.classList.add('active');
+                    content.classList.add('active');
+                }
+            });
+        });
+
+        // Open first section by default
+        if (accordionHeaders.length > 0) {
+            accordionHeaders[0].classList.add('active');
+            const firstSection = accordionHeaders[0].dataset.section;
+            const firstContent = document.querySelector(`[data-content="${firstSection}"]`);
+            if (firstContent) {
+                firstContent.classList.add('active');
+            }
+        }
+    }
+
+    // Initialize accordion when overlay-config tab is opened
+    const overlayConfigTabButton = document.querySelector('[data-tab="overlay-config"]');
+    if (overlayConfigTabButton) {
+        overlayConfigTabButton.addEventListener('click', () => {
+            setTimeout(() => {
+                initializeAccordion();
+            }, 100);
+        });
+    }
+
+    // ============================================
+    // INDIVIDUAL SAVE BUTTON HANDLERS
+    // ============================================
+
+    // Show/hide layout editor section
+    if (document.getElementById('createNewLayoutBtn')) {
+        document.getElementById('createNewLayoutBtn').addEventListener('click', () => {
+            const editorSection = document.getElementById('layoutEditorSection');
+            if (editorSection) {
+                editorSection.style.display = 'block';
+                // Scroll to editor
+                editorSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+    }
+
+    if (document.getElementById('cancelLayoutBtn')) {
+        document.getElementById('cancelLayoutBtn').addEventListener('click', () => {
+            const editorSection = document.getElementById('layoutEditorSection');
+            if (editorSection) {
+                editorSection.style.display = 'none';
+            }
+        });
+    }
+
+    // Visual Settings Save Button
+    if (document.getElementById('saveVisualSettingsBtn')) {
+        document.getElementById('saveVisualSettingsBtn').addEventListener('click', async () => {
+            try {
+                const config = getHUDConfigFromForm();
+                const response = await fetch('/api/quiz-show/hud-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    hudConfig = data.config;
+                    showMessage('Visuelle Einstellungen gespeichert!', 'success', 'visualSaveMessage');
+                    refreshPreview();
+                } else {
+                    showMessage('Fehler: ' + data.error, 'error', 'visualSaveMessage');
+                }
+            } catch (error) {
+                showMessage('Netzwerkfehler: ' + error.message, 'error', 'visualSaveMessage');
+            }
+        });
+    }
+
+    // Animation Settings Save Button
+    if (document.getElementById('saveAnimationSettingsBtn')) {
+        document.getElementById('saveAnimationSettingsBtn').addEventListener('click', async () => {
+            try {
+                const config = getHUDConfigFromForm();
+                const response = await fetch('/api/quiz-show/hud-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    hudConfig = data.config;
+                    showMessage('Animations-Einstellungen gespeichert!', 'success', 'animationSaveMessage');
+                    refreshPreview();
+                } else {
+                    showMessage('Fehler: ' + data.error, 'error', 'animationSaveMessage');
+                }
+            } catch (error) {
+                showMessage('Netzwerkfehler: ' + error.message, 'error', 'animationSaveMessage');
+            }
+        });
+    }
+
+    // Color & Font Settings Save Button
+    if (document.getElementById('saveColorFontSettingsBtn')) {
+        document.getElementById('saveColorFontSettingsBtn').addEventListener('click', async () => {
+            try {
+                const config = getHUDConfigFromForm();
+                const response = await fetch('/api/quiz-show/hud-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    hudConfig = data.config;
+                    showMessage('Farben & Schriften gespeichert!', 'success', 'colorFontSaveMessage');
+                    refreshPreview();
+                } else {
+                    showMessage('Fehler: ' + data.error, 'error', 'colorFontSaveMessage');
+                }
+            } catch (error) {
+                showMessage('Netzwerkfehler: ' + error.message, 'error', 'colorFontSaveMessage');
+            }
+        });
+    }
+
+    // Custom CSS Save Button
+    if (document.getElementById('saveCustomCSSBtn')) {
+        document.getElementById('saveCustomCSSBtn').addEventListener('click', async () => {
+            try {
+                const config = getHUDConfigFromForm();
+                const response = await fetch('/api/quiz-show/hud-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    hudConfig = data.config;
+                    showMessage('Custom CSS gespeichert!', 'success', 'customCSSSaveMessage');
+                    refreshPreview();
+                } else {
+                    showMessage('Fehler: ' + data.error, 'error', 'customCSSSaveMessage');
+                }
+            } catch (error) {
+                showMessage('Netzwerkfehler: ' + error.message, 'error', 'customCSSSaveMessage');
+            }
+        });
+    }
+
 })();

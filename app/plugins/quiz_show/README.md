@@ -1,6 +1,6 @@
-# Quiz Show Plugin
+# Pup Cid´s Little Quiz Show Plugin
 
-Ein vollständig funktionierendes interaktives Quiz-Show-Plugin im Stil von "Wer wird Millionär" für TikTok Livestreams.
+Ein vollständig funktionierendes interaktives Quiz-Show-Plugin für TikTok Livestreams.
 
 ## Features
 

@@ -59,7 +59,16 @@ class QuizShowPlugin {
             giftJokerShowInHUD: true, // Show gift graphics in HUD
             // NEW: Custom Layout
             activeLayoutId: null, // ID of active layout from overlay_layouts table
-            customLayoutEnabled: false // Use custom layout vs default
+            customLayoutEnabled: false, // Use custom layout vs default
+            // NEW: Chat Command Configuration
+            allowPlainLetters: true, // Allow simple "a", "b", "c", "d"
+            allowExclamation: true, // Allow "!a", "!b", "!c", "!d"
+            allowSlash: false, // Allow "/a", "/b", "/c", "/d"
+            allowFullText: true, // Allow full answer text
+            jokerCommandPrefix: '!joker', // Prefix for joker commands
+            jokerSuperfanOnly: true, // Restrict jokers to superfans
+            answerPermissionLevel: 'all', // 'all', 'subscriber', 'superfan', 'moderator'
+            useGCCE: false // Use Global Chat Command Engine integration
         };
 
         // Current game state
@@ -2028,8 +2037,9 @@ class QuizShowPlugin {
             // Extract profile picture URL from various possible fields
             const profilePictureUrl = this.extractProfilePicture(data);
 
-            // Check for joker commands (only superfans)
-            if (isSuperFan && message.toLowerCase().startsWith('!joker')) {
+            // Check for joker commands (respecting permission settings)
+            const canUseJoker = !this.config.jokerSuperfanOnly || isSuperFan;
+            if (canUseJoker && message.toLowerCase().startsWith(this.config.jokerCommandPrefix.toLowerCase())) {
                 this.handleJokerCommand(userId, username, message);
                 return;
             }
@@ -2655,14 +2665,37 @@ class QuizShowPlugin {
         }
 
         const normalized = message.toLowerCase().trim();
-
-        // Check if it's a valid answer (A/B/C/D or full text)
         const validLetters = ['a', 'b', 'c', 'd'];
-        const isLetter = validLetters.includes(normalized);
-        const isFullText = this.gameState.currentQuestion.answers.some(
+        
+        // Parse answer with configured command prefixes
+        let cleanAnswer = normalized;
+        let matchedPrefix = false;
+        
+        // Check for exclamation prefix (!a, !b, etc.)
+        if (this.config.allowExclamation && normalized.startsWith('!')) {
+            cleanAnswer = normalized.substring(1).trim();
+            matchedPrefix = true;
+        }
+        // Check for slash prefix (/a, /b, etc.)
+        else if (this.config.allowSlash && normalized.startsWith('/')) {
+            cleanAnswer = normalized.substring(1).trim();
+            matchedPrefix = true;
+        }
+        // Plain letters allowed without prefix
+        else if (this.config.allowPlainLetters && validLetters.includes(normalized)) {
+            cleanAnswer = normalized;
+            matchedPrefix = true;
+        }
+        
+        // Check if it's a valid letter answer
+        const isLetter = validLetters.includes(cleanAnswer) && (matchedPrefix || this.config.allowPlainLetters);
+        
+        // Check if full text answers are allowed and match
+        const isFullText = this.config.allowFullText && this.gameState.currentQuestion.answers.some(
             ans => ans.toLowerCase().trim() === normalized
         );
 
+        // No valid answer format matched
         if (!isLetter && !isFullText) {
             return;
         }
@@ -2670,7 +2703,7 @@ class QuizShowPlugin {
         // Determine which answer index this is for
         let answerIndex = -1;
         if (isLetter) {
-            answerIndex = validLetters.indexOf(normalized);
+            answerIndex = validLetters.indexOf(cleanAnswer);
         } else {
             // Find index of matching answer text
             answerIndex = this.gameState.currentQuestion.answers.findIndex(
@@ -2759,23 +2792,31 @@ class QuizShowPlugin {
 
         let jokerType = null;
         let jokerData = null;
+        
+        // Get joker type from command (remove prefix)
+        const prefix = this.config.jokerCommandPrefix.toLowerCase();
+        if (!command.startsWith(prefix)) {
+            return; // Not a valid joker command
+        }
+        
+        const jokerSuffix = command.substring(prefix.length);
 
-        if (command === '!joker25' && this.config.joker25Enabled && this.gameState.jokersUsed['25'] === 0) {
+        if (jokerSuffix === '25' && this.config.joker25Enabled && this.gameState.jokersUsed['25'] === 0) {
             // 25% Joker - removes 1 wrong answer
             jokerType = '25';
             jokerData = this.activate25Joker();
             this.gameState.jokersUsed['25']++;
-        } else if (command === '!joker50' && this.config.joker50Enabled && this.gameState.jokersUsed['50'] === 0) {
+        } else if (jokerSuffix === '50' && this.config.joker50Enabled && this.gameState.jokersUsed['50'] === 0) {
             // 50:50 Joker
             jokerType = '50';
             jokerData = this.activate5050Joker();
             this.gameState.jokersUsed['50']++;
-        } else if (command === '!jokerinfo' && this.config.jokerInfoEnabled && this.gameState.jokersUsed['info'] === 0) {
+        } else if (jokerSuffix === 'info' && this.config.jokerInfoEnabled && this.gameState.jokersUsed['info'] === 0) {
             // Info Joker
             jokerType = 'info';
             jokerData = this.activateInfoJoker();
             this.gameState.jokersUsed['info']++;
-        } else if (command === '!jokertime' && this.config.jokerTimeEnabled && this.gameState.jokersUsed['time'] === 0) {
+        } else if (jokerSuffix === 'time' && this.config.jokerTimeEnabled && this.gameState.jokersUsed['time'] === 0) {
             // Time Joker
             jokerType = 'time';
             jokerData = this.activateTimeJoker();
