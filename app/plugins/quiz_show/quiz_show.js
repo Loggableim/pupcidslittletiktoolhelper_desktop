@@ -114,6 +114,82 @@
                 }, 100);
             });
         }
+
+        // Event delegation for dynamically created buttons
+        document.addEventListener('click', (e) => {
+            // Question actions
+            let btn = e.target.closest('.btn-edit-question');
+            if (btn) {
+                const questionId = parseInt(btn.dataset.questionId);
+                editQuestion(questionId);
+                return;
+            }
+            btn = e.target.closest('.btn-delete-question');
+            if (btn) {
+                const questionId = parseInt(btn.dataset.questionId);
+                deleteQuestion(questionId);
+                return;
+            }
+            // Package actions
+            btn = e.target.closest('.btn-view-package');
+            if (btn) {
+                const packageId = parseInt(btn.dataset.packageId);
+                viewPackageQuestions(packageId);
+                return;
+            }
+            btn = e.target.closest('.btn-delete-package');
+            if (btn) {
+                const packageId = parseInt(btn.dataset.packageId);
+                deletePackage(packageId);
+                return;
+            }
+            // Layout actions
+            btn = e.target.closest('.btn-activate-layout');
+            if (btn) {
+                const layoutId = parseInt(btn.dataset.layoutId);
+                activateLayout(layoutId);
+                return;
+            }
+            btn = e.target.closest('.btn-deactivate-layout');
+            if (btn) {
+                deactivateLayout();
+                return;
+            }
+            btn = e.target.closest('.btn-edit-layout');
+            if (btn) {
+                const layoutId = parseInt(btn.dataset.layoutId);
+                editLayout(layoutId);
+                return;
+            }
+            btn = e.target.closest('.btn-delete-layout');
+            if (btn) {
+                const layoutId = parseInt(btn.dataset.layoutId);
+                deleteLayout(layoutId);
+                return;
+            }
+            // Gift joker actions
+            btn = e.target.closest('.btn-edit-gift-joker');
+            if (btn) {
+                const giftId = parseInt(btn.dataset.giftId);
+                editGiftJoker(giftId);
+                return;
+            }
+            btn = e.target.closest('.btn-delete-gift-joker');
+            if (btn) {
+                const giftId = parseInt(btn.dataset.giftId);
+                deleteGiftJoker(giftId);
+                return;
+            }
+        });
+
+        // Event delegation for package toggle checkboxes
+        document.addEventListener('change', (e) => {
+            const checkbox = e.target.closest('.package-toggle-checkbox');
+            if (checkbox) {
+                const packageId = parseInt(checkbox.dataset.packageId);
+                togglePackage(packageId);
+            }
+        });
     }
 
     // Socket.IO Listeners
@@ -731,8 +807,8 @@
                     </div>
                 </div>
                 <div class="question-actions">
-                    <button class="btn-icon" onclick="window.quizShow.editQuestion(${q.id})" title="Bearbeiten">✏️</button>
-                    <button class="btn-icon" onclick="window.quizShow.deleteQuestion(${q.id})" title="Löschen">🗑️</button>
+                    <button class="btn-icon btn-edit-question" data-question-id="${q.id}" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon btn-delete-question" data-question-id="${q.id}" title="Löschen">🗑️</button>
                 </div>
             </div>
         `).join('');
@@ -993,14 +1069,15 @@
         // Custom CSS
         document.getElementById('customCSS').value = hudConfig.customCSS || '';
 
-        // Stream Resolution
+        // Update preview scale based on HUD config
         const resolution = `${hudConfig.streamWidth || 1920}x${hudConfig.streamHeight || 1080}`;
-        document.getElementById('streamResolution').value = resolution;
         updatePreviewScale(resolution);
     }
 
     function getHUDConfigFromForm() {
-        const resolution = document.getElementById('streamResolution').value.split('x');
+        // Use the stored HUD config dimensions or defaults
+        const streamWidth = hudConfig.streamWidth || 1920;
+        const streamHeight = hudConfig.streamHeight || 1080;
 
         return {
             theme: document.getElementById('hudTheme').value,
@@ -1012,8 +1089,8 @@
             animationSpeed: parseFloat(document.getElementById('animationSpeed').value),
             glowIntensity: parseFloat(document.getElementById('glowIntensity').value),
             customCSS: document.getElementById('customCSS').value,
-            streamWidth: parseInt(resolution[0]),
-            streamHeight: parseInt(resolution[1]),
+            streamWidth: streamWidth,
+            streamHeight: streamHeight,
             positions: hudConfig.positions || {},
             colors: {
                 primary: document.getElementById('colorPrimary').value,
@@ -1122,10 +1199,6 @@
 
         document.getElementById('glowIntensity').addEventListener('input', (e) => {
             document.getElementById('glowIntensityValue').textContent = parseFloat(e.target.value).toFixed(1);
-        });
-
-        document.getElementById('streamResolution').addEventListener('change', (e) => {
-            updatePreviewScale(e.target.value);
         });
 
         // Load HUD config and layouts when overlay-config tab is opened
@@ -1600,9 +1673,9 @@
             <div class="package-item ${pkg.is_selected ? 'selected' : ''}" data-id="${pkg.id}">
                 <input 
                     type="checkbox" 
-                    class="package-checkbox" 
+                    class="package-checkbox package-toggle-checkbox" 
                     ${pkg.is_selected ? 'checked' : ''}
-                    onchange="window.quizShow.togglePackage(${pkg.id})"
+                    data-package-id="${pkg.id}"
                 >
                 <div class="package-info">
                     <div class="package-header">
@@ -1619,10 +1692,10 @@
                     </div>
                 </div>
                 <div class="package-actions">
-                    <button class="btn-view" onclick="window.quizShow.viewPackageQuestions(${pkg.id})" title="Fragen anzeigen">
+                    <button class="btn-view btn-view-package" data-package-id="${pkg.id}" title="Fragen anzeigen">
                         👁️ Anzeigen
                     </button>
-                    <button class="btn-delete" onclick="window.quizShow.deletePackage(${pkg.id})" title="Paket löschen">
+                    <button class="btn-delete btn-delete-package" data-package-id="${pkg.id}" title="Paket löschen">
                         🗑️ Löschen
                     </button>
                 </div>
@@ -1767,11 +1840,11 @@
                 </div>
                 <div class="layout-actions">
                     ${isActive 
-                        ? `<button class="btn-icon" onclick="window.quizShow.deactivateLayout()" title="Deaktivieren">⏸️</button>`
-                        : `<button class="btn-icon" onclick="window.quizShow.activateLayout(${layout.id})" title="Aktivieren">▶️</button>`
+                        ? `<button class="btn-icon btn-deactivate-layout" title="Deaktivieren">⏸️</button>`
+                        : `<button class="btn-icon btn-activate-layout" data-layout-id="${layout.id}" title="Aktivieren">▶️</button>`
                     }
-                    <button class="btn-icon" onclick="window.quizShow.editLayout(${layout.id})" title="Bearbeiten">✏️</button>
-                    <button class="btn-icon" onclick="window.quizShow.deleteLayout(${layout.id})" title="Löschen">🗑️</button>
+                    <button class="btn-icon btn-edit-layout" data-layout-id="${layout.id}" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon btn-delete-layout" data-layout-id="${layout.id}" title="Löschen">🗑️</button>
                 </div>
             </div>
         `;
@@ -2177,8 +2250,8 @@
                 <td>${jokerNames[mapping.joker_type] || mapping.joker_type}</td>
                 <td><span class="status-badge ${mapping.enabled ? 'status-connected' : 'status-error'}">${mapping.enabled ? 'Aktiv' : 'Inaktiv'}</span></td>
                 <td>
-                    <button class="btn-icon" onclick="window.quizShow.editGiftJoker(${mapping.gift_id})" title="Bearbeiten">✏️</button>
-                    <button class="btn-icon" onclick="window.quizShow.deleteGiftJoker(${mapping.gift_id})" title="Löschen">🗑️</button>
+                    <button class="btn-icon btn-edit-gift-joker" data-gift-id="${mapping.gift_id}" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon btn-delete-gift-joker" data-gift-id="${mapping.gift_id}" title="Löschen">🗑️</button>
                 </td>
             </tr>
         `).join('');
@@ -2301,19 +2374,4 @@
     // ============================================
     // END GIFT-JOKER MANAGEMENT
     // ============================================
-
-    // Expose functions to window for onclick handlers
-    window.quizShow = {
-        editQuestion,
-        deleteQuestion,
-        togglePackage,
-        deletePackage,
-        viewPackageQuestions,
-        editLayout,
-        deleteLayout,
-        activateLayout,
-        deactivateLayout,
-        editGiftJoker,
-        deleteGiftJoker
-    };
 })();
