@@ -993,14 +993,15 @@
         // Custom CSS
         document.getElementById('customCSS').value = hudConfig.customCSS || '';
 
-        // Stream Resolution
+        // Update preview scale based on HUD config
         const resolution = `${hudConfig.streamWidth || 1920}x${hudConfig.streamHeight || 1080}`;
-        document.getElementById('streamResolution').value = resolution;
         updatePreviewScale(resolution);
     }
 
     function getHUDConfigFromForm() {
-        const resolution = document.getElementById('streamResolution').value.split('x');
+        // Use the stored HUD config dimensions or defaults
+        const streamWidth = hudConfig.streamWidth || 1920;
+        const streamHeight = hudConfig.streamHeight || 1080;
 
         return {
             theme: document.getElementById('hudTheme').value,
@@ -1012,8 +1013,8 @@
             animationSpeed: parseFloat(document.getElementById('animationSpeed').value),
             glowIntensity: parseFloat(document.getElementById('glowIntensity').value),
             customCSS: document.getElementById('customCSS').value,
-            streamWidth: parseInt(resolution[0]),
-            streamHeight: parseInt(resolution[1]),
+            streamWidth: streamWidth,
+            streamHeight: streamHeight,
             positions: hudConfig.positions || {},
             colors: {
                 primary: document.getElementById('colorPrimary').value,
@@ -1122,10 +1123,6 @@
 
         document.getElementById('glowIntensity').addEventListener('input', (e) => {
             document.getElementById('glowIntensityValue').textContent = parseFloat(e.target.value).toFixed(1);
-        });
-
-        document.getElementById('streamResolution').addEventListener('change', (e) => {
-            updatePreviewScale(e.target.value);
         });
 
         // Load HUD config and layouts when overlay-config tab is opened
