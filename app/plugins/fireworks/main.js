@@ -134,7 +134,13 @@ class FireworksPlugin {
             // Explosion shapes
             shapesEnabled: true,
             defaultShape: 'burst', // burst, heart, star, spiral, ring, custom
+            randomShapeEnabled: false, // Enable random shape selection from active shapes
+            activeShapes: ['burst'], // Array of active shapes for random selection
             giftShapeMappings: {}, // giftId -> shape
+            
+            // User avatar integration
+            userAvatarEnabled: false, // Use user avatars as particles
+            avatarParticleChance: 0.3, // Probability to use avatar vs. gift image (0-1)
             
             // Audio
             audioEnabled: true,
@@ -507,8 +513,11 @@ class FireworksPlugin {
         const giftSettings = this.config.giftShapeMappings[giftId] || {};
         const giftInfo = this.getGiftInfo(giftId);
 
-        // Determine shape
+        // Determine shape - support random selection from active shapes
         let shape = giftSettings.shape || this.config.defaultShape;
+        if (this.config.randomShapeEnabled && this.config.activeShapes && this.config.activeShapes.length > 0) {
+            shape = this.config.activeShapes[Math.floor(Math.random() * this.config.activeShapes.length)];
+        }
         
         // Determine colors
         let colors = giftSettings.colors || null;
@@ -516,6 +525,16 @@ class FireworksPlugin {
             colors = this.generateRandomColors(3);
         } else if (!colors && this.config.colorMode === 'theme') {
             colors = this.config.themeColors;
+        }
+
+        // User avatar integration
+        // When enabled, pass user avatar to engine which will mix it with gift images
+        const userProfilePictureUrl = data.profilePictureUrl || data.userProfilePictureUrl || null;
+        let avatarImage = null;
+        if (this.config.userAvatarEnabled && userProfilePictureUrl) {
+            // Always pass avatar if enabled and available
+            // The engine will decide the actual particle mix ratio
+            avatarImage = userProfilePictureUrl;
         }
 
         // Calculate final intensity
@@ -549,6 +568,7 @@ class FireworksPlugin {
             position: position,
             giftId: giftId,
             giftImage: giftPictureUrl || (giftInfo ? giftInfo.image_url : null),
+            userAvatar: avatarImage,
             particleCount: particleCount,
             tier: tier,
             username: username,
@@ -673,6 +693,7 @@ class FireworksPlugin {
             particleCount: options.particleCount || 50,
             giftId: options.giftId || null,
             giftImage: options.giftImage || null,
+            userAvatar: options.userAvatar || null,
             tier: options.tier || 'medium',
             username: options.username || null,
             coins: options.coins || 0,
@@ -690,7 +711,10 @@ class FireworksPlugin {
             trailsEnabled: this.config.trailsEnabled,
             trailLength: this.config.trailLength,
             glowEnabled: this.config.glowEnabled,
-            particleSizeRange: this.config.particleSizeRange
+            particleSizeRange: this.config.particleSizeRange,
+            
+            // Avatar settings
+            avatarParticleChance: this.config.avatarParticleChance || 0.3
         };
 
         this.api.emit('fireworks:trigger', payload);

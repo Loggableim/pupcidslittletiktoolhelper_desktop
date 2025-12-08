@@ -225,18 +225,52 @@ class AudioManager {
         this.audioContext = null;
         this.volume = 0.7;
         this.enabled = true;
+        this.initialized = false;
+        this.pendingSounds = new Map(); // Store URLs to preload after init
     }
 
     async init() {
-        try {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        } catch (e) {
-            console.warn('[Fireworks Audio] AudioContext not available');
+        // Don't create AudioContext immediately - wait for user gesture
+        // Store that init was called
+        this.initialized = true;
+        console.log('[Fireworks Audio] Audio manager ready (AudioContext will be created on first interaction)');
+    }
+
+    async ensureAudioContext() {
+        // Create AudioContext on first interaction to avoid autoplay warning
+        if (!this.audioContext && this.initialized) {
+            try {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Resume if suspended (some browsers start in suspended state)
+                if (this.audioContext.state === 'suspended') {
+                    await this.audioContext.resume();
+                }
+                
+                // Preload any pending sounds
+                for (const [name, url] of this.pendingSounds.entries()) {
+                    await this.preload(url, name);
+                }
+                this.pendingSounds.clear();
+                
+                console.log('[Fireworks Audio] AudioContext created and resumed');
+            } catch (e) {
+                console.warn('[Fireworks Audio] AudioContext not available:', e.message);
+            }
         }
     }
 
     async preload(url, name) {
-        if (!this.audioContext) return;
+        // If AudioContext not created yet, store for later (overwrite if already exists)
+        if (!this.audioContext) {
+            this.pendingSounds.set(name, url);
+            return;
+        }
+        
+        // Skip if already loaded
+        if (this.sounds.has(name)) {
+            return;
+        }
         
         try {
             const response = await fetch(url);
@@ -250,10 +284,20 @@ class AudioManager {
         }
     }
 
-    play(name, volume = 1.0) {
-        if (!this.enabled || !this.audioContext || !this.sounds.has(name)) return;
+    async play(name, volume = 1.0) {
+        if (!this.enabled) return;
+        
+        // Ensure AudioContext is created
+        await this.ensureAudioContext();
+        
+        if (!this.audioContext || !this.sounds.has(name)) return;
         
         try {
+            // Resume if suspended
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+            
             const source = this.audioContext.createBufferSource();
             const gainNode = this.audioContext.createGain();
             
@@ -411,6 +455,8 @@ class FireworksEngine {
             intensity = 1.0,
             particleCount = 50,
             giftImage = null,
+            userAvatar = null,
+            avatarParticleChance = 0.3,
             tier = 'medium',
             username = null,
             coins = 0,
@@ -429,9 +475,15 @@ class FireworksEngine {
         const velocities = generator(particleCount, intensity);
 
         // Load gift image if provided
-        let image = null;
+        let giftImg = null;
         if (giftImage) {
-            image = await this.loadImage(giftImage);
+            giftImg = await this.loadImage(giftImage);
+        }
+        
+        // Load user avatar if provided
+        let avatarImg = null;
+        if (userAvatar) {
+            avatarImg = await this.loadImage(userAvatar);
         }
 
         // Spawn particles
@@ -454,13 +506,31 @@ class FireworksEngine {
             p.rotation = Math.random() * Math.PI * 2;
             p.rotationSpeed = (Math.random() - 0.5) * 0.2;
             
-            // Use gift image for some particles
-            if (image && Math.random() < 0.3) {
-                p.type = 'image';
-                p.image = image;
-                p.size *= 2;
-            } else {
-                p.type = 'circle';
+            // Decide which image to use based on availability and configuration
+            // Default to colored circles if no images
+            p.type = 'circle';
+            
+            if (avatarImg || giftImg) {
+                // Base image usage chance
+                const baseImageChance = 0.3; // 30% of particles use images
+                
+                if (Math.random() < baseImageChance) {
+                    p.type = 'image';
+                    
+                    // If both images available, use avatarParticleChance to decide
+                    if (avatarImg && giftImg) {
+                        // avatarParticleChance determines avatar vs gift probability
+                        p.image = Math.random() < avatarParticleChance ? avatarImg : giftImg;
+                    } else if (avatarImg) {
+                        // Only avatar available
+                        p.image = avatarImg;
+                    } else {
+                        // Only gift available
+                        p.image = giftImg;
+                    }
+                    
+                    p.size *= 2; // Make image particles larger
+                }
             }
             
             // Clear trail
