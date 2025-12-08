@@ -539,6 +539,12 @@ class FireworksEngine {
         
         if (this.useWebGL) {
             this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Also resize trail canvas if it exists
+            if (this.trailCanvas) {
+                this.trailCanvas.width = rect.width * dpr;
+                this.trailCanvas.height = rect.height * dpr;
+            }
         } else if (this.ctx) {
             this.ctx.scale(dpr, dpr);
         }
@@ -1043,6 +1049,36 @@ class FireworksEngine {
         this.running = false;
         if (this.socket) {
             this.socket.disconnect();
+        }
+        
+        // Clean up trail canvas if it exists
+        if (this.trailCanvas) {
+            this.trailCanvas.remove();
+            this.trailCanvas = null;
+            this.trailCtx = null;
+        }
+        
+        // Clean up WebGL resources
+        if (this.useWebGL && this.gl) {
+            // Delete buffers
+            if (this.webglBuffers) {
+                Object.values(this.webglBuffers).forEach(buffer => {
+                    if (buffer) this.gl.deleteBuffer(buffer);
+                });
+            }
+            
+            // Delete program
+            if (this.webglProgram) {
+                this.gl.deleteProgram(this.webglProgram);
+            }
+            
+            // Delete textures
+            if (this.webglTextures) {
+                this.webglTextures.forEach(texture => {
+                    this.gl.deleteTexture(texture);
+                });
+                this.webglTextures.clear();
+            }
         }
     }
 }
