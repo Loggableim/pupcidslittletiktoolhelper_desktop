@@ -80,38 +80,40 @@ body {
    ============================================ */
 
 /* Webkit browsers (Chrome, Safari, Edge) */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
+@supports selector(::-webkit-scrollbar) {
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
 
-::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 4px;
-}
+    ::-webkit-scrollbar-track {
+        background: transparent;
+        border-radius: 4px;
+    }
 
-::-webkit-scrollbar-thumb {
-    background: var(--color-bg-tertiary);
-    border-radius: 4px;
-    border: 2px solid transparent;
-    background-clip: padding-box;
-    transition: background 0.2s ease;
-}
+    ::-webkit-scrollbar-thumb {
+        background: var(--color-bg-tertiary);
+        border-radius: 4px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+        transition: background 0.2s ease;
+    }
 
-::-webkit-scrollbar-thumb:hover {
-    background: var(--color-text-muted);
-    border: 2px solid transparent;
-    background-clip: padding-box;
-}
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--color-text-muted);
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
 
-::-webkit-scrollbar-thumb:active {
-    background: var(--color-accent-primary);
-    border: 2px solid transparent;
-    background-clip: padding-box;
-}
+    ::-webkit-scrollbar-thumb:active {
+        background: var(--color-accent-primary);
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
 
-::-webkit-scrollbar-corner {
-    background: transparent;
+    ::-webkit-scrollbar-corner {
+        background: transparent;
+    }
 }
 
 /* Firefox scrollbar styling */
@@ -428,21 +430,23 @@ body {
     scrollbar-color: var(--color-bg-hover) transparent;
 }
 
-.sidebar-nav::-webkit-scrollbar {
-    width: 6px;
-}
+@supports selector(::-webkit-scrollbar) {
+    .sidebar-nav::-webkit-scrollbar {
+        width: 6px;
+    }
 
-.sidebar-nav::-webkit-scrollbar-track {
-    background: transparent;
-}
+    .sidebar-nav::-webkit-scrollbar-track {
+        background: transparent;
+    }
 
-.sidebar-nav::-webkit-scrollbar-thumb {
-    background: var(--color-bg-hover);
-    border-radius: 3px;
-}
+    .sidebar-nav::-webkit-scrollbar-thumb {
+        background: var(--color-bg-hover);
+        border-radius: 3px;
+    }
 
-.sidebar-nav::-webkit-scrollbar-thumb:hover {
-    background: var(--color-bg-tertiary);
+    .sidebar-nav::-webkit-scrollbar-thumb:hover {
+        background: var(--color-bg-tertiary);
+    }
 }
 
 /* Sidebar Category */
@@ -2402,17 +2406,19 @@ input:checked + .toggle-slider:before {
     scrollbar-color: var(--color-bg-hover) transparent;
 }
 
-.updates-content::-webkit-scrollbar {
-    width: 6px;
-}
+@supports selector(::-webkit-scrollbar) {
+    .updates-content::-webkit-scrollbar {
+        width: 6px;
+    }
 
-.updates-content::-webkit-scrollbar-track {
-    background: transparent;
-}
+    .updates-content::-webkit-scrollbar-track {
+        background: transparent;
+    }
 
-.updates-content::-webkit-scrollbar-thumb {
-    background: var(--color-bg-hover);
-    border-radius: 3px;
+    .updates-content::-webkit-scrollbar-thumb {
+        background: var(--color-bg-hover);
+        border-radius: 3px;
+    }
 }
 
 .changelog-version {
@@ -3366,22 +3372,24 @@ input:checked + .toggle-slider:before {
 }
 
 /* Scrollbar styling for panels */
-.stats-panel-list::-webkit-scrollbar {
-    width: 6px;
-}
+@supports selector(::-webkit-scrollbar) {
+    .stats-panel-list::-webkit-scrollbar {
+        width: 6px;
+    }
 
-.stats-panel-list::-webkit-scrollbar-track {
-    background: var(--color-bg-secondary);
-    border-radius: 3px;
-}
+    .stats-panel-list::-webkit-scrollbar-track {
+        background: var(--color-bg-secondary);
+        border-radius: 3px;
+    }
 
-.stats-panel-list::-webkit-scrollbar-thumb {
-    background: var(--color-border);
-    border-radius: 3px;
-}
+    .stats-panel-list::-webkit-scrollbar-thumb {
+        background: var(--color-border);
+        border-radius: 3px;
+    }
 
-.stats-panel-list::-webkit-scrollbar-thumb:hover {
-    background: var(--color-text-muted);
+    .stats-panel-list::-webkit-scrollbar-thumb:hover {
+        background: var(--color-text-muted);
+    }
 }
 
 /* Day mode adjustments for panels */
