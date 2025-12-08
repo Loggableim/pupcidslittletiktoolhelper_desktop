@@ -114,6 +114,9 @@ Der Server läuft auf `http://localhost:3000`
    - `.env` Datei im `app/` Ordner erstellen: `EULER_API_KEY=dein_api_key_hier`
    - Dashboard Settings nach dem Start: `http://localhost:3000` → Settings
 
+**🔄 Backup Key:**  
+Die App enthält einen Euler Backup Key für Notfälle. Wenn dieser verwendet wird, erscheint eine 10-Sekunden-Warnung mit der Aufforderung, einen eigenen kostenlosen API-Key von [eulerstream.com](https://www.eulerstream.com) zu holen. **Bitte nutze deinen eigenen Key!**
+
 **Detaillierte Anleitung:** Siehe [`app/README.md`](app/README.md)
 
 ---

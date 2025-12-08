@@ -100,6 +100,13 @@ Dashboard öffnet sich automatisch unter `http://localhost:3000`
 - Detaillierte Anleitung: Siehe `EULERSTREAM_API_GUIDE.md`
 - API Key testen: `node validate-euler-api-key.js`
 
+**🔄 Euler Backup Key:**  
+Die App enthält einen Backup-API-Key für Notfälle. Wenn dieser verwendet wird:
+- Erscheint eine **10-Sekunden-Warnung** beim Verbinden
+- Die Warnung kann **nicht** geschlossen werden
+- **Bitte hole dir deinen eigenen kostenlosen API-Key** von [eulerstream.com](https://www.eulerstream.com)
+- Der Backup-Key sollte nur im Notfall verwendet werden
+
 ---
 
 ## Schnellstart
