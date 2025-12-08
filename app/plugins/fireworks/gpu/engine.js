@@ -942,7 +942,7 @@ class AudioManager {
             'combined-whistle-tiny1': 1.0,
             'combined-whistle-tiny2': 1.0,
             'combined-whistle-tiny3': 1.0,
-            'combined-whistle-tiny4': 1.0,
+            'combined-whistle-tiny4': 0.9,  // Longer file (3.42s vs 1.15s), slightly reduced volume
             
             // Medium explosions - standard to slight boost
             'explosion-medium': 1.0,
