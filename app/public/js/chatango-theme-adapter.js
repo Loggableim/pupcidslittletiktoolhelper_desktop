@@ -297,16 +297,22 @@ class ChatangoThemeAdapter {
         const jsonConfig = JSON.stringify(embedConfig.config);
         
         // Create script element properly for Chatango embed
-        // Chatango's emb.js reads the script element's text content after loading
+        // IMPORTANT: Chatango's emb.js reads the script element's innerHTML
+        // We must set innerHTML BEFORE setting src, and use async loading
         const script = document.createElement('script');
         script.id = scriptId;
         script.setAttribute('data-cfasync', 'false');
-        script.src = 'https://st.chatango.com/js/gz/emb.js';
+        script.setAttribute('async', 'true');
         script.style.cssText = `width: ${embedConfig.width}; height: ${embedConfig.height};`;
-        // Set the JSON config as text - Chatango reads this after script loads
-        script.text = jsonConfig;
+        
+        // Set JSON config as innerHTML first, then set src
+        // This ensures Chatango can read the config when emb.js loads
+        script.innerHTML = jsonConfig;
+        script.src = 'https://st.chatango.com/js/gz/emb.js';
         
         container.appendChild(script);
+        
+        console.log('💬 Dashboard embed script added:', scriptId);
     }
 
     loadWidgetEmbed(theme) {
@@ -330,15 +336,22 @@ class ChatangoThemeAdapter {
         const jsonConfig = JSON.stringify(embedConfig.config);
         
         // Create script element properly for Chatango embed
+        // IMPORTANT: Chatango's emb.js reads the script element's innerHTML
+        // We must set innerHTML BEFORE setting src, and use async loading
         const script = document.createElement('script');
         script.id = scriptId;
         script.setAttribute('data-cfasync', 'false');
-        script.src = 'https://st.chatango.com/js/gz/emb.js';
+        script.setAttribute('async', 'true');
         script.style.cssText = `width: ${embedConfig.width}; height: ${embedConfig.height};`;
-        // Set the JSON config as text - Chatango reads this after script loads
-        script.text = jsonConfig;
+        
+        // Set JSON config as innerHTML first, then set src
+        // This ensures Chatango can read the config when emb.js loads
+        script.innerHTML = jsonConfig;
+        script.src = 'https://st.chatango.com/js/gz/emb.js';
         
         container.appendChild(script);
+        
+        console.log('💬 Widget embed script added:', scriptId);
     }
 
     showDisabledMessage() {
