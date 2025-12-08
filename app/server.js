@@ -621,7 +621,7 @@ app.get('/api/update/instructions', apiLimiter, (req, res) => {
 /**
  * GET /CHANGELOG.md - Serves the changelog file
  */
-app.get('/CHANGELOG.md', (req, res) => {
+app.get('/CHANGELOG.md', apiLimiter, (req, res) => {
     const changelogPath = path.join(__dirname, '..', 'CHANGELOG.md');
     res.sendFile(changelogPath, (err) => {
         if (err) {
