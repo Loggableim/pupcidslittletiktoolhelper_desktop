@@ -1254,9 +1254,10 @@ class FireworksEngine {
                     fw.particles.forEach(p => p.startDespawn());
                     fw.secondaryExplosions.forEach(p => p.startDespawn());
                     // Don't remove immediately - let despawn effect complete
-                    // Only remove if already despawning for a while
+                    // Only remove if already despawning for enough time (half of despawn duration)
+                    const minDespawnTime = (CONFIG.despawnFadeDuration * 1000) / 2;
                     if (fw.rocket && fw.rocket.isDespawning && 
-                        performance.now() - fw.rocket.despawnStartTime > 500) {
+                        performance.now() - fw.rocket.despawnStartTime > minDespawnTime) {
                         this.fireworks.pop();
                     } else {
                         break; // Wait for despawn to complete
@@ -1283,8 +1284,10 @@ class FireworksEngine {
                     fw.particles.forEach(p => p.startDespawn());
                     fw.secondaryExplosions.forEach(p => p.startDespawn());
                     // Don't remove immediately - let despawn effect complete
+                    // Only remove if already despawning for enough time (half of despawn duration)
+                    const minDespawnTime = (CONFIG.despawnFadeDuration * 1000) / 2;
                     if (fw.rocket && fw.rocket.isDespawning && 
-                        performance.now() - fw.rocket.despawnStartTime > 500) {
+                        performance.now() - fw.rocket.despawnStartTime > minDespawnTime) {
                         this.fireworks.pop();
                     } else {
                         break; // Wait for despawn to complete

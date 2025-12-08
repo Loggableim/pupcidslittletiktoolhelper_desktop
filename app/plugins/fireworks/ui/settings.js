@@ -391,6 +391,10 @@ function setupEventListeners() {
         if (this.value === 'none') {
             config.giftPopupEnabled = false;
             updateToggle('gift-popup-enabled-toggle', false);
+        } else {
+            // Re-enable popup when changing from 'none' to a valid position
+            config.giftPopupEnabled = true;
+            updateToggle('gift-popup-enabled-toggle', true);
         }
     });
     
