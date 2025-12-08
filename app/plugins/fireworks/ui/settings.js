@@ -12,6 +12,17 @@ let socket = null;
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize i18n first
+    if (window.i18n) {
+        await window.i18n.init();
+        window.i18n.updateDOM();
+        
+        // Listen for language changes from main app
+        window.i18n.onChange(() => {
+            window.i18n.updateDOM();
+        });
+    }
+    
     // Connect to socket
     connectSocket();
     
@@ -255,11 +266,6 @@ function setupEventListeners() {
     document.getElementById('test-shape-ring-btn')?.addEventListener('click', () => triggerTestShape('ring'));
     document.getElementById('test-shape-spiral-btn')?.addEventListener('click', () => triggerTestShape('spiral'));
     document.getElementById('test-shape-random-btn')?.addEventListener('click', triggerTestRandom);
-    
-    // Language toggle
-    document.getElementById('language-toggle').addEventListener('change', function() {
-        switchLanguage(this.value);
-    });
     
     // Master toggle
     document.getElementById('master-toggle').addEventListener('click', function() {
@@ -517,53 +523,6 @@ async function triggerTestAvatar() {
         showToast('Failed to trigger avatar test', 'error');
     }
 }
-
-/**
- * Switch language
- */
-function switchLanguage(lang) {
-    // Store preference
-    localStorage.setItem('fireworks-language', lang);
-    
-    // Update all elements with data-lang attributes
-    document.querySelectorAll('[data-lang-en]').forEach(element => {
-        const text = element.getAttribute(`data-lang-${lang}`);
-        if (text) {
-            // Check if it's a text node or has children
-            if (element.children.length === 0 || element.tagName === 'BUTTON' || element.tagName === 'LABEL') {
-                element.textContent = text;
-            } else {
-                // For elements with children, find the text node
-                const textNode = Array.from(element.childNodes).find(node => node.nodeType === 3);
-                if (textNode) {
-                    textNode.textContent = text;
-                }
-            }
-        }
-    });
-    
-    // Update select options
-    document.querySelectorAll('option[data-lang-en]').forEach(option => {
-        const text = option.getAttribute(`data-lang-${lang}`);
-        if (text) {
-            option.textContent = text;
-        }
-    });
-    
-    showToast(lang === 'de' ? 'Sprache auf Deutsch umgestellt' : 'Language switched to English', 'success');
-}
-
-// Load saved language preference
-document.addEventListener('DOMContentLoaded', () => {
-    const savedLang = localStorage.getItem('fireworks-language') || 'en';
-    const langToggle = document.getElementById('language-toggle');
-    if (langToggle && savedLang) {
-        langToggle.value = savedLang;
-        if (savedLang !== 'en') {
-            switchLanguage(savedLang);
-        }
-    }
-});
 
 // ============================================================================
 // TOAST NOTIFICATION
