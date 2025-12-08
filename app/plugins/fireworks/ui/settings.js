@@ -382,6 +382,8 @@ function setupEventListeners() {
     
     setupRangeSlider('despawn-fade', 'despawn-fade-value', 's', (val) => {
         config.despawnFadeDuration = parseFloat(val);
+        // Note: Changes take effect after clicking "Save Settings" button
+        // This is consistent with other settings like FPS, audio volume, etc.
     });
     
     // Gift popup position
@@ -396,6 +398,8 @@ function setupEventListeners() {
             config.giftPopupEnabled = true;
             updateToggle('gift-popup-enabled-toggle', true);
         }
+        // Note: Changes take effect after clicking "Save Settings" button
+        // This is consistent with other settings
     });
     
     // Number inputs
