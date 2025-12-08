@@ -1508,6 +1508,7 @@
             overlayContainer.setAttribute('data-custom-layout', 'true');
 
             // Apply layout configuration via CSS variables
+            // Handle both string (from database) and object (already parsed) formats
             const config = typeof layout.layout_config === 'string' 
                 ? JSON.parse(layout.layout_config) 
                 : layout.layout_config;

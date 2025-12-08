@@ -1955,6 +1955,7 @@
     function applyLayoutConfig(config) {
         if (!config) return;
         
+        // TODO: Remove backward compatibility for old format (with elements wrapper) after all existing layouts are migrated
         // Handle both old format (with elements wrapper) and new format (direct)
         const elements = config.elements || config;
         
