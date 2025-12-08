@@ -42,8 +42,27 @@ REM Find signtool.exe if not specified
 if "%SIGNTOOL_PATH%"=="" (
     echo [INFO] Searching for signtool.exe...
     
-    REM Try common Windows SDK locations
+    REM Try common Windows SDK locations (x64, x86, ARM64)
+    REM Searches in reverse order to find the latest version first
     for /f "delims=" %%i in ('dir /s /b "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" 2^>nul ^| sort /r') do (
+        set SIGNTOOL_PATH=%%i
+        goto :found_signtool
+    )
+    
+    REM Try x86 locations (for 32-bit systems or older SDKs)
+    for /f "delims=" %%i in ('dir /s /b "C:\Program Files (x86)\Windows Kits\10\bin\*\x86\signtool.exe" 2^>nul ^| sort /r') do (
+        set SIGNTOOL_PATH=%%i
+        goto :found_signtool
+    )
+    
+    REM Try ARM64 locations
+    for /f "delims=" %%i in ('dir /s /b "C:\Program Files (x86)\Windows Kits\10\bin\*\arm64\signtool.exe" 2^>nul ^| sort /r') do (
+        set SIGNTOOL_PATH=%%i
+        goto :found_signtool
+    )
+    
+    REM Try Program Files (for custom installations)
+    for /f "delims=" %%i in ('dir /s /b "C:\Program Files\Windows Kits\10\bin\*\x64\signtool.exe" 2^>nul ^| sort /r') do (
         set SIGNTOOL_PATH=%%i
         goto :found_signtool
     )
@@ -77,7 +96,11 @@ echo [INFO] Signing: %FILE_TO_SIGN%
 echo.
 
 REM Sign the file using certificate from Windows Certificate Store
-REM /a = automatically select best certificate
+REM /a = automatically select best certificate from Windows Certificate Store
+REM      NOTE: If you have multiple code signing certificates, signtool will
+REM      select the most suitable one based on validity and key usage.
+REM      To use a specific certificate, replace /a with:
+REM      /n "Certificate Subject Name" or /sha1 "Certificate Thumbprint"
 REM /fd sha256 = file digest algorithm
 REM /tr = RFC 3161 timestamp server
 REM /td sha256 = timestamp digest algorithm

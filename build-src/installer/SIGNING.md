@@ -146,6 +146,10 @@ signtool sign /a /fd sha256 /tr <timestamp_url> /td sha256 <file>
 
 **Parameters:**
 - `/a` - Automatically select the best signing certificate from Windows Certificate Store
+  - **Note:** If you have multiple code signing certificates installed, signtool will select the most suitable one based on validity period and key usage.
+  - **Custom certificate selection:** To use a specific certificate, you can modify `sign-file.bat` and replace `/a` with:
+    - `/n "Certificate Subject Name"` (e.g., `/n "My Company Name"`)
+    - `/sha1 "Certificate Thumbprint"` (e.g., `/sha1 "abc123..."`)
 - `/fd sha256` - Use SHA-256 for file digest algorithm
 - `/tr <url>` - RFC 3161 timestamp server URL
 - `/td sha256` - Use SHA-256 for timestamp digest algorithm
