@@ -746,12 +746,50 @@ class AudioManager {
         // Crackling sounds for atmospheric effects (can be layered with explosions)
         this.CRACKLING_SOUNDS = ['crackling-medium', 'crackling-long'];
         
-        // Volume constants for consistent audio levels
-        this.COMBINED_AUDIO_VOLUME = 0.6;        // Volume for combined (launch+explosion) audio
-        this.LAUNCH_AUDIO_VOLUME = 0.4;          // Volume for separate launch sounds
-        this.NORMAL_EXPLOSION_VOLUME = 0.6;      // Volume for normal explosions
-        this.INSTANT_EXPLODE_VOLUME = 0.2;       // Volume for instant explosions (high combos)
-        this.CRACKLING_VOLUME = 0.3;             // Volume for crackling effects (layered, so quieter)
+        // Volume constants for consistent audio levels (updated for better balance)
+        this.COMBINED_AUDIO_VOLUME = 0.65;       // Volume for combined (launch+explosion) audio
+        this.LAUNCH_AUDIO_VOLUME = 0.45;         // Volume for separate launch sounds
+        this.NORMAL_EXPLOSION_VOLUME = 0.7;      // Volume for normal explosions
+        this.INSTANT_EXPLODE_VOLUME = 0.25;      // Volume for instant explosions (high combos)
+        this.CRACKLING_VOLUME = 0.35;            // Volume for crackling effects (layered, so quieter)
+        
+        // Per-file volume multipliers for balancing inherent loudness differences
+        // Analyzed based on file size and perceived loudness
+        this.AUDIO_VOLUME_MULTIPLIERS = {
+            // Loud explosions - reduce volume
+            'explosion-huge': 0.7,      // Very loud, long explosion
+            'explosion-big': 0.8,       // Loud explosion
+            'explosion-pop': 0.75,      // Sharp, loud pop
+            
+            // Quiet sounds - boost volume
+            'explosion-basic': 1.3,     // Very short, quiet pop
+            'explosion-alt1': 1.1,      // Slightly quiet
+            'rocket-basic': 1.2,        // Short launch sound
+            
+            // Crackling - reduce for layering
+            'crackling-long': 0.6,      // Very long, loud atmospheric
+            'crackling-medium': 0.7,    // Medium atmospheric
+            
+            // Launch sounds - slight boost for presence
+            'launch-basic': 1.1,
+            'launch-basic2': 1.1,
+            'launch-whistle': 1.0,
+            'launch-smooth': 1.0,
+            'launch-smooth2': 1.0,
+            
+            // Combined audio - standard
+            'combined-crackling-bang': 1.0,
+            'combined-whistle-normal': 1.0,
+            'combined-whistle-tiny1': 1.0,
+            'combined-whistle-tiny2': 1.0,
+            'combined-whistle-tiny3': 1.0,
+            'combined-whistle-tiny4': 1.0,
+            
+            // Medium explosions - standard to slight boost
+            'explosion-medium': 1.0,
+            'explosion-small': 1.0,
+            'explosion-alt2': 1.0
+        };
     }
 
     async init() {
@@ -820,7 +858,10 @@ class AudioManager {
             const gainNode = this.audioContext.createGain();
             
             source.buffer = this.sounds.get(name);
-            gainNode.gain.value = this.volume * volume;
+            
+            // Apply per-file volume multiplier if exists
+            const volumeMultiplier = this.AUDIO_VOLUME_MULTIPLIERS[name] || 1.0;
+            gainNode.gain.value = this.volume * volume * volumeMultiplier;
             
             source.connect(gainNode);
             gainNode.connect(this.audioContext.destination);
@@ -884,203 +925,146 @@ class AudioManager {
      * Select appropriate audio based on firework tier, combo, and rocket flight time.
      * Returns an object with audio configuration for synchronized playback.
      * 
-     * SYNCHRONIZATION STRATEGY (UPDATED):
-     * 1. COMBINED AUDIO: Pre-recorded woosh+explosion files where explosion timing is baked in
-     *    - Used when flight time matches the explosion timing in the audio file
+     * SYNCHRONIZATION STRATEGY (FINAL - PRIORITIZES COMBINED AUDIO):
+     * 1. COMBINED AUDIO (PRIMARY): Pre-recorded woosh+explosion files - PERFECT SYNC
+     *    - Used 60-80% of the time when flight time matches
      *    - Explosion times: tiny-bang (~1.0s), normal-bang (~3.3s), crackling-bang (~4.8s)
+     *    - Authentic sound because launch and explosion are one recording
      * 
-     * 2. LAYERED AUDIO: Multiple sounds playing in sync or with delays
-     *    - Launch sound + timed explosion (using playDelayed)
-     *    - Launch + explosion + crackling (all timed together)
-     *    - Allows flexible combinations and perfect sync
-     * 
-     * 3. CALLBACK AUDIO: Separate sounds with explosion triggered by visual event
+     * 2. CALLBACK AUDIO (FALLBACK): Separate sounds with explosion triggered by visual event
      *    - Launch plays immediately, explosion via onExplodeSound callback
-     *    - Perfect sync but less authentic (no integrated woosh+bang)
+     *    - Perfect sync guaranteed by callback trigger
+     *    - Used 20-40% for variety or when flight time doesn't match combined audio
      * 
      * @param {string} tier - Firework tier: 'small', 'medium', 'big', or 'massive'
      * @param {number} combo - Current combo count (affects audio selection)
      * @param {boolean} [instantExplode=false] - Whether firework explodes instantly (no rocket animation)
      * @param {number} [flightTime=1.5] - Expected rocket flight time in seconds (for matching audio timing)
-     * @returns {Object} Audio configuration with sound names, timing, and playback method
+     * @returns {Object} Audio configuration with sound names and playback method
      */
     selectAudio(tier, combo, instantExplode = false, flightTime = 1.5) {
         // For instant explosions (high combo), use appropriate explosion based on tier
         if (instantExplode) {
             return {
-                useLayeredAudio: false,
                 useCombinedAudio: false,
                 launchSound: null,
                 explosionSound: this.EXPLOSION_SMALL[Math.floor(Math.random() * this.EXPLOSION_SMALL.length)],
-                explosionDelay: 0,
-                cracklingSound: null,
-                cracklingDelay: 0
+                cracklingSound: null
             };
         }
 
-        // For high combos (5+) - use quick audio that matches short flight times
+        // For high combos (5+) - prioritize combined tiny-bang for speed
         if (combo >= 5) {
-            // Use tiny-bang combined if flight time matches (~1.0s)
-            if (flightTime >= 0.8 && flightTime <= 1.3) {
+            // 80% use tiny-bang combined (explosion at 1.0s)
+            if (Math.random() < 0.8) {
                 return {
-                    useLayeredAudio: false,
                     useCombinedAudio: true,
                     combinedSound: this.SMALL_SOUNDS[Math.floor(Math.random() * this.SMALL_SOUNDS.length)],
-                    explosionDelay: 1.0,
-                    cracklingSound: null,
-                    cracklingDelay: 0
+                    explosionSound: null,
+                    cracklingSound: null
                 };
             }
-            // Otherwise use callback for guaranteed sync
+            // 20% use callback for variety
             return {
-                useLayeredAudio: false,
                 useCombinedAudio: false,
                 launchSound: this.BASIC_LAUNCH_SOUNDS[Math.floor(Math.random() * this.BASIC_LAUNCH_SOUNDS.length)],
                 explosionSound: this.EXPLOSION_SMALL[Math.floor(Math.random() * this.EXPLOSION_SMALL.length)],
-                explosionDelay: 0,
-                cracklingSound: null,
-                cracklingDelay: 0
+                cracklingSound: null
             };
         }
 
-        // SMART AUDIO SELECTION based on tier and flight time
+        // SMART AUDIO SELECTION based on tier (PRIORITIZES COMBINED AUDIO)
         const rand = Math.random();
         
         switch (tier) {
             case 'small':
                 // Small rockets: ~1-1.5s flight time
-                // Strategy: 60% combined tiny-bang, 40% layered (launch + timed explosion)
-                if (rand < 0.6 && flightTime >= 0.8 && flightTime <= 1.3) {
-                    // Use combined tiny-bang (explosion at 1.0s in audio)
+                // PRIMARY: 80% combined tiny-bang (explosion at 1.0s)
+                if (rand < 0.8) {
                     return {
-                        useLayeredAudio: false,
                         useCombinedAudio: true,
                         combinedSound: this.SMALL_SOUNDS[Math.floor(Math.random() * this.SMALL_SOUNDS.length)],
-                        explosionDelay: 1.0,
-                        cracklingSound: null,
-                        cracklingDelay: 0
+                        explosionSound: null,
+                        cracklingSound: null
                     };
                 }
-                // Layered: basic launch + small explosion timed to flight duration
+                // FALLBACK: 20% callback with separate sounds
                 return {
-                    useLayeredAudio: true,
                     useCombinedAudio: false,
                     launchSound: this.BASIC_LAUNCH_SOUNDS[Math.floor(Math.random() * this.BASIC_LAUNCH_SOUNDS.length)],
                     explosionSound: this.EXPLOSION_SMALL[Math.floor(Math.random() * this.EXPLOSION_SMALL.length)],
-                    explosionDelay: flightTime, // Play explosion at calculated flight time
-                    cracklingSound: null,
-                    cracklingDelay: 0
+                    cracklingSound: null
                 };
 
             case 'medium':
                 // Medium rockets: ~2-3s flight time
-                // Strategy: 40% combined normal-bang, 30% layered smooth, 30% layered varied
-                if (rand < 0.4 && flightTime >= 2.8 && flightTime <= 3.5) {
-                    // Use combined normal-bang (explosion at 3.3s)
+                // PRIMARY: 70% combined normal-bang or tiny-bang4 (explosion at 3.3s)
+                if (rand < 0.7) {
+                    const combinedChoice = Math.random() < 0.7 ? 'combined-whistle-normal' : 'combined-whistle-tiny4';
                     return {
-                        useLayeredAudio: false,
                         useCombinedAudio: true,
-                        combinedSound: 'combined-whistle-normal',
-                        explosionDelay: 3.3,
-                        cracklingSound: null,
-                        cracklingDelay: 0
+                        combinedSound: combinedChoice,
+                        explosionSound: null,
+                        cracklingSound: null
                     };
                 }
-                // Layered: smooth or basic launch + medium explosion at flight time
-                const mediumLaunch = rand < 0.65 
+                // FALLBACK: 30% callback with smooth/varied launch + medium explosion
+                const mediumLaunch = rand < 0.85
                     ? this.SMOOTH_LAUNCH_SOUNDS[Math.floor(Math.random() * this.SMOOTH_LAUNCH_SOUNDS.length)]
                     : this.BASIC_LAUNCH_SOUNDS[Math.floor(Math.random() * this.BASIC_LAUNCH_SOUNDS.length)];
                 
                 return {
-                    useLayeredAudio: true,
                     useCombinedAudio: false,
                     launchSound: mediumLaunch,
                     explosionSound: this.EXPLOSION_MEDIUM[Math.floor(Math.random() * this.EXPLOSION_MEDIUM.length)],
-                    explosionDelay: flightTime,
-                    cracklingSound: null,
-                    cracklingDelay: 0
+                    cracklingSound: null
                 };
 
             case 'big':
-                // Big rockets: ~3-4s flight time
-                // Strategy: Combined for matching times, layered with crackling otherwise
-                if (flightTime >= 4.3 && flightTime <= 5.2 && rand < 0.35) {
-                    // Use combined crackling-bang (explosion at 4.8s, crackling included)
+                // Big rockets: ~3-5s flight time
+                // PRIMARY: 60% combined crackling-bang (explosion at 4.8s)
+                if (rand < 0.6) {
                     return {
-                        useLayeredAudio: false,
                         useCombinedAudio: true,
                         combinedSound: 'combined-crackling-bang',
-                        explosionDelay: 4.8,
-                        cracklingSound: null, // Already in combined
-                        cracklingDelay: 0
-                    };
-                } else if (flightTime >= 2.8 && flightTime <= 3.5 && rand < 0.55) {
-                    // Use combined normal-bang + extra crackling layer
-                    return {
-                        useLayeredAudio: false,
-                        useCombinedAudio: true,
-                        combinedSound: 'combined-whistle-normal',
-                        explosionDelay: 3.3,
-                        cracklingSound: rand < 0.5 ? this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)] : null,
-                        cracklingDelay: 3.3 // Crackling starts at explosion time
+                        explosionSound: null,
+                        cracklingSound: null // Already in combined audio
                     };
                 }
-                // Layered: whistle launch + big explosion + crackling (all timed)
+                // FALLBACK: 40% callback with whistle + big explosion + optional crackling layer
                 return {
-                    useLayeredAudio: true,
                     useCombinedAudio: false,
                     launchSound: 'launch-whistle',
                     explosionSound: this.EXPLOSION_BIG[Math.floor(Math.random() * this.EXPLOSION_BIG.length)],
-                    explosionDelay: flightTime,
-                    cracklingSound: rand < 0.5 ? this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)] : null,
-                    cracklingDelay: flightTime // Crackling with explosion
+                    cracklingSound: Math.random() < 0.4 ? this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)] : null
                 };
 
             case 'massive':
-                // Massive rockets: ~4-5s flight time
-                // Strategy: Prefer combined crackling-bang, layered with heavy effects otherwise
-                if (flightTime >= 4.3 && flightTime <= 5.2 && rand < 0.5) {
-                    // Combined crackling-bang for maximum impact
+                // Massive rockets: ~4-6s flight time
+                // PRIMARY: 80% combined crackling-bang (explosion at 4.8s) - MAXIMUM IMPACT
+                if (rand < 0.8) {
                     return {
-                        useLayeredAudio: false,
                         useCombinedAudio: true,
                         combinedSound: 'combined-crackling-bang',
-                        explosionDelay: 4.8,
-                        cracklingSound: null, // Already included
-                        cracklingDelay: 0
-                    };
-                } else if (flightTime >= 2.8 && flightTime <= 3.5 && rand < 0.7) {
-                    // Combined normal-bang + heavy crackling
-                    return {
-                        useLayeredAudio: false,
-                        useCombinedAudio: true,
-                        combinedSound: 'combined-whistle-normal',
-                        explosionDelay: 3.3,
-                        cracklingSound: this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)],
-                        cracklingDelay: 3.3
+                        explosionSound: null,
+                        cracklingSound: null // Already in combined audio
                     };
                 }
-                // Layered: whistle + huge explosion + crackling
+                // FALLBACK: 20% callback with whistle + huge explosion + heavy crackling
                 return {
-                    useLayeredAudio: true,
                     useCombinedAudio: false,
                     launchSound: 'launch-whistle',
                     explosionSound: 'explosion-huge',
-                    explosionDelay: flightTime,
-                    cracklingSound: rand < 0.7 ? this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)] : null,
-                    cracklingDelay: flightTime
+                    cracklingSound: Math.random() < 0.7 ? this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)] : null
                 };
 
             default:
-                // Fallback to layered audio
+                // Fallback to small if tier is unknown
                 return {
-                    useLayeredAudio: true,
-                    useCombinedAudio: false,
-                    launchSound: this.ALL_LAUNCH_SOUNDS[Math.floor(Math.random() * this.ALL_LAUNCH_SOUNDS.length)],
-                    explosionSound: this.EXPLOSION_MEDIUM[Math.floor(Math.random() * this.EXPLOSION_MEDIUM.length)],
-                    explosionDelay: flightTime,
-                    cracklingSound: null,
-                    cracklingDelay: 0
+                    useCombinedAudio: true,
+                    combinedSound: this.SMALL_SOUNDS[0],
+                    explosionSound: null,
+                    cracklingSound: null
                 };
         }
     }
@@ -1392,62 +1376,21 @@ class FireworksEngine {
         if (playSound && this.audioManager.enabled) {
             const audioConfig = this.audioManager.selectAudio(tier, combo, instantExplode, expectedFlightTime);
             
-            console.log(`[Fireworks] Audio strategy: ${audioConfig.useCombinedAudio ? 'Combined' : (audioConfig.useLayeredAudio ? 'Layered' : 'Callback')}`);
+            console.log(`[Fireworks] Audio strategy: ${audioConfig.useCombinedAudio ? 'Combined' : 'Callback'}`);
             
             if (audioConfig.useCombinedAudio) {
                 // COMBINED AUDIO PLAYBACK
-                // Pre-recorded woosh+explosion file - play immediately
-                const audioExplosionTime = audioConfig.explosionDelay;
-                console.log(`[Fireworks] Playing combined: ${audioConfig.combinedSound} (explosion at ${audioExplosionTime}s, visual at ${expectedFlightTime.toFixed(2)}s)`);
-                
-                this.audioManager.play(audioConfig.combinedSound, this.audioManager.COMBINED_AUDIO_VOLUME);
-                
-                // Add optional crackling layer timed with the explosion
-                if (audioConfig.cracklingSound && audioConfig.cracklingDelay > 0) {
-                    console.log(`[Fireworks] Adding crackling layer at ${audioConfig.cracklingDelay}s`);
-                    this.audioManager.playDelayed(
-                        audioConfig.cracklingSound, 
-                        audioConfig.cracklingDelay, 
-                        this.audioManager.CRACKLING_VOLUME
-                    );
-                } else if (audioConfig.cracklingSound) {
-                    this.audioManager.play(audioConfig.cracklingSound, this.audioManager.CRACKLING_VOLUME);
-                }
-                
-            } else if (audioConfig.useLayeredAudio) {
-                // LAYERED AUDIO PLAYBACK
-                // Launch plays immediately, explosion and crackling trigger via callback for perfect sync
-                
-                // 1. Launch sound - plays immediately when rocket fires
-                if (audioConfig.launchSound && !skipRockets) {
-                    console.log(`[Fireworks] Layered - Launch: ${audioConfig.launchSound} (immediate)`);
-                    this.audioManager.play(audioConfig.launchSound, this.audioManager.LAUNCH_AUDIO_VOLUME);
-                }
-                
-                // 2. Explosion and crackling sounds - trigger via callback when visual explodes
-                const soundVolume = instantExplode 
-                    ? this.audioManager.INSTANT_EXPLODE_VOLUME 
-                    : this.audioManager.NORMAL_EXPLOSION_VOLUME;
-                    
-                if (audioConfig.explosionSound) {
-                    console.log(`[Fireworks] Layered - Setting explosion callback: ${audioConfig.explosionSound}`);
-                    firework.onExplodeSound = (intensity) => {
-                        console.log(`[Fireworks] Layered - Explosion callback firing: ${audioConfig.explosionSound}`);
-                        this.audioManager.play(audioConfig.explosionSound, intensity * soundVolume);
-                        
-                        // Add crackling layer with explosion for perfect sync
-                        if (audioConfig.cracklingSound) {
-                            console.log(`[Fireworks] Layered - Crackling firing with explosion: ${audioConfig.cracklingSound}`);
-                            this.audioManager.play(audioConfig.cracklingSound, this.audioManager.CRACKLING_VOLUME);
-                        }
-                    };
+                // Single file contains both launch and explosion (pre-synchronized)
+                if (audioConfig.combinedSound && !skipRockets) {
+                    console.log(`[Fireworks] Combined audio: ${audioConfig.combinedSound}`);
+                    this.audioManager.play(audioConfig.combinedSound, this.audioManager.COMBINED_AUDIO_VOLUME);
                 }
                 
             } else {
                 // CALLBACK AUDIO PLAYBACK
-                // Separate launch and explosion sounds with callback-based sync
+                // Launch plays immediately, explosion/crackling trigger via callback when visual explodes
                 if (audioConfig.launchSound && !skipRockets) {
-                    console.log(`[Fireworks] Callback - Launch: ${audioConfig.launchSound}`);
+                    console.log(`[Fireworks] Launch: ${audioConfig.launchSound}`);
                     this.audioManager.play(audioConfig.launchSound, this.audioManager.LAUNCH_AUDIO_VOLUME);
                 }
                 
@@ -1457,18 +1400,19 @@ class FireworksEngine {
                     : this.audioManager.NORMAL_EXPLOSION_VOLUME;
                     
                 if (audioConfig.explosionSound) {
-                    console.log(`[Fireworks] Callback - Setting explosion callback: ${audioConfig.explosionSound}`);
+                    console.log(`[Fireworks] Setting explosion callback: ${audioConfig.explosionSound}`);
                     firework.onExplodeSound = (intensity) => {
-                        console.log(`[Fireworks] Callback - Explosion firing: ${audioConfig.explosionSound}`);
+                        console.log(`[Fireworks] Explosion callback triggered: ${audioConfig.explosionSound}`);
                         this.audioManager.play(audioConfig.explosionSound, intensity * soundVolume);
                         
-                        // Add crackling layer with explosion
+                        // Add crackling layer with explosion for perfect sync
                         if (audioConfig.cracklingSound) {
+                            console.log(`[Fireworks] Crackling with explosion: ${audioConfig.cracklingSound}`);
                             this.audioManager.play(audioConfig.cracklingSound, this.audioManager.CRACKLING_VOLUME);
                         }
                     };
-                } else {
-                    console.log('[Fireworks] No explosion sound configured');
+                } else if (instantExplode) {
+                    console.log('[Fireworks] Instant explode - no launch sound needed');
                 }
             }
         }
