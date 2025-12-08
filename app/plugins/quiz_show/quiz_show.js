@@ -1128,12 +1128,17 @@
             updatePreviewScale(e.target.value);
         });
 
-        // Load HUD config when HUD tab is opened
-        const hudTab = document.querySelector('[data-tab="hud"]');
-        if (hudTab) {
-            hudTab.addEventListener('click', () => {
+        // Load HUD config and layouts when overlay-config tab is opened
+        const overlayConfigTab = document.querySelector('[data-tab="overlay-config"]');
+        if (overlayConfigTab) {
+            overlayConfigTab.addEventListener('click', () => {
                 setTimeout(() => {
                     loadHUDConfig();
+                    loadLayouts();
+                    // Initialize draggable elements
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(initializeDraggableElements);
+                    });
                 }, 100);
             });
         }
@@ -2008,20 +2013,6 @@
     }
     if (document.getElementById('cancelLayoutBtn')) {
         document.getElementById('cancelLayoutBtn').addEventListener('click', cancelLayoutEdit);
-    }
-
-    // Load layouts when tab is opened
-    const layoutEditorTab = document.querySelector('[data-tab="layout-editor"]');
-    if (layoutEditorTab) {
-        layoutEditorTab.addEventListener('click', () => {
-            loadLayouts();
-            // Double requestAnimationFrame ensures DOM is fully rendered before initializing
-            // First frame: tab content is made visible
-            // Second frame: elements are fully laid out and ready for interaction
-            requestAnimationFrame(() => {
-                requestAnimationFrame(initializeDraggableElements);
-            });
-        });
     }
 
     // Initialize drag and drop for layout elements

@@ -898,14 +898,14 @@ code {
     }
 }
 
-/* HUD Overlay Configuration */
-.hud-config-grid {
+/* Overlay Configuration (Combined HUD + Layout Editor) */
+.overlay-config-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: 20px;
 }
 
-.hud-config-grid .panel.full-width {
+.overlay-config-grid .panel.full-width {
     grid-column: 1 / -1;
 }
 
