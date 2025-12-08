@@ -322,6 +322,50 @@ class Firework {
         this.hueRange = 60 + Math.random() * 60;
     }
     
+    /**
+     * Calculate approximate flight time for a rocket based on physics
+     * Used to synchronize combined audio files
+     * @param {number} startY - Starting Y position (usually canvas height)
+     * @param {number} targetY - Target Y position
+     * @param {number} initialVy - Initial vertical velocity (negative = upward)
+     * @param {number} acceleration - Acceleration (positive = deceleration for upward movement)
+     * @returns {number} Estimated flight time in seconds
+     */
+    calculateRocketFlightTime(startY, targetY, initialVy = CONFIG.rocketSpeed, acceleration = -CONFIG.rocketAcceleration) {
+        // Physics: Using kinematic equations
+        // v^2 = v0^2 + 2a(y - y0)
+        // For upward motion with deceleration
+        const distance = Math.abs(targetY - startY);
+        
+        // Time to reach target height (may hit target before reaching peak)
+        // y = y0 + v0*t + 0.5*a*t^2
+        // Rearrange: 0.5*a*t^2 + v0*t + (y0 - y) = 0
+        // Solve quadratic equation
+        const a = 0.5 * acceleration;
+        const b = initialVy;
+        const c = distance;
+        
+        if (Math.abs(a) < 0.001) {
+            // No acceleration, constant velocity
+            return distance / Math.abs(initialVy);
+        }
+        
+        const discriminant = b*b - 4*a*c;
+        if (discriminant < 0) {
+            // Target unreachable, will reach peak first
+            // Time to reach peak: v = v0 + at, when v=0: t = -v0/a
+            return Math.abs(initialVy / acceleration);
+        }
+        
+        // Take the positive root
+        const t1 = (-b + Math.sqrt(discriminant)) / (2*a);
+        const t2 = (-b - Math.sqrt(discriminant)) / (2*a);
+        const t = Math.max(t1, t2);
+        
+        // Convert from frames to seconds (assuming 60 FPS)
+        return t / 60;
+    }
+
     shouldExplode() {
         // Instant explode mode
         if (this.shouldExplodeImmediately) {
@@ -834,20 +878,22 @@ class AudioManager {
     }
 
     /**
-     * Select appropriate audio based on firework tier and combo.
+     * Select appropriate audio based on firework tier, combo, and rocket flight time.
      * Returns an object with audio configuration for synchronized playback.
      * 
      * SYNCHRONIZATION STRATEGY:
-     * - Uses ONLY separate audio (launch + explosion) with callback triggering
+     * - For rockets: Uses separate audio with callback-based explosion triggering
      * - This ensures explosion sound plays EXACTLY when visual firework explodes
-     * - Eliminates timing mismatches from pre-baked combined audio files
+     * - Launch sounds are short (~0.4-0.8s) and play immediately
+     * - Explosion sounds trigger via callback when visual explodes (perfect sync)
      * 
      * @param {string} tier - Firework tier: 'small', 'medium', 'big', or 'massive'
      * @param {number} combo - Current combo count (affects audio selection)
      * @param {boolean} [instantExplode=false] - Whether firework explodes instantly (no rocket animation)
+     * @param {number} [flightTime=1.5] - Expected rocket flight time in seconds (for future combined audio sync)
      * @returns {Object} Audio configuration with sound names and timing
      */
-    selectAudio(tier, combo, instantExplode = false) {
+    selectAudio(tier, combo, instantExplode = false, flightTime = 1.5) {
         // For instant explosions (high combo), use appropriate explosion based on tier
         if (instantExplode) {
             return {
