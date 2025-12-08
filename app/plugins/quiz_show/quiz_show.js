@@ -2477,13 +2477,13 @@
                 
                 if (data.success) {
                     hudConfig = data.config;
-                    showMessage('visualSaveMessage', 'Visuelle Einstellungen gespeichert!', 'success');
+                    showMessage('Visuelle Einstellungen gespeichert!', 'success', 'visualSaveMessage');
                     refreshPreview();
                 } else {
-                    showMessage('visualSaveMessage', 'Fehler: ' + data.error, 'error');
+                    showMessage('Fehler: ' + data.error, 'error', 'visualSaveMessage');
                 }
             } catch (error) {
-                showMessage('visualSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+                showMessage('Netzwerkfehler: ' + error.message, 'error', 'visualSaveMessage');
             }
         });
     }
@@ -2502,13 +2502,13 @@
                 
                 if (data.success) {
                     hudConfig = data.config;
-                    showMessage('animationSaveMessage', 'Animations-Einstellungen gespeichert!', 'success');
+                    showMessage('Animations-Einstellungen gespeichert!', 'success', 'animationSaveMessage');
                     refreshPreview();
                 } else {
-                    showMessage('animationSaveMessage', 'Fehler: ' + data.error, 'error');
+                    showMessage('Fehler: ' + data.error, 'error', 'animationSaveMessage');
                 }
             } catch (error) {
-                showMessage('animationSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+                showMessage('Netzwerkfehler: ' + error.message, 'error', 'animationSaveMessage');
             }
         });
     }
@@ -2527,13 +2527,13 @@
                 
                 if (data.success) {
                     hudConfig = data.config;
-                    showMessage('colorFontSaveMessage', 'Farben & Schriften gespeichert!', 'success');
+                    showMessage('Farben & Schriften gespeichert!', 'success', 'colorFontSaveMessage');
                     refreshPreview();
                 } else {
-                    showMessage('colorFontSaveMessage', 'Fehler: ' + data.error, 'error');
+                    showMessage('Fehler: ' + data.error, 'error', 'colorFontSaveMessage');
                 }
             } catch (error) {
-                showMessage('colorFontSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+                showMessage('Netzwerkfehler: ' + error.message, 'error', 'colorFontSaveMessage');
             }
         });
     }
@@ -2552,13 +2552,13 @@
                 
                 if (data.success) {
                     hudConfig = data.config;
-                    showMessage('customCSSSaveMessage', 'Custom CSS gespeichert!', 'success');
+                    showMessage('Custom CSS gespeichert!', 'success', 'customCSSSaveMessage');
                     refreshPreview();
                 } else {
-                    showMessage('customCSSSaveMessage', 'Fehler: ' + data.error, 'error');
+                    showMessage('Fehler: ' + data.error, 'error', 'customCSSSaveMessage');
                 }
             } catch (error) {
-                showMessage('customCSSSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+                showMessage('Netzwerkfehler: ' + error.message, 'error', 'customCSSSaveMessage');
             }
         });
     }
