@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiz Show Plugin</title>
+    <title>Pup Cid´s Little Quiz Show Plugin</title>
     <link rel="stylesheet" href="/quiz-show/quiz_show.css">
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/lucide.min.js"></script>
@@ -12,7 +12,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 Quiz Show - Wer wird Millionär Style</h1>
+            <h1>🎯 Pup Cid´s Little Quiz Show Plugin</h1>
             <div class="header-status">
                 <div id="connectionStatus" class="status-badge status-connected">Verbunden</div>
                 <div id="quizStatus" class="status-badge status-idle">Bereit</div>
@@ -769,320 +769,359 @@
             </div>
         </div>
 
-        <!-- Overlay Configuration Tab (Combined HUD + Layout Editor) -->
+        <!-- Overlay Configuration Tab (Redesigned with Accordion) -->
         <div id="overlay-config" class="tab-content">
-            <div class="overlay-config-grid">
-                <!-- Live Preview Panel -->
-                <div class="panel full-width">
-                    <div class="panel-header">
-                        <h2>🎬 Live Vorschau & URLs</h2>
-                        <div class="panel-controls">
-                            <button id="openOverlayBtn" class="btn btn-secondary">🔗 Overlay öffnen</button>
-                            <button id="refreshPreviewBtn" class="btn btn-secondary">🔄 Aktualisieren</button>
-                        </div>
+            <!-- Quick Actions Header -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>🎬 Overlay Konfiguration</h2>
+                    <div class="panel-controls">
+                        <button id="openOverlayBtn" class="btn btn-secondary">🔗 Overlay öffnen</button>
+                        <button id="openLeaderboardOverlayBtn" class="btn btn-secondary">🏆 Leaderboard öffnen</button>
+                        <button id="refreshPreviewBtn" class="btn btn-secondary">🔄 Vorschau aktualisieren</button>
                     </div>
-                    <div class="panel-body">
-                        <div class="preview-container">
-                            <div class="preview-info">
-                                <div class="help-text">
-                                    <strong>Quiz Overlay URL:</strong> <code id="overlayUrl">/quiz-show/overlay</code>
+                </div>
+                <div class="panel-body">
+                    <div class="help-text" style="padding: 15px; background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; border-radius: 6px;">
+                        <strong>📺 OBS Browser-Quellen URLs:</strong><br>
+                        <code style="display: block; margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">/quiz-show/overlay</code>
+                        <code style="display: block; margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">/quiz-show/leaderboard-overlay</code>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accordion Sections -->
+            <div class="overlay-accordion">
+
+                <!-- Section 1: Layout Management -->
+                <div class="accordion-section">
+                    <button class="accordion-header" data-section="layouts">
+                        <span class="accordion-icon">📐</span>
+                        <span class="accordion-title">Layout Management</span>
+                        <span class="accordion-arrow">▼</span>
+                    </button>
+                    <div class="accordion-content" data-content="layouts">
+                        <div class="accordion-inner">
+                            <!-- Saved Layouts -->
+                            <div class="config-subsection">
+                                <h3>Gespeicherte Layouts</h3>
+                                <div class="help-text" style="margin-bottom: 15px;">
+                                    Layouts speichern Element-Positionen und Größen für verschiedene Auflösungen.
                                 </div>
-                                <div class="help-text" style="margin-top: 10px;">
-                                    <strong>Leaderboard Overlay URL:</strong> <code>/quiz-show/leaderboard-overlay</code>
-                                    <button id="openLeaderboardOverlayBtn" class="btn btn-sm btn-secondary" style="margin-left: 10px;">🔗 Öffnen</button>
-                                </div>
-                                <div class="help-text" style="margin-top: 10px; padding: 10px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6;">
-                                    <strong>💡 Tipp:</strong> Fügen Sie diese URLs in OBS als Browser-Quelle hinzu. Das Leaderboard ist ein separates Overlay.
+                                <button id="createNewLayoutBtn" class="btn btn-primary btn-sm" style="margin-bottom: 15px;">➕ Neues Layout erstellen</button>
+                                <div id="layoutsList" class="layouts-list">
+                                    <!-- Layouts will be populated here -->
                                 </div>
                             </div>
-                            <div class="preview-wrapper" id="previewWrapper">
-                                <iframe id="overlayPreview" src="/quiz-show/overlay" frameborder="0"></iframe>
+
+                            <!-- Layout Editor -->
+                            <div class="config-subsection" id="layoutEditorSection" style="display: none;">
+                                <h3>Layout bearbeiten</h3>
+                                <div class="form-grid-2col">
+                                    <div class="form-group">
+                                        <label>Layout Name</label>
+                                        <input type="text" id="layoutName" class="form-control" placeholder="Mein Custom Layout">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Ausrichtung</label>
+                                        <select id="layoutOrientation" class="form-control">
+                                            <option value="horizontal">Horizontal (Landscape)</option>
+                                            <option value="vertical">Vertikal (Portrait)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Breite (px)</label>
+                                        <input type="number" id="layoutWidth" class="form-control" value="1920" min="800" max="3840">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Höhe (px)</label>
+                                        <input type="number" id="layoutHeight" class="form-control" value="1080" min="600" max="2160">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="layoutIsDefault">
+                                        Als Standard-Layout für diese Ausrichtung setzen
+                                    </label>
+                                </div>
+                                
+                                <!-- Element Positioning Canvas -->
+                                <div class="help-text" style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 12px; margin: 15px 0; border-radius: 4px;">
+                                    <strong>💡 Bedienung:</strong><br>
+                                    • <strong>Verschieben:</strong> Element anklicken und ziehen<br>
+                                    • <strong>Größe ändern:</strong> Rechte untere Ecke ziehen (blau)<br>
+                                    • <strong>Ausblenden/Einblenden:</strong> Doppelklick auf Element<br>
+                                    • Ausgeblendete Elemente werden rot gestrichelt dargestellt
+                                </div>
+                                <div class="layout-preview" id="layoutPreview">
+                                    <div class="preview-canvas" id="previewCanvas">
+                                        <div class="layout-element draggable" id="elem-question" data-element="question" style="left: 50px; top: 50px; width: 800px; height: 150px;">
+                                            <div class="element-label">❓ Frage</div>
+                                            <div class="element-resize-handle"></div>
+                                        </div>
+                                        <div class="layout-element draggable" id="elem-answers" data-element="answers" style="left: 50px; top: 220px; width: 800px; height: 400px;">
+                                            <div class="element-label">🅰️ Antworten</div>
+                                            <div class="element-resize-handle"></div>
+                                        </div>
+                                        <div class="layout-element draggable" id="elem-timer" data-element="timer" style="left: 900px; top: 50px; width: 200px; height: 200px;">
+                                            <div class="element-label">⏱️ Timer</div>
+                                            <div class="element-resize-handle"></div>
+                                        </div>
+                                        <div class="layout-element draggable" id="elem-leaderboard" data-element="leaderboard" style="left: 900px; top: 300px; width: 300px; height: 400px;">
+                                            <div class="element-label">🏆 Leaderboard</div>
+                                            <div class="element-resize-handle"></div>
+                                        </div>
+                                        <div class="layout-element draggable" id="elem-jokerInfo" data-element="jokerInfo" style="left: 50px; top: 650px; width: 400px; height: 100px;">
+                                            <div class="element-label">🎯 Joker Info</div>
+                                            <div class="element-resize-handle"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="button-group" style="margin-top: 15px;">
+                                    <button id="saveLayoutBtn" class="btn btn-primary">💾 Layout Speichern</button>
+                                    <button id="deleteLayoutBtn" class="btn btn-danger">🗑️ Layout Löschen</button>
+                                    <button id="cancelLayoutBtn" class="btn btn-secondary">❌ Abbrechen</button>
+                                </div>
+                                <div id="layoutSaveMessage" class="message hidden"></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Layouts Management -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>📐 Gespeicherte Layouts</h2>
-                        <button id="createNewLayoutBtn" class="btn btn-primary btn-sm">➕ Neues Layout</button>
-                    </div>
-                    <div class="panel-body">
-                        <div class="help-text" style="margin-bottom: 15px;">
-                            Layouts speichern Element-Positionen und Größen für verschiedene Auflösungen.
-                        </div>
-                        <div id="layoutsList" class="layouts-list">
-                            <!-- Layouts will be populated here -->
-                        </div>
-                    </div>
-                </div>
+                <!-- Section 2: Visual Settings -->
 
-                <!-- Layout Configuration -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>⚙️ Layout Bearbeiten</h2>
-                    </div>
-                    <div class="panel-body">
-                        <div class="form-group">
-                            <label>Layout Name</label>
-                            <input type="text" id="layoutName" class="form-control" placeholder="Mein Custom Layout">
-                        </div>
+                <!-- Section 2: Visual Settings -->
+                <div class="accordion-section">
+                    <button class="accordion-header" data-section="visual">
+                        <span class="accordion-icon">🎨</span>
+                        <span class="accordion-title">Theme & Visuals</span>
+                        <span class="accordion-arrow">▼</span>
+                    </button>
+                    <div class="accordion-content" data-content="visual">
+                        <div class="accordion-inner">
+                            <div class="form-grid-2col">
+                                <div class="form-group">
+                                    <label>Theme:</label>
+                                    <select id="hudTheme" class="form-control">
+                                        <option value="dark">Dark Professional</option>
+                                        <option value="light">Light Clean</option>
+                                        <option value="neon">Neon Cyberpunk</option>
+                                        <option value="gold">Gold TV Show</option>
+                                    </select>
+                                </div>
 
-                        <div class="form-row">
+                                <div class="form-group">
+                                    <label>Antworten Layout:</label>
+                                    <select id="answersLayout" class="form-control">
+                                        <option value="grid">Grid (2x2)</option>
+                                        <option value="vertical">Vertikal</option>
+                                        <option value="horizontal">Horizontal</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Timer-Variante:</label>
+                                    <select id="timerVariant" class="form-control">
+                                        <option value="circular" selected>Circular SVG</option>
+                                        <option value="bar">Progress Bar</option>
+                                        <option value="neon">Neon Glow</option>
+                                        <option value="ring">Ring mit Farbverlauf</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <div class="form-group">
-                                <label>Breite (px)</label>
-                                <input type="number" id="layoutWidth" class="form-control" value="1920" min="800" max="3840">
+                                <label>Animations-Geschwindigkeit:</label>
+                                <input type="range" id="animationSpeed" min="0.5" max="2" step="0.1" value="1" class="form-range">
+                                <div class="range-value"><span id="animationSpeedValue">1.0</span>x</div>
                             </div>
+
                             <div class="form-group">
-                                <label>Höhe (px)</label>
-                                <input type="number" id="layoutHeight" class="form-control" value="1080" min="600" max="2160">
+                                <label>Glow-Intensität:</label>
+                                <input type="range" id="glowIntensity" min="0" max="2" step="0.1" value="1" class="form-range">
+                                <div class="range-value"><span id="glowIntensityValue">1.0</span>x</div>
                             </div>
-                        </div>
 
-                        <div class="form-group">
-                            <label>Ausrichtung</label>
-                            <select id="layoutOrientation" class="form-control">
-                                <option value="horizontal">Horizontal (Landscape)</option>
-                                <option value="vertical">Vertikal (Portrait)</option>
-                            </select>
+                            <div class="button-group">
+                                <button id="saveVisualSettingsBtn" class="btn btn-primary">💾 Visuelle Einstellungen Speichern</button>
+                            </div>
+                            <div id="visualSaveMessage" class="message hidden"></div>
                         </div>
-
-                        <div class="form-group">
-                            <label>
-                                <input type="checkbox" id="layoutIsDefault">
-                                Als Standard-Layout für diese Ausrichtung setzen
-                            </label>
-                        </div>
-
-                        <div class="button-group">
-                            <button id="saveLayoutBtn" class="btn btn-primary">💾 Layout Speichern</button>
-                            <button id="deleteLayoutBtn" class="btn btn-danger">🗑️ Layout Löschen</button>
-                            <button id="cancelLayoutBtn" class="btn btn-secondary">❌ Abbrechen</button>
-                        </div>
-                        <div id="layoutSaveMessage" class="message hidden"></div>
                     </div>
                 </div>
 
-                <!-- Element Positioning -->
-                <div class="panel full-width">
-                    <div class="panel-header">
-                        <h2>📍 Element Positionen</h2>
-                    </div>
-                    <div class="panel-body">
-                        <div class="help-text" style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
-                            <strong>💡 Bedienung:</strong><br>
-                            • <strong>Verschieben:</strong> Element anklicken und ziehen<br>
-                            • <strong>Größe ändern:</strong> Rechte untere Ecke ziehen (blau)<br>
-                            • <strong>Ausblenden/Einblenden:</strong> Doppelklick auf Element<br>
-                            • Ausgeblendete Elemente werden rot gestrichelt dargestellt
-                        </div>
-                        <div class="layout-preview" id="layoutPreview">
-                            <div class="preview-canvas" id="previewCanvas">
-                                <div class="layout-element draggable" id="elem-question" data-element="question" style="left: 50px; top: 50px; width: 800px; height: 150px;">
-                                    <div class="element-label">❓ Frage</div>
-                                    <div class="element-resize-handle"></div>
+                <!-- Section 3: Animations -->
+                <div class="accordion-section">
+                    <button class="accordion-header" data-section="animations">
+                        <span class="accordion-icon">✨</span>
+                        <span class="accordion-title">Animationen</span>
+                        <span class="accordion-arrow">▼</span>
+                    </button>
+                    <div class="accordion-content" data-content="animations">
+                        <div class="accordion-inner">
+                            <div class="form-grid-2col">
+                                <div class="form-group">
+                                    <label>Frage-Einblendung:</label>
+                                    <select id="questionAnimation" class="form-control">
+                                        <option value="slide-in-left">Slide In Left</option>
+                                        <option value="slide-in-right">Slide In Right</option>
+                                        <option value="slide-in-top">Slide In Top</option>
+                                        <option value="slide-in-bottom" selected>Slide In Bottom</option>
+                                        <option value="fade-in">Fade In</option>
+                                        <option value="scale-in">Scale In</option>
+                                        <option value="bounce-in">Bounce In</option>
+                                        <option value="elastic-in">Elastic Pop</option>
+                                        <option value="flip-in">Flip In</option>
+                                        <option value="rotate-in">Rotate In</option>
+                                    </select>
                                 </div>
-                                <div class="layout-element draggable" id="elem-answers" data-element="answers" style="left: 50px; top: 220px; width: 800px; height: 400px;">
-                                    <div class="element-label">🅰️ Antworten</div>
-                                    <div class="element-resize-handle"></div>
+
+                                <div class="form-group">
+                                    <label>Richtige Antwort:</label>
+                                    <select id="correctAnimation" class="form-control">
+                                        <option value="glow-pulse" selected>Glow Pulse</option>
+                                        <option value="explode">Explode Highlight</option>
+                                        <option value="burst">Correct Burst</option>
+                                    </select>
                                 </div>
-                                <div class="layout-element draggable" id="elem-timer" data-element="timer" style="left: 900px; top: 50px; width: 200px; height: 200px;">
-                                    <div class="element-label">⏱️ Timer</div>
-                                    <div class="element-resize-handle"></div>
-                                </div>
-                                <div class="layout-element draggable" id="elem-leaderboard" data-element="leaderboard" style="left: 900px; top: 300px; width: 300px; height: 400px;">
-                                    <div class="element-label">🏆 Leaderboard</div>
-                                    <div class="element-resize-handle"></div>
-                                </div>
-                                <div class="layout-element draggable" id="elem-jokerInfo" data-element="jokerInfo" style="left: 50px; top: 650px; width: 400px; height: 100px;">
-                                    <div class="element-label">🎯 Joker Info</div>
-                                    <div class="element-resize-handle"></div>
+
+                                <div class="form-group">
+                                    <label>Falsche Antwort:</label>
+                                    <select id="wrongAnimation" class="form-control">
+                                        <option value="shake" selected>Shake Reject</option>
+                                    </select>
                                 </div>
                             </div>
+
+                            <div class="button-group">
+                                <button id="saveAnimationSettingsBtn" class="btn btn-primary">💾 Animations-Einstellungen Speichern</button>
+                            </div>
+                            <div id="animationSaveMessage" class="message hidden"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Theme & Visual Settings -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>🎨 Theme & Style</h2>
-                    </div>
-                    <div class="panel-body">
-                        <div class="form-group">
-                            <label>Theme:</label>
-                            <select id="hudTheme" class="form-control">
-                                <option value="dark">Dark Professional</option>
-                                <option value="light">Light Clean</option>
-                                <option value="neon">Neon Cyberpunk</option>
-                                <option value="gold">Gold TV Show</option>
-                            </select>
-                        </div>
+                <!-- Section 4: Colors & Fonts -->
+                <div class="accordion-section">
+                    <button class="accordion-header" data-section="colors">
+                        <span class="accordion-icon">🎨</span>
+                        <span class="accordion-title">Farben & Schriftarten</span>
+                        <span class="accordion-arrow">▼</span>
+                    </button>
+                    <div class="accordion-content" data-content="colors">
+                        <div class="accordion-inner">
+                            <h3>Farben</h3>
+                            <div class="color-grid">
+                                <div class="form-group">
+                                    <label>Primärfarbe:</label>
+                                    <input type="color" id="colorPrimary" value="#3b82f6" class="form-control color-input">
+                                </div>
+                                <div class="form-group">
+                                    <label>Sekundärfarbe:</label>
+                                    <input type="color" id="colorSecondary" value="#8b5cf6" class="form-control color-input">
+                                </div>
+                                <div class="form-group">
+                                    <label>Erfolg:</label>
+                                    <input type="color" id="colorSuccess" value="#10b981" class="form-control color-input">
+                                </div>
+                                <div class="form-group">
+                                    <label>Warnung:</label>
+                                    <input type="color" id="colorWarning" value="#f59e0b" class="form-control color-input">
+                                </div>
+                                <div class="form-group">
+                                    <label>Fehler:</label>
+                                    <input type="color" id="colorDanger" value="#ef4444" class="form-control color-input">
+                                </div>
+                            </div>
 
-                        <div class="form-group">
-                            <label>Antworten Layout:</label>
-                            <select id="answersLayout" class="form-control">
-                                <option value="grid">Grid (2x2)</option>
-                                <option value="vertical">Vertikal</option>
-                                <option value="horizontal">Horizontal</option>
-                            </select>
-                        </div>
+                            <h3 style="margin-top: 25px;">Schriftarten</h3>
+                            <div class="form-grid-2col">
+                                <div class="form-group">
+                                    <label>Schriftfamilie:</label>
+                                    <select id="fontFamily" class="form-control">
+                                        <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" selected>System Standard</option>
+                                        <option value="'Arial', sans-serif">Arial</option>
+                                        <option value="'Helvetica Neue', Helvetica, sans-serif">Helvetica</option>
+                                        <option value="'Georgia', serif">Georgia</option>
+                                        <option value="'Times New Roman', serif">Times New Roman</option>
+                                        <option value="'Courier New', monospace">Courier New</option>
+                                        <option value="'Comic Sans MS', cursive">Comic Sans</option>
+                                    </select>
+                                </div>
 
-                        <div class="form-group">
-                            <label>Timer-Variante:</label>
-                            <select id="timerVariant" class="form-control">
-                                <option value="circular" selected>Circular SVG</option>
-                                <option value="bar">Progress Bar</option>
-                                <option value="neon">Neon Glow</option>
-                                <option value="ring">Ring mit Farbverlauf</option>
-                            </select>
-                        </div>
+                                <div class="form-group">
+                                    <label>Frage-Schriftgröße:</label>
+                                    <input type="text" id="fontSizeQuestion" value="2.2rem" class="form-control">
+                                </div>
 
-                        <div class="form-group">
-                            <label>Animations-Geschwindigkeit:</label>
-                            <input type="range" id="animationSpeed" min="0.5" max="2" step="0.1" value="1" class="form-range">
-                            <div class="range-value"><span id="animationSpeedValue">1.0</span>x</div>
-                        </div>
+                                <div class="form-group">
+                                    <label>Antwort-Schriftgröße:</label>
+                                    <input type="text" id="fontSizeAnswer" value="1.1rem" class="form-control">
+                                </div>
+                            </div>
 
-                        <div class="form-group">
-                            <label>Glow-Intensität:</label>
-                            <input type="range" id="glowIntensity" min="0" max="2" step="0.1" value="1" class="form-range">
-                            <div class="range-value"><span id="glowIntensityValue">1.0</span>x</div>
+                            <div class="button-group">
+                                <button id="saveColorFontSettingsBtn" class="btn btn-primary">💾 Farben & Schriften Speichern</button>
+                            </div>
+                            <div id="colorFontSaveMessage" class="message hidden"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Animations -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>✨ Animationen</h2>
-                    </div>
-                    <div class="panel-body">
-                        <div class="form-group">
-                            <label>Frage-Einblendung:</label>
-                            <select id="questionAnimation" class="form-control">
-                                <option value="slide-in-left">Slide In Left</option>
-                                <option value="slide-in-right">Slide In Right</option>
-                                <option value="slide-in-top">Slide In Top</option>
-                                <option value="slide-in-bottom" selected>Slide In Bottom</option>
-                                <option value="fade-in">Fade In</option>
-                                <option value="scale-in">Scale In</option>
-                                <option value="bounce-in">Bounce In</option>
-                                <option value="elastic-in">Elastic Pop</option>
-                                <option value="flip-in">Flip In</option>
-                                <option value="rotate-in">Rotate In</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Richtige Antwort:</label>
-                            <select id="correctAnimation" class="form-control">
-                                <option value="glow-pulse" selected>Glow Pulse</option>
-                                <option value="explode">Explode Highlight</option>
-                                <option value="burst">Correct Burst</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Falsche Antwort:</label>
-                            <select id="wrongAnimation" class="form-control">
-                                <option value="shake" selected>Shake Reject</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Colors -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>🎨 Farben</h2>
-                    </div>
-                    <div class="panel-body">
-                        <div class="color-grid">
-                            <div class="form-group">
-                                <label>Primärfarbe:</label>
-                                <input type="color" id="colorPrimary" value="#3b82f6" class="form-control color-input">
+                <!-- Section 5: Advanced (Custom CSS) -->
+                <div class="accordion-section">
+                    <button class="accordion-header" data-section="advanced">
+                        <span class="accordion-icon">💻</span>
+                        <span class="accordion-title">Erweitert (Custom CSS)</span>
+                        <span class="accordion-arrow">▼</span>
+                    </button>
+                    <div class="accordion-content" data-content="advanced">
+                        <div class="accordion-inner">
+                            <div class="help-text" style="margin-bottom: 15px;">
+                                Fügen Sie hier eigenes CSS hinzu, um das Overlay weiter anzupassen.
                             </div>
-                            <div class="form-group">
-                                <label>Sekundärfarbe:</label>
-                                <input type="color" id="colorSecondary" value="#8b5cf6" class="form-control color-input">
-                            </div>
-                            <div class="form-group">
-                                <label>Erfolg:</label>
-                                <input type="color" id="colorSuccess" value="#10b981" class="form-control color-input">
-                            </div>
-                            <div class="form-group">
-                                <label>Warnung:</label>
-                                <input type="color" id="colorWarning" value="#f59e0b" class="form-control color-input">
-                            </div>
-                            <div class="form-group">
-                                <label>Fehler:</label>
-                                <input type="color" id="colorDanger" value="#ef4444" class="form-control color-input">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Fonts -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>🔤 Schriftarten</h2>
-                    </div>
-                    <div class="panel-body">
-                        <div class="form-group">
-                            <label>Schriftfamilie:</label>
-                            <select id="fontFamily" class="form-control">
-                                <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" selected>System Standard</option>
-                                <option value="'Arial', sans-serif">Arial</option>
-                                <option value="'Helvetica Neue', Helvetica, sans-serif">Helvetica</option>
-                                <option value="'Georgia', serif">Georgia</option>
-                                <option value="'Times New Roman', serif">Times New Roman</option>
-                                <option value="'Courier New', monospace">Courier New</option>
-                                <option value="'Comic Sans MS', cursive">Comic Sans</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Frage-Schriftgröße:</label>
-                            <input type="text" id="fontSizeQuestion" value="2.2rem" class="form-control">
-                        </div>
-
-                        <div class="form-group">
-                            <label>Antwort-Schriftgröße:</label>
-                            <input type="text" id="fontSizeAnswer" value="1.1rem" class="form-control">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Custom CSS -->
-                <div class="panel full-width">
-                    <div class="panel-header">
-                        <h2>💻 Custom CSS</h2>
-                    </div>
-                    <div class="panel-body">
-                        <div class="help-text">
-                            Fügen Sie hier eigenes CSS hinzu, um das Overlay weiter anzupassen.
-                        </div>
-                        <textarea id="customCSS" class="css-editor" placeholder="/* Eigenes CSS hier einfügen */
+                            <textarea id="customCSS" class="css-editor" placeholder="/* Eigenes CSS hier einfügen */
 .question-text {
     /* Beispiel: Textschatten */
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }"></textarea>
+
+                            <div class="button-group" style="margin-top: 15px;">
+                                <button id="saveCustomCSSBtn" class="btn btn-primary">💾 Custom CSS Speichern</button>
+                            </div>
+                            <div id="customCSSSaveMessage" class="message hidden"></div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Save Controls -->
-                <div class="panel full-width">
+                <!-- Global Save/Reset -->
+                <div class="panel" style="margin-top: 20px;">
                     <div class="panel-header">
-                        <h2>💾 Speichern & Zurücksetzen</h2>
+                        <h2>💾 Alle Einstellungen</h2>
                     </div>
                     <div class="panel-body">
+                        <div class="help-text" style="margin-bottom: 15px;">
+                            Nutzen Sie die "Alle Speichern" Funktion, um alle Overlay-Einstellungen auf einmal zu speichern, 
+                            oder speichern Sie einzelne Abschnitte über die jeweiligen Buttons in den Accordion-Bereichen.
+                        </div>
                         <div class="button-group">
-                            <button id="saveHUDConfigBtn" class="btn btn-primary btn-large">💾 Visuelle Einstellungen Speichern</button>
+                            <button id="saveHUDConfigBtn" class="btn btn-primary btn-large">💾 Alle Einstellungen Speichern</button>
                             <button id="resetHUDConfigBtn" class="btn btn-danger">🔄 Auf Standard zurücksetzen</button>
                         </div>
                         <div id="hudSaveMessage" class="message hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Live Preview -->
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-header">
+                        <h2>👁️ Live Vorschau</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="preview-wrapper" id="previewWrapper">
+                            <iframe id="overlayPreview" src="/quiz-show/overlay" frameborder="0"></iframe>
+                        </div>
                     </div>
                 </div>
             </div>

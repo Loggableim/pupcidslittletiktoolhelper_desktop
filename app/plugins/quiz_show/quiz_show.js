@@ -2392,4 +2392,175 @@
     // ============================================
     // END GIFT-JOKER MANAGEMENT
     // ============================================
+
+    // ============================================
+    // ACCORDION FUNCTIONALITY FOR OVERLAY CONFIG
+    // ============================================
+
+    function initializeAccordion() {
+        const accordionHeaders = document.querySelectorAll('.accordion-header');
+        
+        accordionHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const section = header.dataset.section;
+                const content = document.querySelector(`[data-content="${section}"]`);
+                const isActive = header.classList.contains('active');
+                
+                // Toggle active state
+                if (isActive) {
+                    header.classList.remove('active');
+                    content.classList.remove('active');
+                } else {
+                    header.classList.add('active');
+                    content.classList.add('active');
+                }
+            });
+        });
+
+        // Open first section by default
+        if (accordionHeaders.length > 0) {
+            accordionHeaders[0].classList.add('active');
+            const firstSection = accordionHeaders[0].dataset.section;
+            const firstContent = document.querySelector(`[data-content="${firstSection}"]`);
+            if (firstContent) {
+                firstContent.classList.add('active');
+            }
+        }
+    }
+
+    // Initialize accordion when overlay-config tab is opened
+    const overlayConfigTabButton = document.querySelector('[data-tab="overlay-config"]');
+    if (overlayConfigTabButton) {
+        overlayConfigTabButton.addEventListener('click', () => {
+            setTimeout(() => {
+                initializeAccordion();
+            }, 100);
+        });
+    }
+
+    // ============================================
+    // INDIVIDUAL SAVE BUTTON HANDLERS
+    // ============================================
+
+    // Show/hide layout editor section
+    if (document.getElementById('createNewLayoutBtn')) {
+        document.getElementById('createNewLayoutBtn').addEventListener('click', () => {
+            const editorSection = document.getElementById('layoutEditorSection');
+            if (editorSection) {
+                editorSection.style.display = 'block';
+                // Scroll to editor
+                editorSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+    }
+
+    if (document.getElementById('cancelLayoutBtn')) {
+        document.getElementById('cancelLayoutBtn').addEventListener('click', () => {
+            const editorSection = document.getElementById('layoutEditorSection');
+            if (editorSection) {
+                editorSection.style.display = 'none';
+            }
+        });
+    }
+
+    // Visual Settings Save Button
+    if (document.getElementById('saveVisualSettingsBtn')) {
+        document.getElementById('saveVisualSettingsBtn').addEventListener('click', async () => {
+            try {
+                const config = getHUDConfigFromForm();
+                const response = await fetch('/api/quiz-show/hud-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    hudConfig = data.config;
+                    showMessage('visualSaveMessage', 'Visuelle Einstellungen gespeichert!', 'success');
+                    refreshPreview();
+                } else {
+                    showMessage('visualSaveMessage', 'Fehler: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('visualSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+            }
+        });
+    }
+
+    // Animation Settings Save Button
+    if (document.getElementById('saveAnimationSettingsBtn')) {
+        document.getElementById('saveAnimationSettingsBtn').addEventListener('click', async () => {
+            try {
+                const config = getHUDConfigFromForm();
+                const response = await fetch('/api/quiz-show/hud-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    hudConfig = data.config;
+                    showMessage('animationSaveMessage', 'Animations-Einstellungen gespeichert!', 'success');
+                    refreshPreview();
+                } else {
+                    showMessage('animationSaveMessage', 'Fehler: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('animationSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+            }
+        });
+    }
+
+    // Color & Font Settings Save Button
+    if (document.getElementById('saveColorFontSettingsBtn')) {
+        document.getElementById('saveColorFontSettingsBtn').addEventListener('click', async () => {
+            try {
+                const config = getHUDConfigFromForm();
+                const response = await fetch('/api/quiz-show/hud-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    hudConfig = data.config;
+                    showMessage('colorFontSaveMessage', 'Farben & Schriften gespeichert!', 'success');
+                    refreshPreview();
+                } else {
+                    showMessage('colorFontSaveMessage', 'Fehler: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('colorFontSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+            }
+        });
+    }
+
+    // Custom CSS Save Button
+    if (document.getElementById('saveCustomCSSBtn')) {
+        document.getElementById('saveCustomCSSBtn').addEventListener('click', async () => {
+            try {
+                const config = getHUDConfigFromForm();
+                const response = await fetch('/api/quiz-show/hud-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    hudConfig = data.config;
+                    showMessage('customCSSSaveMessage', 'Custom CSS gespeichert!', 'success');
+                    refreshPreview();
+                } else {
+                    showMessage('customCSSSaveMessage', 'Fehler: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('customCSSSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+            }
+        });
+    }
+
 })();
