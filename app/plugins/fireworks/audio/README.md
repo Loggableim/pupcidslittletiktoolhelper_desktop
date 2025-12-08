@@ -29,10 +29,14 @@ These files contain the complete firework sequence from launch to explosion, per
 - **`woosh_abheben_mit-pfeifen_tiny-bang.mp3`** (~1.8s)
 - **`woosh_abheben_mit-pfeifen_tiny-bang2.mp3`** (~1.8s)
 - **`woosh_abheben_mit-pfeifen_tiny-bang3.mp3`** (~1.9s)
-- **`woosh_abheben_mit-pfeifen_tiny-bang4.mp3`** (~3.4s)
   - Whoosh launch → whistling → tiny explosion
-  - Used for: **Small** fireworks and high combos (5+)
+  - Used for: **Small** fireworks
   - Explosion timing: ~1.2 seconds
+
+- **`woosh_abheben_mit-pfeifen_tiny-bang4.mp3`** (~3.4s)
+  - Whoosh launch → whistling → tiny explosion (longer variant)
+  - Used for: High combos (5+) for variety
+  - Explosion timing: ~1.2 seconds (note: longer audio but similar explosion timing)
 
 ### Launch-Only Audio (No Explosion)
 These files contain only the launch/whoosh sound, used when explosion is played separately:
@@ -67,11 +71,11 @@ The system automatically chooses audio based on firework characteristics:
 
 | Firework Type | Audio Selection | Notes |
 |--------------|----------------|-------|
-| **Small** (0-99 coins) | Random tiny-bang (1-4) | Quick, synchronized explosions |
+| **Small** (0-99 coins) | Random tiny-bang (1-3) | Quick, synchronized explosions |
 | **Medium** (100-499 coins) | 60% normal-bang, 40% smooth+explosion | Varied medium effects |
 | **Big** (500-999 coins) | 50% crackling-bang, 50% whistle+explosion | Impressive effects |
 | **Massive** (1000+ coins) | Always crackling-bang | Maximum impact |
-| **Combo 5-7** | Random tiny-bang | Quick bursts for fast combos |
+| **Combo 5-7** | Random tiny-bang (1-4, includes longer variant) | Quick bursts for fast combos |
 | **Combo 8+** | Only explosion sound | Instant explosions, no launch |
 
 ## ✅ Audio Status

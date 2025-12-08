@@ -656,6 +656,10 @@ class AudioManager {
         this.enabled = true;
         this.initialized = false;
         this.pendingSounds = new Map();
+        
+        // Audio selection constants for performance
+        this.TINY_BANG_SOUNDS = ['combined-whistle-tiny1', 'combined-whistle-tiny2', 'combined-whistle-tiny3', 'combined-whistle-tiny4'];
+        this.SMALL_SOUNDS = ['combined-whistle-tiny1', 'combined-whistle-tiny2', 'combined-whistle-tiny3'];
     }
 
     async init() {
@@ -744,8 +748,16 @@ class AudioManager {
     }
 
     /**
-     * Play a sound after a specified delay (in seconds)
-     * Useful for synchronizing explosion sounds with visual explosions
+     * Play a sound after a specified delay (in seconds).
+     * Useful for synchronizing explosion sounds with visual explosions when using separate audio files.
+     * 
+     * @param {string} name - The name of the sound to play (must be preloaded)
+     * @param {number} delay - Delay in seconds before playing the sound
+     * @param {number} [volume=1.0] - Volume multiplier (0.0 to 1.0), will be multiplied by global volume
+     * 
+     * @example
+     * // Play explosion sound after 2 seconds
+     * await audioManager.playDelayed('explosion-basic', 2.0, 0.8);
      */
     async playDelayed(name, delay, volume = 1.0) {
         if (!this.enabled) return;
@@ -777,8 +789,17 @@ class AudioManager {
     }
 
     /**
-     * Select appropriate audio based on firework tier and combo
-     * Returns an object with audio configuration
+     * Select appropriate audio based on firework tier and combo.
+     * Returns an object with audio configuration for synchronized playback.
+     * 
+     * @param {string} tier - Firework tier: 'small', 'medium', 'big', or 'massive'
+     * @param {number} combo - Current combo count (affects audio selection)
+     * @param {boolean} [instantExplode=false] - Whether firework explodes instantly (no rocket animation)
+     * @returns {Object} Audio configuration with sound names and timing
+     * 
+     * @example
+     * const audioConfig = audioManager.selectAudio('big', 3, false);
+     * // Returns: { useCombinedAudio: true, combinedSound: 'combined-crackling-bang', explosionDelay: 3.2 }
      */
     selectAudio(tier, combo, instantExplode = false) {
         // For instant explosions (high combo), use only explosion sounds
@@ -793,10 +814,9 @@ class AudioManager {
 
         // For high combos (5+), skip rockets but use combined audio for effect
         if (combo >= 5) {
-            const tinyBangs = ['combined-whistle-tiny1', 'combined-whistle-tiny2', 'combined-whistle-tiny3', 'combined-whistle-tiny4'];
             return {
                 useCombinedAudio: true,
-                combinedSound: tinyBangs[Math.floor(Math.random() * tinyBangs.length)],
+                combinedSound: this.TINY_BANG_SOUNDS[Math.floor(Math.random() * this.TINY_BANG_SOUNDS.length)],
                 explosionDelay: 0  // Explosion is already in the audio
             };
         }
@@ -805,10 +825,9 @@ class AudioManager {
         switch (tier) {
             case 'small':
                 // Small fireworks: quick tiny explosions
-                const smallSounds = ['combined-whistle-tiny1', 'combined-whistle-tiny2', 'combined-whistle-tiny3'];
                 return {
                     useCombinedAudio: true,
-                    combinedSound: smallSounds[Math.floor(Math.random() * smallSounds.length)],
+                    combinedSound: this.SMALL_SOUNDS[Math.floor(Math.random() * this.SMALL_SOUNDS.length)],
                     explosionDelay: 1.2  // Tiny bangs have explosion at ~1.2s
                 };
 
@@ -1116,13 +1135,11 @@ class FireworksEngine {
                 
                 // For combined audio, we don't need the explosion callback
                 // because the explosion sound is already in the combined file
-                console.log(`[Fireworks Audio] Playing combined: ${audioConfig.combinedSound}`);
             } else {
                 // Play separate launch and explosion sounds
                 if (audioConfig.launchSound && !skipRockets) {
                     // Play launch sound immediately
                     this.audioManager.play(audioConfig.launchSound, 0.4);
-                    console.log(`[Fireworks Audio] Playing launch: ${audioConfig.launchSound}`);
                 }
                 
                 // Set explosion sound callback to trigger when firework explodes
@@ -1130,7 +1147,6 @@ class FireworksEngine {
                 if (audioConfig.explosionSound) {
                     firework.onExplodeSound = (intensity) => {
                         this.audioManager.play(audioConfig.explosionSound, intensity * soundVolume);
-                        console.log(`[Fireworks Audio] Playing explosion: ${audioConfig.explosionSound}`);
                     };
                 }
             }
