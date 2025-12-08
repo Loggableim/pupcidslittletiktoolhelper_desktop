@@ -637,8 +637,9 @@ class SpeechifyEngine {
                     },
                     timeout: this.timeout * 3, // Voice cloning may take longer
                     validateStatus: function (status) {
-                        // Don't throw on any status, we'll handle errors manually
-                        return true;
+                        // Return true (don't throw) for 4xx client errors so we can provide
+                        // context-specific error messages. Only throw on 5xx server errors.
+                        return status < 500;
                     }
                 }
             );
@@ -689,16 +690,16 @@ class SpeechifyEngine {
             this.logger.error(`Speechify: Failed to create voice clone "${voiceName}" (${statusCode || 'network error'}): ${errorMessage}`);
             
             // Provide helpful error message based on status code
-            let userFriendlyMessage = errorMessage;
             if (statusCode === 400) {
-                userFriendlyMessage = `Bad request - The Speechify API rejected the request. This may indicate that voice cloning is not available with your API key, or the request format is incorrect. Error: ${errorMessage}`;
+                throw new Error(`Bad request - The Speechify API rejected the request. This may indicate that voice cloning is not available with your API key, or the request format is incorrect. Details: ${errorMessage}`);
             } else if (statusCode === 401 || statusCode === 403) {
-                userFriendlyMessage = `Authentication failed - Voice cloning may not be available with your current Speechify API plan. Please check if your API key supports voice cloning. Error: ${errorMessage}`;
+                throw new Error(`Authentication failed - Voice cloning may not be available with your current Speechify API plan. Please check if your API key supports voice cloning. Details: ${errorMessage}`);
             } else if (statusCode === 404) {
-                userFriendlyMessage = `Endpoint not found - The voice cloning endpoint may have changed or may not be available. Error: ${errorMessage}`;
+                throw new Error(`Endpoint not found - The voice cloning endpoint may have changed or may not be available. Details: ${errorMessage}`);
             }
             
-            throw new Error(userFriendlyMessage);
+            // Generic error fallback
+            throw new Error(errorMessage);
         }
     }
 
