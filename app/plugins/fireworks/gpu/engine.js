@@ -392,6 +392,142 @@ class FireworksEngine {
         
         // Clear color (transparent)
         gl.clearColor(0, 0, 0, 0);
+        
+        // Compile shaders
+        this.webglProgram = this.createShaderProgram();
+        if (!this.webglProgram) {
+            console.warn('[Fireworks Engine] Failed to create shader program, falling back to Canvas 2D');
+            this.useWebGL = false;
+            this.ctx = this.canvas.getContext('2d');
+            return;
+        }
+        
+        // Get attribute and uniform locations
+        this.webglLocations = {
+            position: gl.getAttribLocation(this.webglProgram, 'a_position'),
+            size: gl.getAttribLocation(this.webglProgram, 'a_size'),
+            color: gl.getAttribLocation(this.webglProgram, 'a_color'),
+            alpha: gl.getAttribLocation(this.webglProgram, 'a_alpha'),
+            resolution: gl.getUniformLocation(this.webglProgram, 'u_resolution'),
+            texture: gl.getUniformLocation(this.webglProgram, 'u_texture'),
+            useTexture: gl.getUniformLocation(this.webglProgram, 'u_useTexture')
+        };
+        
+        // Create buffers
+        this.webglBuffers = {
+            position: gl.createBuffer(),
+            size: gl.createBuffer(),
+            color: gl.createBuffer(),
+            alpha: gl.createBuffer()
+        };
+        
+        // Texture cache for gift images and avatars
+        this.webglTextures = new Map();
+        
+        console.log('[Fireworks Engine] WebGL shaders initialized successfully');
+    }
+    
+    createShaderProgram() {
+        const gl = this.gl;
+        
+        // Vertex shader - transforms particle positions to clip space
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            attribute float a_size;
+            attribute vec4 a_color;
+            attribute float a_alpha;
+            
+            uniform vec2 u_resolution;
+            
+            varying vec4 v_color;
+            varying float v_alpha;
+            
+            void main() {
+                // Convert from pixels to clip space (-1 to +1)
+                vec2 clipSpace = (a_position / u_resolution) * 2.0 - 1.0;
+                clipSpace.y *= -1.0; // Flip Y axis
+                
+                gl_Position = vec4(clipSpace, 0.0, 1.0);
+                gl_PointSize = a_size;
+                
+                v_color = a_color;
+                v_alpha = a_alpha;
+            }
+        `;
+        
+        // Fragment shader - renders particles with glow effect
+        const fragmentShaderSource = `
+            precision mediump float;
+            
+            varying vec4 v_color;
+            varying float v_alpha;
+            
+            uniform sampler2D u_texture;
+            uniform bool u_useTexture;
+            
+            void main() {
+                vec2 coord = gl_PointCoord - vec2(0.5);
+                float dist = length(coord);
+                
+                if (u_useTexture) {
+                    // Render textured particle (for gift images/avatars)
+                    vec4 texColor = texture2D(u_texture, gl_PointCoord);
+                    gl_FragColor = vec4(texColor.rgb, texColor.a * v_alpha);
+                } else {
+                    // Render colored particle with radial gradient glow
+                    float alpha = 1.0 - smoothstep(0.0, 0.5, dist);
+                    
+                    // Glow effect - brighter in center
+                    float glow = exp(-dist * 8.0);
+                    vec3 color = v_color.rgb * (0.5 + 0.5 * glow);
+                    
+                    gl_FragColor = vec4(color, alpha * v_alpha);
+                }
+            }
+        `;
+        
+        // Compile vertex shader
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, vertexShaderSource);
+        gl.compileShader(vertexShader);
+        
+        if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+            console.error('[Fireworks Engine] Vertex shader compilation error:', gl.getShaderInfoLog(vertexShader));
+            gl.deleteShader(vertexShader);
+            return null;
+        }
+        
+        // Compile fragment shader
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, fragmentShaderSource);
+        gl.compileShader(fragmentShader);
+        
+        if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+            console.error('[Fireworks Engine] Fragment shader compilation error:', gl.getShaderInfoLog(fragmentShader));
+            gl.deleteShader(fragmentShader);
+            gl.deleteShader(vertexShader);
+            return null;
+        }
+        
+        // Link shader program
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error('[Fireworks Engine] Shader program linking error:', gl.getProgramInfoLog(program));
+            gl.deleteProgram(program);
+            gl.deleteShader(vertexShader);
+            gl.deleteShader(fragmentShader);
+            return null;
+        }
+        
+        // Clean up shaders (no longer needed after linking)
+        gl.deleteShader(vertexShader);
+        gl.deleteShader(fragmentShader);
+        
+        return program;
     }
 
     resize() {
@@ -736,16 +872,165 @@ class FireworksEngine {
     }
 
     renderWebGL() {
-        // For now, use Canvas 2D rendering even in WebGL mode
-        // A full WebGL implementation would require shaders
-        // This is a pragmatic fallback that ensures compatibility
+        const gl = this.gl;
+        const particles = this.particlePool.active;
         
-        // Get 2D context for fallback rendering
-        const ctx = this.canvas.getContext('2d', { willReadFrequently: false });
-        if (ctx) {
-            ctx.clearRect(0, 0, this.width, this.height);
-            this.ctx = ctx;
-            this.renderCanvas();
+        if (particles.length === 0) return;
+        
+        // Prepare data arrays
+        const positions = [];
+        const sizes = [];
+        const colors = [];
+        const alphas = [];
+        
+        // Extract particle data
+        for (const p of particles) {
+            positions.push(p.x, p.y);
+            sizes.push(p.size * 2); // Scale for visibility
+            
+            // Parse color to RGB components
+            const rgb = this.parseColor(p.color);
+            colors.push(rgb.r, rgb.g, rgb.b, 1.0);
+            
+            alphas.push(p.alpha);
+        }
+        
+        // Use shader program
+        gl.useProgram(this.webglProgram);
+        
+        // Set resolution uniform
+        gl.uniform2f(this.webglLocations.resolution, this.canvas.width, this.canvas.height);
+        gl.uniform1i(this.webglLocations.useTexture, false);
+        
+        // Upload position data
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.webglBuffers.position);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(this.webglLocations.position);
+        gl.vertexAttribPointer(this.webglLocations.position, 2, gl.FLOAT, false, 0, 0);
+        
+        // Upload size data
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.webglBuffers.size);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sizes), gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(this.webglLocations.size);
+        gl.vertexAttribPointer(this.webglLocations.size, 1, gl.FLOAT, false, 0, 0);
+        
+        // Upload color data
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.webglBuffers.color);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(this.webglLocations.color);
+        gl.vertexAttribPointer(this.webglLocations.color, 4, gl.FLOAT, false, 0, 0);
+        
+        // Upload alpha data
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.webglBuffers.alpha);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(alphas), gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(this.webglLocations.alpha);
+        gl.vertexAttribPointer(this.webglLocations.alpha, 1, gl.FLOAT, false, 0, 0);
+        
+        // Draw particles as points
+        gl.drawArrays(gl.POINTS, 0, particles.length);
+        
+        // Render trails using Canvas 2D overlay (WebGL line rendering is complex)
+        if (this.config.trailsEnabled) {
+            this.renderTrailsCanvas(particles);
+        }
+    }
+    
+    parseColor(color) {
+        // Parse hex color to RGB (0-1 range)
+        if (color.startsWith('#')) {
+            const hex = color.substring(1);
+            return {
+                r: parseInt(hex.substring(0, 2), 16) / 255,
+                g: parseInt(hex.substring(2, 4), 16) / 255,
+                b: parseInt(hex.substring(4, 6), 16) / 255
+            };
+        }
+        
+        // Parse hsl color
+        if (color.startsWith('hsl')) {
+            const match = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+            if (match) {
+                const h = parseInt(match[1]) / 360;
+                const s = parseInt(match[2]) / 100;
+                const l = parseInt(match[3]) / 100;
+                return this.hslToRgb(h, s, l);
+            }
+        }
+        
+        // Parse rgb color
+        if (color.startsWith('rgb')) {
+            const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (match) {
+                return {
+                    r: parseInt(match[1]) / 255,
+                    g: parseInt(match[2]) / 255,
+                    b: parseInt(match[3]) / 255
+                };
+            }
+        }
+        
+        // Default to white
+        return { r: 1.0, g: 1.0, b: 1.0 };
+    }
+    
+    hslToRgb(h, s, l) {
+        let r, g, b;
+        
+        if (s === 0) {
+            r = g = b = l;
+        } else {
+            const hue2rgb = (p, q, t) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            };
+            
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1/3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1/3);
+        }
+        
+        return { r, g, b };
+    }
+    
+    renderTrailsCanvas(particles) {
+        // Create temporary 2D context for trails if needed
+        if (!this.trailCtx) {
+            const trailCanvas = document.createElement('canvas');
+            trailCanvas.width = this.canvas.width;
+            trailCanvas.height = this.canvas.height;
+            trailCanvas.style.position = 'absolute';
+            trailCanvas.style.top = '0';
+            trailCanvas.style.left = '0';
+            trailCanvas.style.pointerEvents = 'none';
+            this.canvas.parentElement.appendChild(trailCanvas);
+            this.trailCtx = trailCanvas.getContext('2d');
+            this.trailCanvas = trailCanvas;
+        }
+        
+        // Clear trail canvas
+        this.trailCtx.clearRect(0, 0, this.trailCanvas.width, this.trailCanvas.height);
+        
+        // Render trails
+        for (const p of particles) {
+            if (p.trail.length > 1) {
+                this.trailCtx.save();
+                this.trailCtx.globalAlpha = p.alpha * 0.3;
+                this.trailCtx.beginPath();
+                this.trailCtx.moveTo(p.trail[0].x, p.trail[0].y);
+                for (let i = 1; i < p.trail.length; i++) {
+                    this.trailCtx.lineTo(p.trail[i].x, p.trail[i].y);
+                }
+                this.trailCtx.strokeStyle = p.color;
+                this.trailCtx.lineWidth = p.size * 0.3;
+                this.trailCtx.stroke();
+                this.trailCtx.restore();
+            }
         }
     }
 
