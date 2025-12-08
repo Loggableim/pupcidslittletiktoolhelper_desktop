@@ -225,18 +225,47 @@ class AudioManager {
         this.audioContext = null;
         this.volume = 0.7;
         this.enabled = true;
+        this.initialized = false;
+        this.pendingSounds = new Map(); // Store URLs to preload after init
     }
 
     async init() {
-        try {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        } catch (e) {
-            console.warn('[Fireworks Audio] AudioContext not available');
+        // Don't create AudioContext immediately - wait for user gesture
+        // Store that init was called
+        this.initialized = true;
+        console.log('[Fireworks Audio] Audio manager ready (AudioContext will be created on first interaction)');
+    }
+
+    async ensureAudioContext() {
+        // Create AudioContext on first interaction to avoid autoplay warning
+        if (!this.audioContext && this.initialized) {
+            try {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Resume if suspended (some browsers start in suspended state)
+                if (this.audioContext.state === 'suspended') {
+                    await this.audioContext.resume();
+                }
+                
+                // Preload any pending sounds
+                for (const [name, url] of this.pendingSounds.entries()) {
+                    await this.preload(url, name);
+                }
+                this.pendingSounds.clear();
+                
+                console.log('[Fireworks Audio] AudioContext created and resumed');
+            } catch (e) {
+                console.warn('[Fireworks Audio] AudioContext not available:', e.message);
+            }
         }
     }
 
     async preload(url, name) {
-        if (!this.audioContext) return;
+        // If AudioContext not created yet, store for later
+        if (!this.audioContext) {
+            this.pendingSounds.set(name, url);
+            return;
+        }
         
         try {
             const response = await fetch(url);
@@ -250,10 +279,20 @@ class AudioManager {
         }
     }
 
-    play(name, volume = 1.0) {
-        if (!this.enabled || !this.audioContext || !this.sounds.has(name)) return;
+    async play(name, volume = 1.0) {
+        if (!this.enabled) return;
+        
+        // Ensure AudioContext is created
+        await this.ensureAudioContext();
+        
+        if (!this.audioContext || !this.sounds.has(name)) return;
         
         try {
+            // Resume if suspended
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+            
             const source = this.audioContext.createBufferSource();
             const gainNode = this.audioContext.createGain();
             

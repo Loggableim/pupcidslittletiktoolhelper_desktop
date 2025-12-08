@@ -94,6 +94,11 @@
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
         }
         
+        .shape-preview.active-shape {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        
         .color-swatch {
             width: 32px;
             height: 32px;
@@ -190,15 +195,20 @@
             <div class="flex items-center gap-4">
                 <span class="text-5xl">🎆</span>
                 <div>
-                    <h1 class="text-3xl font-bold">Fireworks Superplugin</h1>
-                    <p class="text-gray-400">GPU-accelerated fireworks for TikTok LIVE</p>
+                    <h1 class="text-3xl font-bold" data-lang-en="Fireworks Superplugin" data-lang-de="Feuerwerk Superplugin">Fireworks Superplugin</h1>
+                    <p class="text-gray-400" data-lang-en="GPU-accelerated fireworks for TikTok LIVE" data-lang-de="GPU-beschleunigte Feuerwerke für TikTok LIVE">GPU-accelerated fireworks for TikTok LIVE</p>
                 </div>
             </div>
             <div class="flex items-center gap-4">
-                <button id="test-btn" class="btn-primary px-6 py-3 rounded-lg font-bold">
+                <!-- Language Toggle -->
+                <select id="language-toggle" class="bg-black/30 rounded-lg px-4 py-2 cursor-pointer">
+                    <option value="en">🇬🇧 English</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                </select>
+                <button id="test-btn" class="btn-primary px-6 py-3 rounded-lg font-bold" data-lang-en="🧪 Test Firework" data-lang-de="🧪 Feuerwerk testen">
                     🧪 Test Firework
                 </button>
-                <button id="save-btn" class="btn-success px-6 py-3 rounded-lg font-bold">
+                <button id="save-btn" class="btn-success px-6 py-3 rounded-lg font-bold" data-lang-en="💾 Save Settings" data-lang-de="💾 Einstellungen speichern">
                     💾 Save Settings
                 </button>
             </div>
@@ -208,8 +218,8 @@
         <div class="card rounded-xl p-6 mb-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="text-xl font-bold">Enable Fireworks</h2>
-                    <p class="text-gray-400">Toggle the entire fireworks system on/off</p>
+                    <h2 class="text-xl font-bold" data-lang-en="Enable Fireworks" data-lang-de="Feuerwerk aktivieren">Enable Fireworks</h2>
+                    <p class="text-gray-400" data-lang-en="Toggle the entire fireworks system on/off" data-lang-de="Das gesamte Feuerwerk-System ein-/ausschalten">Toggle the entire fireworks system on/off</p>
                 </div>
                 <div id="master-toggle" class="toggle-switch active"></div>
             </div>
@@ -220,33 +230,37 @@
             <div class="space-y-6">
                 <!-- Trigger Settings -->
                 <div class="card rounded-xl p-6">
-                    <h2 class="section-title text-xl font-bold mb-4">🎁 Gift Triggers</h2>
+                    <h2 class="section-title text-xl font-bold mb-4" data-lang-en="🎁 Gift Triggers" data-lang-de="🎁 Geschenk-Trigger">🎁 Gift Triggers</h2>
                     
                     <div class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <label>Enable Gift Triggers</label>
+                            <label data-lang-en="Enable Gift Triggers" data-lang-de="Geschenk-Trigger aktivieren">Enable Gift Triggers</label>
                             <div id="gift-toggle" class="toggle-switch active" data-config="giftTriggersEnabled"></div>
                         </div>
                         
                         <div>
-                            <label class="block mb-2">Minimum Coins to Trigger</label>
+                            <label class="block mb-2" data-lang-en="Minimum Coins to Trigger" data-lang-de="Minimum Münzen zum Auslösen">Minimum Coins to Trigger</label>
                             <input type="number" id="min-coins" class="w-full bg-black/30 rounded-lg px-4 py-2" value="1" min="1">
                         </div>
+                        
+                        <button id="test-gift-btn" class="w-full btn-primary py-3 rounded-lg font-bold" data-lang-en="🎁 Test Gift Firework" data-lang-de="🎁 Geschenk-Feuerwerk testen">
+                            🎁 Test Gift Firework
+                        </button>
                     </div>
                 </div>
 
                 <!-- Combo System -->
                 <div class="card rounded-xl p-6">
-                    <h2 class="section-title text-xl font-bold mb-4">🔥 Combo System</h2>
+                    <h2 class="section-title text-xl font-bold mb-4" data-lang-en="🔥 Combo System" data-lang-de="🔥 Combo-System">🔥 Combo System</h2>
                     
                     <div class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <label>Enable Combo Streaks</label>
+                            <label data-lang-en="Enable Combo Streaks" data-lang-de="Combo-Serien aktivieren">Enable Combo Streaks</label>
                             <div id="combo-toggle" class="toggle-switch active" data-config="comboEnabled"></div>
                         </div>
                         
                         <div>
-                            <label class="block mb-2">Combo Timeout (seconds)</label>
+                            <label class="block mb-2" data-lang-en="Combo Timeout (seconds)" data-lang-de="Combo-Zeitlimit (Sekunden)">Combo Timeout (seconds)</label>
                             <input type="range" id="combo-timeout" min="5" max="30" value="10" class="w-full">
                             <div class="flex justify-between text-sm text-gray-400">
                                 <span>5s</span>
@@ -256,7 +270,7 @@
                         </div>
                         
                         <div>
-                            <label class="block mb-2">Max Combo Multiplier</label>
+                            <label class="block mb-2" data-lang-en="Max Combo Multiplier" data-lang-de="Max. Combo-Multiplikator">Max Combo Multiplier</label>
                             <input type="range" id="combo-max" min="2" max="10" step="0.5" value="5" class="w-full">
                             <div class="flex justify-between text-sm text-gray-400">
                                 <span>2x</span>
@@ -264,71 +278,90 @@
                                 <span>10x</span>
                             </div>
                         </div>
+                        
+                        <button id="test-combo-btn" class="w-full btn-primary py-3 rounded-lg font-bold" data-lang-en="🔥 Test Combo Effect" data-lang-de="🔥 Combo-Effekt testen">
+                            🔥 Test Combo Effect
+                        </button>
                     </div>
                 </div>
 
                 <!-- Escalation System -->
                 <div class="card rounded-xl p-6">
-                    <h2 class="section-title text-xl font-bold mb-4">📈 Escalation Tiers</h2>
+                    <h2 class="section-title text-xl font-bold mb-4" data-lang-en="📈 Escalation Tiers" data-lang-de="📈 Eskalationsstufen">📈 Escalation Tiers</h2>
                     
                     <div class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <label>Enable Escalation</label>
+                            <label data-lang-en="Enable Escalation" data-lang-de="Eskalation aktivieren">Enable Escalation</label>
                             <div id="escalation-toggle" class="toggle-switch active" data-config="escalationEnabled"></div>
                         </div>
                         
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block mb-2 text-sm">Small (coins)</label>
+                                <label class="block mb-2 text-sm" data-lang-en="Small (coins)" data-lang-de="Klein (Münzen)">Small (coins)</label>
                                 <input type="number" id="tier-small" class="w-full bg-black/30 rounded-lg px-4 py-2" value="0">
                             </div>
                             <div>
-                                <label class="block mb-2 text-sm">Medium (coins)</label>
+                                <label class="block mb-2 text-sm" data-lang-en="Medium (coins)" data-lang-de="Mittel (Münzen)">Medium (coins)</label>
                                 <input type="number" id="tier-medium" class="w-full bg-black/30 rounded-lg px-4 py-2" value="100">
                             </div>
                             <div>
-                                <label class="block mb-2 text-sm">Big (coins)</label>
+                                <label class="block mb-2 text-sm" data-lang-en="Big (coins)" data-lang-de="Groß (Münzen)">Big (coins)</label>
                                 <input type="number" id="tier-big" class="w-full bg-black/30 rounded-lg px-4 py-2" value="500">
                             </div>
                             <div>
-                                <label class="block mb-2 text-sm">Massive (coins)</label>
+                                <label class="block mb-2 text-sm" data-lang-en="Massive (coins)" data-lang-de="Massiv (Münzen)">Massive (coins)</label>
                                 <input type="number" id="tier-massive" class="w-full bg-black/30 rounded-lg px-4 py-2" value="1000">
                             </div>
                         </div>
                         
                         <div class="grid grid-cols-4 gap-2 text-center text-sm">
                             <div class="bg-green-900/30 rounded p-2">
-                                <div>Small</div>
+                                <div data-lang-en="Small" data-lang-de="Klein">Small</div>
                                 <div class="font-bold" id="particle-small">30</div>
                             </div>
                             <div class="bg-blue-900/30 rounded p-2">
-                                <div>Medium</div>
+                                <div data-lang-en="Medium" data-lang-de="Mittel">Medium</div>
                                 <div class="font-bold" id="particle-medium">60</div>
                             </div>
                             <div class="bg-purple-900/30 rounded p-2">
-                                <div>Big</div>
+                                <div data-lang-en="Big" data-lang-de="Groß">Big</div>
                                 <div class="font-bold" id="particle-big">100</div>
                             </div>
                             <div class="bg-red-900/30 rounded p-2">
-                                <div>Massive</div>
+                                <div data-lang-en="Massive" data-lang-de="Massiv">Massive</div>
                                 <div class="font-bold" id="particle-massive">200</div>
                             </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="test-tier-small-btn" class="btn-primary py-2 rounded-lg font-bold text-sm" data-lang-en="Test Small" data-lang-de="Klein testen">
+                                Test Small
+                            </button>
+                            <button id="test-tier-medium-btn" class="btn-primary py-2 rounded-lg font-bold text-sm" data-lang-en="Test Medium" data-lang-de="Mittel testen">
+                                Test Medium
+                            </button>
+                            <button id="test-tier-big-btn" class="btn-primary py-2 rounded-lg font-bold text-sm" data-lang-en="Test Big" data-lang-de="Groß testen">
+                                Test Big
+                            </button>
+                            <button id="test-tier-massive-btn" class="btn-primary py-2 rounded-lg font-bold text-sm" data-lang-en="Test Massive" data-lang-de="Massiv testen">
+                                Test Massive
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Audio Settings -->
                 <div class="card rounded-xl p-6">
-                    <h2 class="section-title text-xl font-bold mb-4">🔊 Audio</h2>
+                    <h2 class="section-title text-xl font-bold mb-4" data-lang-en="🔊 Audio" data-lang-de="🔊 Audio">🔊 Audio</h2>
                     
                     <div class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <label>Enable Sounds</label>
+                            <label data-lang-en="Enable Sounds" data-lang-de="Sounds aktivieren">Enable Sounds</label>
                             <div id="audio-toggle" class="toggle-switch active" data-config="audioEnabled"></div>
                         </div>
                         
                         <div>
-                            <label class="block mb-2">Volume</label>
+                            <label class="block mb-2" data-lang-en="Volume" data-lang-de="Lautstärke">Volume</label>
                             <input type="range" id="audio-volume" min="0" max="100" value="70" class="w-full">
                             <div class="flex justify-between text-sm text-gray-400">
                                 <span>0%</span>
@@ -344,36 +377,80 @@
             <div class="space-y-6">
                 <!-- Shape Selection -->
                 <div class="card rounded-xl p-6">
-                    <h2 class="section-title text-xl font-bold mb-4">✨ Explosion Shapes</h2>
+                    <h2 class="section-title text-xl font-bold mb-4" data-lang-en="✨ Explosion Shapes" data-lang-de="✨ Explosionsformen">✨ Explosion Shapes</h2>
                     
-                    <div class="flex flex-wrap gap-4 mb-4">
-                        <div class="shape-preview selected" data-shape="burst" title="Burst">💥</div>
-                        <div class="shape-preview" data-shape="heart" title="Heart">❤️</div>
-                        <div class="shape-preview" data-shape="star" title="Star">⭐</div>
-                        <div class="shape-preview" data-shape="ring" title="Ring">⭕</div>
-                        <div class="shape-preview" data-shape="spiral" title="Spiral">🌀</div>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <label data-lang-en="Random Shape Rotation" data-lang-de="Zufällige Formrotation">Random Shape Rotation</label>
+                            <div id="random-shape-toggle" class="toggle-switch" data-config="randomShapeEnabled"></div>
+                        </div>
+                        
+                        <p class="text-sm text-gray-400 mb-2" data-lang-en="Click shapes to activate/deactivate for random selection. Selected shapes have gold border." data-lang-de="Klicken Sie auf Formen, um sie für die zufällige Auswahl zu aktivieren/deaktivieren. Ausgewählte Formen haben einen goldenen Rand.">
+                            Click shapes to activate/deactivate for random selection. Selected shapes have gold border.
+                        </p>
+                        
+                        <div class="flex flex-wrap gap-4 mb-4">
+                            <div class="shape-preview active-shape" data-shape="burst" title="Burst">💥</div>
+                            <div class="shape-preview" data-shape="heart" title="Heart">❤️</div>
+                            <div class="shape-preview" data-shape="star" title="Star">⭐</div>
+                            <div class="shape-preview" data-shape="ring" title="Ring">⭕</div>
+                            <div class="shape-preview" data-shape="spiral" title="Spiral">🌀</div>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2 text-sm" data-lang-en="Default Shape (when random disabled)" data-lang-de="Standardform (wenn zufällig deaktiviert)">Default Shape (when random disabled)</label>
+                            <select id="default-shape" class="w-full bg-black/30 rounded-lg px-4 py-2">
+                                <option value="burst">💥 Burst</option>
+                                <option value="heart">❤️ Heart</option>
+                                <option value="star">⭐ Star</option>
+                                <option value="ring">⭕ Ring</option>
+                                <option value="spiral">🌀 Spiral</option>
+                            </select>
+                        </div>
+                        
+                        <p class="text-sm text-gray-400" data-lang-en="Active shapes:" data-lang-de="Aktive Formen:">Active shapes:</p>
+                        <p id="active-shapes-list" class="text-white font-bold">burst</p>
+                        
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <button id="test-shape-burst-btn" class="btn-primary py-2 rounded-lg font-bold text-sm" data-lang-en="💥 Test Burst" data-lang-de="💥 Burst testen">
+                                💥 Test Burst
+                            </button>
+                            <button id="test-shape-heart-btn" class="btn-primary py-2 rounded-lg font-bold text-sm" data-lang-en="❤️ Test Heart" data-lang-de="❤️ Herz testen">
+                                ❤️ Test Heart
+                            </button>
+                            <button id="test-shape-star-btn" class="btn-primary py-2 rounded-lg font-bold text-sm" data-lang-en="⭐ Test Star" data-lang-de="⭐ Stern testen">
+                                ⭐ Test Star
+                            </button>
+                            <button id="test-shape-ring-btn" class="btn-primary py-2 rounded-lg font-bold text-sm" data-lang-en="⭕ Test Ring" data-lang-de="⭕ Ring testen">
+                                ⭕ Test Ring
+                            </button>
+                            <button id="test-shape-spiral-btn" class="btn-primary py-2 rounded-lg font-bold text-sm" data-lang-en="🌀 Test Spiral" data-lang-de="🌀 Spiral testen">
+                                🌀 Test Spiral
+                            </button>
+                            <button id="test-shape-random-btn" class="btn-primary py-2 rounded-lg font-bold text-sm" data-lang-en="🎲 Test Random" data-lang-de="🎲 Zufall testen">
+                                🎲 Test Random
+                            </button>
+                        </div>
                     </div>
-                    
-                    <p class="text-sm text-gray-400">Selected: <span id="selected-shape" class="text-white">burst</span></p>
                 </div>
 
                 <!-- Color Settings -->
                 <div class="card rounded-xl p-6">
-                    <h2 class="section-title text-xl font-bold mb-4">🎨 Colors</h2>
+                    <h2 class="section-title text-xl font-bold mb-4" data-lang-en="🎨 Colors" data-lang-de="🎨 Farben">🎨 Colors</h2>
                     
                     <div class="space-y-4">
                         <div>
-                            <label class="block mb-2">Color Mode</label>
+                            <label class="block mb-2" data-lang-en="Color Mode" data-lang-de="Farbmodus">Color Mode</label>
                             <select id="color-mode" class="w-full bg-black/30 rounded-lg px-4 py-2">
-                                <option value="gift">Based on Gift</option>
-                                <option value="random">Random</option>
-                                <option value="theme">Theme Colors</option>
-                                <option value="rainbow">Rainbow</option>
+                                <option value="gift" data-lang-en="Based on Gift" data-lang-de="Basierend auf Geschenk">Based on Gift</option>
+                                <option value="random" data-lang-en="Random" data-lang-de="Zufällig">Random</option>
+                                <option value="theme" data-lang-en="Theme Colors" data-lang-de="Themenfarben">Theme Colors</option>
+                                <option value="rainbow" data-lang-en="Rainbow" data-lang-de="Regenbogen">Rainbow</option>
                             </select>
                         </div>
                         
                         <div>
-                            <label class="block mb-2">Theme Colors</label>
+                            <label class="block mb-2" data-lang-en="Theme Colors" data-lang-de="Themenfarben">Theme Colors</label>
                             <div class="flex flex-wrap gap-2" id="color-swatches">
                                 <div class="color-swatch" style="background: #ff4444;" data-color="#ff4444"></div>
                                 <div class="color-swatch" style="background: #44ff44;" data-color="#44ff44"></div>
@@ -389,21 +466,21 @@
 
                 <!-- Visual Effects -->
                 <div class="card rounded-xl p-6">
-                    <h2 class="section-title text-xl font-bold mb-4">🌟 Visual Effects</h2>
+                    <h2 class="section-title text-xl font-bold mb-4" data-lang-en="🌟 Visual Effects" data-lang-de="🌟 Visuelle Effekte">🌟 Visual Effects</h2>
                     
                     <div class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <label>Particle Trails</label>
+                            <label data-lang-en="Particle Trails" data-lang-de="Partikelspuren">Particle Trails</label>
                             <div id="trails-toggle" class="toggle-switch active" data-config="trailsEnabled"></div>
                         </div>
                         
                         <div class="flex items-center justify-between">
-                            <label>Glow Effect</label>
+                            <label data-lang-en="Glow Effect" data-lang-de="Leuchteffekt">Glow Effect</label>
                             <div id="glow-toggle" class="toggle-switch active" data-config="glowEnabled"></div>
                         </div>
                         
                         <div>
-                            <label class="block mb-2">Max Particles</label>
+                            <label class="block mb-2" data-lang-en="Max Particles" data-lang-de="Max. Partikel">Max Particles</label>
                             <input type="range" id="max-particles" min="500" max="3000" step="100" value="1000" class="w-full">
                             <div class="flex justify-between text-sm text-gray-400">
                                 <span>500</span>
@@ -413,7 +490,7 @@
                         </div>
                         
                         <div>
-                            <label class="block mb-2">Particle Size</label>
+                            <label class="block mb-2" data-lang-en="Particle Size" data-lang-de="Partikelgröße">Particle Size</label>
                             <div class="flex gap-4">
                                 <input type="number" id="particle-min" class="w-24 bg-black/30 rounded-lg px-4 py-2" value="3" placeholder="Min">
                                 <span class="text-gray-400 self-center">to</span>
@@ -423,18 +500,51 @@
                     </div>
                 </div>
 
-                <!-- Goal Finale -->
+                <!-- User Avatar Integration -->
                 <div class="card rounded-xl p-6">
-                    <h2 class="section-title text-xl font-bold mb-4">🎯 Goal Finale</h2>
+                    <h2 class="section-title text-xl font-bold mb-4" data-lang-en="👤 User Avatar Integration" data-lang-de="👤 Benutzer-Avatar-Integration">👤 User Avatar Integration</h2>
                     
                     <div class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <label>Enable Goal Finales</label>
+                            <label data-lang-en="Use User Avatars" data-lang-de="Benutzer-Avatare verwenden">Use User Avatars</label>
+                            <div id="avatar-toggle" class="toggle-switch" data-config="userAvatarEnabled"></div>
+                        </div>
+                        
+                        <p class="text-sm text-gray-400" data-lang-en="When enabled, user profile pictures will be mixed with gift images as particles" data-lang-de="Wenn aktiviert, werden Benutzerprofilbilder mit Geschenkbildern als Partikel gemischt">
+                            When enabled, user profile pictures will be mixed with gift images as particles
+                        </p>
+                        
+                        <div>
+                            <label class="block mb-2" data-lang-en="Avatar Particle Probability" data-lang-de="Avatar-Partikel-Wahrscheinlichkeit">Avatar Particle Probability</label>
+                            <input type="range" id="avatar-chance" min="0" max="100" value="30" class="w-full">
+                            <div class="flex justify-between text-sm text-gray-400">
+                                <span>0%</span>
+                                <span id="avatar-chance-value">30%</span>
+                                <span>100%</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1" data-lang-en="Higher values = more avatar particles vs. gift images" data-lang-de="Höhere Werte = mehr Avatar-Partikel vs. Geschenkbilder">
+                                Higher values = more avatar particles vs. gift images
+                            </p>
+                        </div>
+                        
+                        <button id="test-avatar-btn" class="w-full btn-primary py-3 rounded-lg font-bold" data-lang-en="👤 Test Avatar Firework" data-lang-de="👤 Avatar-Feuerwerk testen">
+                            👤 Test Avatar Firework
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Goal Finale -->
+                <div class="card rounded-xl p-6">
+                    <h2 class="section-title text-xl font-bold mb-4" data-lang-en="🎯 Goal Finale" data-lang-de="🎯 Ziel-Finale">🎯 Goal Finale</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label data-lang-en="Enable Goal Finales" data-lang-de="Ziel-Finales aktivieren">Enable Goal Finales</label>
                             <div id="finale-toggle" class="toggle-switch active" data-config="goalFinaleEnabled"></div>
                         </div>
                         
                         <div>
-                            <label class="block mb-2">Finale Intensity</label>
+                            <label class="block mb-2" data-lang-en="Finale Intensity" data-lang-de="Finale-Intensität">Finale Intensity</label>
                             <input type="range" id="finale-intensity" min="1" max="10" step="0.5" value="3" class="w-full">
                             <div class="flex justify-between text-sm text-gray-400">
                                 <span>1x</span>
@@ -443,8 +553,8 @@
                             </div>
                         </div>
                         
-                        <button id="test-finale-btn" class="w-full btn-primary py-3 rounded-lg font-bold">
-                            🎇 Test Finale
+                        <button id="test-finale-btn" class="w-full btn-primary py-3 rounded-lg font-bold" data-lang-en="🎇 Test Finale" data-lang-de="🎇 Finale testen">
+                            🎇 Test Finale</button>
                         </button>
                     </div>
                 </div>

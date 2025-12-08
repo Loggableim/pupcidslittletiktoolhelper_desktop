@@ -191,12 +191,33 @@ function updateUI() {
     document.getElementById('finale-intensity').value = config.goalFinaleIntensity || 3;
     document.getElementById('finale-intensity-value').textContent = (config.goalFinaleIntensity || 3) + 'x';
     
-    // Default shape
-    const shapeElements = document.querySelectorAll('.shape-preview');
-    shapeElements.forEach(el => {
-        el.classList.toggle('selected', el.dataset.shape === config.defaultShape);
+    // Random shape rotation
+    updateToggle('random-shape-toggle', config.randomShapeEnabled);
+    
+    // Active shapes
+    const activeShapes = config.activeShapes || ['burst'];
+    document.querySelectorAll('.shape-preview').forEach(el => {
+        el.classList.toggle('active-shape', activeShapes.includes(el.dataset.shape));
     });
-    document.getElementById('selected-shape').textContent = config.defaultShape || 'burst';
+    updateActiveShapes();
+    
+    // Default shape
+    const defaultShapeSelect = document.getElementById('default-shape');
+    if (defaultShapeSelect) {
+        defaultShapeSelect.value = config.defaultShape || 'burst';
+    }
+    
+    // User avatar integration
+    updateToggle('avatar-toggle', config.userAvatarEnabled);
+    const avatarChance = Math.round((config.avatarParticleChance || 0.3) * 100);
+    const avatarChanceSlider = document.getElementById('avatar-chance');
+    const avatarChanceValue = document.getElementById('avatar-chance-value');
+    if (avatarChanceSlider) {
+        avatarChanceSlider.value = avatarChance;
+    }
+    if (avatarChanceValue) {
+        avatarChanceValue.textContent = avatarChance + '%';
+    }
 }
 
 function updateToggle(id, value) {
@@ -217,6 +238,28 @@ function setupEventListeners() {
     // Test buttons
     document.getElementById('test-btn').addEventListener('click', triggerTest);
     document.getElementById('test-finale-btn').addEventListener('click', triggerFinale);
+    document.getElementById('test-gift-btn')?.addEventListener('click', () => triggerTestShape('burst', 1.0));
+    document.getElementById('test-combo-btn')?.addEventListener('click', () => triggerTestShape('burst', 3.0));
+    document.getElementById('test-avatar-btn')?.addEventListener('click', triggerTestAvatar);
+    
+    // Test tier buttons
+    document.getElementById('test-tier-small-btn')?.addEventListener('click', () => triggerTestTier('small'));
+    document.getElementById('test-tier-medium-btn')?.addEventListener('click', () => triggerTestTier('medium'));
+    document.getElementById('test-tier-big-btn')?.addEventListener('click', () => triggerTestTier('big'));
+    document.getElementById('test-tier-massive-btn')?.addEventListener('click', () => triggerTestTier('massive'));
+    
+    // Test shape buttons
+    document.getElementById('test-shape-burst-btn')?.addEventListener('click', () => triggerTestShape('burst'));
+    document.getElementById('test-shape-heart-btn')?.addEventListener('click', () => triggerTestShape('heart'));
+    document.getElementById('test-shape-star-btn')?.addEventListener('click', () => triggerTestShape('star'));
+    document.getElementById('test-shape-ring-btn')?.addEventListener('click', () => triggerTestShape('ring'));
+    document.getElementById('test-shape-spiral-btn')?.addEventListener('click', () => triggerTestShape('spiral'));
+    document.getElementById('test-shape-random-btn')?.addEventListener('click', triggerTestRandom);
+    
+    // Language toggle
+    document.getElementById('language-toggle').addEventListener('change', function() {
+        switchLanguage(this.value);
+    });
     
     // Master toggle
     document.getElementById('master-toggle').addEventListener('click', function() {
@@ -233,14 +276,17 @@ function setupEventListeners() {
         });
     });
     
-    // Shape selection
+    // Shape selection - multiple selection support
     document.querySelectorAll('.shape-preview').forEach(shape => {
         shape.addEventListener('click', function() {
-            document.querySelectorAll('.shape-preview').forEach(s => s.classList.remove('selected'));
-            this.classList.add('selected');
-            config.defaultShape = this.dataset.shape;
-            document.getElementById('selected-shape').textContent = this.dataset.shape;
+            this.classList.toggle('active-shape');
+            updateActiveShapes();
         });
+    });
+    
+    // Default shape selector
+    document.getElementById('default-shape')?.addEventListener('change', function() {
+        config.defaultShape = this.value;
     });
     
     // Range sliders
@@ -262,6 +308,10 @@ function setupEventListeners() {
     
     setupRangeSlider('finale-intensity', 'finale-intensity-value', 'x', (val) => {
         config.goalFinaleIntensity = parseFloat(val);
+    });
+    
+    setupRangeSlider('avatar-chance', 'avatar-chance-value', '%', (val) => {
+        config.avatarParticleChance = val / 100;
     });
     
     // Number inputs
@@ -337,6 +387,176 @@ function addColorSwatch(color) {
     
     container.insertBefore(swatch, addBtn);
 }
+
+// ============================================================================
+// NEW HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Update active shapes list
+ */
+function updateActiveShapes() {
+    const activeShapes = [];
+    document.querySelectorAll('.shape-preview.active-shape').forEach(shape => {
+        activeShapes.push(shape.dataset.shape);
+    });
+    
+    config.activeShapes = activeShapes.length > 0 ? activeShapes : ['burst'];
+    
+    // Update display
+    const listElement = document.getElementById('active-shapes-list');
+    if (listElement) {
+        listElement.textContent = config.activeShapes.join(', ');
+    }
+}
+
+/**
+ * Test a specific shape
+ */
+async function triggerTestShape(shape, intensity = 1.5) {
+    try {
+        await fetch('/api/fireworks/trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                shape: shape,
+                intensity: intensity,
+                position: { x: 0.5, y: 0.5 }
+            })
+        });
+        
+        showToast(`${shape} firework triggered!`, 'success');
+    } catch (e) {
+        console.error('[Fireworks Settings] Failed to trigger test:', e);
+        showToast('Failed to trigger test', 'error');
+    }
+}
+
+/**
+ * Test a specific tier
+ */
+async function triggerTestTier(tier) {
+    const intensities = {
+        small: 0.5,
+        medium: 1.0,
+        big: 1.5,
+        massive: 2.5
+    };
+    
+    const particleCounts = {
+        small: 30,
+        medium: 60,
+        big: 100,
+        massive: 200
+    };
+    
+    try {
+        await fetch('/api/fireworks/trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                shape: config.defaultShape || 'burst',
+                intensity: intensities[tier],
+                particleCount: particleCounts[tier],
+                position: { x: 0.5, y: 0.5 }
+            })
+        });
+        
+        showToast(`${tier} tier firework triggered!`, 'success');
+    } catch (e) {
+        console.error('[Fireworks Settings] Failed to trigger tier test:', e);
+        showToast('Failed to trigger tier test', 'error');
+    }
+}
+
+/**
+ * Test random shape
+ */
+async function triggerTestRandom() {
+    try {
+        await fetch('/api/fireworks/random', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        showToast('Random firework triggered!', 'success');
+    } catch (e) {
+        console.error('[Fireworks Settings] Failed to trigger random:', e);
+        showToast('Failed to trigger random', 'error');
+    }
+}
+
+/**
+ * Test avatar firework
+ */
+async function triggerTestAvatar() {
+    try {
+        // Trigger with a placeholder avatar URL
+        await fetch('/api/fireworks/trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                shape: config.defaultShape || 'burst',
+                intensity: 1.5,
+                position: { x: 0.5, y: 0.5 },
+                // This would normally come from TikTok user data
+                userAvatar: 'https://via.placeholder.com/100/FF6B6B/FFFFFF?text=Avatar'
+            })
+        });
+        
+        showToast('Avatar firework test triggered!', 'success');
+    } catch (e) {
+        console.error('[Fireworks Settings] Failed to trigger avatar test:', e);
+        showToast('Failed to trigger avatar test', 'error');
+    }
+}
+
+/**
+ * Switch language
+ */
+function switchLanguage(lang) {
+    // Store preference
+    localStorage.setItem('fireworks-language', lang);
+    
+    // Update all elements with data-lang attributes
+    document.querySelectorAll('[data-lang-en]').forEach(element => {
+        const text = element.getAttribute(`data-lang-${lang}`);
+        if (text) {
+            // Check if it's a text node or has children
+            if (element.children.length === 0 || element.tagName === 'BUTTON' || element.tagName === 'LABEL') {
+                element.textContent = text;
+            } else {
+                // For elements with children, find the text node
+                const textNode = Array.from(element.childNodes).find(node => node.nodeType === 3);
+                if (textNode) {
+                    textNode.textContent = text;
+                }
+            }
+        }
+    });
+    
+    // Update select options
+    document.querySelectorAll('option[data-lang-en]').forEach(option => {
+        const text = option.getAttribute(`data-lang-${lang}`);
+        if (text) {
+            option.textContent = text;
+        }
+    });
+    
+    showToast(lang === 'de' ? 'Sprache auf Deutsch umgestellt' : 'Language switched to English', 'success');
+}
+
+// Load saved language preference
+document.addEventListener('DOMContentLoaded', () => {
+    const savedLang = localStorage.getItem('fireworks-language') || 'en';
+    const langToggle = document.getElementById('language-toggle');
+    if (langToggle && savedLang) {
+        langToggle.value = savedLang;
+        if (savedLang !== 'en') {
+            switchLanguage(savedLang);
+        }
+    }
+});
 
 // ============================================================================
 // TOAST NOTIFICATION
