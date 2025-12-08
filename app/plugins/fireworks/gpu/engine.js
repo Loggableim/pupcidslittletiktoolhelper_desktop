@@ -35,8 +35,10 @@ const CONFIG = {
     rocketAcceleration: -0.08,
     trailLength: 20,
     trailFadeAlpha: 10,
+    trailFadeSpeed: 0.02, // How fast trails fade (higher = faster fade)
     sparkleChance: 0.15,
     secondaryExplosionChance: 0.1,
+    backgroundColor: 'rgba(0, 0, 0, 0)', // Transparent background for OBS
     defaultColors: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
     colorPalettes: {
         classic: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
@@ -171,14 +173,22 @@ class Particle {
             }
         }
         
-        // Store trail with fading
+        // Store trail with fading based on age
         if (this.trail.length > CONFIG.trailLength) {
             this.trail.shift();
         }
+        
+        // Fade trail points based on their age
+        for (let i = 0; i < this.trail.length; i++) {
+            if (this.trail[i].alpha) {
+                this.trail[i].alpha *= (1 - CONFIG.trailFadeSpeed);
+            }
+        }
+        
         this.trail.push({ 
             x: this.x, 
             y: this.y, 
-            alpha: this.alpha * 0.5,
+            alpha: this.alpha * 0.6,
             size: this.size * 0.7
         });
         
@@ -219,19 +229,26 @@ class Firework {
         this.secondaryExplosions = [];
         
         // Create rocket (seed particle)
+        // If user avatar is available, use it as the rocket head
+        const rocketType = this.userAvatar ? 'image' : 'circle';
+        const rocketImage = this.userAvatar;
+        const rocketSize = this.userAvatar ? 8 + this.intensity : 3 + this.intensity;
+        
         this.rocket = new Particle({
             x: this.x,
             y: this.y,
             vx: (Math.random() - 0.5) * 1.5,
             vy: CONFIG.rocketSpeed + (Math.random() - 0.5) * 2,
-            size: 3 + this.intensity,
+            size: rocketSize,
             hue: Math.random() * 360,
             saturation: 80,
             brightness: 100,
             color: this.colors[Math.floor(Math.random() * this.colors.length)],
             isSeed: true,
             gravity: CONFIG.rocketAcceleration,
-            drag: 0.995
+            drag: 0.995,
+            type: rocketType,
+            image: rocketImage
         });
         
         // Color palette for explosion
@@ -246,6 +263,11 @@ class Firework {
     
     explode() {
         this.exploded = true;
+        
+        // Play explosion sound if callback is set
+        if (this.onExplodeSound) {
+            this.onExplodeSound(this.intensity);
+        }
         
         // Calculate particle count based on intensity and tier
         const tierMultipliers = {
@@ -269,18 +291,20 @@ class Firework {
             const isSparkle = Math.random() < CONFIG.sparkleChance;
             
             // Determine particle appearance
+            // Priority: Gift images for explosion particles (not sparkles)
             let particleType = 'circle';
             let particleImage = null;
             
-            if (this.useImages && (this.giftImage || this.userAvatar)) {
-                if (Math.random() < 0.35) {
+            if (!isSparkle && this.giftImage) {
+                // Use gift image for explosion particles (70% chance when available)
+                if (Math.random() < 0.7) {
                     particleType = 'image';
-                    if (this.giftImage && this.userAvatar) {
-                        particleImage = Math.random() < this.avatarParticleChance ? this.userAvatar : this.giftImage;
-                    } else {
-                        particleImage = this.giftImage || this.userAvatar;
-                    }
+                    particleImage = this.giftImage;
                 }
+            } else if (!isSparkle && this.userAvatar && Math.random() < 0.3) {
+                // Use avatar occasionally if no gift image (30% chance)
+                particleType = 'image';
+                particleImage = this.userAvatar;
             }
             
             const particle = new Particle({
@@ -288,7 +312,7 @@ class Firework {
                 y: this.rocket.y,
                 vx: vel.vx,
                 vy: vel.vy,
-                size: isSparkle ? 2 + Math.random() * 2 : 3 + Math.random() * 4,
+                size: isSparkle ? 2 + Math.random() * 2 : (particleType === 'image' ? 4 + Math.random() * 4 : 3 + Math.random() * 4),
                 hue: hue,
                 saturation: isSparkle ? 100 : 90,
                 brightness: isSparkle ? 100 : 95,
@@ -307,8 +331,8 @@ class Firework {
             
             this.particles.push(particle);
             
-            // Chance for secondary explosion
-            if (Math.random() < CONFIG.secondaryExplosionChance && !isSparkle) {
+            // Chance for secondary explosion (only for non-image particles to avoid lag)
+            if (Math.random() < CONFIG.secondaryExplosionChance && !isSparkle && particleType === 'circle') {
                 particle.willExplode = true;
                 particle.explosionDelay = 20 + Math.floor(Math.random() * 30);
             }
@@ -761,6 +785,15 @@ class FireworksEngine {
             tier: tier,
             combo: combo
         });
+        
+        // Set explosion sound callback
+        if (playSound) {
+            firework.onExplodeSound = (intensity) => {
+                if (this.audioManager.enabled) {
+                    this.audioManager.play('explosion', intensity * 0.5);
+                }
+            };
+        }
 
         this.fireworks.push(firework);
 
@@ -785,9 +818,14 @@ class FireworksEngine {
             colors = this.config.defaultColors
         } = data;
 
+        // Performance optimization: reduce particles and increase interval
+        const optimizedBurstCount = Math.min(burstCount, 10); // Max 10 bursts
+        const optimizedInterval = Math.max(burstInterval, 500); // At least 500ms between bursts
+        const optimizedIntensity = Math.min(intensity, 2.0); // Cap intensity at 2.0
+
         let bursts = 0;
         const interval = setInterval(() => {
-            if (bursts >= burstCount) {
+            if (bursts >= optimizedBurstCount) {
                 clearInterval(interval);
                 return;
             }
@@ -803,13 +841,13 @@ class FireworksEngine {
                 position,
                 shape,
                 colors,
-                intensity: intensity * (0.8 + Math.random() * 0.4),
-                particleCount: Math.round(80 * intensity),
-                playSound: true
+                intensity: optimizedIntensity * (0.8 + Math.random() * 0.4),
+                particleCount: Math.round(50 * optimizedIntensity), // Reduced from 80
+                playSound: bursts === 0 || bursts === optimizedBurstCount - 1 // Only play sound for first and last
             });
 
             bursts++;
-        }, burstInterval);
+        }, optimizedInterval);
     }
 
     async loadImage(url) {
@@ -892,8 +930,11 @@ class FireworksEngine {
         const deltaTime = Math.min((now - this.lastTime) / 16.67, 3);
         this.lastTime = now;
 
-        // Clear with fade for trail effect
-        this.ctx.fillStyle = `rgba(0, 0, 0, ${CONFIG.trailFadeAlpha / 100})`;
+        // Clear with configurable background for trail effect
+        // Use transparent background for OBS overlay
+        const bgColor = this.config.backgroundColor || CONFIG.backgroundColor;
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        this.ctx.fillStyle = bgColor;
         this.ctx.fillRect(0, 0, this.width, this.height);
 
         // Update and render all fireworks
@@ -914,8 +955,10 @@ class FireworksEngine {
             this.fpsUpdateTime = now;
             
             if (this.debugMode) {
-                document.getElementById('fps').textContent = this.fps;
-                document.getElementById('particle-count').textContent = this.getTotalParticles();
+                const fpsEl = document.getElementById('fps');
+                const particleEl = document.getElementById('particle-count');
+                if (fpsEl) fpsEl.textContent = this.fps;
+                if (particleEl) particleEl.textContent = this.getTotalParticles();
             }
         }
 
@@ -1041,6 +1084,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Preload sounds
     await engine.audioManager.preload('/plugins/fireworks/audio/explosion.mp3', 'explosion');
     await engine.audioManager.preload('/plugins/fireworks/audio/rocket.mp3', 'rocket');
+    
+    // Enable audio context on first user interaction
+    const enableAudio = async () => {
+        await engine.audioManager.ensureAudioContext();
+        document.removeEventListener('click', enableAudio);
+        document.removeEventListener('keydown', enableAudio);
+    };
+    document.addEventListener('click', enableAudio);
+    document.addEventListener('keydown', enableAudio);
 
     // Debug mode toggle
     document.addEventListener('keydown', (e) => {
