@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"syscall"
 )
 
 const (
@@ -55,13 +56,18 @@ func installDependencies(appDir string) error {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/C", "npm", "install", "--cache", "false")
+		// Hide the npm install window on Windows
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			HideWindow:    true,
+			CreationFlags: 0x08000000, // CREATE_NO_WINDOW
+		}
 	} else {
 		cmd = exec.Command("npm", "install", "--cache", "false")
 	}
 	
 	cmd.Dir = appDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Don't show npm install output in the console
+	// The installation will run silently in the background
 	
 	err := cmd.Run()
 	if err != nil {
