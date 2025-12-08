@@ -487,7 +487,16 @@
             voterIconCompactMode: document.getElementById('voterIconCompactMode').checked,
             voterIconAnimation: document.getElementById('voterIconAnimation').value,
             voterIconPosition: document.getElementById('voterIconPosition').value,
-            voterIconShowOnScoreboard: document.getElementById('voterIconShowOnScoreboard').checked
+            voterIconShowOnScoreboard: document.getElementById('voterIconShowOnScoreboard').checked,
+            // NEW: Chat Command Settings
+            allowPlainLetters: document.getElementById('allowPlainLetters').checked,
+            allowExclamation: document.getElementById('allowExclamation').checked,
+            allowSlash: document.getElementById('allowSlash').checked,
+            allowFullText: document.getElementById('allowFullText').checked,
+            jokerCommandPrefix: document.getElementById('jokerCommandPrefix').value,
+            jokerSuperfanOnly: document.getElementById('jokerSuperfanOnly').checked,
+            answerPermissionLevel: document.getElementById('answerPermissionLevel').value,
+            useGCCE: document.getElementById('useGCCE').checked
         };
 
         try {
@@ -745,6 +754,16 @@
         document.getElementById('voterIconAnimation').value = config.voterIconAnimation || 'fade';
         document.getElementById('voterIconPosition').value = config.voterIconPosition || 'above';
         document.getElementById('voterIconShowOnScoreboard').checked = config.voterIconShowOnScoreboard || false;
+        
+        // NEW: Chat Command Settings
+        document.getElementById('allowPlainLetters').checked = config.allowPlainLetters !== false;
+        document.getElementById('allowExclamation').checked = config.allowExclamation !== false;
+        document.getElementById('allowSlash').checked = config.allowSlash || false;
+        document.getElementById('allowFullText').checked = config.allowFullText !== false;
+        document.getElementById('jokerCommandPrefix').value = config.jokerCommandPrefix || '!joker';
+        document.getElementById('jokerSuperfanOnly').checked = config.jokerSuperfanOnly !== false;
+        document.getElementById('answerPermissionLevel').value = config.answerPermissionLevel || 'all';
+        document.getElementById('useGCCE').checked = config.useGCCE || false;
         
         // Load AI settings from state
         loadAISettings();

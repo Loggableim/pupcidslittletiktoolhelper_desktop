@@ -508,6 +508,104 @@
                     </div>
                 </div>
 
+                <!-- Chat Commands Settings -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>💬 Chat Befehle</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="help-text" style="margin-bottom: 20px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; border-radius: 4px;">
+                            <strong>📝 Hinweis:</strong> Konfigurieren Sie, wie Zuschauer antworten können. Mehrere Prefixe können gleichzeitig verwendet werden (z.B. sowohl !a als auch /a).
+                        </div>
+
+                        <!-- Answer Commands -->
+                        <h3 style="margin-bottom: 15px; font-size: 16px; font-weight: 600;">Antwort-Befehle</h3>
+                        
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="allowPlainLetters" checked>
+                                <span>Einfache Buchstaben erlauben (a, b, c, d)</span>
+                            </label>
+                            <div class="help-text small">Erlaubt Antworten ohne Präfix: Einfach "a" schreiben</div>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="allowExclamation" checked>
+                                <span>Ausrufezeichen-Prefix (!a, !b, !c, !d)</span>
+                            </label>
+                            <div class="help-text small">Erlaubt Antworten mit !: "!a" schreiben</div>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="allowSlash">
+                                <span>Slash-Prefix (/a, /b, /c, /d)</span>
+                            </label>
+                            <div class="help-text small">Erlaubt Antworten mit /: "/a" schreiben</div>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="allowFullText" checked>
+                                <span>Vollständige Antworten erlauben</span>
+                            </label>
+                            <div class="help-text small">Erlaubt das Schreiben der kompletten Antwort (z.B. "Berlin")</div>
+                        </div>
+
+                        <!-- Joker Commands -->
+                        <h3 style="margin-top: 25px; margin-bottom: 15px; font-size: 16px; font-weight: 600;">Joker-Befehle</h3>
+                        
+                        <div class="form-group">
+                            <label>Joker-Command-Prefix:</label>
+                            <select id="jokerCommandPrefix" class="form-control">
+                                <option value="!joker">!joker (Standard)</option>
+                                <option value="/joker">/joker</option>
+                                <option value="!j">!j (Kurzform)</option>
+                                <option value="/j">/j (Kurzform)</option>
+                            </select>
+                            <div class="help-text small">Beispiel: !joker50, !jokerTime, etc.</div>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="jokerSuperfanOnly" checked>
+                                <span>Joker nur für Superfans/Subscriber</span>
+                            </label>
+                            <div class="help-text small">Beschränkt Joker-Nutzung auf Zuschauer mit Superfan- oder Subscriber-Status</div>
+                        </div>
+
+                        <!-- Command Permissions -->
+                        <h3 style="margin-top: 25px; margin-bottom: 15px; font-size: 16px; font-weight: 600;">Berechtigungen</h3>
+                        
+                        <div class="form-group">
+                            <label>Minimale Berechtigung für Antworten:</label>
+                            <select id="answerPermissionLevel" class="form-control">
+                                <option value="all" selected>Alle Zuschauer</option>
+                                <option value="subscriber">Nur Subscriber</option>
+                                <option value="superfan">Nur Superfans</option>
+                                <option value="moderator">Nur Moderatoren</option>
+                            </select>
+                            <div class="help-text small">Wer darf auf Quiz-Fragen antworten?</div>
+                        </div>
+
+                        <!-- Integration Status -->
+                        <h3 style="margin-top: 25px; margin-bottom: 15px; font-size: 16px; font-weight: 600;">Integration</h3>
+                        
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="useGCCE">
+                                <span>Global Chat Command Engine (GCCE) nutzen</span>
+                            </label>
+                            <div class="help-text small">Integriert Quiz-Commands mit dem globalen Command-System (empfohlen)</div>
+                        </div>
+
+                        <div id="gcceStatus" class="help-text" style="margin-top: 10px; padding: 10px; border-radius: 4px; display: none;">
+                            <strong>GCCE Status:</strong> <span id="gcceStatusText">Wird geladen...</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- TTS Settings -->
                 <div class="panel">
                     <div class="panel-header">
