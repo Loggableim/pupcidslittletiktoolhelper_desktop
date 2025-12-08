@@ -176,16 +176,11 @@ class TikTokRapidAPIEngine {
                     }
                 );
 
-                // Check for successful response with audio data
-                if (response.data && response.data.audio_base64) {
+                // Check for successful response with audio data (support multiple response formats)
+                const audioData = response.data?.audio_base64 || response.data?.data?.audio_base64;
+                if (audioData) {
                     this.logger.info(`TikTok RapidAPI TTS success: ${text.substring(0, 30)}... (voice: ${voiceId}, attempt: ${attempt + 1})`);
-                    return response.data.audio_base64;
-                }
-
-                // Handle alternative response formats
-                if (response.data && response.data.data && response.data.data.audio_base64) {
-                    this.logger.info(`TikTok RapidAPI TTS success: ${text.substring(0, 30)}... (voice: ${voiceId}, attempt: ${attempt + 1})`);
-                    return response.data.data.audio_base64;
+                    return audioData;
                 }
 
                 throw new Error('Invalid response format from TikTok RapidAPI - no audio data found');
@@ -196,14 +191,15 @@ class TikTokRapidAPIEngine {
                 this.logger.warn(`TikTok RapidAPI TTS attempt ${attempt + 1} failed: ${errorMsg}`);
 
                 // Check for authentication/quota errors (don't retry)
-                if (error.response?.status === 429) {
+                const status = error.response?.status;
+                if (status === 429) {
                     this.logger.error('TikTok RapidAPI: Rate limit exceeded. Please check your RapidAPI subscription.');
                     throw new Error(`TikTok RapidAPI 429: Rate limit exceeded`);
                 }
                 
-                if (error.response?.status === 403 || error.response?.status === 401) {
+                if (status === 403 || status === 401) {
                     this.logger.error('TikTok RapidAPI: Authentication error. Please check your API key in TTS Admin Panel.');
-                    throw new Error(`TikTok RapidAPI ${error.response.status}: Invalid API key or unauthorized`);
+                    throw new Error(`TikTok RapidAPI ${status}: Invalid API key or unauthorized`);
                 }
 
                 // Exponential backoff for other errors
