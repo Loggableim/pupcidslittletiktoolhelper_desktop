@@ -67,20 +67,29 @@ These files contain only the launch/whoosh sound, used when explosion is played 
 
 ## 🎯 Automatic Audio Selection
 
-The system automatically chooses audio based on firework characteristics:
+The system automatically chooses audio based on firework characteristics with high variety:
 
 | Firework Type | Audio Selection | Notes |
 |--------------|----------------|-------|
-| **Small** (0-99 coins) | Random tiny-bang (1-3) | Quick, synchronized explosions |
-| **Medium** (100-499 coins) | 60% normal-bang, 40% smooth+explosion | Varied medium effects |
-| **Big** (500-999 coins) | 50% crackling-bang, 50% whistle+explosion | Impressive effects |
-| **Massive** (1000+ coins) | Always crackling-bang | Maximum impact |
+| **Small** (0-99 coins) | 70% combined tiny-bang, 30% basic launch+explosion | Mix of synchronized and separate audio |
+| **Medium** (100-499 coins) | 40% normal-bang, 30% smooth launch, 30% varied launches | Maximum variety with different launch sounds |
+| **Big** (500-999 coins) | 50% crackling-bang, 25% whistle, 25% varied launches | Emphasizes crackling effects |
+| **Massive** (1000+ coins) | 80% crackling-bang, 20% whistle-normal | Maximum impact with variety |
 | **Combo 5-7** | Random tiny-bang (1-4, includes longer variant) | Quick bursts for fast combos |
 | **Combo 8+** | Only explosion sound | Instant explosions, no launch |
 
+### Launch Sound Variety
+
+The system now uses **all available launch sounds** to create variety:
+- **Basic launches**: `abschussgeraeusch.mp3`, `abschussgeraeusch2.mp3`, `rocket.mp3` - Quick ignition sounds
+- **Whistle launch**: `woosh_abheben_mit-pfeifen_no-bang.mp3` - Dramatic whistle effect
+- **Smooth launches**: `woosh_abheben_nocrackling_no-bang.mp3`, `woosh_abheben_nocrackling_no-bang2.mp3` - Clean whoosh sounds
+
+Different tiers use different combinations of these sounds to ensure every firework has a unique audio signature.
+
 ## ✅ Audio Status
 
-✅ **All audio files are installed and ready to use!**
+✅ **All 13 audio files are installed and ready to use with maximum variety!**
 
 The plugin automatically:
 - Preloads all audio files on page load

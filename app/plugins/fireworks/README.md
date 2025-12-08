@@ -164,20 +164,22 @@ The fireworks plugin features an advanced audio system that synchronizes sound e
 
 **Basic Effects**
 - `explosion.mp3` - Basic explosion sound for separate playback
-- `rocket.mp3`, `abschussgeraeusch*.mp3` - Basic launch sounds
+- `rocket.mp3`, `abschussgeraeusch*.mp3` - Basic launch sounds (now actively used!)
 
-### Tier-Based Audio Selection
+### Tier-Based Audio Selection with Maximum Variety
 
-The system automatically selects appropriate audio based on firework tier:
+The system automatically selects appropriate audio based on firework tier with intelligent randomization:
 
-| Tier | Audio Strategy | Timing |
-|------|---------------|--------|
-| **Small** (0-99 coins) | Random tiny-bang variations | ~1.2s to explosion |
-| **Medium** (100-499 coins) | 60% normal-bang, 40% smooth+explosion | ~2.2s or custom |
-| **Big** (500-999 coins) | 50% crackling-bang, 50% whistle+explosion | ~3.2s or custom |
-| **Massive** (1000+ coins) | Always crackling-bang | ~3.2s to explosion |
-| **Combo 5-7** | Quick tiny-bang sounds | Fast bursts |
-| **Combo 8+** | Explosion only | Instant explosions |
+| Tier | Audio Strategy | Variety Details |
+|------|---------------|----------------|
+| **Small** (0-99 coins) | 70% combined tiny-bang, 30% basic launches | Mix of synchronized effects and separate combinations |
+| **Medium** (100-499 coins) | 40% normal-bang, 30% smooth, 30% varied | Uses all launch sound types for variety |
+| **Big** (500-999 coins) | 50% crackling-bang, 25% whistle, 25% varied | Emphasizes powerful crackling effects |
+| **Massive** (1000+ coins) | 80% crackling-bang, 20% whistle-normal | Maximum impact with occasional variety |
+| **Combo 5-7** | Random tiny-bang sounds (all 4 variants) | Fast bursts optimized for rapid fire |
+| **Combo 8+** | Explosion only (no launch) | Instant explosions for extreme combos |
+
+**All 13 audio files are now actively used** to ensure every firework has a unique sound!
 
 ### How Synchronization Works
 
