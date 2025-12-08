@@ -176,10 +176,26 @@ Section "!LTTH Core Application" SEC_CORE
   ; Install app directory
   Banner::show /NOUNLOAD "Installing Application" "Copying application files..."
   SetOutPath "$INSTDIR\app"
-  ; Exclude runtime-generated directories:
+  
+  ; Copy root-level files first (exclude backup files and git files)
+  File /x "*.md~" /x ".git*" "${APP_DIR}\*.*"
+  
+  ; Copy subdirectories individually, excluding runtime-generated directories:
   ; - logs: Contains Winston audit files (.*.json) that cause NSIS errors
   ; - node_modules: Runtime dependencies installed by npm
-  File /r /x "*.md~" /x ".git*" /x "logs" /x "node_modules" "${APP_DIR}\*.*"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\data"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\docs"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\locales"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\modules"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\plugins"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\public"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\routes"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\scripts"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\test"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\tts"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\user_configs"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\user_data"
+  File /r /x "*.md~" /x ".git*" "${APP_DIR}\wiki"
   
   ; Create runtime directories that were excluded from packaging
   ; These directories are needed for the application to run properly
