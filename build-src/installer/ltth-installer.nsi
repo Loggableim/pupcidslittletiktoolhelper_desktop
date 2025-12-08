@@ -184,7 +184,9 @@ Section "!LTTH Core Application" SEC_CORE
   ; - logs: Contains Winston audit files (.*.json) that cause NSIS errors
   ; - node_modules: Runtime dependencies installed by npm
   ; Using /nonfatal to skip files that can't be opened (e.g., locked files, permission issues)
-  ; Note: If compilation fails due to path length issues, extract the repo to a shorter path (e.g., C:\temp\ltth)
+  ; IMPORTANT: If compilation fails with "failed opening file" errors, extract the repo to a SHORT path
+  ;            Windows MAX_PATH limit (260 chars) causes issues with long download paths
+  ;            Recommended: C:\ltth\ or C:\build\ (NOT C:\Users\...\Downloads\...)
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\data"
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\docs"
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\locales"
