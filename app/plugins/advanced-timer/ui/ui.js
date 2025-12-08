@@ -539,7 +539,6 @@ function getStateLabel(state) {
     const key = `ui.states.${state}`;
     const translation = i18n.t(key);
     return translation === key ? state : translation;
-    return labels[state] || state;
 }
 
 function getTimerName(timerId) {
