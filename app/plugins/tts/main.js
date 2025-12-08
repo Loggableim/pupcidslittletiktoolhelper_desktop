@@ -1,4 +1,5 @@
 const path = require('path');
+const multer = require('multer');
 // TikTok engine removed - no longer used
 const GoogleEngine = require('./engines/google-engine');
 const SpeechifyEngine = require('./engines/speechify-engine');
@@ -394,6 +395,36 @@ class TTSPlugin {
      * Register HTTP API routes
      */
     _registerRoutes() {
+        // Configure multer for voice clone audio uploads (in-memory storage)
+        const voiceCloneUpload = multer({
+            storage: multer.memoryStorage(),
+            limits: { 
+                fileSize: 5 * 1024 * 1024, // 5MB limit
+                files: 1 // Only one file allowed
+            },
+            fileFilter: (req, file, cb) => {
+                // Accept common audio formats
+                const allowedMimes = [
+                    'audio/mpeg',       // MP3
+                    'audio/mp3',        // MP3 alternative
+                    'audio/wav',        // WAV
+                    'audio/wave',       // WAV alternative
+                    'audio/x-wav',      // WAV alternative
+                    'audio/webm',       // WebM audio
+                    'audio/ogg',        // OGG
+                    'audio/mp4',        // MP4 audio
+                    'audio/m4a',        // M4A
+                    'audio/x-m4a'       // M4A alternative
+                ];
+                
+                if (allowedMimes.includes(file.mimetype)) {
+                    cb(null, true);
+                } else {
+                    cb(new Error(`Invalid audio format. Supported: MP3, WAV, WebM, OGG, M4A. Received: ${file.mimetype}`));
+                }
+            }
+        });
+
         // Serve plugin UI (admin panel)
         this.api.registerRoute('GET', '/tts/ui', (req, res) => {
             res.sendFile(path.join(__dirname, 'ui', 'admin-panel.html'));
@@ -917,33 +948,32 @@ class TTSPlugin {
             }
         });
 
-        // Voice Cloning Routes
-        this.api.registerRoute('POST', '/api/tts/voice-clones/create', async (req, res) => {
+        // Voice Cloning Routes - Using multipart/form-data instead of JSON for efficiency
+        this.api.registerRoute('POST', '/api/tts/voice-clones/create', voiceCloneUpload.single('audioFile'), async (req, res) => {
             try {
-                const { audioData, voiceName, language, consentConfirmation } = req.body;
+                // Extract form data
+                const { voiceName, language, consentConfirmation } = req.body;
+                const audioFile = req.file;
 
-                if (!audioData || !voiceName || !consentConfirmation) {
+                // Validate required fields
+                if (!audioFile) {
                     return res.status(400).json({
                         success: false,
-                        error: 'Missing required fields: audioData, voiceName, and consentConfirmation are required'
+                        error: 'Missing audio file. Please upload an audio file.'
                     });
                 }
 
-                // Validate audio data size (base64 encoded)
-                // Max 5MB file = ~6.67MB base64 (due to 4/3 encoding overhead)
-                const maxBase64Size = 7 * 1024 * 1024; // 7MB to account for overhead
-                if (audioData.length > maxBase64Size) {
+                if (!voiceName) {
                     return res.status(400).json({
                         success: false,
-                        error: 'Audio file is too large. Maximum size is 5MB.'
+                        error: 'Missing voice name. Please provide a name for the voice clone.'
                     });
                 }
 
-                // Basic validation of base64 format
-                if (typeof audioData !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(audioData)) {
+                if (!consentConfirmation) {
                     return res.status(400).json({
                         success: false,
-                        error: 'Invalid audio data format. Must be base64-encoded audio.'
+                        error: 'Missing consent confirmation. You must confirm consent to create a voice clone.'
                     });
                 }
 
@@ -963,12 +993,25 @@ class TTSPlugin {
                     });
                 }
 
+                // Convert buffer to base64 for Speechify API
+                // Note: Speechify's API currently expects base64-encoded audio in JSON format
+                // (verified in speechify-engine.js line 613-619). While this requires conversion,
+                // using multipart upload from client to server still provides benefits:
+                // - No HTTP 413 errors (multipart bypasses express.json() limits)
+                // - Reduced client-to-server bandwidth (33% savings)
+                // - Better browser memory efficiency (no client-side base64 encoding)
+                const audioBase64 = audioFile.buffer.toString('base64');
+
+                this.logger.info(`Creating voice clone "${voiceName}" (${audioFile.size} bytes, ${audioFile.mimetype})`);
+
                 const result = await this.engines.speechify.createVoiceClone({
-                    audioData,
+                    audioData: audioBase64,
                     voiceName,
                     language: language || 'en',
                     consentConfirmation
                 });
+
+                this.logger.info(`Voice clone "${voiceName}" created successfully (ID: ${result.voice_id})`);
 
                 res.json({
                     success: true,
@@ -976,6 +1019,15 @@ class TTSPlugin {
                 });
             } catch (error) {
                 this.logger.error(`Failed to create voice clone: ${error.message}`);
+                
+                // Handle multer errors
+                if (error.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Audio file is too large. Maximum size is 5MB.'
+                    });
+                }
+
                 res.status(500).json({
                     success: false,
                     error: error.message

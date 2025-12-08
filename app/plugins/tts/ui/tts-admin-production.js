@@ -2083,24 +2083,23 @@ async function handleVoiceCloneCreate(event) {
             resultDiv.innerHTML = '';
         }
 
-        // Convert file to base64
-        const audioBase64 = await fileToBase64(file);
+        // Create FormData for multipart upload (more efficient than base64)
+        const formData = new FormData();
+        formData.append('audioFile', file);
+        formData.append('voiceName', voiceName);
+        formData.append('language', language);
+        formData.append('consentConfirmation', 'I confirm this is my voice or I have explicit permission to use and clone this voice');
 
-        // Create voice clone
-        const response = await fetchJSON('/api/tts/voice-clones/create', {
+        // Upload using fetch (not fetchJSON since we're using FormData)
+        const response = await fetch('/api/tts/voice-clones/create', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                audioData: audioBase64,
-                voiceName: voiceName,
-                language: language,
-                consentConfirmation: 'I confirm this is my voice or I have explicit permission to use and clone this voice'
-            })
+            body: formData
+            // Note: Do NOT set Content-Type header - browser sets it automatically with boundary
         });
 
-        if (response.success) {
+        const data = await response.json();
+
+        if (data.success) {
             // Success
             showNotification(`Voice clone "${voiceName}" created successfully!`, 'success');
             
@@ -2109,7 +2108,7 @@ async function handleVoiceCloneCreate(event) {
                 resultDiv.innerHTML = `
                     <div class="bg-green-900 border-l-4 border-green-500 p-3 rounded">
                         <p class="text-sm text-green-100">
-                            ✅ Voice clone created successfully! Voice ID: <code class="bg-green-800 px-2 py-1 rounded">${response.voice.voice_id}</code>
+                            ✅ Voice clone created successfully! Voice ID: <code class="bg-green-800 px-2 py-1 rounded">${data.voice.voice_id}</code>
                         </p>
                     </div>
                 `;
@@ -2124,7 +2123,7 @@ async function handleVoiceCloneCreate(event) {
             // Reload voice clones list
             await loadVoiceClones();
         } else {
-            throw new Error(response.error || 'Failed to create voice clone');
+            throw new Error(data.error || 'Failed to create voice clone');
         }
     } catch (error) {
         console.error('Failed to create voice clone:', error);
@@ -2334,21 +2333,5 @@ async function deleteVoiceClone(voiceId, voiceName) {
         console.error('Failed to delete voice clone:', error);
         showNotification(`Failed to delete voice: ${error.message}`, 'error');
     }
-}
-
-/**
- * Convert file to base64
- */
-function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            // Remove data URL prefix to get pure base64
-            const base64 = reader.result.split(',')[1];
-            resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
 }
 
