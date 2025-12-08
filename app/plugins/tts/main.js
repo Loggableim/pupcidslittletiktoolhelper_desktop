@@ -917,6 +917,130 @@ class TTSPlugin {
             }
         });
 
+        // Voice Cloning Routes
+        this.api.registerRoute('POST', '/api/tts/voice-clones/create', async (req, res) => {
+            try {
+                const { audioData, voiceName, language, consentConfirmation } = req.body;
+
+                if (!audioData || !voiceName || !consentConfirmation) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Missing required fields: audioData, voiceName, and consentConfirmation are required'
+                    });
+                }
+
+                // Validate audio data size (base64 encoded)
+                // Max 5MB file = ~6.67MB base64 (due to 4/3 encoding overhead)
+                const maxBase64Size = 7 * 1024 * 1024; // 7MB to account for overhead
+                if (audioData.length > maxBase64Size) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Audio file is too large. Maximum size is 5MB.'
+                    });
+                }
+
+                // Basic validation of base64 format
+                if (typeof audioData !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(audioData)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid audio data format. Must be base64-encoded audio.'
+                    });
+                }
+
+                // Validate voice name length
+                if (voiceName.length > 100) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Voice name is too long. Maximum 100 characters.'
+                    });
+                }
+
+                // Check if Speechify engine is available
+                if (!this.engines.speechify) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Speechify engine is not configured. Please add your Speechify API key in the Configuration tab.'
+                    });
+                }
+
+                const result = await this.engines.speechify.createVoiceClone({
+                    audioData,
+                    voiceName,
+                    language: language || 'en',
+                    consentConfirmation
+                });
+
+                res.json({
+                    success: true,
+                    voice: result
+                });
+            } catch (error) {
+                this.logger.error(`Failed to create voice clone: ${error.message}`);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.api.registerRoute('GET', '/api/tts/voice-clones/list', async (req, res) => {
+            try {
+                // Check if Speechify engine is available
+                if (!this.engines.speechify) {
+                    return res.json({
+                        success: true,
+                        voices: []
+                    });
+                }
+
+                const voices = await this.engines.speechify.getCustomVoices();
+
+                res.json({
+                    success: true,
+                    voices
+                });
+            } catch (error) {
+                this.logger.error(`Failed to get custom voices: ${error.message}`);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        this.api.registerRoute('DELETE', '/api/tts/voice-clones/:voiceId', async (req, res) => {
+            try {
+                const { voiceId } = req.params;
+
+                if (!voiceId) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Voice ID is required'
+                    });
+                }
+
+                // Check if Speechify engine is available
+                if (!this.engines.speechify) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Speechify engine is not configured'
+                    });
+                }
+
+                await this.engines.speechify.deleteVoiceClone(voiceId);
+
+                res.json({
+                    success: true
+                });
+            } catch (error) {
+                this.logger.error(`Failed to delete voice clone: ${error.message}`);
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
         this.logger.info('TTS Plugin: HTTP routes registered');
     }
 

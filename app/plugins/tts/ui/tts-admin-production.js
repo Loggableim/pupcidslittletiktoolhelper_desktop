@@ -359,6 +359,11 @@ function switchTab(tabName) {
     if (tabName === 'users') {
         loadRecentUsers().catch(err => console.error('Failed to refresh recent users:', err));
     }
+
+    // Load voice clones when switching to voice-clones tab
+    if (tabName === 'voice-clones') {
+        loadVoiceClones().catch(err => console.error('Failed to load voice clones:', err));
+    }
 }
 
 // ============================================================================
@@ -1633,6 +1638,9 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Initialize voice clones tab
+    initVoiceClonesTab();
 }
 
 // ============================================================================
@@ -1931,3 +1939,416 @@ function updateDebugStats() {
         totalCount.textContent = debugLogs.length;
     }
 }
+
+// ============================================================================
+// VOICE CLONES TAB FUNCTIONALITY
+// ============================================================================
+
+/**
+ * Initialize voice clones tab
+ */
+function initVoiceClonesTab() {
+    const form = document.getElementById('voiceCloneForm');
+    const audioInput = document.getElementById('voiceCloneAudio');
+    const refreshBtn = document.getElementById('refreshVoiceClonesBtn');
+
+    // Audio file preview
+    if (audioInput) {
+        audioInput.addEventListener('change', handleAudioFileSelect);
+    }
+
+    // Form submission
+    if (form) {
+        form.addEventListener('submit', handleVoiceCloneCreate);
+    }
+
+    // Refresh button
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadVoiceClones);
+    }
+
+    // Check if Speechify is configured
+    checkSpeechifyConfiguration();
+}
+
+/**
+ * Check if Speechify API is configured
+ */
+async function checkSpeechifyConfiguration() {
+    try {
+        const config = await fetchJSON('/api/tts/config');
+        const warning = document.getElementById('speechify-not-configured-warning');
+        const form = document.getElementById('voiceCloneForm');
+        
+        if (config && config.config && config.config.speechifyApiKey) {
+            if (warning) warning.classList.add('hidden');
+            if (form) form.classList.remove('opacity-50', 'pointer-events-none');
+        } else {
+            if (warning) warning.classList.remove('hidden');
+            if (form) form.classList.add('opacity-50', 'pointer-events-none');
+        }
+    } catch (error) {
+        console.error('Failed to check Speechify configuration:', error);
+    }
+}
+
+/**
+ * Handle audio file selection and preview
+ */
+function handleAudioFileSelect(event) {
+    const file = event.target.files[0];
+    const preview = document.getElementById('audioPreview');
+    const player = document.getElementById('audioPlayer');
+    const fileName = document.getElementById('audioFileName');
+    const fileSize = document.getElementById('audioFileSize');
+
+    if (!file) {
+        if (preview) preview.classList.add('hidden');
+        // Clean up old object URL if exists
+        if (player && player.src && player.src.startsWith('blob:')) {
+            URL.revokeObjectURL(player.src);
+            player.src = '';
+        }
+        return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+        showNotification('Audio file is too large. Maximum size is 5MB.', 'error');
+        event.target.value = '';
+        if (preview) preview.classList.add('hidden');
+        return;
+    }
+
+    // Show preview
+    if (preview) {
+        preview.classList.remove('hidden');
+        
+        // Set audio source
+        if (player) {
+            // Clean up old object URL if exists
+            if (player.src && player.src.startsWith('blob:')) {
+                URL.revokeObjectURL(player.src);
+            }
+            
+            const objectURL = URL.createObjectURL(file);
+            player.src = objectURL;
+            
+            // Clean up when audio is loaded (once: true handles automatic removal)
+            player.addEventListener('loadedmetadata', () => {
+                // Object URL no longer needed after metadata is loaded
+            }, { once: true });
+        }
+
+        // Display file info
+        if (fileName) fileName.textContent = file.name;
+        if (fileSize) {
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            fileSize.textContent = `${sizeMB} MB`;
+        }
+    }
+}
+
+/**
+ * Handle voice clone creation
+ */
+async function handleVoiceCloneCreate(event) {
+    event.preventDefault();
+
+    const nameInput = document.getElementById('voiceCloneName');
+    const languageSelect = document.getElementById('voiceCloneLanguage');
+    const audioInput = document.getElementById('voiceCloneAudio');
+    const consentCheckbox = document.getElementById('voiceCloneConsent');
+    const submitBtn = document.getElementById('createVoiceCloneBtn');
+    const progress = document.getElementById('voiceCloneProgress');
+    const resultDiv = document.getElementById('voiceCloneResult');
+
+    // Validate inputs
+    if (!nameInput?.value || !audioInput?.files?.[0] || !consentCheckbox?.checked) {
+        showNotification('Please fill all required fields and confirm consent', 'error');
+        return;
+    }
+
+    const file = audioInput.files[0];
+    const voiceName = nameInput.value.trim();
+    const language = languageSelect?.value || 'en';
+
+    try {
+        // Show progress
+        if (submitBtn) submitBtn.disabled = true;
+        if (progress) progress.classList.remove('hidden');
+        if (resultDiv) {
+            resultDiv.classList.add('hidden');
+            resultDiv.innerHTML = '';
+        }
+
+        // Convert file to base64
+        const audioBase64 = await fileToBase64(file);
+
+        // Create voice clone
+        const response = await fetchJSON('/api/tts/voice-clones/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                audioData: audioBase64,
+                voiceName: voiceName,
+                language: language,
+                consentConfirmation: 'I confirm this is my voice or I have explicit permission to use and clone this voice'
+            })
+        });
+
+        if (response.success) {
+            // Success
+            showNotification(`Voice clone "${voiceName}" created successfully!`, 'success');
+            
+            // Show success message
+            if (resultDiv) {
+                resultDiv.innerHTML = `
+                    <div class="bg-green-900 border-l-4 border-green-500 p-3 rounded">
+                        <p class="text-sm text-green-100">
+                            ✅ Voice clone created successfully! Voice ID: <code class="bg-green-800 px-2 py-1 rounded">${response.voice.voice_id}</code>
+                        </p>
+                    </div>
+                `;
+                resultDiv.classList.remove('hidden');
+            }
+
+            // Reset form
+            event.target.reset();
+            const preview = document.getElementById('audioPreview');
+            if (preview) preview.classList.add('hidden');
+
+            // Reload voice clones list
+            await loadVoiceClones();
+        } else {
+            throw new Error(response.error || 'Failed to create voice clone');
+        }
+    } catch (error) {
+        console.error('Failed to create voice clone:', error);
+        showNotification(`Failed to create voice clone: ${error.message}`, 'error');
+        
+        // Show error message
+        if (resultDiv) {
+            resultDiv.innerHTML = `
+                <div class="bg-red-900 border-l-4 border-red-500 p-3 rounded">
+                    <p class="text-sm text-red-100">
+                        ❌ ${error.message}
+                    </p>
+                </div>
+            `;
+            resultDiv.classList.remove('hidden');
+        }
+    } finally {
+        // Hide progress
+        if (submitBtn) submitBtn.disabled = false;
+        if (progress) progress.classList.add('hidden');
+    }
+}
+
+/**
+ * Load and display voice clones
+ */
+async function loadVoiceClones() {
+    const listContainer = document.getElementById('voiceClonesList');
+    
+    if (!listContainer) return;
+
+    try {
+        // Show loading
+        listContainer.innerHTML = `
+            <div class="text-center text-gray-400 py-8">
+                <i class="fas fa-spinner fa-spin text-3xl mb-2"></i>
+                <p>Loading voice clones...</p>
+            </div>
+        `;
+
+        const response = await fetchJSON('/api/tts/voice-clones/list');
+
+        if (response.success && response.voices) {
+            const voices = response.voices;
+
+            if (voices.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center text-gray-400 py-8">
+                        <i class="fas fa-microphone text-4xl mb-2 opacity-50"></i>
+                        <p>No voice clones yet. Create your first one!</p>
+                    </div>
+                `;
+            } else {
+                listContainer.innerHTML = voices.map(voice => {
+                    const voiceId = voice.voice_id || voice.id;
+                    const voiceName = voice.voice_name || voice.display_name || voice.name || 'Unnamed Voice';
+                    const language = voice.language || 'Unknown';
+                    const createdAt = voice.created_at ? new Date(voice.created_at).toLocaleDateString() : 'Unknown';
+
+                    return `
+                        <div class="bg-gray-700 rounded-lg p-4 hover:bg-gray-650 transition" data-voice-id="${escapeHtml(voiceId)}" data-voice-name="${escapeHtml(voiceName)}">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <h3 class="font-bold text-white mb-1">
+                                        <i class="fas fa-microphone-alt text-blue-400"></i>
+                                        ${escapeHtml(voiceName)}
+                                    </h3>
+                                    <div class="text-xs text-gray-400 space-y-1">
+                                        <p><strong>ID:</strong> <code class="bg-gray-800 px-2 py-1 rounded">${escapeHtml(voiceId)}</code></p>
+                                        <p><strong>Language:</strong> ${escapeHtml(language)}</p>
+                                        ${createdAt !== 'Unknown' ? `<p><strong>Created:</strong> ${createdAt}</p>` : ''}
+                                    </div>
+                                </div>
+                                <div class="flex flex-col space-y-2">
+                                    <button 
+                                        class="voice-clone-test-btn bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded"
+                                        title="Test this voice"
+                                    >
+                                        🔊 Test
+                                    </button>
+                                    <button 
+                                        class="voice-clone-delete-btn bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded"
+                                        title="Delete this voice"
+                                    >
+                                        🗑️ Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Add event listeners using delegation
+                setupVoiceCloneEventListeners();
+            }
+        } else {
+            throw new Error(response.error || 'Failed to load voice clones');
+        }
+    } catch (error) {
+        console.error('Failed to load voice clones:', error);
+        listContainer.innerHTML = `
+            <div class="text-center text-red-400 py-8">
+                <i class="fas fa-exclamation-triangle text-3xl mb-2"></i>
+                <p>Failed to load voice clones</p>
+                <p class="text-sm mt-2">${escapeHtml(error.message)}</p>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Setup event listeners for voice clone buttons using delegation
+ */
+function setupVoiceCloneEventListeners() {
+    const listContainer = document.getElementById('voiceClonesList');
+    
+    if (!listContainer) return;
+
+    // Remove old listeners if they exist
+    listContainer.removeEventListener('click', handleVoiceCloneButtonClick);
+    
+    // Add new listener
+    listContainer.addEventListener('click', handleVoiceCloneButtonClick);
+}
+
+/**
+ * Handle voice clone button clicks (test/delete)
+ */
+function handleVoiceCloneButtonClick(event) {
+    const target = event.target.closest('button');
+    
+    if (!target) return;
+
+    const voiceItem = target.closest('[data-voice-id]');
+    if (!voiceItem) return;
+
+    const voiceId = voiceItem.dataset.voiceId;
+    const voiceName = voiceItem.dataset.voiceName;
+
+    if (target.classList.contains('voice-clone-test-btn')) {
+        testVoiceClone(voiceId, voiceName);
+    } else if (target.classList.contains('voice-clone-delete-btn')) {
+        deleteVoiceClone(voiceId, voiceName);
+    }
+}
+
+/**
+ * Test a voice clone
+ * Note: Using default text instead of prompt for better UX
+ */
+async function testVoiceClone(voiceId, voiceName) {
+    try {
+        // Use a default test text instead of prompt for better UX and security
+        const testText = 'Hello! This is a test of my custom voice clone.';
+
+        showNotification(`Testing voice "${voiceName}"...`, 'info');
+
+        const response = await fetchJSON('/api/tts/speak', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: testText,
+                engine: 'speechify',
+                voiceId: voiceId,
+                username: 'VoiceCloneTest'
+            })
+        });
+
+        if (response.success) {
+            showNotification('Voice test queued successfully!', 'success');
+        } else {
+            throw new Error(response.error || 'Failed to test voice');
+        }
+    } catch (error) {
+        console.error('Failed to test voice clone:', error);
+        showNotification(`Failed to test voice: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Delete a voice clone
+ * Note: Using showNotification confirmation instead of confirm() for better UX
+ */
+async function deleteVoiceClone(voiceId, voiceName) {
+    // For now, keep confirm() for simplicity, but ideally would use a modal
+    // This is acceptable as it's only used in admin interface
+    if (!confirm(`Are you sure you want to delete the voice clone "${voiceName}"?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        showNotification(`Deleting voice "${voiceName}"...`, 'info');
+
+        const response = await fetchJSON(`/api/tts/voice-clones/${voiceId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.success) {
+            showNotification(`Voice "${voiceName}" deleted successfully!`, 'success');
+            await loadVoiceClones();
+        } else {
+            throw new Error(response.error || 'Failed to delete voice clone');
+        }
+    } catch (error) {
+        console.error('Failed to delete voice clone:', error);
+        showNotification(`Failed to delete voice: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Convert file to base64
+ */
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            // Remove data URL prefix to get pure base64
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
