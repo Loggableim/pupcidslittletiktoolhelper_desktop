@@ -420,7 +420,7 @@ class TTSPlugin {
                 if (allowedMimes.includes(file.mimetype)) {
                     cb(null, true);
                 } else {
-                    cb(new Error(`Invalid audio format. Allowed formats: MP3, WAV, WebM, OGG, M4A. Got: ${file.mimetype}`));
+                    cb(new Error(`Invalid audio format. Supported: MP3, WAV, WebM, OGG, M4A. Received: ${file.mimetype}`));
                 }
             }
         });
@@ -993,7 +993,13 @@ class TTSPlugin {
                     });
                 }
 
-                // Convert buffer to base64 for Speechify API (their API expects base64)
+                // Convert buffer to base64 for Speechify API
+                // Note: Speechify's API currently expects base64-encoded audio in JSON format
+                // (verified in speechify-engine.js line 613-619). While this requires conversion,
+                // using multipart upload from client to server still provides benefits:
+                // - No HTTP 413 errors (multipart bypasses express.json() limits)
+                // - Reduced client-to-server bandwidth (33% savings)
+                // - Better browser memory efficiency (no client-side base64 encoding)
                 const audioBase64 = audioFile.buffer.toString('base64');
 
                 this.logger.info(`Creating voice clone "${voiceName}" (${audioFile.size} bytes, ${audioFile.mimetype})`);
