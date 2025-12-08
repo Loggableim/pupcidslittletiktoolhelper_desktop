@@ -1232,10 +1232,27 @@ class FireworksEngine {
 
     showFollowerAnimation(data) {
         const animationEl = document.getElementById('follower-animation');
+        const contentEl = animationEl?.querySelector('.follower-content');
         const usernameEl = document.getElementById('follower-username');
         const avatarEl = document.getElementById('follower-avatar');
         
-        if (!animationEl || !usernameEl || !avatarEl) return;
+        if (!animationEl || !contentEl || !usernameEl || !avatarEl) return;
+        
+        // Remove all previous position, style, and entrance classes
+        animationEl.className = 'follower-animation';
+        contentEl.className = 'follower-content';
+        
+        // Set position class
+        const position = data.position || 'center';
+        animationEl.classList.add(`pos-${position}`);
+        
+        // Set style class
+        const style = data.style || 'gradient-purple';
+        contentEl.classList.add(`style-${style}`);
+        
+        // Set entrance animation class
+        const entrance = data.entrance || 'scale';
+        animationEl.classList.add(`entrance-${entrance}`);
         
         // Set username
         usernameEl.textContent = data.username || 'Unknown';
@@ -1255,6 +1272,11 @@ class FireworksEngine {
         const duration = data.duration || 3000;
         setTimeout(() => {
             animationEl.classList.remove('show');
+            // Clean up after animation completes
+            setTimeout(() => {
+                animationEl.className = 'follower-animation';
+                contentEl.className = 'follower-content';
+            }, 500); // Wait for exit animation
         }, duration);
     }
 

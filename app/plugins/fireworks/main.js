@@ -163,6 +163,10 @@ class FireworksPlugin {
             followerShowAnimation: true, // Show thank you animation
             followerShowProfilePicture: true, // Show follower's profile picture
             followerAnimationDuration: 3000, // Duration of thank you animation in ms
+            followerAnimationDelay: 3000, // Delay before showing animation (ms)
+            followerAnimationPosition: 'center', // 'top-left', 'top-center', 'top-right', 'center', 'bottom-left', 'bottom-center', 'bottom-right'
+            followerAnimationStyle: 'gradient-purple', // 'gradient-purple', 'gradient-blue', 'gradient-gold', 'gradient-rainbow', 'neon', 'minimal'
+            followerAnimationEntrance: 'scale', // 'scale', 'fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'bounce', 'rotate'
             
             // Interactive triggers
             interactiveEnabled: false,
@@ -731,13 +735,20 @@ class FireworksPlugin {
         
         this.api.log(`👤 [FIREWORKS] New follower: ${username}! Launching ${this.config.followerRocketCount} rockets 🎆`, 'info');
         
-        // Show thank you animation if enabled
+        // Show thank you animation if enabled (with delay)
         if (this.config.followerShowAnimation) {
-            this.api.emit('fireworks:follower-animation', {
-                username: username,
-                profilePictureUrl: this.config.followerShowProfilePicture ? profilePictureUrl : null,
-                duration: this.config.followerAnimationDuration || 3000
-            });
+            const animationDelay = this.config.followerAnimationDelay || 3000;
+            
+            setTimeout(() => {
+                this.api.emit('fireworks:follower-animation', {
+                    username: username,
+                    profilePictureUrl: this.config.followerShowProfilePicture ? profilePictureUrl : null,
+                    duration: this.config.followerAnimationDuration || 3000,
+                    position: this.config.followerAnimationPosition || 'center',
+                    style: this.config.followerAnimationStyle || 'gradient-purple',
+                    entrance: this.config.followerAnimationEntrance || 'scale'
+                });
+            }, animationDelay);
         }
         
         // Launch multiple rockets for the follower

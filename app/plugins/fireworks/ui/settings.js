@@ -228,6 +228,11 @@ function updateUI() {
     document.getElementById('follower-rocket-count-value').textContent = config.followerRocketCount || 3;
     document.getElementById('follower-animation-duration').value = (config.followerAnimationDuration || 3000) / 1000;
     document.getElementById('follower-animation-duration-value').textContent = ((config.followerAnimationDuration || 3000) / 1000) + 's';
+    document.getElementById('follower-animation-delay').value = (config.followerAnimationDelay || 3000) / 1000;
+    document.getElementById('follower-animation-delay-value').textContent = ((config.followerAnimationDelay || 3000) / 1000) + 's';
+    document.getElementById('follower-animation-position').value = config.followerAnimationPosition || 'center';
+    document.getElementById('follower-animation-style').value = config.followerAnimationStyle || 'gradient-purple';
+    document.getElementById('follower-animation-entrance').value = config.followerAnimationEntrance || 'scale';
     
     // Random shape rotation
     updateToggle('random-shape-toggle', config.randomShapeEnabled);
@@ -393,6 +398,25 @@ function setupEventListeners() {
     
     setupRangeSlider('follower-animation-duration', 'follower-animation-duration-value', 's', (val) => {
         config.followerAnimationDuration = val * 1000; // Convert to ms
+    });
+    
+    setupRangeSlider('follower-animation-delay', 'follower-animation-delay-value', 's', (val) => {
+        config.followerAnimationDelay = val * 1000; // Convert to ms
+    });
+    
+    // Follower animation position selector
+    document.getElementById('follower-animation-position')?.addEventListener('change', function() {
+        config.followerAnimationPosition = this.value;
+    });
+    
+    // Follower animation style selector
+    document.getElementById('follower-animation-style')?.addEventListener('change', function() {
+        config.followerAnimationStyle = this.value;
+    });
+    
+    // Follower animation entrance selector
+    document.getElementById('follower-animation-entrance')?.addEventListener('change', function() {
+        config.followerAnimationEntrance = this.value;
     });
     
     setupRangeSlider('avatar-chance', 'avatar-chance-value', '%', (val) => {
