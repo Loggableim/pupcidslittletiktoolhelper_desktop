@@ -24,12 +24,12 @@ Audio selection is automatic based on:
 - Example: Rocket with 1.0s flight → uses `tiny-bang.mp3` (explosion at 1.0s)
 
 ### 2. Layered Audio Strategy (NEW!)
-- Combines multiple audio files with precise timing
-- Launch plays immediately
-- Explosion scheduled via `playDelayed()` at calculated flight time
-- Crackling can be added at explosion time for atmosphere
-- **Perfect sync** because explosion is timed to actual rocket flight duration
-- Example: Launch `abschussgeraeusch.mp3` → wait 2.5s → play `explosion_medium.mp3`
+- Combines multiple audio files for maximum variety
+- Launch plays immediately when rocket fires
+- Explosion triggers via callback when visual firework explodes
+- Crackling layers simultaneously with explosion for atmosphere
+- **Perfect sync** because explosion sound is triggered by actual visual explosion event
+- Example: Launch `abschussgeraeusch.mp3` → visual explodes → play `explosion_medium.mp3` + `crackling2.mp3`
 
 ### 3. Callback Audio Strategy
 - Launch plays immediately

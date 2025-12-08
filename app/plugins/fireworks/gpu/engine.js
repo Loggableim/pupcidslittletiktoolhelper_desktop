@@ -1394,36 +1394,31 @@ class FireworksEngine {
                 
             } else if (audioConfig.useLayeredAudio) {
                 // LAYERED AUDIO PLAYBACK
-                // Multiple sounds playing with precise timing using playDelayed
+                // Launch plays immediately, explosion and crackling trigger via callback for perfect sync
                 
-                // 1. Launch sound - plays immediately
+                // 1. Launch sound - plays immediately when rocket fires
                 if (audioConfig.launchSound && !skipRockets) {
                     console.log(`[Fireworks] Layered - Launch: ${audioConfig.launchSound} (immediate)`);
                     this.audioManager.play(audioConfig.launchSound, this.audioManager.LAUNCH_AUDIO_VOLUME);
                 }
                 
-                // 2. Explosion sound - plays at calculated flight time
-                if (audioConfig.explosionSound && audioConfig.explosionDelay > 0) {
-                    console.log(`[Fireworks] Layered - Explosion: ${audioConfig.explosionSound} (at ${audioConfig.explosionDelay.toFixed(2)}s)`);
-                    this.audioManager.playDelayed(
-                        audioConfig.explosionSound, 
-                        audioConfig.explosionDelay, 
-                        this.audioManager.NORMAL_EXPLOSION_VOLUME * intensity
-                    );
-                } else if (audioConfig.explosionSound) {
-                    this.audioManager.play(audioConfig.explosionSound, this.audioManager.NORMAL_EXPLOSION_VOLUME * intensity);
-                }
-                
-                // 3. Crackling sound - plays with explosion or separately
-                if (audioConfig.cracklingSound && audioConfig.cracklingDelay > 0) {
-                    console.log(`[Fireworks] Layered - Crackling: ${audioConfig.cracklingSound} (at ${audioConfig.cracklingDelay.toFixed(2)}s)`);
-                    this.audioManager.playDelayed(
-                        audioConfig.cracklingSound, 
-                        audioConfig.cracklingDelay, 
-                        this.audioManager.CRACKLING_VOLUME
-                    );
-                } else if (audioConfig.cracklingSound) {
-                    this.audioManager.play(audioConfig.cracklingSound, this.audioManager.CRACKLING_VOLUME);
+                // 2. Explosion and crackling sounds - trigger via callback when visual explodes
+                const soundVolume = instantExplode 
+                    ? this.audioManager.INSTANT_EXPLODE_VOLUME 
+                    : this.audioManager.NORMAL_EXPLOSION_VOLUME;
+                    
+                if (audioConfig.explosionSound) {
+                    console.log(`[Fireworks] Layered - Setting explosion callback: ${audioConfig.explosionSound}`);
+                    firework.onExplodeSound = (intensity) => {
+                        console.log(`[Fireworks] Layered - Explosion callback firing: ${audioConfig.explosionSound}`);
+                        this.audioManager.play(audioConfig.explosionSound, intensity * soundVolume);
+                        
+                        // Add crackling layer with explosion for perfect sync
+                        if (audioConfig.cracklingSound) {
+                            console.log(`[Fireworks] Layered - Crackling firing with explosion: ${audioConfig.cracklingSound}`);
+                            this.audioManager.play(audioConfig.cracklingSound, this.audioManager.CRACKLING_VOLUME);
+                        }
+                    };
                 }
                 
             } else {
