@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"syscall"
 )
 
 const (
@@ -14,6 +15,9 @@ const (
 	colorGreen  = "\033[32m"
 	colorYellow = "\033[33m"
 	colorCyan   = "\033[36m"
+	
+	// CREATE_NO_WINDOW flag for Windows to hide console window
+	createNoWindow = 0x08000000
 )
 
 func printHeader() {
@@ -55,13 +59,17 @@ func installDependencies(appDir string) error {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/C", "npm", "install", "--cache", "false")
+		// Hide the npm install window on Windows using CREATE_NO_WINDOW flag
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			CreationFlags: createNoWindow,
+		}
 	} else {
 		cmd = exec.Command("npm", "install", "--cache", "false")
 	}
 	
 	cmd.Dir = appDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Don't show npm install output in the console
+	// The installation will run silently in the background
 	
 	err := cmd.Run()
 	if err != nil {
