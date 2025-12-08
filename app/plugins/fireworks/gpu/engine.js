@@ -413,6 +413,23 @@ class FireworksEngine {
             useTexture: gl.getUniformLocation(this.webglProgram, 'u_useTexture')
         };
         
+        // Validate attribute locations
+        if (this.webglLocations.position === -1 || this.webglLocations.size === -1 ||
+            this.webglLocations.color === -1 || this.webglLocations.alpha === -1) {
+            console.error('[Fireworks Engine] Failed to get attribute locations');
+            this.useWebGL = false;
+            this.ctx = this.canvas.getContext('2d');
+            return;
+        }
+        
+        // Validate uniform locations
+        if (!this.webglLocations.resolution || !this.webglLocations.useTexture) {
+            console.error('[Fireworks Engine] Failed to get uniform locations');
+            this.useWebGL = false;
+            this.ctx = this.canvas.getContext('2d');
+            return;
+        }
+        
         // Create buffers
         this.webglBuffers = {
             position: gl.createBuffer(),
@@ -945,32 +962,43 @@ class FireworksEngine {
         // Parse hex color to RGB (0-1 range)
         if (color.startsWith('#')) {
             const hex = color.substring(1);
-            return {
-                r: parseInt(hex.substring(0, 2), 16) / 255,
-                g: parseInt(hex.substring(2, 4), 16) / 255,
-                b: parseInt(hex.substring(4, 6), 16) / 255
-            };
+            
+            // Validate hex length and expand 3-char format
+            if (hex.length === 3) {
+                // Expand shorthand (e.g., #f0a -> #ff00aa)
+                const r = parseInt(hex[0] + hex[0], 16) / 255;
+                const g = parseInt(hex[1] + hex[1], 16) / 255;
+                const b = parseInt(hex[2] + hex[2], 16) / 255;
+                return { r, g, b };
+            } else if (hex.length === 6) {
+                return {
+                    r: parseInt(hex.substring(0, 2), 16) / 255,
+                    g: parseInt(hex.substring(2, 4), 16) / 255,
+                    b: parseInt(hex.substring(4, 6), 16) / 255
+                };
+            }
+            // Invalid hex format, fall through to default
         }
         
-        // Parse hsl color
+        // Parse hsl color (support both integer and decimal values)
         if (color.startsWith('hsl')) {
-            const match = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+            const match = color.match(/hsl\(([0-9.]+),\s*([0-9.]+)%,\s*([0-9.]+)%\)/);
             if (match) {
-                const h = parseInt(match[1]) / 360;
-                const s = parseInt(match[2]) / 100;
-                const l = parseInt(match[3]) / 100;
+                const h = parseFloat(match[1]) / 360;
+                const s = parseFloat(match[2]) / 100;
+                const l = parseFloat(match[3]) / 100;
                 return this.hslToRgb(h, s, l);
             }
         }
         
-        // Parse rgb color
+        // Parse rgb/rgba color (support both integer and decimal values)
         if (color.startsWith('rgb')) {
-            const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            const match = color.match(/rgba?\(([0-9.]+),\s*([0-9.]+),\s*([0-9.]+)/);
             if (match) {
                 return {
-                    r: parseInt(match[1]) / 255,
-                    g: parseInt(match[2]) / 255,
-                    b: parseInt(match[3]) / 255
+                    r: parseFloat(match[1]) / 255,
+                    g: parseFloat(match[2]) / 255,
+                    b: parseFloat(match[3]) / 255
                 };
             }
         }
@@ -1007,6 +1035,12 @@ class FireworksEngine {
     renderTrailsCanvas(particles) {
         // Create temporary 2D context for trails if needed
         if (!this.trailCtx) {
+            // Validate parent element exists
+            if (!this.canvas.parentElement) {
+                console.warn('[Fireworks Engine] Cannot create trail canvas: parent element not found');
+                return;
+            }
+            
             const trailCanvas = document.createElement('canvas');
             trailCanvas.width = this.canvas.width;
             trailCanvas.height = this.canvas.height;
