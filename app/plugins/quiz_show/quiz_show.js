@@ -114,6 +114,64 @@
                 }, 100);
             });
         }
+
+        // Event delegation for dynamically generated content
+        // Handle all data-action clicks and changes
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+
+            const action = target.dataset.action;
+            const id = target.dataset.id ? parseInt(target.dataset.id, 10) : null;
+
+            switch (action) {
+                case 'edit-question':
+                    editQuestion(id);
+                    break;
+                case 'delete-question':
+                    deleteQuestion(id);
+                    break;
+                case 'view-package-questions':
+                    viewPackageQuestions(id);
+                    break;
+                case 'delete-package':
+                    deletePackage(id);
+                    break;
+                case 'activate-layout':
+                    activateLayout(id);
+                    break;
+                case 'deactivate-layout':
+                    deactivateLayout();
+                    break;
+                case 'edit-layout':
+                    editLayout(id);
+                    break;
+                case 'delete-layout':
+                    deleteLayout(id);
+                    break;
+                case 'edit-gift-joker':
+                    editGiftJoker(id);
+                    break;
+                case 'delete-gift-joker':
+                    deleteGiftJoker(id);
+                    break;
+            }
+        });
+
+        // Event delegation for checkbox changes
+        document.addEventListener('change', (e) => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+
+            const action = target.dataset.action;
+            const id = target.dataset.id ? parseInt(target.dataset.id, 10) : null;
+
+            switch (action) {
+                case 'toggle-package':
+                    togglePackage(id);
+                    break;
+            }
+        });
     }
 
     // Socket.IO Listeners
@@ -731,8 +789,8 @@
                     </div>
                 </div>
                 <div class="question-actions">
-                    <button class="btn-icon" onclick="window.quizShow.editQuestion(${q.id})" title="Bearbeiten">✏️</button>
-                    <button class="btn-icon" onclick="window.quizShow.deleteQuestion(${q.id})" title="Löschen">🗑️</button>
+                    <button class="btn-icon" data-action="edit-question" data-id="${q.id}" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon" data-action="delete-question" data-id="${q.id}" title="Löschen">🗑️</button>
                 </div>
             </div>
         `).join('');
@@ -1602,7 +1660,8 @@
                     type="checkbox" 
                     class="package-checkbox" 
                     ${pkg.is_selected ? 'checked' : ''}
-                    onchange="window.quizShow.togglePackage(${pkg.id})"
+                    data-action="toggle-package" 
+                    data-id="${pkg.id}"
                 >
                 <div class="package-info">
                     <div class="package-header">
@@ -1619,10 +1678,10 @@
                     </div>
                 </div>
                 <div class="package-actions">
-                    <button class="btn-view" onclick="window.quizShow.viewPackageQuestions(${pkg.id})" title="Fragen anzeigen">
+                    <button class="btn-view" data-action="view-package-questions" data-id="${pkg.id}" title="Fragen anzeigen">
                         👁️ Anzeigen
                     </button>
-                    <button class="btn-delete" onclick="window.quizShow.deletePackage(${pkg.id})" title="Paket löschen">
+                    <button class="btn-delete" data-action="delete-package" data-id="${pkg.id}" title="Paket löschen">
                         🗑️ Löschen
                     </button>
                 </div>
@@ -1767,11 +1826,11 @@
                 </div>
                 <div class="layout-actions">
                     ${isActive 
-                        ? `<button class="btn-icon" onclick="window.quizShow.deactivateLayout()" title="Deaktivieren">⏸️</button>`
-                        : `<button class="btn-icon" onclick="window.quizShow.activateLayout(${layout.id})" title="Aktivieren">▶️</button>`
+                        ? `<button class="btn-icon" data-action="deactivate-layout" title="Deaktivieren">⏸️</button>`
+                        : `<button class="btn-icon" data-action="activate-layout" data-id="${layout.id}" title="Aktivieren">▶️</button>`
                     }
-                    <button class="btn-icon" onclick="window.quizShow.editLayout(${layout.id})" title="Bearbeiten">✏️</button>
-                    <button class="btn-icon" onclick="window.quizShow.deleteLayout(${layout.id})" title="Löschen">🗑️</button>
+                    <button class="btn-icon" data-action="edit-layout" data-id="${layout.id}" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon" data-action="delete-layout" data-id="${layout.id}" title="Löschen">🗑️</button>
                 </div>
             </div>
         `;
@@ -2177,8 +2236,8 @@
                 <td>${jokerNames[mapping.joker_type] || mapping.joker_type}</td>
                 <td><span class="status-badge ${mapping.enabled ? 'status-connected' : 'status-error'}">${mapping.enabled ? 'Aktiv' : 'Inaktiv'}</span></td>
                 <td>
-                    <button class="btn-icon" onclick="window.quizShow.editGiftJoker(${mapping.gift_id})" title="Bearbeiten">✏️</button>
-                    <button class="btn-icon" onclick="window.quizShow.deleteGiftJoker(${mapping.gift_id})" title="Löschen">🗑️</button>
+                    <button class="btn-icon" data-action="edit-gift-joker" data-id="${mapping.gift_id}" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon" data-action="delete-gift-joker" data-id="${mapping.gift_id}" title="Löschen">🗑️</button>
                 </td>
             </tr>
         `).join('');
@@ -2301,19 +2360,4 @@
     // ============================================
     // END GIFT-JOKER MANAGEMENT
     // ============================================
-
-    // Expose functions to window for onclick handlers
-    window.quizShow = {
-        editQuestion,
-        deleteQuestion,
-        togglePackage,
-        deletePackage,
-        viewPackageQuestions,
-        editLayout,
-        deleteLayout,
-        activateLayout,
-        deactivateLayout,
-        editGiftJoker,
-        deleteGiftJoker
-    };
 })();
