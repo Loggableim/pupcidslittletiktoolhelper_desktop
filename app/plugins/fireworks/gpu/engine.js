@@ -666,14 +666,21 @@ class AudioManager {
         this.SMOOTH_LAUNCH_SOUNDS = ['launch-smooth', 'launch-smooth2'];
         this.ALL_LAUNCH_SOUNDS = ['launch-basic', 'launch-basic2', 'rocket-basic', 'launch-whistle', 'launch-smooth', 'launch-smooth2'];
         
-        // Explosion sound (currently only one, but structured for future expansion)
-        this.EXPLOSION_SOUNDS = ['explosion-basic'];
+        // Explosion sounds organized by tier for better matching with firework size
+        this.EXPLOSION_SMALL = ['explosion-basic', 'explosion-small', 'explosion-alt1']; // Short, quick explosions
+        this.EXPLOSION_MEDIUM = ['explosion-medium', 'explosion-alt2', 'explosion-pop']; // Medium explosions
+        this.EXPLOSION_BIG = ['explosion-big', 'explosion-huge']; // Big, powerful explosions
+        this.EXPLOSION_ALL = ['explosion-basic', 'explosion-small', 'explosion-medium', 'explosion-alt1', 'explosion-alt2', 'explosion-big', 'explosion-huge', 'explosion-pop'];
+        
+        // Crackling sounds for atmospheric effects (can be layered with explosions)
+        this.CRACKLING_SOUNDS = ['crackling-medium', 'crackling-long'];
         
         // Volume constants for consistent audio levels
         this.COMBINED_AUDIO_VOLUME = 0.6;        // Volume for combined (launch+explosion) audio
         this.LAUNCH_AUDIO_VOLUME = 0.4;          // Volume for separate launch sounds
         this.NORMAL_EXPLOSION_VOLUME = 0.6;      // Volume for normal explosions
         this.INSTANT_EXPLODE_VOLUME = 0.2;       // Volume for instant explosions (high combos)
+        this.CRACKLING_VOLUME = 0.3;             // Volume for crackling effects (layered, so quieter)
     }
 
     async init() {
@@ -816,13 +823,14 @@ class AudioManager {
      * // Returns: { useCombinedAudio: true, combinedSound: 'combined-crackling-bang', explosionDelay: 3.2 }
      */
     selectAudio(tier, combo, instantExplode = false) {
-        // For instant explosions (high combo), use only explosion sounds
+        // For instant explosions (high combo), use appropriate explosion based on tier
         if (instantExplode) {
             return {
                 useCombinedAudio: false,
                 launchSound: null,
-                explosionSound: this.EXPLOSION_SOUNDS[Math.floor(Math.random() * this.EXPLOSION_SOUNDS.length)],
-                explosionDelay: 0
+                explosionSound: this.EXPLOSION_SMALL[Math.floor(Math.random() * this.EXPLOSION_SMALL.length)],
+                explosionDelay: 0,
+                cracklingSound: null
             };
         }
 
@@ -831,7 +839,8 @@ class AudioManager {
             return {
                 useCombinedAudio: true,
                 combinedSound: this.TINY_BANG_SOUNDS[Math.floor(Math.random() * this.TINY_BANG_SOUNDS.length)],
-                explosionDelay: 0  // Explosion is already in the audio
+                explosionDelay: 0,  // Explosion is already in the audio
+                cracklingSound: null
             };
         }
 
@@ -846,43 +855,48 @@ class AudioManager {
                     return {
                         useCombinedAudio: true,
                         combinedSound: this.SMALL_SOUNDS[Math.floor(Math.random() * this.SMALL_SOUNDS.length)],
-                        explosionDelay: 1.2  // Tiny bangs have explosion at ~1.2s
+                        explosionDelay: 1.2,  // Tiny bangs have explosion at ~1.2s
+                        cracklingSound: null
                     };
                 } else {
-                    // 30% chance: basic launch + explosion for variety
+                    // 30% chance: basic launch + small explosion for variety
                     return {
                         useCombinedAudio: false,
                         launchSound: this.BASIC_LAUNCH_SOUNDS[Math.floor(Math.random() * this.BASIC_LAUNCH_SOUNDS.length)],
-                        explosionSound: this.EXPLOSION_SOUNDS[Math.floor(Math.random() * this.EXPLOSION_SOUNDS.length)],
-                        explosionDelay: 0  // Not used; explosion triggers via callback
+                        explosionSound: this.EXPLOSION_SMALL[Math.floor(Math.random() * this.EXPLOSION_SMALL.length)],
+                        explosionDelay: 0,  // Not used; explosion triggers via callback
+                        cracklingSound: null
                     };
                 }
 
             case 'medium':
-                // Medium fireworks: varied mix of combined and separate audio
+                // Medium fireworks: varied mix of combined and separate audio with medium explosions
                 if (rand < 0.4) {
                     // 40% chance: combined whistle + normal bang
                     return {
                         useCombinedAudio: true,
                         combinedSound: 'combined-whistle-normal',
-                        explosionDelay: 2.2  // Normal bang has explosion at ~2.2s in the audio file
+                        explosionDelay: 2.2,  // Normal bang has explosion at ~2.2s in the audio file
+                        cracklingSound: null
                     };
                 } else if (rand < 0.7) {
-                    // 30% chance: smooth launch + explosion
+                    // 30% chance: smooth launch + medium explosion
                     return {
                         useCombinedAudio: false,
                         launchSound: this.SMOOTH_LAUNCH_SOUNDS[Math.floor(Math.random() * this.SMOOTH_LAUNCH_SOUNDS.length)],
-                        explosionSound: this.EXPLOSION_SOUNDS[Math.floor(Math.random() * this.EXPLOSION_SOUNDS.length)],
-                        explosionDelay: 0  // Not used; explosion triggers via callback
+                        explosionSound: this.EXPLOSION_MEDIUM[Math.floor(Math.random() * this.EXPLOSION_MEDIUM.length)],
+                        explosionDelay: 0,  // Not used; explosion triggers via callback
+                        cracklingSound: null
                     };
                 } else {
-                    // 30% chance: basic or whistle launch + explosion for variety
+                    // 30% chance: basic or whistle launch + medium explosion for variety
                     const launches = [...this.BASIC_LAUNCH_SOUNDS, 'launch-whistle'];
                     return {
                         useCombinedAudio: false,
                         launchSound: launches[Math.floor(Math.random() * launches.length)],
-                        explosionSound: this.EXPLOSION_SOUNDS[Math.floor(Math.random() * this.EXPLOSION_SOUNDS.length)],
-                        explosionDelay: 0  // Not used; explosion triggers via callback
+                        explosionSound: this.EXPLOSION_MEDIUM[Math.floor(Math.random() * this.EXPLOSION_MEDIUM.length)],
+                        explosionDelay: 0,  // Not used; explosion triggers via callback
+                        cracklingSound: null
                     };
                 }
 
@@ -893,41 +907,55 @@ class AudioManager {
                     return {
                         useCombinedAudio: true,
                         combinedSound: 'combined-crackling-bang',
-                        explosionDelay: 3.2  // Crackling bang has explosion at ~3.2s in the audio file
+                        explosionDelay: 3.2,  // Crackling bang has explosion at ~3.2s in the audio file
+                        cracklingSound: null  // Already has crackling in combined audio
                     };
                 } else if (rand < 0.75) {
-                    // 25% chance: whistle launch + explosion
+                    // 25% chance: whistle launch + big explosion + optional crackling
                     return {
                         useCombinedAudio: false,
                         launchSound: 'launch-whistle',
-                        explosionSound: this.EXPLOSION_SOUNDS[Math.floor(Math.random() * this.EXPLOSION_SOUNDS.length)],
-                        explosionDelay: 0  // Not used; explosion triggers via callback
+                        explosionSound: this.EXPLOSION_BIG[Math.floor(Math.random() * this.EXPLOSION_BIG.length)],
+                        explosionDelay: 0,  // Not used; explosion triggers via callback
+                        cracklingSound: Math.random() < 0.3 ? this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)] : null
                     };
                 } else {
-                    // 25% chance: any launch sound + explosion for maximum variety
+                    // 25% chance: any launch sound + big explosion for maximum variety
                     return {
                         useCombinedAudio: false,
                         launchSound: this.ALL_LAUNCH_SOUNDS[Math.floor(Math.random() * this.ALL_LAUNCH_SOUNDS.length)],
-                        explosionSound: this.EXPLOSION_SOUNDS[Math.floor(Math.random() * this.EXPLOSION_SOUNDS.length)],
-                        explosionDelay: 0  // Not used; explosion triggers via callback
+                        explosionSound: this.EXPLOSION_BIG[Math.floor(Math.random() * this.EXPLOSION_BIG.length)],
+                        explosionDelay: 0,  // Not used; explosion triggers via callback
+                        cracklingSound: null
                     };
                 }
 
             case 'massive':
-                // Massive fireworks: always powerful crackling bang, or combined whistle-normal for variety
-                if (rand < 0.8) {
-                    // 80% chance: crackling bang for maximum impact
+                // Massive fireworks: always powerful with big explosions and crackling effects
+                if (rand < 0.6) {
+                    // 60% chance: crackling bang for maximum impact (synchronized)
                     return {
                         useCombinedAudio: true,
                         combinedSound: 'combined-crackling-bang',
-                        explosionDelay: 3.2  // Crackling bang has explosion at ~3.2s
+                        explosionDelay: 3.2,  // Crackling bang has explosion at ~3.2s
+                        cracklingSound: null  // Already has crackling in combined audio
                     };
-                } else {
-                    // 20% chance: combined whistle-normal for dramatic effect
+                } else if (rand < 0.8) {
+                    // 20% chance: combined whistle-normal with extra crackling layer
                     return {
                         useCombinedAudio: true,
                         combinedSound: 'combined-whistle-normal',
-                        explosionDelay: 2.2
+                        explosionDelay: 2.2,
+                        cracklingSound: this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)]
+                    };
+                } else {
+                    // 20% chance: whistle launch + huge explosion + crackling for dramatic effect
+                    return {
+                        useCombinedAudio: false,
+                        launchSound: 'launch-whistle',
+                        explosionSound: 'explosion-huge',  // Always use huge for massive
+                        explosionDelay: 0,
+                        cracklingSound: this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)]
                     };
                 }
 
@@ -936,8 +964,9 @@ class AudioManager {
                 return {
                     useCombinedAudio: false,
                     launchSound: this.ALL_LAUNCH_SOUNDS[Math.floor(Math.random() * this.ALL_LAUNCH_SOUNDS.length)],
-                    explosionSound: this.EXPLOSION_SOUNDS[Math.floor(Math.random() * this.EXPLOSION_SOUNDS.length)],
-                    explosionDelay: 0
+                    explosionSound: this.EXPLOSION_MEDIUM[Math.floor(Math.random() * this.EXPLOSION_MEDIUM.length)],
+                    explosionDelay: 0,
+                    cracklingSound: null
                 };
         }
     }
@@ -1190,20 +1219,31 @@ class FireworksEngine {
                 
                 // For combined audio, we don't need the explosion callback
                 // because the explosion sound is already in the combined file
+                
+                // Add crackling layer if specified (for extra atmosphere)
+                if (audioConfig.cracklingSound) {
+                    this.audioManager.play(audioConfig.cracklingSound, this.audioManager.CRACKLING_VOLUME);
+                }
             } else {
                 // Play separate launch and explosion sounds
                 if (audioConfig.launchSound && !skipRockets) {
-                    // Play launch sound immediately
+                    // Play launch sound immediately when rocket launches
                     this.audioManager.play(audioConfig.launchSound, this.audioManager.LAUNCH_AUDIO_VOLUME);
                 }
                 
-                // Set explosion sound callback to trigger when firework explodes
+                // Set explosion sound callback to trigger when firework explodes (synchronized with visual)
                 const soundVolume = instantExplode 
                     ? this.audioManager.INSTANT_EXPLODE_VOLUME 
                     : this.audioManager.NORMAL_EXPLOSION_VOLUME;
                 if (audioConfig.explosionSound) {
                     firework.onExplodeSound = (intensity) => {
+                        // Play explosion sound synchronized with visual explosion
                         this.audioManager.play(audioConfig.explosionSound, intensity * soundVolume);
+                        
+                        // Add crackling layer if specified (plays with explosion)
+                        if (audioConfig.cracklingSound) {
+                            this.audioManager.play(audioConfig.cracklingSound, this.audioManager.CRACKLING_VOLUME);
+                        }
                     };
                 }
             }
@@ -1647,6 +1687,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Basic explosion and rocket sounds
     await engine.audioManager.preload('/plugins/fireworks/audio/explosion.mp3', 'explosion-basic');
     await engine.audioManager.preload('/plugins/fireworks/audio/rocket.mp3', 'rocket-basic');
+    
+    // NEW: Additional explosion sounds with varying intensities
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion_small1.mp3', 'explosion-small');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion_medium.mp3', 'explosion-medium');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion2.mp3', 'explosion-alt1');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion3.mp3', 'explosion-alt2');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion_big.mp3', 'explosion-big');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion_huge.mp3', 'explosion-huge');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion%20Pop%2CSharp%2C.mp3', 'explosion-pop'); // URL encoded filename
+    
+    // NEW: Crackling sounds for atmospheric effects
+    await engine.audioManager.preload('/plugins/fireworks/audio/crackling.mp3', 'crackling-long');
+    await engine.audioManager.preload('/plugins/fireworks/audio/crackling2.mp3', 'crackling-medium');
     
     // Combined sounds - synchronized launch + explosion in one file
     // These play the entire sequence from launch to explosion
