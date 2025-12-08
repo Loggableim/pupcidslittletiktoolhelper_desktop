@@ -642,7 +642,7 @@
 
         async function loadChangelog() {
             try {
-                const response = await fetch('/CHANGELOG.txt');
+                const response = await fetch('/CHANGELOG.md');
                 const changelogText = await response.text();
 
                 const changelogHTML = parseChangelog(changelogText, 2); // Show first 2 versions
