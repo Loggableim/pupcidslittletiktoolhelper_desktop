@@ -698,6 +698,52 @@
                     </div>
                 </div>
 
+                <!-- Follower Fireworks -->
+                <div class="card rounded-xl p-6">
+                    <h2 class="section-title text-xl font-bold mb-4">👤 Follower Feuerwerk</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label>Enable Follower Fireworks</label>
+                            <div id="follower-toggle" class="toggle-switch" data-config="followerFireworksEnabled"></div>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2">Number of Rockets per Follow</label>
+                            <input type="range" id="follower-rocket-count" min="1" max="10" step="1" value="3" class="w-full">
+                            <div class="flex justify-between text-sm text-gray-400">
+                                <span>1</span>
+                                <span id="follower-rocket-count-value">3</span>
+                                <span>10</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <label>Show Thank You Animation</label>
+                            <div id="follower-animation-toggle" class="toggle-switch active" data-config="followerShowAnimation"></div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <label>Show Profile Picture</label>
+                            <div id="follower-profile-toggle" class="toggle-switch active" data-config="followerShowProfilePicture"></div>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2">Animation Duration (seconds)</label>
+                            <input type="range" id="follower-animation-duration" min="1" max="10" step="0.5" value="3" class="w-full">
+                            <div class="flex justify-between text-sm text-gray-400">
+                                <span>1s</span>
+                                <span id="follower-animation-duration-value">3s</span>
+                                <span>10s</span>
+                            </div>
+                        </div>
+                        
+                        <button id="test-follower-btn" class="w-full btn-success py-3 rounded-lg font-bold">
+                            🎆 Test Follower Fireworks
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Overlay Preview -->
                 <div class="card rounded-xl p-6">
                     <h2 class="section-title text-xl font-bold mb-4" data-i18n="fireworks.overlay">📺 Overlay</h2>

@@ -539,36 +539,60 @@ const ShapeGenerators = {
 
     heart: (count, intensity) => {
         const particles = [];
-        for (let i = 0; i < count; i++) {
-            const t = (i / count) * Math.PI * 2;
-            // Parametric heart equation
-            const x = 16 * Math.pow(Math.sin(t), 3);
-            const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
-            // Prevent division by zero
-            const mag = Math.max(Math.sqrt(x*x + y*y), 1);
-            const speed = (0.15 + Math.random() * 0.15) * intensity;
-            particles.push({
-                vx: (x / mag) * speed * 10,
-                vy: (y / mag) * speed * 10
-            });
+        const layers = 3; // Multiple layers for denser heart shape
+        const particlesPerLayer = Math.floor(count / layers);
+        
+        for (let layer = 0; layer < layers; layer++) {
+            const layerScale = 0.6 + (layer * 0.2); // Different sizes
+            for (let i = 0; i < particlesPerLayer; i++) {
+                const t = (i / particlesPerLayer) * Math.PI * 2;
+                // Parametric heart equation (improved)
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                
+                const mag = Math.max(Math.sqrt(x*x + y*y), 1);
+                const speed = (0.12 + Math.random() * 0.08) * intensity * layerScale;
+                particles.push({
+                    vx: (x / mag) * speed * 10,
+                    vy: (y / mag) * speed * 10
+                });
+            }
         }
         return particles;
     },
 
     star: (count, intensity) => {
         const particles = [];
-        const points = 5;
-        const particlesPerPoint = Math.floor(count / points);
+        const points = 5; // 5-pointed star
+        const layers = 2; // Inner and outer layers for better definition
+        const particlesPerPoint = Math.floor(count / (points * 2)); // Particles per point tip
         
         for (let point = 0; point < points; point++) {
-            const baseAngle = (Math.PI * 2 * point) / points - Math.PI / 2;
+            // Outer point angle
+            const outerAngle = (Math.PI * 2 * point) / points - Math.PI / 2;
+            // Inner valley angle (between two points)
+            const innerAngle = outerAngle + (Math.PI / points);
             
+            // Outer point (star tip)
             for (let i = 0; i < particlesPerPoint; i++) {
-                const spread = (i / particlesPerPoint) * 0.4 - 0.2;
-                const angle = baseAngle + spread;
-                // Alternate between outer points (radius 1) and inner points (radius 0.5)
-                const radius = point % 2 === 0 ? 1 : 0.5;
-                const speed = (2 + Math.random() * 2) * intensity * radius;
+                const t = i / particlesPerPoint;
+                const spread = (Math.random() - 0.5) * 0.15; // Slight spread
+                const angle = outerAngle + spread;
+                const radiusMix = 0.8 + t * 0.4; // Gradient from center to tip
+                const speed = (2 + Math.random() * 1) * intensity * radiusMix;
+                particles.push({
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed
+                });
+            }
+            
+            // Inner valley (between points)
+            for (let i = 0; i < particlesPerPoint / 2; i++) {
+                const t = i / (particlesPerPoint / 2);
+                const spread = (Math.random() - 0.5) * 0.1;
+                const angle = innerAngle + spread;
+                const radiusMix = 0.3 + t * 0.3; // Shorter for valley
+                const speed = (1.5 + Math.random() * 0.8) * intensity * radiusMix;
                 particles.push({
                     vx: Math.cos(angle) * speed,
                     vy: Math.sin(angle) * speed
@@ -813,14 +837,15 @@ class AudioManager {
      * Select appropriate audio based on firework tier and combo.
      * Returns an object with audio configuration for synchronized playback.
      * 
+     * SYNCHRONIZATION STRATEGY:
+     * - Uses ONLY separate audio (launch + explosion) with callback triggering
+     * - This ensures explosion sound plays EXACTLY when visual firework explodes
+     * - Eliminates timing mismatches from pre-baked combined audio files
+     * 
      * @param {string} tier - Firework tier: 'small', 'medium', 'big', or 'massive'
      * @param {number} combo - Current combo count (affects audio selection)
      * @param {boolean} [instantExplode=false] - Whether firework explodes instantly (no rocket animation)
      * @returns {Object} Audio configuration with sound names and timing
-     * 
-     * @example
-     * const audioConfig = audioManager.selectAudio('big', 3, false);
-     * // Returns: { useCombinedAudio: true, combinedSound: 'combined-crackling-bang', explosionDelay: 3.2 }
      */
     selectAudio(tier, combo, instantExplode = false) {
         // For instant explosions (high combo), use appropriate explosion based on tier
@@ -834,133 +859,69 @@ class AudioManager {
             };
         }
 
-        // For high combos (5+), skip rockets but use combined audio for effect
+        // For high combos (5+) - use separate audio for better sync
         if (combo >= 5) {
             return {
-                useCombinedAudio: true,
-                combinedSound: this.TINY_BANG_SOUNDS[Math.floor(Math.random() * this.TINY_BANG_SOUNDS.length)],
-                explosionDelay: 0,  // Explosion is already in the audio
+                useCombinedAudio: false,
+                launchSound: this.BASIC_LAUNCH_SOUNDS[Math.floor(Math.random() * this.BASIC_LAUNCH_SOUNDS.length)],
+                explosionSound: this.EXPLOSION_SMALL[Math.floor(Math.random() * this.EXPLOSION_SMALL.length)],
+                explosionDelay: 0,
                 cracklingSound: null
             };
         }
 
-        // Tier-based audio selection for normal fireworks with high variety
+        // ALL tiers now use separate audio for perfect callback synchronization
         const rand = Math.random();
         
         switch (tier) {
             case 'small':
-                // Small fireworks: mix of combined tiny bangs and separate basic launches
-                if (rand < 0.7) {
-                    // 70% chance: use combined tiny bang for synchronized effect
-                    return {
-                        useCombinedAudio: true,
-                        combinedSound: this.SMALL_SOUNDS[Math.floor(Math.random() * this.SMALL_SOUNDS.length)],
-                        explosionDelay: 1.2,  // Tiny bangs have explosion at ~1.2s
-                        cracklingSound: null
-                    };
-                } else {
-                    // 30% chance: basic launch + small explosion for variety
-                    return {
-                        useCombinedAudio: false,
-                        launchSound: this.BASIC_LAUNCH_SOUNDS[Math.floor(Math.random() * this.BASIC_LAUNCH_SOUNDS.length)],
-                        explosionSound: this.EXPLOSION_SMALL[Math.floor(Math.random() * this.EXPLOSION_SMALL.length)],
-                        explosionDelay: 0,  // Not used; explosion triggers via callback
-                        cracklingSound: null
-                    };
-                }
+                // Small fireworks: basic launch + small explosion (callback-synced)
+                return {
+                    useCombinedAudio: false,
+                    launchSound: this.BASIC_LAUNCH_SOUNDS[Math.floor(Math.random() * this.BASIC_LAUNCH_SOUNDS.length)],
+                    explosionSound: this.EXPLOSION_SMALL[Math.floor(Math.random() * this.EXPLOSION_SMALL.length)],
+                    explosionDelay: 0,  // Explosion triggers via callback
+                    cracklingSound: null
+                };
 
             case 'medium':
-                // Medium fireworks: varied mix of combined and separate audio with medium explosions
-                if (rand < 0.4) {
-                    // 40% chance: combined whistle + normal bang
-                    return {
-                        useCombinedAudio: true,
-                        combinedSound: 'combined-whistle-normal',
-                        explosionDelay: 2.2,  // Normal bang has explosion at ~2.2s in the audio file
-                        cracklingSound: null
-                    };
-                } else if (rand < 0.7) {
-                    // 30% chance: smooth launch + medium explosion
-                    return {
-                        useCombinedAudio: false,
-                        launchSound: this.SMOOTH_LAUNCH_SOUNDS[Math.floor(Math.random() * this.SMOOTH_LAUNCH_SOUNDS.length)],
-                        explosionSound: this.EXPLOSION_MEDIUM[Math.floor(Math.random() * this.EXPLOSION_MEDIUM.length)],
-                        explosionDelay: 0,  // Not used; explosion triggers via callback
-                        cracklingSound: null
-                    };
-                } else {
-                    // 30% chance: basic or whistle launch + medium explosion for variety
-                    const launches = [...this.BASIC_LAUNCH_SOUNDS, 'launch-whistle'];
-                    return {
-                        useCombinedAudio: false,
-                        launchSound: launches[Math.floor(Math.random() * launches.length)],
-                        explosionSound: this.EXPLOSION_MEDIUM[Math.floor(Math.random() * this.EXPLOSION_MEDIUM.length)],
-                        explosionDelay: 0,  // Not used; explosion triggers via callback
-                        cracklingSound: null
-                    };
-                }
+                // Medium fireworks: varied launches + medium explosions (callback-synced)
+                const mediumLaunches = rand < 0.5 
+                    ? this.SMOOTH_LAUNCH_SOUNDS 
+                    : [...this.BASIC_LAUNCH_SOUNDS, 'launch-whistle'];
+                
+                return {
+                    useCombinedAudio: false,
+                    launchSound: mediumLaunches[Math.floor(Math.random() * mediumLaunches.length)],
+                    explosionSound: this.EXPLOSION_MEDIUM[Math.floor(Math.random() * this.EXPLOSION_MEDIUM.length)],
+                    explosionDelay: 0,  // Explosion triggers via callback
+                    cracklingSound: null
+                };
 
             case 'big':
-                // Big fireworks: powerful combinations emphasizing crackling effects
-                if (rand < 0.5) {
-                    // 50% chance: use crackling bang (has built-in crackling + explosion)
-                    return {
-                        useCombinedAudio: true,
-                        combinedSound: 'combined-crackling-bang',
-                        explosionDelay: 3.2,  // Crackling bang has explosion at ~3.2s in the audio file
-                        cracklingSound: null  // Already has crackling in combined audio
-                    };
-                } else if (rand < 0.75) {
-                    // 25% chance: whistle launch + big explosion + optional crackling
-                    return {
-                        useCombinedAudio: false,
-                        launchSound: 'launch-whistle',
-                        explosionSound: this.EXPLOSION_BIG[Math.floor(Math.random() * this.EXPLOSION_BIG.length)],
-                        explosionDelay: 0,  // Not used; explosion triggers via callback
-                        cracklingSound: Math.random() < 0.3 ? this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)] : null
-                    };
-                } else {
-                    // 25% chance: any launch sound + big explosion for maximum variety
-                    return {
-                        useCombinedAudio: false,
-                        launchSound: this.ALL_LAUNCH_SOUNDS[Math.floor(Math.random() * this.ALL_LAUNCH_SOUNDS.length)],
-                        explosionSound: this.EXPLOSION_BIG[Math.floor(Math.random() * this.EXPLOSION_BIG.length)],
-                        explosionDelay: 0,  // Not used; explosion triggers via callback
-                        cracklingSound: null
-                    };
-                }
+                // Big fireworks: whistle or varied launch + big explosion + optional crackling
+                const bigLaunches = rand < 0.5 ? ['launch-whistle'] : this.ALL_LAUNCH_SOUNDS;
+                
+                return {
+                    useCombinedAudio: false,
+                    launchSound: bigLaunches[Math.floor(Math.random() * bigLaunches.length)],
+                    explosionSound: this.EXPLOSION_BIG[Math.floor(Math.random() * this.EXPLOSION_BIG.length)],
+                    explosionDelay: 0,  // Explosion triggers via callback
+                    cracklingSound: rand < 0.4 ? this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)] : null
+                };
 
             case 'massive':
-                // Massive fireworks: always powerful with big explosions and crackling effects
-                if (rand < 0.6) {
-                    // 60% chance: crackling bang for maximum impact (synchronized)
-                    return {
-                        useCombinedAudio: true,
-                        combinedSound: 'combined-crackling-bang',
-                        explosionDelay: 3.2,  // Crackling bang has explosion at ~3.2s
-                        cracklingSound: null  // Already has crackling in combined audio
-                    };
-                } else if (rand < 0.8) {
-                    // 20% chance: combined whistle-normal with extra crackling layer
-                    return {
-                        useCombinedAudio: true,
-                        combinedSound: 'combined-whistle-normal',
-                        explosionDelay: 2.2,
-                        cracklingSound: this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)]
-                    };
-                } else {
-                    // 20% chance: whistle launch + huge explosion + crackling for dramatic effect
-                    return {
-                        useCombinedAudio: false,
-                        launchSound: 'launch-whistle',
-                        explosionSound: 'explosion-huge',  // Always use huge for massive
-                        explosionDelay: 0,
-                        cracklingSound: this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)]
-                    };
-                }
+                // Massive fireworks: whistle launch + huge explosion + crackling for maximum impact
+                return {
+                    useCombinedAudio: false,
+                    launchSound: rand < 0.7 ? 'launch-whistle' : this.SMOOTH_LAUNCH_SOUNDS[Math.floor(Math.random() * this.SMOOTH_LAUNCH_SOUNDS.length)],
+                    explosionSound: 'explosion-huge',  // Always use huge for massive
+                    explosionDelay: 0,  // Explosion triggers via callback
+                    cracklingSound: rand < 0.6 ? this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)] : null
+                };
 
             default:
-                // Fallback to medium settings with variety
+                // Fallback to medium settings
                 return {
                     useCombinedAudio: false,
                     launchSound: this.ALL_LAUNCH_SOUNDS[Math.floor(Math.random() * this.ALL_LAUNCH_SOUNDS.length)],
@@ -1071,6 +1032,10 @@ class FireworksEngine {
                 this.handleFinale(data);
             });
 
+            this.socket.on('fireworks:follower-animation', (data) => {
+                this.showFollowerAnimation(data);
+            });
+
             this.socket.on('fireworks:config-update', (data) => {
                 if (data.config) {
                     const oldResolution = this.config.resolution;
@@ -1110,6 +1075,34 @@ class FireworksEngine {
         } catch (e) {
             console.error('[Fireworks Engine] Socket connection error:', e);
         }
+    }
+
+    showFollowerAnimation(data) {
+        const animationEl = document.getElementById('follower-animation');
+        const usernameEl = document.getElementById('follower-username');
+        const avatarEl = document.getElementById('follower-avatar');
+        
+        if (!animationEl || !usernameEl || !avatarEl) return;
+        
+        // Set username
+        usernameEl.textContent = data.username || 'Unknown';
+        
+        // Set avatar if provided
+        if (data.profilePictureUrl) {
+            avatarEl.src = data.profilePictureUrl;
+            avatarEl.classList.add('show');
+        } else {
+            avatarEl.classList.remove('show');
+        }
+        
+        // Show animation
+        animationEl.classList.add('show');
+        
+        // Hide after duration
+        const duration = data.duration || 3000;
+        setTimeout(() => {
+            animationEl.classList.remove('show');
+        }, duration);
     }
 
     async handleTrigger(data) {
@@ -1292,7 +1285,7 @@ class FireworksEngine {
                 colors,
                 intensity: optimizedIntensity * (0.8 + Math.random() * 0.4),
                 particleCount: Math.round(50 * optimizedIntensity), // Reduced from 80
-                playSound: bursts === 0 || bursts === optimizedBurstCount - 1 // Only play sound for first and last
+                playSound: true // FIXED: Every rocket should have audio
             });
 
             bursts++;

@@ -143,6 +143,24 @@ async function triggerFinale() {
     }
 }
 
+async function testFollowerFireworks() {
+    try {
+        await fetch('/api/fireworks/test-follower', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: 'TestFollower',
+                profilePictureUrl: 'https://www.gravatar.com/avatar/?d=mp&s=200'
+            })
+        });
+        
+        showToast('Follower fireworks triggered!', 'success');
+    } catch (e) {
+        console.error('[Fireworks Settings] Failed to trigger follower test:', e);
+        showToast('Failed to trigger follower test', 'error');
+    }
+}
+
 // ============================================================================
 // UI UPDATE
 // ============================================================================
@@ -201,6 +219,15 @@ function updateUI() {
     updateToggle('finale-toggle', config.goalFinaleEnabled);
     document.getElementById('finale-intensity').value = config.goalFinaleIntensity || 3;
     document.getElementById('finale-intensity-value').textContent = (config.goalFinaleIntensity || 3) + 'x';
+    
+    // Follower fireworks
+    updateToggle('follower-toggle', config.followerFireworksEnabled);
+    updateToggle('follower-animation-toggle', config.followerShowAnimation);
+    updateToggle('follower-profile-toggle', config.followerShowProfilePicture);
+    document.getElementById('follower-rocket-count').value = config.followerRocketCount || 3;
+    document.getElementById('follower-rocket-count-value').textContent = config.followerRocketCount || 3;
+    document.getElementById('follower-animation-duration').value = (config.followerAnimationDuration || 3000) / 1000;
+    document.getElementById('follower-animation-duration-value').textContent = ((config.followerAnimationDuration || 3000) / 1000) + 's';
     
     // Random shape rotation
     updateToggle('random-shape-toggle', config.randomShapeEnabled);
@@ -292,6 +319,7 @@ function setupEventListeners() {
     // Test buttons
     document.getElementById('test-btn').addEventListener('click', triggerTest);
     document.getElementById('test-finale-btn').addEventListener('click', triggerFinale);
+    document.getElementById('test-follower-btn')?.addEventListener('click', testFollowerFireworks);
     document.getElementById('test-gift-btn')?.addEventListener('click', () => triggerTestShape('burst', 1.0));
     document.getElementById('test-combo-btn')?.addEventListener('click', () => triggerTestShape('burst', 3.0));
     document.getElementById('test-avatar-btn')?.addEventListener('click', triggerTestAvatar);
@@ -357,6 +385,14 @@ function setupEventListeners() {
     
     setupRangeSlider('finale-intensity', 'finale-intensity-value', 'x', (val) => {
         config.goalFinaleIntensity = parseFloat(val);
+    });
+    
+    setupRangeSlider('follower-rocket-count', 'follower-rocket-count-value', '', (val) => {
+        config.followerRocketCount = parseInt(val);
+    });
+    
+    setupRangeSlider('follower-animation-duration', 'follower-animation-duration-value', 's', (val) => {
+        config.followerAnimationDuration = val * 1000; // Convert to ms
     });
     
     setupRangeSlider('avatar-chance', 'avatar-chance-value', '%', (val) => {

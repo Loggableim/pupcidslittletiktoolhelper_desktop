@@ -157,6 +157,13 @@ class FireworksPlugin {
             goalFinaleIntensity: 3.0,
             goalFinaleDuration: 5000, // ms
             
+            // Follower fireworks
+            followerFireworksEnabled: false, // Enable fireworks for new followers
+            followerRocketCount: 3, // Number of rockets per follower (1-10)
+            followerShowAnimation: true, // Show thank you animation
+            followerShowProfilePicture: true, // Show follower's profile picture
+            followerAnimationDuration: 3000, // Duration of thank you animation in ms
+            
             // Interactive triggers
             interactiveEnabled: false,
             clickTriggerEnabled: false,
@@ -354,6 +361,21 @@ class FireworksPlugin {
             }
         });
 
+        // Test follower fireworks
+        this.api.registerRoute('post', '/api/fireworks/test-follower', (req, res) => {
+            try {
+                const { username, profilePictureUrl } = req.body;
+                this.handleFollowerEvent({
+                    uniqueId: username || 'TestFollower',
+                    username: username || 'TestFollower',
+                    profilePictureUrl: profilePictureUrl || null
+                });
+                res.json({ success: true, message: 'Follower fireworks triggered' });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
         // Trigger random firework
         this.api.registerRoute('post', '/api/fireworks/random', (req, res) => {
             try {
@@ -483,6 +505,13 @@ class FireworksPlugin {
             
             this.api.log(`🎯 [FIREWORKS] Goal reached! Triggering finale...`, 'info');
             this.triggerFinale(this.config.goalFinaleIntensity, this.config.goalFinaleDuration);
+        });
+
+        // Follow event - new follower celebration
+        this.api.registerTikTokEvent('follow', (data) => {
+            if (!this.config.enabled || !this.config.followerFireworksEnabled) return;
+            
+            this.handleFollowerEvent(data);
         });
 
         // Chat event - interactive trigger
@@ -684,6 +713,62 @@ class FireworksPlugin {
                 });
                 break;
             }
+        }
+    }
+
+    /**
+     * Handle follow event - celebrate new follower with fireworks
+     */
+    handleFollowerEvent(data) {
+        const username = data.uniqueId || data.username || data.nickname || 'Unknown';
+        const profilePictureUrl = data.profilePictureUrl || data.userProfilePictureUrl || null;
+        
+        this.api.log(`👤 [FIREWORKS] New follower: ${username}! Launching ${this.config.followerRocketCount} rockets 🎆`, 'info');
+        
+        // Show thank you animation if enabled
+        if (this.config.followerShowAnimation) {
+            this.api.emit('fireworks:follower-animation', {
+                username: username,
+                profilePictureUrl: this.config.followerShowProfilePicture ? profilePictureUrl : null,
+                duration: this.config.followerAnimationDuration || 3000
+            });
+        }
+        
+        // Launch multiple rockets for the follower
+        const rocketCount = Math.max(1, Math.min(10, this.config.followerRocketCount || 3));
+        const shapes = this.config.activeShapes && this.config.activeShapes.length > 0 
+            ? this.config.activeShapes 
+            : ['heart', 'star', 'burst'];
+        
+        // Stagger the rockets slightly for visual effect
+        for (let i = 0; i < rocketCount; i++) {
+            setTimeout(() => {
+                // Random position with slight horizontal spread
+                const xPos = 0.3 + (Math.random() * 0.4); // Center area
+                const yPos = 0.3 + (Math.random() * 0.3); // Mid to upper area
+                
+                // Choose a nice shape
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                
+                // Use vibrant colors
+                const colors = this.generateRandomColors(3);
+                
+                this.triggerFirework({
+                    type: 'follow',
+                    intensity: 1.2, // Slightly more intense than normal
+                    shape: shape,
+                    colors: colors,
+                    position: { x: xPos, y: yPos },
+                    particleCount: 80,
+                    userAvatar: this.config.followerShowProfilePicture ? profilePictureUrl : null,
+                    avatarParticleChance: 0.5, // 50% chance for avatar particles to focus on follower
+                    tier: 'medium',
+                    username: username,
+                    coins: 0,
+                    combo: 1,
+                    reason: 'follow'
+                });
+            }, i * 300); // 300ms delay between each rocket
         }
     }
 
