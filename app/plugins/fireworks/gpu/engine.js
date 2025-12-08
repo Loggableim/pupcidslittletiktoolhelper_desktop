@@ -135,13 +135,26 @@ class Particle {
             rotation: 0,
             rotationSpeed: 0,
             isDespawning: false, // Flag for despawn fade effect
-            despawnStartTime: 0 // When despawn started
+            despawnStartTime: 0, // When despawn started
+            // Secondary explosion properties
+            willBurst: false,      // Will create mini-burst (for burst shape)
+            burstDelay: 0,         // Delay before mini-burst
+            burstTime: 0,          // Time when particle was created
+            hasBurst: false,       // Already triggered burst
+            willSpiral: false,     // Will create spiral burst (for spiral shape)
+            spiralDelay: 0,        // Delay before spiral burst
+            hasSpiraled: false     // Already triggered spiral
         };
         
         Object.assign(this, defaults, args);
         this.maxLifespan = this.lifespan;
         this.trail = [];
         this.age = 0;
+        
+        // Record creation time for secondary explosions
+        if (this.willBurst || this.willSpiral) {
+            this.burstTime = performance.now();
+        }
     }
     
     applyForce(fx, fy) {
@@ -322,6 +335,50 @@ class Firework {
         this.hueRange = 60 + Math.random() * 60;
     }
     
+    /**
+     * Calculate approximate flight time for a rocket based on physics
+     * Used to synchronize combined audio files
+     * @param {number} startY - Starting Y position (usually canvas height)
+     * @param {number} targetY - Target Y position
+     * @param {number} initialVy - Initial vertical velocity (negative = upward)
+     * @param {number} acceleration - Acceleration (positive = deceleration for upward movement)
+     * @returns {number} Estimated flight time in seconds
+     */
+    calculateRocketFlightTime(startY, targetY, initialVy = CONFIG.rocketSpeed, acceleration = -CONFIG.rocketAcceleration) {
+        // Physics: Using kinematic equations
+        // v^2 = v0^2 + 2a(y - y0)
+        // For upward motion with deceleration
+        const distance = Math.abs(targetY - startY);
+        
+        // Time to reach target height (may hit target before reaching peak)
+        // y = y0 + v0*t + 0.5*a*t^2
+        // Rearrange: 0.5*a*t^2 + v0*t + (y0 - y) = 0
+        // Solve quadratic equation
+        const a = 0.5 * acceleration;
+        const b = initialVy;
+        const c = distance;
+        
+        if (Math.abs(a) < 0.001) {
+            // No acceleration, constant velocity
+            return distance / Math.abs(initialVy);
+        }
+        
+        const discriminant = b*b - 4*a*c;
+        if (discriminant < 0) {
+            // Target unreachable, will reach peak first
+            // Time to reach peak: v = v0 + at, when v=0: t = -v0/a
+            return Math.abs(initialVy / acceleration);
+        }
+        
+        // Take the positive root
+        const t1 = (-b + Math.sqrt(discriminant)) / (2*a);
+        const t2 = (-b - Math.sqrt(discriminant)) / (2*a);
+        const t = Math.max(t1, t2);
+        
+        // Convert from frames to seconds (assuming 60 FPS)
+        return t / 60;
+    }
+
     shouldExplode() {
         // Instant explode mode
         if (this.shouldExplodeImmediately) {
@@ -343,7 +400,10 @@ class Firework {
         
         // Play explosion sound if callback is set
         if (this.onExplodeSound) {
+            console.log('[Fireworks] Explosion callback triggered - playing explosion sound');
             this.onExplodeSound(this.intensity);
+        } else {
+            console.log('[Fireworks] Explosion occurred but no audio callback set');
         }
         
         // For instant explode, use the position from constructor
@@ -381,17 +441,18 @@ class Firework {
             const isSparkle = Math.random() < CONFIG.sparkleChance;
             
             // Determine particle appearance
-            // Priority: Gift images for explosion particles (not sparkles)
-            let particleType = 'circle';
+            // Priority: shape-specific particle types > gift images > standard circles
+            let particleType = vel.particleType || 'circle'; // Use shape-specific type if provided
             let particleImage = null;
             
-            if (!isSparkle && this.giftImage) {
+            // Override with gift/avatar images for non-shape-specific particles
+            if (particleType === 'circle' && !isSparkle && this.giftImage) {
                 // Use gift image for explosion particles (70% chance when available)
                 if (Math.random() < 0.7) {
                     particleType = 'image';
                     particleImage = this.giftImage;
                 }
-            } else if (!isSparkle && this.userAvatar && Math.random() < 0.3) {
+            } else if (particleType === 'circle' && !isSparkle && this.userAvatar && Math.random() < 0.3) {
                 // Use avatar occasionally if no gift image (30% chance)
                 particleType = 'image';
                 particleImage = this.userAvatar;
@@ -416,7 +477,12 @@ class Firework {
                 drag: isSparkle ? 0.97 : 0.98,
                 gravity: isSparkle ? CONFIG.gravity * 0.8 : CONFIG.gravity,
                 rotation: Math.random() * Math.PI * 2,
-                rotationSpeed: (Math.random() - 0.5) * 0.1
+                rotationSpeed: (Math.random() - 0.5) * 0.1,
+                // Pass through secondary explosion properties from velocity data
+                willBurst: vel.willBurst || false,
+                burstDelay: vel.burstDelay || 0,
+                willSpiral: vel.willSpiral || false,
+                spiralDelay: vel.spiralDelay || 0
             });
             
             this.particles.push(particle);
@@ -453,6 +519,28 @@ class Firework {
             const p = this.particles[i];
             p.applyGravity();
             p.update();
+            
+            // Check for secondary mini-burst (burst shape)
+            if (p.willBurst && !p.hasBurst && performance.now() - p.burstTime >= p.burstDelay) {
+                p.hasBurst = true;
+                this.createMiniBurst(p);
+                // Trigger crackling sound callback
+                if (this.onSecondaryExplosionSound && !this.secondaryAudioPlayed) {
+                    this.secondaryAudioPlayed = true;
+                    this.onSecondaryExplosionSound();
+                }
+            }
+            
+            // Check for secondary spiral burst (spiral shape)
+            if (p.willSpiral && !p.hasSpiraled && performance.now() - p.burstTime >= p.spiralDelay) {
+                p.hasSpiraled = true;
+                this.createSpiralBurst(p);
+                // Trigger crackling sound callback
+                if (this.onSecondaryExplosionSound && !this.secondaryAudioPlayed) {
+                    this.secondaryAudioPlayed = true;
+                    this.onSecondaryExplosionSound();
+                }
+            }
             
             // Check for secondary explosions
             if (p.willExplode && p.age >= p.explosionDelay && !p.exploded) {
@@ -507,6 +595,70 @@ class Firework {
         }
     }
     
+    createMiniBurst(sourceParticle) {
+        // Mini-burst: particle bursts into smaller dots
+        const count = 4 + Math.floor(Math.random() * 5); // 4-8 mini particles
+        
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+            const speed = 0.8 + Math.random() * 1.2;
+            
+            const particle = new Particle({
+                x: sourceParticle.x,
+                y: sourceParticle.y,
+                vx: sourceParticle.vx * 0.3 + Math.cos(angle) * speed,
+                vy: sourceParticle.vy * 0.3 + Math.sin(angle) * speed,
+                size: 1 + Math.random() * 1.5,
+                hue: sourceParticle.hue + (Math.random() - 0.5) * 20,
+                saturation: 90,
+                brightness: 95,
+                lifespan: 0.3 + Math.random() * 0.2,
+                decay: 0.025,
+                isSeed: false,
+                isSparkle: true,
+                mass: 0.2,
+                drag: 0.95,
+                gravity: CONFIG.gravity * 0.5
+            });
+            
+            this.secondaryExplosions.push(particle);
+        }
+    }
+    
+    createSpiralBurst(sourceParticle) {
+        // Spiral burst: particle emits spiral mini-burst
+        const count = 3 + Math.floor(Math.random() * 4); // 3-6 spiral particles
+        const spiralTurns = 1.5;
+        
+        for (let i = 0; i < count; i++) {
+            const t = (i / count) * spiralTurns * Math.PI * 2;
+            const radius = 0.5 + (i / count) * 0.8;
+            const speed = 1.0 + Math.random() * 0.8;
+            
+            const particle = new Particle({
+                x: sourceParticle.x,
+                y: sourceParticle.y,
+                vx: sourceParticle.vx * 0.2 + Math.cos(t) * radius * speed,
+                vy: sourceParticle.vy * 0.2 + Math.sin(t) * radius * speed,
+                size: 1.2 + Math.random() * 1.5,
+                hue: sourceParticle.hue + (Math.random() - 0.5) * 25,
+                saturation: 85,
+                brightness: 90,
+                lifespan: 0.35 + Math.random() * 0.25,
+                decay: 0.022,
+                isSeed: false,
+                isSparkle: true,
+                mass: 0.25,
+                drag: 0.94,
+                gravity: CONFIG.gravity * 0.4,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.15
+            });
+            
+            this.secondaryExplosions.push(particle);
+        }
+    }
+    
     isDone() {
         return this.exploded && 
                this.particles.length === 0 && 
@@ -530,7 +682,9 @@ const ShapeGenerators = {
                 const angle = (Math.PI * 2 * i) / particlesPerRing + (Math.random() - 0.5) * 0.2;
                 particles.push({
                     vx: Math.cos(angle) * ringSpeed,
-                    vy: Math.sin(angle) * ringSpeed
+                    vy: Math.sin(angle) * ringSpeed,
+                    willBurst: true, // Mark for secondary mini-burst
+                    burstDelay: 500 + Math.random() * 300 // 0.5-0.8s delay
                 });
             }
         }
@@ -539,36 +693,61 @@ const ShapeGenerators = {
 
     heart: (count, intensity) => {
         const particles = [];
-        for (let i = 0; i < count; i++) {
-            const t = (i / count) * Math.PI * 2;
-            // Parametric heart equation
-            const x = 16 * Math.pow(Math.sin(t), 3);
-            const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
-            // Prevent division by zero
-            const mag = Math.max(Math.sqrt(x*x + y*y), 1);
-            const speed = (0.15 + Math.random() * 0.15) * intensity;
-            particles.push({
-                vx: (x / mag) * speed * 10,
-                vy: (y / mag) * speed * 10
-            });
+        const layers = 4; // More layers for denser, more recognizable heart
+        const particlesPerLayer = Math.floor(count / layers);
+        
+        for (let layer = 0; layer < layers; layer++) {
+            const layerScale = 0.5 + (layer * 0.15); // Tighter sizing for better shape
+            for (let i = 0; i < particlesPerLayer; i++) {
+                const t = (i / particlesPerLayer) * Math.PI * 2;
+                // Enhanced parametric heart equation for better recognition
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                
+                const mag = Math.max(Math.sqrt(x*x + y*y), 1);
+                const speed = (0.15 + Math.random() * 0.05) * intensity * layerScale; // Tighter speed for clustering
+                particles.push({
+                    vx: (x / mag) * speed * 8, // Reduced multiplier for tighter clustering
+                    vy: (y / mag) * speed * 8,
+                    particleType: 'heart' // Mark as heart-shaped particles
+                });
+            }
         }
         return particles;
     },
 
     star: (count, intensity) => {
         const particles = [];
-        const points = 5;
-        const particlesPerPoint = Math.floor(count / points);
+        const points = 5; // 5-pointed star
+        const layers = 2; // Inner and outer layers for better definition
+        const particlesPerPoint = Math.floor(count / (points * 2)); // Particles per point tip
         
         for (let point = 0; point < points; point++) {
-            const baseAngle = (Math.PI * 2 * point) / points - Math.PI / 2;
+            // Outer point angle
+            const outerAngle = (Math.PI * 2 * point) / points - Math.PI / 2;
+            // Inner valley angle (between two points)
+            const innerAngle = outerAngle + (Math.PI / points);
             
+            // Outer point (star tip)
             for (let i = 0; i < particlesPerPoint; i++) {
-                const spread = (i / particlesPerPoint) * 0.4 - 0.2;
-                const angle = baseAngle + spread;
-                // Alternate between outer points (radius 1) and inner points (radius 0.5)
-                const radius = point % 2 === 0 ? 1 : 0.5;
-                const speed = (2 + Math.random() * 2) * intensity * radius;
+                const t = i / particlesPerPoint;
+                const spread = (Math.random() - 0.5) * 0.15; // Slight spread
+                const angle = outerAngle + spread;
+                const radiusMix = 0.8 + t * 0.4; // Gradient from center to tip
+                const speed = (2 + Math.random() * 1) * intensity * radiusMix;
+                particles.push({
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed
+                });
+            }
+            
+            // Inner valley (between points)
+            for (let i = 0; i < particlesPerPoint / 2; i++) {
+                const t = i / (particlesPerPoint / 2);
+                const spread = (Math.random() - 0.5) * 0.1;
+                const angle = innerAngle + spread;
+                const radiusMix = 0.3 + t * 0.3; // Shorter for valley
+                const speed = (1.5 + Math.random() * 0.8) * intensity * radiusMix;
                 particles.push({
                     vx: Math.cos(angle) * speed,
                     vy: Math.sin(angle) * speed
@@ -590,9 +769,60 @@ const ShapeGenerators = {
             const speed = 1.5 + Math.random() * 1.5;
             particles.push({
                 vx: Math.cos(t + armOffset) * radius * speed,
-                vy: Math.sin(t + armOffset) * radius * speed
+                vy: Math.sin(t + armOffset) * radius * speed,
+                willSpiral: true, // Mark for secondary spiral burst
+                spiralDelay: 600 + Math.random() * 400 // 0.6-1.0s delay
             });
         }
+        return particles;
+    },
+    
+    paws: (count, intensity) => {
+        const particles = [];
+        // Paw print layout: 1 large center pad + 4 toe pads
+        const centerPadParticles = Math.floor(count * 0.4); // 40% for center
+        const toeParticles = Math.floor((count - centerPadParticles) / 4); // Split rest among 4 toes
+        
+        // Center pad (large, bottom-center)
+        for (let i = 0; i < centerPadParticles; i++) {
+            const angle = (Math.PI * 2 * i) / centerPadParticles + Math.random() * 0.3;
+            const radius = 0.3 + Math.random() * 0.2;
+            const speed = (0.8 + Math.random() * 0.4) * intensity;
+            const offsetY = 0.6; // Position lower for center pad
+            particles.push({
+                vx: Math.cos(angle) * radius * speed,
+                vy: (Math.sin(angle) * radius * speed) + (offsetY * intensity),
+                particleType: 'paw' // Paw emoji particles
+            });
+        }
+        
+        // 4 toe pads (smaller, arranged around top in arc)
+        const toePositions = [
+            { angle: -2.4, distance: 1.2 }, // Top-left
+            { angle: -1.8, distance: 1.4 }, // Mid-left
+            { angle: -1.3, distance: 1.4 }, // Mid-right
+            { angle: -0.7, distance: 1.2 }  // Top-right
+        ];
+        
+        for (let toe = 0; toe < 4; toe++) {
+            const toePos = toePositions[toe];
+            for (let i = 0; i < toeParticles; i++) {
+                const localAngle = (Math.PI * 2 * i) / toeParticles;
+                const radius = 0.15 + Math.random() * 0.1;
+                const speed = (0.6 + Math.random() * 0.3) * intensity;
+                
+                // Calculate toe pad position
+                const basex = Math.cos(toePos.angle) * toePos.distance;
+                const basey = Math.sin(toePos.angle) * toePos.distance;
+                
+                particles.push({
+                    vx: (basex + Math.cos(localAngle) * radius) * speed,
+                    vy: (basey + Math.sin(localAngle) * radius) * speed,
+                    particleType: 'paw' // Paw emoji particles
+                });
+            }
+        }
+        
         return particles;
     },
 
@@ -656,6 +886,69 @@ class AudioManager {
         this.enabled = true;
         this.initialized = false;
         this.pendingSounds = new Map();
+        
+        // Audio selection constants for performance
+        this.TINY_BANG_SOUNDS = ['combined-whistle-tiny1', 'combined-whistle-tiny2', 'combined-whistle-tiny3', 'combined-whistle-tiny4'];
+        this.SMALL_SOUNDS = ['combined-whistle-tiny1', 'combined-whistle-tiny2', 'combined-whistle-tiny3'];
+        
+        // Launch sound variations for more variety
+        this.BASIC_LAUNCH_SOUNDS = ['launch-basic', 'launch-basic2', 'rocket-basic'];
+        this.SMOOTH_LAUNCH_SOUNDS = ['launch-smooth', 'launch-smooth2'];
+        this.ALL_LAUNCH_SOUNDS = ['launch-basic', 'launch-basic2', 'rocket-basic', 'launch-whistle', 'launch-smooth', 'launch-smooth2'];
+        
+        // Explosion sounds organized by tier for better matching with firework size
+        this.EXPLOSION_SMALL = ['explosion-basic', 'explosion-small', 'explosion-alt1']; // Short, quick explosions
+        this.EXPLOSION_MEDIUM = ['explosion-medium', 'explosion-alt2', 'explosion-pop']; // Medium explosions
+        this.EXPLOSION_BIG = ['explosion-big', 'explosion-huge']; // Big, powerful explosions
+        this.EXPLOSION_ALL = ['explosion-basic', 'explosion-small', 'explosion-medium', 'explosion-alt1', 'explosion-alt2', 'explosion-big', 'explosion-huge', 'explosion-pop'];
+        
+        // Crackling sounds for atmospheric effects (can be layered with explosions)
+        this.CRACKLING_SOUNDS = ['crackling-medium', 'crackling-long'];
+        
+        // Volume constants for consistent audio levels (updated for better balance)
+        this.COMBINED_AUDIO_VOLUME = 0.65;       // Volume for combined (launch+explosion) audio
+        this.LAUNCH_AUDIO_VOLUME = 0.45;         // Volume for separate launch sounds
+        this.NORMAL_EXPLOSION_VOLUME = 0.7;      // Volume for normal explosions
+        this.INSTANT_EXPLODE_VOLUME = 0.25;      // Volume for instant explosions (high combos)
+        this.CRACKLING_VOLUME = 0.35;            // Volume for crackling effects (layered, so quieter)
+        
+        // Per-file volume multipliers for balancing inherent loudness differences
+        // Analyzed based on file size and perceived loudness
+        this.AUDIO_VOLUME_MULTIPLIERS = {
+            // Loud explosions - reduce volume
+            'explosion-huge': 0.7,      // Very loud, long explosion
+            'explosion-big': 0.8,       // Loud explosion
+            'explosion-pop': 0.75,      // Sharp, loud pop
+            
+            // Quiet sounds - boost volume
+            'explosion-basic': 1.3,     // Very short, quiet pop
+            'explosion-alt1': 1.1,      // Slightly quiet
+            'rocket-basic': 1.2,        // Short launch sound
+            
+            // Crackling - reduce for layering
+            'crackling-long': 0.6,      // Very long, loud atmospheric
+            'crackling-medium': 0.7,    // Medium atmospheric
+            
+            // Launch sounds - slight boost for presence
+            'launch-basic': 1.1,
+            'launch-basic2': 1.1,
+            'launch-whistle': 1.0,
+            'launch-smooth': 1.0,
+            'launch-smooth2': 1.0,
+            
+            // Combined audio - standard
+            'combined-crackling-bang': 1.0,
+            'combined-whistle-normal': 1.0,
+            'combined-whistle-tiny1': 1.0,
+            'combined-whistle-tiny2': 1.0,
+            'combined-whistle-tiny3': 1.0,
+            'combined-whistle-tiny4': 1.0,
+            
+            // Medium explosions - standard to slight boost
+            'explosion-medium': 1.0,
+            'explosion-small': 1.0,
+            'explosion-alt2': 1.0
+        };
     }
 
     async init() {
@@ -724,7 +1017,10 @@ class AudioManager {
             const gainNode = this.audioContext.createGain();
             
             source.buffer = this.sounds.get(name);
-            gainNode.gain.value = this.volume * volume;
+            
+            // Apply per-file volume multiplier if exists
+            const volumeMultiplier = this.AUDIO_VOLUME_MULTIPLIERS[name] || 1.0;
+            gainNode.gain.value = this.volume * volume * volumeMultiplier;
             
             source.connect(gainNode);
             gainNode.connect(this.audioContext.destination);
@@ -741,6 +1037,150 @@ class AudioManager {
 
     setEnabled(enabled) {
         this.enabled = enabled;
+    }
+
+    /**
+     * Play a sound after a specified delay (in seconds).
+     * Useful for synchronizing explosion sounds with visual explosions when using separate audio files.
+     * 
+     * @param {string} name - The name of the sound to play (must be preloaded)
+     * @param {number} delay - Delay in seconds before playing the sound
+     * @param {number} [volume=1.0] - Volume multiplier (0.0 to 1.0), will be multiplied by global volume
+     * 
+     * @example
+     * // Play explosion sound after 2 seconds
+     * await audioManager.playDelayed('explosion-basic', 2.0, 0.8);
+     */
+    async playDelayed(name, delay, volume = 1.0) {
+        if (!this.enabled) return;
+        
+        await this.ensureAudioContext();
+        
+        if (!this.audioContext || !this.sounds.has(name)) return;
+        
+        try {
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+            
+            const source = this.audioContext.createBufferSource();
+            const gainNode = this.audioContext.createGain();
+            
+            source.buffer = this.sounds.get(name);
+            gainNode.gain.value = this.volume * volume;
+            
+            source.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            // Schedule playback after delay
+            const startTime = this.audioContext.currentTime + delay;
+            source.start(startTime);
+        } catch (e) {
+            console.warn('[Fireworks Audio] Delayed playback error:', e.message);
+        }
+    }
+
+    /**
+     * Select appropriate audio based on firework tier and combo.
+     * Returns an object with audio configuration for synchronized playback.
+     * 
+     * SYNCHRONIZATION STRATEGY (FINAL FIX - 100% CALLBACK-BASED):
+     * - Launch sound plays immediately when rocket fires
+     * - Explosion sound triggers via onExplodeSound callback EXACTLY when visual explodes
+     * - **Perfect synchronization guaranteed** regardless of rocket flight time variations
+     * 
+     * WHY CALLBACK-ONLY:
+     * - Combined audio files have FIXED explosion timing (1.0s, 3.3s, 4.8s)
+     * - Rocket flight times VARY (0.8s to 5.5s) based on physics and target position
+     * - Using combined audio caused delays when flight time didn't match audio timing
+     * - Callback ensures explosion sound always matches visual explosion perfectly
+     * 
+     * @param {string} tier - Firework tier: 'small', 'medium', 'big', or 'massive'
+     * @param {number} combo - Current combo count (affects audio selection)
+     * @param {boolean} [instantExplode=false] - Whether firework explodes instantly (no rocket animation)
+     * @returns {Object} Audio configuration with sound names (always callback-based)
+     */
+    selectAudio(tier, combo, instantExplode = false) {
+        // For instant explosions (high combo), use appropriate explosion based on tier
+        if (instantExplode) {
+            return {
+                useCombinedAudio: false,
+                launchSound: null,
+                explosionSound: tier === 'massive' ? 'explosion-huge' :
+                               tier === 'big' ? 'explosion-big' :
+                               tier === 'medium' ? 'explosion-medium' :
+                               'explosion-basic',
+                cracklingSound: null
+            };
+        }
+
+        // For high combos (5-7), use quick sounds for rapid bursts
+        if (combo >= 5 && combo < 8) {
+            return {
+                useCombinedAudio: false,
+                launchSound: this.BASIC_LAUNCH_SOUNDS[Math.floor(Math.random() * this.BASIC_LAUNCH_SOUNDS.length)],
+                explosionSound: this.EXPLOSION_SMALL[Math.floor(Math.random() * this.EXPLOSION_SMALL.length)],
+                cracklingSound: null
+            };
+        }
+
+        // Random value for variety
+        const rand = Math.random();
+
+        switch (tier) {
+            case 'small':
+                // Small rockets: varied launch sounds + small explosions
+                const smallLaunch = rand < 0.7
+                    ? this.BASIC_LAUNCH_SOUNDS[Math.floor(Math.random() * this.BASIC_LAUNCH_SOUNDS.length)]
+                    : 'launch-whistle';
+                
+                return {
+                    useCombinedAudio: false,
+                    launchSound: smallLaunch,
+                    explosionSound: this.EXPLOSION_SMALL[Math.floor(Math.random() * this.EXPLOSION_SMALL.length)],
+                    cracklingSound: null
+                };
+
+            case 'medium':
+                // Medium rockets: smooth/whistle launches + medium explosions
+                const mediumLaunch = rand < 0.6
+                    ? this.SMOOTH_LAUNCH_SOUNDS[Math.floor(Math.random() * this.SMOOTH_LAUNCH_SOUNDS.length)]
+                    : 'launch-whistle';
+                
+                return {
+                    useCombinedAudio: false,
+                    launchSound: mediumLaunch,
+                    explosionSound: this.EXPLOSION_MEDIUM[Math.floor(Math.random() * this.EXPLOSION_MEDIUM.length)],
+                    cracklingSound: null
+                };
+
+            case 'big':
+                // Big rockets: whistle launches + big explosions + crackling (40%)
+                return {
+                    useCombinedAudio: false,
+                    launchSound: 'launch-whistle',
+                    explosionSound: this.EXPLOSION_BIG[Math.floor(Math.random() * this.EXPLOSION_BIG.length)],
+                    cracklingSound: Math.random() < 0.4 ? this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)] : null
+                };
+
+            case 'massive':
+                // Massive rockets: whistle launches + huge explosions + crackling (70%)
+                return {
+                    useCombinedAudio: false,
+                    launchSound: 'launch-whistle',
+                    explosionSound: 'explosion-huge',
+                    cracklingSound: Math.random() < 0.7 ? this.CRACKLING_SOUNDS[Math.floor(Math.random() * this.CRACKLING_SOUNDS.length)] : null
+                };
+
+            default:
+                // Fallback to small if tier is unknown
+                return {
+                    useCombinedAudio: false,
+                    launchSound: this.BASIC_LAUNCH_SOUNDS[0],
+                    explosionSound: this.EXPLOSION_SMALL[0],
+                    cracklingSound: null
+                };
+        }
     }
 }
 
@@ -843,6 +1283,10 @@ class FireworksEngine {
                 this.handleFinale(data);
             });
 
+            this.socket.on('fireworks:follower-animation', (data) => {
+                this.showFollowerAnimation(data);
+            });
+
             this.socket.on('fireworks:config-update', (data) => {
                 if (data.config) {
                     const oldResolution = this.config.resolution;
@@ -882,6 +1326,56 @@ class FireworksEngine {
         } catch (e) {
             console.error('[Fireworks Engine] Socket connection error:', e);
         }
+    }
+
+    showFollowerAnimation(data) {
+        const animationEl = document.getElementById('follower-animation');
+        const contentEl = animationEl?.querySelector('.follower-content');
+        const usernameEl = document.getElementById('follower-username');
+        const avatarEl = document.getElementById('follower-avatar');
+        
+        if (!animationEl || !contentEl || !usernameEl || !avatarEl) return;
+        
+        // Remove all previous position, style, and entrance classes
+        animationEl.className = 'follower-animation';
+        contentEl.className = 'follower-content';
+        
+        // Set position class
+        const position = data.position || 'center';
+        animationEl.classList.add(`pos-${position}`);
+        
+        // Set style class
+        const style = data.style || 'gradient-purple';
+        contentEl.classList.add(`style-${style}`);
+        
+        // Set entrance animation class
+        const entrance = data.entrance || 'scale';
+        animationEl.classList.add(`entrance-${entrance}`);
+        
+        // Set username
+        usernameEl.textContent = data.username || 'Unknown';
+        
+        // Set avatar if provided
+        if (data.profilePictureUrl) {
+            avatarEl.src = data.profilePictureUrl;
+            avatarEl.classList.add('show');
+        } else {
+            avatarEl.classList.remove('show');
+        }
+        
+        // Show animation
+        animationEl.classList.add('show');
+        
+        // Hide after duration
+        const duration = data.duration || 3000;
+        setTimeout(() => {
+            animationEl.classList.remove('show');
+            // Clean up after animation completes
+            setTimeout(() => {
+                animationEl.className = 'follower-animation';
+                contentEl.className = 'follower-content';
+            }, 500); // Wait for exit animation
+        }, duration);
     }
 
     async handleTrigger(data) {
@@ -980,23 +1474,74 @@ class FireworksEngine {
             instantExplode: instantExplode // Explode immediately without any delay
         });
         
-        // Set explosion sound callback
-        // Reduce volume for instant explosions instead of completely disabling
-        if (playSound) {
-            const soundVolume = instantExplode ? 0.2 : 0.5; // Quieter for instant explosions
-            firework.onExplodeSound = (intensity) => {
-                if (this.audioManager.enabled) {
-                    this.audioManager.play('explosion', intensity * soundVolume);
+        // Calculate expected rocket flight time for audio synchronization
+        let expectedFlightTime = 1.5; // Default
+        if (!skipRockets && !instantExplode && firework.rocket) {
+            expectedFlightTime = firework.calculateRocketFlightTime(
+                firework.y,
+                firework.targetY,
+                CONFIG.rocketSpeed,
+                -CONFIG.rocketAcceleration
+            );
+            console.log(`[Fireworks] Calculated flight time: ${expectedFlightTime.toFixed(2)}s for targetY: ${targetY}`);
+        }
+        
+        // Audio selection and playback with synchronization
+        if (playSound && this.audioManager.enabled) {
+            const audioConfig = this.audioManager.selectAudio(tier, combo, instantExplode, expectedFlightTime);
+            
+            console.log(`[Fireworks] Audio strategy: ${audioConfig.useCombinedAudio ? 'Combined' : 'Callback'}`);
+            
+            if (audioConfig.useCombinedAudio) {
+                // COMBINED AUDIO PLAYBACK
+                // Single file contains both launch and explosion (pre-synchronized)
+                if (audioConfig.combinedSound && !skipRockets) {
+                    console.log(`[Fireworks] Combined audio: ${audioConfig.combinedSound}`);
+                    this.audioManager.play(audioConfig.combinedSound, this.audioManager.COMBINED_AUDIO_VOLUME);
                 }
-            };
+                
+            } else {
+                // CALLBACK AUDIO PLAYBACK
+                // Launch plays immediately, explosion/crackling trigger via callback when visual explodes
+                if (audioConfig.launchSound && !skipRockets) {
+                    console.log(`[Fireworks] Launch: ${audioConfig.launchSound}`);
+                    this.audioManager.play(audioConfig.launchSound, this.audioManager.LAUNCH_AUDIO_VOLUME);
+                }
+                
+                // Set explosion sound callback to trigger when firework explodes
+                const soundVolume = instantExplode 
+                    ? this.audioManager.INSTANT_EXPLODE_VOLUME 
+                    : this.audioManager.NORMAL_EXPLOSION_VOLUME;
+                    
+                if (audioConfig.explosionSound) {
+                    console.log(`[Fireworks] Setting explosion callback: ${audioConfig.explosionSound}`);
+                    firework.onExplodeSound = (intensity) => {
+                        console.log(`[Fireworks] Explosion callback triggered: ${audioConfig.explosionSound}`);
+                        this.audioManager.play(audioConfig.explosionSound, intensity * soundVolume);
+                        
+                        // Add crackling layer with explosion for perfect sync
+                        if (audioConfig.cracklingSound) {
+                            console.log(`[Fireworks] Crackling with explosion: ${audioConfig.cracklingSound}`);
+                            this.audioManager.play(audioConfig.cracklingSound, this.audioManager.CRACKLING_VOLUME);
+                        }
+                    };
+                    
+                    // Set secondary explosion sound callback for burst/spiral secondary effects
+                    if (shape === 'burst' || shape === 'spiral') {
+                        firework.onSecondaryExplosionSound = () => {
+                            // Play crackling sound for secondary burst/spiral
+                            const cracklingSound = Math.random() < 0.5 ? 'crackling-medium' : 'crackling-long';
+                            console.log(`[Fireworks] Secondary explosion crackling: ${cracklingSound}`);
+                            this.audioManager.play(cracklingSound, this.audioManager.CRACKLING_VOLUME * 0.4); // Quieter for secondary
+                        };
+                    }
+                } else if (instantExplode) {
+                    console.log('[Fireworks] Instant explode - no launch sound needed');
+                }
+            }
         }
 
         this.fireworks.push(firework);
-
-        // Play launch sound only if not skipping rockets
-        if (playSound && !skipRockets && this.audioManager.enabled) {
-            this.audioManager.play('rocket', 0.3);
-        }
 
         // Show gift popup (always show, even for instant explosions)
         if (username && coins > 0) {
@@ -1010,7 +1555,7 @@ class FireworksEngine {
             duration = 5000,
             burstCount = 15,
             burstInterval = 300,
-            shapes = ['burst', 'heart', 'star', 'ring', 'spiral'],
+            shapes = ['burst', 'heart', 'star', 'ring', 'spiral', 'paws'],
             colors = this.config.defaultColors
         } = data;
 
@@ -1039,7 +1584,7 @@ class FireworksEngine {
                 colors,
                 intensity: optimizedIntensity * (0.8 + Math.random() * 0.4),
                 particleCount: Math.round(50 * optimizedIntensity), // Reduced from 80
-                playSound: bursts === 0 || bursts === optimizedBurstCount - 1 // Only play sound for first and last
+                playSound: true // FIXED: Every rocket should have audio
             });
 
             bursts++;
@@ -1359,8 +1904,24 @@ class FireworksEngine {
             // Render image particle
             const size = p.size * 3;
             ctx.drawImage(p.image, -size/2, -size/2, size, size);
+        } else if (p.type === 'heart') {
+            // Render heart-shaped particle using Unicode heart symbol
+            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
+            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`;
+            ctx.font = `${p.size * 4}px Arial`; // Hearts are bigger
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('❤', 0, 0);
+        } else if (p.type === 'paw') {
+            // Render paw-shaped particle using paw emoji
+            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
+            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`;
+            ctx.font = `${p.size * 4}px Arial`; // Paws are bigger
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🐾', 0, 0);
         } else {
-            // Render colored particle with glow
+            // Render colored particle with glow (standard circle)
             const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
             
             if (this.config.glowEnabled) {
@@ -1425,9 +1986,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     engine = new FireworksEngine('fireworks-canvas');
     await engine.init();
 
-    // Preload sounds - using demo folder audio files
-    await engine.audioManager.preload('/assets/audio/sound2.mp3', 'explosion');
-    await engine.audioManager.preload('/assets/audio/sound1.mp3', 'rocket');
+    // Preload sounds - fireworks plugin audio files with synchronized timing
+    
+    // Basic launch sounds (short)
+    await engine.audioManager.preload('/plugins/fireworks/audio/abschussgeraeusch.mp3', 'launch-basic');
+    await engine.audioManager.preload('/plugins/fireworks/audio/abschussgeraeusch2.mp3', 'launch-basic2');
+    
+    // Basic explosion and rocket sounds
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion.mp3', 'explosion-basic');
+    await engine.audioManager.preload('/plugins/fireworks/audio/rocket.mp3', 'rocket-basic');
+    
+    // NEW: Additional explosion sounds with varying intensities
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion_small1.mp3', 'explosion-small');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion_medium.mp3', 'explosion-medium');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion2.mp3', 'explosion-alt1');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion3.mp3', 'explosion-alt2');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion_big.mp3', 'explosion-big');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion_huge.mp3', 'explosion-huge');
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion%20Pop%2CSharp%2C.mp3', 'explosion-pop'); // URL encoded filename
+    
+    // NEW: Crackling sounds for atmospheric effects
+    await engine.audioManager.preload('/plugins/fireworks/audio/crackling.mp3', 'crackling-long');
+    await engine.audioManager.preload('/plugins/fireworks/audio/crackling2.mp3', 'crackling-medium');
+    
+    // Combined sounds - synchronized launch + explosion in one file
+    // These play the entire sequence from launch to explosion
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_crackling_bang.mp3', 'combined-crackling-bang');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_normal-bang.mp3', 'combined-whistle-normal');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_tiny-bang.mp3', 'combined-whistle-tiny1');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_tiny-bang2.mp3', 'combined-whistle-tiny2');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_tiny-bang3.mp3', 'combined-whistle-tiny3');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_tiny-bang4.mp3', 'combined-whistle-tiny4');
+    
+    // Launch-only sounds (no explosion) - for when we want to play explosion separately
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_no-bang.mp3', 'launch-whistle');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_nocrackling_no-bang.mp3', 'launch-smooth');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_nocrackling_no-bang2.mp3', 'launch-smooth2');
     
     // Enable audio context on first user interaction
     const enableAudio = async () => {

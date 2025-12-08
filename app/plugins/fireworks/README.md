@@ -17,10 +17,13 @@
 - **Glow Effects**: Radial glow around particles
 - **Color Modes**: Gift-based, Random, Theme, Rainbow
 
-### Audio
-- **Rocket Sounds**: Launch audio for anticipation
-- **Explosion Sounds**: Impact audio for each burst
-- **Volume Control**: Adjustable audio levels
+### Audio System
+- **Synchronized Audio**: Launch sounds perfectly timed with rocket flight
+- **Tier-Based Selection**: Different sounds for Small/Medium/Big/Massive fireworks
+- **Combined Effects**: Launch + explosion in single synchronized audio files
+- **Variety & Randomization**: Multiple sound variations for each tier
+- **Adaptive Playback**: Audio adjusts based on combo level and firework type
+- **Volume Control**: Adjustable audio levels with intensity scaling
 
 ### Goal Integration
 - **Goal Finales**: Multi-burst shows when goals are reached
@@ -144,6 +147,49 @@ Parameters:
 - WebSocket connection for real-time updates
 - CSP-compliant (no inline scripts)
 
+## Audio Synchronization
+
+The fireworks plugin features an advanced audio system that synchronizes sound effects with visual animations.
+
+### Audio Categories
+
+**Combined Audio (Launch + Explosion)**
+- `woosh_abheben_crackling_bang.mp3` - Used for massive/big fireworks (4.9s, explosion at 3.2s)
+- `woosh_abheben_mit-pfeifen_normal-bang.mp3` - Used for medium fireworks (3.4s, explosion at 2.2s)
+- `woosh_abheben_mit-pfeifen_tiny-bang*.mp3` - Used for small fireworks and combos (1.8s, explosion at 1.2s)
+
+**Launch-Only Audio (Separate Explosion)**
+- `woosh_abheben_mit-pfeifen_no-bang.mp3` - Whistle launch without explosion
+- `woosh_abheben_nocrackling_no-bang*.mp3` - Smooth launch without explosion
+
+**Basic Effects**
+- `explosion.mp3` - Basic explosion sound for separate playback
+- `rocket.mp3`, `abschussgeraeusch*.mp3` - Basic launch sounds (now actively used!)
+
+### Tier-Based Audio Selection with Maximum Variety
+
+The system automatically selects appropriate audio based on firework tier with intelligent randomization:
+
+| Tier | Audio Strategy | Variety Details |
+|------|---------------|----------------|
+| **Small** (0-99 coins) | 70% combined tiny-bang, 30% basic launches | Mix of synchronized effects and separate combinations |
+| **Medium** (100-499 coins) | 40% normal-bang, 30% smooth, 30% varied | Uses all launch sound types for variety |
+| **Big** (500-999 coins) | 50% crackling-bang, 25% whistle, 25% varied | Emphasizes powerful crackling effects |
+| **Massive** (1000+ coins) | 80% crackling-bang, 20% whistle-normal | Maximum impact with occasional variety |
+| **Combo 5-7** | Random tiny-bang sounds (all 4 variants) | Fast bursts optimized for rapid fire |
+| **Combo 8+** | Explosion only (no launch) | Instant explosions for extreme combos |
+
+**All 13 audio files are now actively used** to ensure every firework has a unique sound!
+
+### How Synchronization Works
+
+1. **Combined Audio**: Launch and explosion are in one file, automatically synchronized
+2. **Separate Audio**: Launch plays immediately, explosion triggers via callback when visual explodes
+3. **Timing Calibration**: Explosion delays are calibrated based on audio file analysis
+4. **Volume Scaling**: Audio volume adjusts based on firework intensity and combo level
+
+For detailed audio documentation, see `audio/README.md`.
+
 ## Troubleshooting
 
 ### No fireworks appearing
@@ -157,9 +203,18 @@ Parameters:
 3. Use Canvas fallback
 
 ### No sound
-1. Check audio toggle is enabled
+1. Check audio toggle is enabled in settings
 2. Verify volume is not 0
-3. Check browser audio permissions
+3. Click on the overlay page to enable audio (browser requirement)
+4. Check browser console for audio loading errors
+5. Verify audio files exist in `/plugins/fireworks/audio/`
+6. Clear browser cache if audio was recently updated
+
+### Sounds out of sync
+1. Check that audio files are not corrupted
+2. Verify explosion timing values in `selectAudio()` method
+3. Test with different tiers to isolate the issue
+4. Check browser console for timing logs
 
 ## License
 

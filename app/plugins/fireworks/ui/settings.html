@@ -698,6 +698,101 @@
                     </div>
                 </div>
 
+                <!-- Follower Fireworks -->
+                <div class="card rounded-xl p-6">
+                    <h2 class="section-title text-xl font-bold mb-4">👤 Follower Feuerwerk</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label>Enable Follower Fireworks</label>
+                            <div id="follower-toggle" class="toggle-switch" data-config="followerFireworksEnabled"></div>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2">Number of Rockets per Follow</label>
+                            <input type="range" id="follower-rocket-count" min="1" max="10" step="1" value="3" class="w-full">
+                            <div class="flex justify-between text-sm text-gray-400">
+                                <span>1</span>
+                                <span id="follower-rocket-count-value">3</span>
+                                <span>10</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <label>Show Thank You Animation</label>
+                            <div id="follower-animation-toggle" class="toggle-switch active" data-config="followerShowAnimation"></div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <label>Show Profile Picture</label>
+                            <div id="follower-profile-toggle" class="toggle-switch active" data-config="followerShowProfilePicture"></div>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2">Animation Duration (seconds)</label>
+                            <input type="range" id="follower-animation-duration" min="1" max="10" step="0.5" value="3" class="w-full">
+                            <div class="flex justify-between text-sm text-gray-400">
+                                <span>1s</span>
+                                <span id="follower-animation-duration-value">3s</span>
+                                <span>10s</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2">Animation Delay (seconds)</label>
+                            <input type="range" id="follower-animation-delay" min="0" max="10" step="0.5" value="3" class="w-full">
+                            <div class="flex justify-between text-sm text-gray-400">
+                                <span>0s</span>
+                                <span id="follower-animation-delay-value">3s</span>
+                                <span>10s</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2">Animation Position</label>
+                            <select id="follower-animation-position" class="w-full bg-gray-700 text-white p-2 rounded-lg">
+                                <option value="top-left">Top Left</option>
+                                <option value="top-center">Top Center</option>
+                                <option value="top-right">Top Right</option>
+                                <option value="center" selected>Center</option>
+                                <option value="bottom-left">Bottom Left</option>
+                                <option value="bottom-center">Bottom Center</option>
+                                <option value="bottom-right">Bottom Right</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2">Animation Style</label>
+                            <select id="follower-animation-style" class="w-full bg-gray-700 text-white p-2 rounded-lg">
+                                <option value="gradient-purple" selected>Gradient Purple (Default)</option>
+                                <option value="gradient-blue">Gradient Blue</option>
+                                <option value="gradient-gold">Gradient Gold</option>
+                                <option value="gradient-rainbow">Gradient Rainbow</option>
+                                <option value="neon">Neon</option>
+                                <option value="minimal">Minimal</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2">Entrance Animation</label>
+                            <select id="follower-animation-entrance" class="w-full bg-gray-700 text-white p-2 rounded-lg">
+                                <option value="scale" selected>Scale (Default)</option>
+                                <option value="fade">Fade In</option>
+                                <option value="slide-up">Slide Up</option>
+                                <option value="slide-down">Slide Down</option>
+                                <option value="slide-left">Slide Left</option>
+                                <option value="slide-right">Slide Right</option>
+                                <option value="bounce">Bounce</option>
+                                <option value="rotate">Rotate</option>
+                            </select>
+                        </div>
+                        
+                        <button id="test-follower-btn" class="w-full btn-success py-3 rounded-lg font-bold">
+                            🎆 Test Follower Fireworks
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Overlay Preview -->
                 <div class="card rounded-xl p-6">
                     <h2 class="section-title text-xl font-bold mb-4" data-i18n="fireworks.overlay">📺 Overlay</h2>
