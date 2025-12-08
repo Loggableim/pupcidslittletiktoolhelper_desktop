@@ -4,6 +4,18 @@ REM LTTH Installer Build Script
 REM ============================================================================
 REM This script compiles the NSIS installer for LTTH
 REM Usage: Simply double-click this file or run from command line
+REM
+REM Code Signing (Optional):
+REM To enable code signing with Certum cloud signing:
+REM   1. Set environment variable: SIGN_ENABLED=1
+REM   2. Install Certum certificate in Windows Certificate Store
+REM   3. Run this script
+REM
+REM Example:
+REM   set SIGN_ENABLED=1
+REM   build-installer.bat
+REM
+REM The installer and uninstaller will be automatically signed during build.
 REM ============================================================================
 
 echo.
@@ -29,6 +41,46 @@ if not exist "%NSIS_PATH%" (
 
 echo [OK] NSIS found: %NSIS_PATH%
 echo.
+
+REM Check code signing configuration
+if "%SIGN_ENABLED%"=="1" (
+    echo ============================================
+    echo Code Signing: ENABLED
+    echo ============================================
+    echo.
+    echo The installer and uninstaller will be signed
+    echo using Windows signtool with Certum certificates
+    echo from the Windows Certificate Store.
+    echo.
+    
+    REM Check if signtool is available
+    if not "%SIGNTOOL_PATH%"=="" (
+        echo [INFO] Using custom signtool: %SIGNTOOL_PATH%
+    ) else (
+        echo [INFO] Will auto-detect signtool from Windows SDK
+    )
+    
+    if not "%TIMESTAMP_URL%"=="" (
+        echo [INFO] Using custom timestamp: %TIMESTAMP_URL%
+    ) else (
+        echo [INFO] Using default timestamp: https://timestamp.digicert.com
+    )
+    echo.
+) else (
+    echo ============================================
+    echo Code Signing: DISABLED
+    echo ============================================
+    echo.
+    echo To enable code signing, set SIGN_ENABLED=1
+    echo Example: set SIGN_ENABLED=1
+    echo.
+    echo The installer will be built without signing.
+    echo You can sign it manually later using:
+    echo   sign-file.bat LTTH-Setup-1.2.0.exe
+    echo.
+)
+
+echo ============================================
 
 REM Check for required files
 echo Checking required files...

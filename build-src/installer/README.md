@@ -17,6 +17,7 @@ The NSIS installer creates a complete setup package that installs:
 - ✅ Splash screen with banner (using Banner plugin)
 - ✅ Custom Start Menu folder selection (using StartMenu.dll)
 - ✅ VPatch integration prepared for future updates
+- ✅ **Code signing support with Certum cloud signing** (NEW!)
 - ✅ Professional installer/uninstaller graphics
 - ✅ Complete registry cleanup
 - ✅ Admin rights handling
@@ -43,12 +44,20 @@ The NSIS installer creates a complete setup package that installs:
    - Extract to: `build-src/assets/node/`
    - Verify: `build-src/assets/node/node.exe` should exist
 
+4. **Optional: Setup Code Signing** (for trusted installers)
+   - Install Windows SDK for signtool.exe
+   - Install Certum SimplySign certificate in Windows Certificate Store
+   - See [SIGNING.md](SIGNING.md) for complete guide
+
 ## 📁 Directory Structure
 
 ```
 build-src/
 ├── installer/
 │   ├── ltth-installer.nsi          ← Main NSIS script (drag this into MakeNSISW)
+│   ├── build-installer.bat         ← Automated build script with signing support
+│   ├── sign-file.bat               ← Code signing helper (called by NSIS)
+│   ├── SIGNING.md                  ← Code signing documentation
 │   ├── license.txt                 ← License text (auto-generated from LICENSE)
 │   ├── installer-header.bmp        ← Header image (150x57, auto-generated)
 │   ├── installer-sidebar.bmp       ← Sidebar image (164x314, auto-generated)
@@ -143,6 +152,49 @@ pause
 ```
 
 Then simply double-click `build-installer.bat` to build.
+
+## 🔐 Code Signing (Optional)
+
+The installer supports automatic code signing using Windows signtool with Certum cloud signing certificates.
+
+### Quick Start
+
+```batch
+# Enable code signing
+set SIGN_ENABLED=1
+
+# Build installer (will sign automatically)
+build-installer.bat
+```
+
+### Features
+
+- ✅ Signs both installer and uninstaller executables
+- ✅ Uses Windows Certificate Store (Certum SimplySign compatible)
+- ✅ Automatic signtool detection from Windows SDK
+- ✅ Timestamping for long-term validity
+- ✅ Signature verification after signing
+- ✅ Optional - disabled by default (no errors if not configured)
+
+### Documentation
+
+For complete code signing setup, configuration, and troubleshooting:
+
+📖 **See [SIGNING.md](SIGNING.md)** - Complete code signing guide
+
+**Quick reference:**
+- Set `SIGN_ENABLED=1` to enable signing
+- Set `SIGNTOOL_PATH` for custom signtool location (optional)
+- Set `TIMESTAMP_URL` for custom timestamp server (optional)
+
+**Example with custom settings:**
+
+```batch
+set SIGN_ENABLED=1
+set SIGNTOOL_PATH=D:\Tools\signtool.exe
+set TIMESTAMP_URL=https://timestamp.sectigo.com
+build-installer.bat
+```
 
 ## 📦 What Gets Installed
 

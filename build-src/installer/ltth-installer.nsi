@@ -45,6 +45,35 @@ SetCompressor /SOLID lzma
 BrandingText "${PRODUCT_NAME} ${PRODUCT_VERSION} © ${PRODUCT_PUBLISHER}"
 
 ; ============================================================================
+; CODE SIGNING CONFIGURATION
+; ============================================================================
+; Sign the installer and uninstaller using Windows signtool with Certum
+; cloud signing certificates from Windows Certificate Store.
+;
+; To enable signing:
+; 1. Set environment variable: SIGN_ENABLED=1
+; 2. Install certificate in Windows Certificate Store (use Certum SimplySign Desktop)
+; 3. Optional: Set SIGNTOOL_PATH to custom signtool.exe location
+; 4. Optional: Set TIMESTAMP_URL to custom timestamp server
+;
+; The signing process uses sign-file.bat which automatically:
+; - Locates signtool.exe in Windows SDK directories
+; - Uses /a to automatically select the best certificate
+; - Timestamps the signature using DigiCert (or custom server)
+; - Verifies the signature after signing
+;
+; If SIGN_ENABLED is not set to "1", signing is skipped (no error)
+; ============================================================================
+
+; Sign the installer executable after it's created
+; This is called by NSIS after the installer is built
+!finalize 'sign-file.bat "%1"'
+
+; Sign the uninstaller stub before it's embedded in the installer
+; The uninstaller is extracted and signed, then re-embedded
+!uninstfinalize 'sign-file.bat "%1"'
+
+; ============================================================================
 ; MODERN UI CONFIGURATION
 ; ============================================================================
 
