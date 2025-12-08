@@ -348,4 +348,4 @@ case 'big':
 - **Missing audio?** Check browser console for loading errors
 - **Crackling lasts too long?** Crackling now uses automatic fade-out (1.2-2.0s + 0.5-0.8s fade)
 - **Sound seems to repeat?** Check if audio file contains internal repetition or heavy reverb/echo - audio files should contain single, clean effects without looping
-- **Combined audio not playing?** The system currently uses callback-based audio exclusively for perfect synchronization - combined audio files are preloaded but not used in current implementation
+- **Combined audio not playing?** The system currently uses callback-based audio exclusively for perfect synchronization. Combined audio files are preloaded but not actively used in the current implementation.

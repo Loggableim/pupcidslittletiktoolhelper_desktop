@@ -1081,12 +1081,15 @@ class AudioManager {
             
             // Exponential fade-out for more natural sound
             gainNode.gain.setValueAtTime(finalVolume, fadeStartTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, fadeEndTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, fadeEndTime); // Very small value to avoid audio artifacts
+            gainNode.gain.setValueAtTime(0, fadeEndTime); // Ensure complete silence
             
             // Stop the source after fade completes
             source.stop(fadeEndTime + 0.1);
             
-            console.log(`[Fireworks Audio] Playing ${name} with fade-out: duration=${duration}s, fade=${fadeOutDuration}s`);
+            if (CONFIG.debugMode) {
+                console.log(`[Fireworks Audio] Playing ${name} with fade-out: duration=${duration}s, fade=${fadeOutDuration}s`);
+            }
         } catch (e) {
             console.warn('[Fireworks Audio] Fade-out playback error:', e.message);
         }
