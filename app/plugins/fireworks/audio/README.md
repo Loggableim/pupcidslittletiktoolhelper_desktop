@@ -4,65 +4,67 @@ This directory contains synchronized audio files for the fireworks plugin with r
 
 ## 🎵 Audio System Overview
 
-The fireworks plugin uses an intelligent audio system that automatically selects appropriate sounds based on:
+The fireworks plugin uses an intelligent audio system with **THREE synchronization strategies**:
+
+1. **COMBINED AUDIO**: Pre-recorded woosh+explosion files (authentic, best for matching flight times)
+2. **LAYERED AUDIO**: Multiple sounds timed together (flexible, precise synchronization)
+3. **CALLBACK AUDIO**: Separate sounds with visual-triggered explosions (fallback, guaranteed sync)
+
+Audio selection is automatic based on:
 - **Firework tier** (small, medium, big, massive)
+- **Rocket flight time** (calculated from physics)
 - **Combo level** (consecutive gifts)
-- **Visual effects** (instant explosions, rocket animations)
 
-**All 22 audio files are synchronized with visual effects** - explosions trigger exactly when the visual firework explodes, and crackling effects layer for atmospheric depth.
+## 🎯 Synchronization Strategies Explained
 
-## 📁 Available Audio Files (22 Total)
+### 1. Combined Audio Strategy
+- Uses pre-recorded `woosh_abheben_*_bang.mp3` files
+- Launch + explosion in one authentic audio sequence
+- Selected when rocket flight time matches explosion timing in audio
+- Example: Rocket with 1.0s flight → uses `tiny-bang.mp3` (explosion at 1.0s)
 
-### Combined Audio (Launch + Explosion)
-These files contain the complete firework sequence from launch to explosion, perfectly synchronized:
+### 2. Layered Audio Strategy (NEW!)
+- Combines multiple audio files with precise timing
+- Launch plays immediately
+- Explosion scheduled via `playDelayed()` at calculated flight time
+- Crackling can be added at explosion time for atmosphere
+- **Perfect sync** because explosion is timed to actual rocket flight duration
+- Example: Launch `abschussgeraeusch.mp3` → wait 2.5s → play `explosion_medium.mp3`
 
-- **`woosh_abheben_crackling_bang.mp3`** (~4.9s)
-  - Whoosh launch → crackling effects → big explosion
-  - Used for: **Massive** and **Big** fireworks (50-60% chance)
-  - Explosion timing: ~3.2 seconds from start
+### 3. Callback Audio Strategy
+- Launch plays immediately
+- Explosion triggers via callback when visual firework explodes
+- Used when no matching combined/layered audio exists
+- Guarantees visual-audio sync but less authentic
 
-- **`woosh_abheben_mit-pfeifen_normal-bang.mp3`** (~3.4s)
-  - Whoosh launch → whistling → normal explosion
-  - Used for: **Medium** and **Massive** fireworks
-  - Explosion timing: ~2.2 seconds from start
+## 📁 Audio File Analysis (22 Total)
 
-- **`woosh_abheben_mit-pfeifen_tiny-bang.mp3`** (~1.8s)
-- **`woosh_abheben_mit-pfeifen_tiny-bang2.mp3`** (~1.8s)
-- **`woosh_abheben_mit-pfeifen_tiny-bang3.mp3`** (~1.9s)
-  - Whoosh launch → whistling → tiny explosion
-  - Used for: **Small** fireworks (70% chance)
-  - Explosion timing: ~1.2 seconds from start
+### Combined Audio (Launch + Explosion in one file)
 
-- **`woosh_abheben_mit-pfeifen_tiny-bang4.mp3`** (~3.4s)
-  - Whoosh launch → whistling → tiny explosion (longer variant)
-  - Used for: High combos (5+) for variety
-  - Explosion timing: ~1.2 seconds from start
+**Explosion Timing Analysis** (based on file structure and duration):
 
-### Launch-Only Audio (No Explosion)
-These files contain only the launch/whoosh sound, explosion plays separately and is **synchronized via callback**:
+| File | Duration | Launch Duration | Explosion At | Used For |
+|------|----------|----------------|--------------|----------|
+| `woosh_tiny-bang.mp3` (1-3) | ~1.15-1.19s | ~0.7s | **~1.0s** | Small (flight 0.8-1.3s) |
+| `woosh_tiny-bang4.mp3` | ~3.42s | ~3.0s | **~3.3s** | Medium (flight 2.8-3.5s) |
+| `woosh_normal-bang.mp3` | ~3.39s | ~3.0s | **~3.3s** | Medium/Big (flight 2.8-3.5s) |
+| `woosh_crackling_bang.mp3` | ~4.94s | ~4.5s | **~4.8s** | Big/Massive (flight 4.3-5.2s) |
 
-- **`woosh_abheben_mit-pfeifen_no-bang.mp3`** (~1.3s)
-  - Whoosh launch with whistling, no explosion
-  - Used for: **Big** and **Massive** fireworks combinations
+### Launch-Only Audio (for Layered combinations)
 
-- **`woosh_abheben_nocrackling_no-bang.mp3`** (~1.5s)
-- **`woosh_abheben_nocrackling_no-bang2.mp3`** (~1.7s)
-  - Smooth whoosh launch without crackling or explosion
-  - Used for: **Medium** fireworks (30% chance)
-
-### Basic Launch Sounds
-
-- **`abschussgeraeusch.mp3`** (~0.8s)
-- **`abschussgeraeusch2.mp3`** (~0.6s)
-  - Short launch/ignition sounds
-  - Used for: **Small** and **Medium** fireworks (30% chance each)
-
-- **`rocket.mp3`** (~0.4s)
+| File | Duration | Description | Used In |
+|------|----------|-------------|---------|
+| `woosh_mit-pfeifen_no-bang.mp3` | ~1.3s | Whistle launch | Layered Big/Massive |
+| `woosh_nocrackling_no-bang.mp3` | ~1.5s | Smooth launch | Layered Medium |
+| `woosh_nocrackling_no-bang2.mp3` | ~1.7s | Smooth launch (alt) | Layered Medium |
+| `abschussgeraeusch.mp3` | ~0.8s | Short ignition | Layered Small/Medium |
+| `abschussgeraeusch2.mp3` | ~0.6s | Short ignition (alt) | Layered Small/Medium |
+| `rocket.mp3` | ~0.4s | Quick launch | Layered Small |
   - Basic rocket whistle sound
   - Used for: **Small**, **Medium**, and **Big** fireworks
 
-### NEW: Explosion Sounds (Tier-Matched)
-These explosion sounds are **synchronized via callback** - they play exactly when the visual firework explodes:
+### Explosion Sounds (Tier-Matched for Layered Audio)
+These explosion sounds combine with launch sounds for precisely timed layered audio:
 
 **Small Explosions:**
 - **`explosion.mp3`** (~0.3s) - Quick, sharp explosion
@@ -78,53 +80,88 @@ These explosion sounds are **synchronized via callback** - they play exactly whe
 - **`explosion_big.mp3`** (~3.5s) - Big powerful explosion
 - **`explosion_huge.mp3`** (~5.9s) - Huge dramatic explosion
 
-### NEW: Crackling Sounds (Atmospheric Effects)
+### Crackling Sounds (Atmospheric Layers)
 These crackling sounds layer over fireworks for added atmospheric depth:
 
 - **`crackling.mp3`** (~10.2s) - Long crackling effect
 - **`crackling2.mp3`** (~5.9s) - Medium crackling effect
 
-Used for: **Big** (30% chance) and **Massive** (40% chance) fireworks, plays simultaneously with explosion for dramatic effect.
+Used for: **Big** (40-50% chance) and **Massive** (60-70% chance) fireworks, plays with explosion for dramatic effect.
 
-## 🎯 Automatic Audio Selection with Synchronization
+## 🎯 Tier-Based Audio Selection
 
-The system automatically chooses audio based on firework characteristics with high variety:
+The system calculates rocket flight time and selects the best audio strategy:
 
-| Firework Type | Audio Selection | Notes |
-|--------------|----------------|-------|
-| **Small** (0-99 coins) | 70% combined tiny-bang, 30% basic launch+explosion | Mix of synchronized and separate audio |
-| **Medium** (100-499 coins) | 40% normal-bang, 30% smooth launch, 30% varied launches | Maximum variety with different launch sounds |
-| **Big** (500-999 coins) | 50% crackling-bang, 25% whistle, 25% varied launches | Emphasizes crackling effects |
-| **Massive** (1000+ coins) | 80% crackling-bang, 20% whistle-normal | Maximum impact with variety |
-| **Combo 5-7** | Random tiny-bang (1-4, includes longer variant) | Quick bursts for fast combos |
-| **Combo 8+** | Only explosion sound | Instant explosions, no launch |
+| Tier | Flight Time | Primary Strategy | Secondary Strategy | Crackling |
+|------|-------------|------------------|-------------------|-----------|
+| **Small** | 1.0-1.5s | 60% Combined tiny-bang | 40% Layered (launch+explosion) | No |
+| **Medium** | 2.0-3.0s | 40% Combined normal-bang | 60% Layered (smooth+explosion) | No |
+| **Big** | 3.0-4.5s | 35% Combined crackling-bang | 65% Layered (whistle+big explosion) | 40-50% |
+| **Massive** | 4.0-5.5s | 50% Combined crackling-bang | 50% Layered (whistle+huge) | 60-70% |
+| **Combo 5+** | Varies | Combined if matches | Layered for sync | Rare |
+| **Combo 8+** | 0s | Explosion only | Instant | No |
 
-### Launch Sound Variety
+### Example Audio Combinations
 
-The system now uses **all available launch sounds** to create variety:
-- **Basic launches**: `abschussgeraeusch.mp3`, `abschussgeraeusch2.mp3`, `rocket.mp3` - Quick ignition sounds
-- **Whistle launch**: `woosh_abheben_mit-pfeifen_no-bang.mp3` - Dramatic whistle effect
-- **Smooth launches**: `woosh_abheben_nocrackling_no-bang.mp3`, `woosh_abheben_nocrackling_no-bang2.mp3` - Clean whoosh sounds
+**Small Firework (1.2s flight):**
+- Combined: `woosh_tiny-bang.mp3` (explosion at 1.0s) ✓ Good match
+- Layered: `abschussgeraeusch.mp3` → 1.2s delay → `explosion_small1.mp3` ✓ Perfect sync
 
-Different tiers use different combinations of these sounds to ensure every firework has a unique audio signature.
+**Medium Firework (3.0s flight):**
+- Combined: `woosh_normal-bang.mp3` (explosion at 3.3s) ✓ Close match
+- Layered: `woosh_nocrackling_no-bang.mp3` → 3.0s delay → `explosion_medium.mp3` ✓ Perfect sync
 
-## ✅ Audio Status
+**Big Firework (4.5s flight):**
+- Combined: `woosh_crackling_bang.mp3` (explosion at 4.8s) ✓ Close match
+- Layered: `launch-whistle` → 4.5s delay → `explosion_big.mp3` + `crackling2.mp3` ✓ Perfect sync + effects
 
-✅ **All 22 audio files are installed and synchronized!**
+**Massive Firework (5.0s flight):**
+- Combined: `woosh_crackling_bang.mp3` (explosion at 4.8s) ✓ Good match
+- Layered: `launch-whistle` → 5.0s delay → `explosion_huge.mp3` + `crackling.mp3` ✓ Perfect sync + heavy effects
 
-The plugin automatically:
-- Preloads all 22 audio files on page load
-- Selects tier-appropriate audio (small/medium/big explosions match firework size)
-- **Synchronizes explosions perfectly** - combined audio has pre-timed explosions, separate audio uses callbacks
-- Adds optional crackling layers for Big and Massive fireworks
-- Adjusts volume based on firework intensity and type
+## 🔧 Technical Details - Three Synchronization Methods
 
-Audio requires user interaction (click/keypress) to enable due to browser autoplay policies.
+### Method 1: Combined Audio (Pre-Synchronized)
+```javascript
+// Play woosh+explosion file immediately
+audioManager.play('combined-whistle-normal', COMBINED_AUDIO_VOLUME);
+// Explosion is at 3.3s in the audio file
+// Used when rocket flight time ≈ 3.0-3.5s
+```
 
-## 🔧 Technical Details - Synchronization Methods
+**Advantages:**
+- Authentic woosh-to-explosion transition
+- Natural sound progression
+- Lower complexity
 
-### Method 1: Pre-Synchronized Combined Audio
-The audio system uses precise timing built into combined audio files:
+**Requirements:**
+- Rocket flight time must match explosion timing in audio
+- System selects combined audio only when flight time is within ±0.3s of explosion timing
+
+### Method 2: Layered Audio (Timed Overlapping)
+```javascript
+// 1. Launch plays immediately
+audioManager.play('launch-whistle', LAUNCH_AUDIO_VOLUME);
+
+// 2. Explosion scheduled at calculated flight time
+audioManager.playDelayed('explosion-big', flightTime, EXPLOSION_VOLUME);
+
+// 3. Crackling added at explosion time
+audioManager.playDelayed('crackling-medium', flightTime, CRACKLING_VOLUME);
+```
+
+**Advantages:**
+- **Perfect synchronization** - explosion timed to exact rocket flight duration
+- Maximum flexibility - can combine any sounds
+- Crackling can be added/removed independently
+
+**How it works:**
+- Calculates rocket flight time from physics (velocity, acceleration, target height)
+- Plays launch sound immediately
+- Schedules explosion via `playDelayed()` to trigger exactly when visual explodes
+- Optional crackling layers at explosion time
+
+### Method 3: Callback Audio (Visual-Triggered)
 
 1. **Combined audio files** contain both launch and explosion
 2. Explosion timing is **baked into the audio file**:
