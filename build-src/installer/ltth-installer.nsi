@@ -184,19 +184,20 @@ Section "!LTTH Core Application" SEC_CORE
   ; - logs: Contains Winston audit files (.*.json) that cause NSIS errors
   ; - node_modules: Runtime dependencies installed by npm
   ; Using /nonfatal to skip files that can't be opened (e.g., locked files, permission issues)
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\data"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\docs"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\locales"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\modules"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\plugins"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\public"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\routes"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\scripts"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\test"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\tts"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\user_configs"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\user_data"
-  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\wiki"
+  ; Note: If compilation fails due to path length issues, extract the repo to a shorter path (e.g., C:\temp\ltth)
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\data"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\docs"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\locales"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\modules"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\plugins"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\public"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\routes"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\scripts"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\test"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\tts"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\user_configs"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\user_data"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\wiki"
   
   ; Create runtime directories that were excluded from packaging
   ; These directories are needed for the application to run properly
