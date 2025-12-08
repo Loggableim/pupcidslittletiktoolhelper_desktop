@@ -2618,6 +2618,16 @@ function closeModal(modalId) {
     if (modal) {
         modal.classList.remove('active');
         document.body.style.overflow = '';
+        
+        // Clean up modal state based on modal type
+        if (modalId === 'goalModal') {
+            currentEditingGoal = null;
+        } else if (modalId === 'chainModal') {
+            currentEditingChain = null;
+            chainSteps = [];
+        } else if (modalId === 'stepModal') {
+            currentEditingStep = null;
+        }
     }
 }
 
