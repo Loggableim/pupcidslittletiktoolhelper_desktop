@@ -6,9 +6,28 @@
 const socket = io();
 let timers = [];
 let currentEditingTimer = null;
+let i18n = null;
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize i18n
+    i18n = new I18nClient();
+    await i18n.init();
+    
+    // Listen for language changes
+    i18n.onLanguageChange((newLocale) => {
+        console.log('Language changed to:', newLocale);
+        // Re-render UI with new language
+        renderTimers();
+    });
+    
+    // Also listen for language changes via socket (for real-time sync)
+    socket.on('locale-changed', async (newLocale) => {
+        console.log('Locale changed via socket:', newLocale);
+        await i18n.changeLanguage(newLocale);
+        renderTimers();
+    });
+    
     loadTimers();
     setupSocketListeners();
 });
@@ -72,12 +91,19 @@ async function loadTimers() {
 function renderTimers() {
     const container = document.getElementById('timers-container');
     
+    // Helper to get translation safely
+    const t = (key, fallback) => {
+        if (!i18n || !i18n.initialized) return fallback;
+        const trans = i18n.t(key);
+        return trans === key ? fallback : trans;
+    };
+    
     if (timers.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">⏱️</div>
-                <div class="empty-state-text">No timers yet</div>
-                <button class="btn btn-primary" onclick="showTab('create')">Create Your First Timer</button>
+                <div class="empty-state-text">${t('ui.messages.noTimers', 'No timers yet')}</div>
+                <button class="btn btn-primary" onclick="showTab('create')">${t('ui.messages.createFirst', 'Create Your First Timer')}</button>
             </div>
         `;
         return;
@@ -101,14 +127,14 @@ function renderTimers() {
 
             <div class="timer-controls">
                 ${timer.state === 'stopped' || timer.state === 'paused' || timer.state === 'completed' ? 
-                    `<button class="btn btn-success btn-sm" onclick="startTimer('${timer.id}')">▶️ Start</button>` : ''}
+                    `<button class="btn btn-success btn-sm" onclick="startTimer('${timer.id}')">▶️ ${t('ui.buttons.start', 'Start')}</button>` : ''}
                 ${timer.state === 'running' ? 
-                    `<button class="btn btn-warning btn-sm" onclick="pauseTimer('${timer.id}')">⏸️ Pause</button>` : ''}
+                    `<button class="btn btn-warning btn-sm" onclick="pauseTimer('${timer.id}')">⏸️ ${t('ui.buttons.pause', 'Pause')}</button>` : ''}
                 ${timer.state === 'running' || timer.state === 'paused' ? 
-                    `<button class="btn btn-danger btn-sm" onclick="stopTimer('${timer.id}')">⏹️ Stop</button>` : ''}
-                <button class="btn btn-secondary btn-sm" onclick="resetTimer('${timer.id}')">🔄 Reset</button>
-                <button class="btn btn-secondary btn-sm" onclick="openTimerSettings('${timer.id}')">⚙️ Settings</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteTimer('${timer.id}')">🗑️ Delete</button>
+                    `<button class="btn btn-danger btn-sm" onclick="stopTimer('${timer.id}')">⏹️ ${t('ui.buttons.stop', 'Stop')}</button>` : ''}
+                <button class="btn btn-secondary btn-sm" onclick="resetTimer('${timer.id}')">🔄 ${t('ui.buttons.reset', 'Reset')}</button>
+                <button class="btn btn-secondary btn-sm" onclick="openTimerSettings('${timer.id}')">⚙️ ${t('ui.buttons.settings', 'Settings')}</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteTimer('${timer.id}')">🗑️ ${t('ui.buttons.delete', 'Delete')}</button>
             </div>
 
             <div class="quick-actions">
@@ -480,24 +506,39 @@ function formatTimestamp(timestamp) {
 }
 
 function getModeLabel(mode) {
-    const labels = {
-        'countdown': 'Countdown',
-        'countup': 'Count Up',
-        'stopwatch': 'Stopwatch',
-        'loop': 'Loop',
-        'interval': 'Interval'
-    };
-    return labels[mode] || mode;
+    if (!i18n || !i18n.initialized) {
+        // Fallback labels when i18n not ready
+        const labels = {
+            'countdown': 'Countdown',
+            'countup': 'Count Up',
+            'stopwatch': 'Stopwatch',
+            'loop': 'Loop',
+            'interval': 'Interval'
+        };
+        return labels[mode] || mode;
+    }
+    
+    const key = `ui.modes.${mode}`;
+    const translation = i18n.t(key);
+    // If translation is same as key, it means it wasn't found, return the mode itself
+    return translation === key ? mode : translation.split(' - ')[0]; // Take only the first part before " - "
 }
 
 function getStateLabel(state) {
-    const labels = {
-        'running': 'Running',
-        'paused': 'Paused',
-        'stopped': 'Stopped',
-        'completed': 'Completed'
-    };
-    return labels[state] || state;
+    if (!i18n || !i18n.initialized) {
+        // Fallback labels when i18n not ready
+        const labels = {
+            'running': 'Running',
+            'paused': 'Paused',
+            'stopped': 'Stopped',
+            'completed': 'Completed'
+        };
+        return labels[state] || state;
+    }
+    
+    const key = `ui.states.${state}`;
+    const translation = i18n.t(key);
+    return translation === key ? state : translation;
 }
 
 function getTimerName(timerId) {
