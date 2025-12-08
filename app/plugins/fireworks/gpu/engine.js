@@ -1336,13 +1336,24 @@ class FireworksEngine {
         
         if (!animationEl || !contentEl || !usernameEl || !avatarEl) return;
         
-        // Remove all previous position, style, and entrance classes
+        // Remove all previous position, style, size, and entrance classes
         animationEl.className = 'follower-animation';
         contentEl.className = 'follower-content';
+        contentEl.style.transform = ''; // Clear inline transform
         
         // Set position class
         const position = data.position || 'center';
         animationEl.classList.add(`pos-${position}`);
+        
+        // Set size class
+        const size = data.size || 'medium';
+        animationEl.classList.add(`size-${size}`);
+        
+        // Apply custom scale if size is 'custom'
+        if (size === 'custom') {
+            const scale = data.scale || 1.0;
+            contentEl.style.transform = `scale(${scale})`;
+        }
         
         // Set style class
         const style = data.style || 'gradient-purple';
@@ -1374,6 +1385,7 @@ class FireworksEngine {
             setTimeout(() => {
                 animationEl.className = 'follower-animation';
                 contentEl.className = 'follower-content';
+                contentEl.style.transform = '';
             }, 500); // Wait for exit animation
         }, duration);
     }

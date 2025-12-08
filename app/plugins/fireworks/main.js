@@ -165,6 +165,8 @@ class FireworksPlugin {
             followerAnimationDuration: 3000, // Duration of thank you animation in ms
             followerAnimationDelay: 3000, // Delay before showing animation (ms)
             followerAnimationPosition: 'center', // 'top-left', 'top-center', 'top-right', 'center', 'bottom-left', 'bottom-center', 'bottom-right'
+            followerAnimationSize: 'medium', // 'small', 'medium', 'large', 'custom'
+            followerAnimationScale: 1.0, // Custom scale factor (0.5 - 2.0) when size is 'custom'
             followerAnimationStyle: 'gradient-purple', // 'gradient-purple', 'gradient-blue', 'gradient-gold', 'gradient-rainbow', 'neon', 'minimal'
             followerAnimationEntrance: 'scale', // 'scale', 'fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'bounce', 'rotate'
             
@@ -745,6 +747,8 @@ class FireworksPlugin {
                     profilePictureUrl: this.config.followerShowProfilePicture ? profilePictureUrl : null,
                     duration: this.config.followerAnimationDuration || 3000,
                     position: this.config.followerAnimationPosition || 'center',
+                    size: this.config.followerAnimationSize || 'medium',
+                    scale: this.config.followerAnimationScale || 1.0,
                     style: this.config.followerAnimationStyle || 'gradient-purple',
                     entrance: this.config.followerAnimationEntrance || 'scale'
                 });

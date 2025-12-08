@@ -231,8 +231,19 @@ function updateUI() {
     document.getElementById('follower-animation-delay').value = (config.followerAnimationDelay || 3000) / 1000;
     document.getElementById('follower-animation-delay-value').textContent = ((config.followerAnimationDelay || 3000) / 1000) + 's';
     document.getElementById('follower-animation-position').value = config.followerAnimationPosition || 'center';
+    document.getElementById('follower-animation-size').value = config.followerAnimationSize || 'medium';
+    document.getElementById('follower-animation-scale').value = config.followerAnimationScale || 1.0;
+    document.getElementById('follower-animation-scale-value').textContent = (config.followerAnimationScale || 1.0) + 'x';
     document.getElementById('follower-animation-style').value = config.followerAnimationStyle || 'gradient-purple';
     document.getElementById('follower-animation-entrance').value = config.followerAnimationEntrance || 'scale';
+    
+    // Show/hide custom scale slider based on size selection
+    const scaleContainer = document.getElementById('follower-animation-scale-container');
+    if (config.followerAnimationSize === 'custom') {
+        scaleContainer.style.display = 'block';
+    } else {
+        scaleContainer.style.display = 'none';
+    }
     
     // Random shape rotation
     updateToggle('random-shape-toggle', config.randomShapeEnabled);
@@ -404,9 +415,26 @@ function setupEventListeners() {
         config.followerAnimationDelay = val * 1000; // Convert to ms
     });
     
+    setupRangeSlider('follower-animation-scale', 'follower-animation-scale-value', 'x', (val) => {
+        config.followerAnimationScale = parseFloat(val);
+    });
+    
     // Follower animation position selector
     document.getElementById('follower-animation-position')?.addEventListener('change', function() {
         config.followerAnimationPosition = this.value;
+    });
+    
+    // Follower animation size selector
+    document.getElementById('follower-animation-size')?.addEventListener('change', function() {
+        config.followerAnimationSize = this.value;
+        
+        // Show/hide custom scale slider
+        const scaleContainer = document.getElementById('follower-animation-scale-container');
+        if (this.value === 'custom') {
+            scaleContainer.style.display = 'block';
+        } else {
+            scaleContainer.style.display = 'none';
+        }
     });
     
     // Follower animation style selector
