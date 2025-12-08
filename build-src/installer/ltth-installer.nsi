@@ -176,7 +176,11 @@ Section "!LTTH Core Application" SEC_CORE
   ; Install app directory
   Banner::show /NOUNLOAD "Installing Application" "Copying application files..."
   SetOutPath "$INSTDIR\app"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\*.*"
+  File /r /x "*.md~" /x ".git*" /x "logs" /x "node_modules" "${APP_DIR}\*.*"
+  
+  ; Create runtime directories that were excluded
+  CreateDirectory "$INSTDIR\app\logs"
+  
   Banner::destroy
   
   ; Create uninstaller
