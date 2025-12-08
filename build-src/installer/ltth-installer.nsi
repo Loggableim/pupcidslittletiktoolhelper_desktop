@@ -178,24 +178,25 @@ Section "!LTTH Core Application" SEC_CORE
   SetOutPath "$INSTDIR\app"
   
   ; Copy root-level files first (exclude backup files and git files)
-  File /x "*.md~" /x ".git*" "${APP_DIR}\*.*"
+  File /nonfatal /x "*.md~" /x ".git*" "${APP_DIR}\*.*"
   
   ; Copy subdirectories individually, excluding runtime-generated directories:
   ; - logs: Contains Winston audit files (.*.json) that cause NSIS errors
   ; - node_modules: Runtime dependencies installed by npm
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\data"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\docs"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\locales"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\modules"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\plugins"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\public"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\routes"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\scripts"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\test"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\tts"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\user_configs"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\user_data"
-  File /r /x "*.md~" /x ".git*" "${APP_DIR}\wiki"
+  ; Using /nonfatal to skip files that can't be opened (e.g., locked files, permission issues)
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\data"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\docs"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\locales"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\modules"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\plugins"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\public"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\routes"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\scripts"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\test"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\tts"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\user_configs"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\user_data"
+  File /nonfatal /r /x "*.md~" /x ".git*" "${APP_DIR}\wiki"
   
   ; Create runtime directories that were excluded from packaging
   ; These directories are needed for the application to run properly
