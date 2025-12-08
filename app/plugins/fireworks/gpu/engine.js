@@ -1031,6 +1031,67 @@ class AudioManager {
         }
     }
 
+    /**
+     * Play a sound with automatic fade-out after a specified duration.
+     * Perfect for crackling sounds that should fade out when visual effects end.
+     * 
+     * @param {string} name - The name of the sound to play (must be preloaded)
+     * @param {number} volume - Volume multiplier (0.0 to 1.0), will be multiplied by global volume
+     * @param {number} duration - Total duration in seconds before fade starts
+     * @param {number} fadeOutDuration - Duration of the fade-out in seconds (default: 0.5s)
+     * 
+     * @example
+     * // Play crackling for 2 seconds, then fade out over 0.5 seconds
+     * await audioManager.playWithFadeOut('crackling-long', 0.35, 2.0, 0.5);
+     */
+    async playWithFadeOut(name, volume = 1.0, duration = 2.0, fadeOutDuration = 0.5) {
+        if (!this.enabled) return;
+        
+        await this.ensureAudioContext();
+        
+        if (!this.audioContext || !this.sounds.has(name)) return;
+        
+        try {
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+            
+            const source = this.audioContext.createBufferSource();
+            const gainNode = this.audioContext.createGain();
+            
+            source.buffer = this.sounds.get(name);
+            
+            // Apply per-file volume multiplier if exists
+            const volumeMultiplier = this.AUDIO_VOLUME_MULTIPLIERS[name] || 1.0;
+            const finalVolume = this.volume * volume * volumeMultiplier;
+            
+            // Set initial volume
+            gainNode.gain.value = finalVolume;
+            
+            source.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            // Start playback
+            const startTime = this.audioContext.currentTime;
+            source.start(0);
+            
+            // Schedule fade-out
+            const fadeStartTime = startTime + duration;
+            const fadeEndTime = fadeStartTime + fadeOutDuration;
+            
+            // Exponential fade-out for more natural sound
+            gainNode.gain.setValueAtTime(finalVolume, fadeStartTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, fadeEndTime);
+            
+            // Stop the source after fade completes
+            source.stop(fadeEndTime + 0.1);
+            
+            console.log(`[Fireworks Audio] Playing ${name} with fade-out: duration=${duration}s, fade=${fadeOutDuration}s`);
+        } catch (e) {
+            console.warn('[Fireworks Audio] Fade-out playback error:', e.message);
+        }
+    }
+
     setVolume(volume) {
         this.volume = Math.max(0, Math.min(1, volume));
     }
@@ -1532,19 +1593,36 @@ class FireworksEngine {
                         this.audioManager.play(audioConfig.explosionSound, intensity * soundVolume);
                         
                         // Add crackling layer with explosion for perfect sync
+                        // Use fade-out to match visual particle lifetime (typical: 0.8-1.4s)
                         if (audioConfig.cracklingSound) {
                             console.log(`[Fireworks] Crackling with explosion: ${audioConfig.cracklingSound}`);
-                            this.audioManager.play(audioConfig.cracklingSound, this.audioManager.CRACKLING_VOLUME);
+                            // Duration based on tier: bigger fireworks = longer crackling
+                            const cracklingDuration = tier === 'massive' ? 2.0 : 
+                                                    tier === 'big' ? 1.5 : 
+                                                    1.2;
+                            const fadeOutDuration = 0.8; // Smooth fade-out
+                            this.audioManager.playWithFadeOut(
+                                audioConfig.cracklingSound, 
+                                this.audioManager.CRACKLING_VOLUME,
+                                cracklingDuration,
+                                fadeOutDuration
+                            );
                         }
                     };
                     
                     // Set secondary explosion sound callback for burst/spiral secondary effects
                     if (shape === 'burst' || shape === 'spiral') {
                         firework.onSecondaryExplosionSound = () => {
-                            // Play crackling sound for secondary burst/spiral
+                            // Play crackling sound for secondary burst/spiral with fade-out
                             const cracklingSound = Math.random() < 0.5 ? 'crackling-medium' : 'crackling-long';
                             console.log(`[Fireworks] Secondary explosion crackling: ${cracklingSound}`);
-                            this.audioManager.play(cracklingSound, this.audioManager.CRACKLING_VOLUME * 0.4); // Quieter for secondary
+                            // Secondary crackling is shorter and quieter
+                            this.audioManager.playWithFadeOut(
+                                cracklingSound, 
+                                this.audioManager.CRACKLING_VOLUME * 0.4,
+                                1.0, // Shorter duration for secondary
+                                0.5  // Quick fade-out
+                            );
                         };
                     }
                 } else if (instantExplode) {
