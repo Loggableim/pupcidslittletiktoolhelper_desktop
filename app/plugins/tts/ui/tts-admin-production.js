@@ -433,6 +433,7 @@ function populateConfig(config) {
     setValue('enableSpeechifyFallback', config.enableSpeechifyFallback || false);
     setValue('enableElevenlabsFallback', config.enableElevenlabsFallback || false);
     setValue('enableOpenAIFallback', config.enableOpenAIFallback || false);
+    setValue('enableTikTokRapidAPIFallback', config.enableTikTokRapidAPIFallback || false);
 
     // Language detection settings
     setValue('fallbackLanguage', config.fallbackLanguage || 'de');
@@ -507,6 +508,22 @@ function populateConfig(config) {
         }
     }
 
+    // Load TikTok RapidAPI key
+    const tiktokRapidApiKeyInput = document.getElementById('tiktokRapidApiKey');
+    if (tiktokRapidApiKeyInput) {
+        if (config.tiktokRapidApiKey) {
+            if (config.tiktokRapidApiKey === '***REDACTED***') {
+                tiktokRapidApiKeyInput.placeholder = 'RapidAPI key configured (hidden for security)';
+                tiktokRapidApiKeyInput.value = '';
+            } else {
+                tiktokRapidApiKeyInput.value = config.tiktokRapidApiKey;
+            }
+        } else {
+            tiktokRapidApiKeyInput.placeholder = 'Enter RapidAPI key...';
+            tiktokRapidApiKeyInput.value = '';
+        }
+    }
+
     // Load TikTok SessionID (deprecated but kept for backwards compatibility)
     const tiktokSessionInput = document.getElementById('tiktokSessionId');
     if (tiktokSessionInput) {
@@ -549,6 +566,7 @@ async function saveConfig() {
             enableSpeechifyFallback: document.getElementById('enableSpeechifyFallback')?.checked || false,
             enableElevenlabsFallback: document.getElementById('enableElevenlabsFallback')?.checked || false,
             enableOpenAIFallback: document.getElementById('enableOpenAIFallback')?.checked || false,
+            enableTikTokRapidAPIFallback: document.getElementById('enableTikTokRapidAPIFallback')?.checked || false,
             // Language detection settings
             fallbackLanguage: document.getElementById('fallbackLanguage').value,
             languageConfidenceThreshold: parseFloat(document.getElementById('languageConfidenceThreshold').value),
@@ -579,6 +597,12 @@ async function saveConfig() {
         const openaiApiKey = document.getElementById('openaiApiKey')?.value?.trim();
         if (openaiApiKey && openaiApiKey !== '***REDACTED***') {
             config.openaiApiKey = openaiApiKey;
+        }
+
+        // Get TikTok RapidAPI key
+        const tiktokRapidApiKey = document.getElementById('tiktokRapidApiKey')?.value?.trim();
+        if (tiktokRapidApiKey && tiktokRapidApiKey !== '***REDACTED***') {
+            config.tiktokRapidApiKey = tiktokRapidApiKey;
         }
 
         // Get TikTok SessionID (deprecated but kept for backwards compatibility)
@@ -1603,6 +1627,18 @@ function setupEventListeners() {
             openaiKeyInput.type = type;
             toggleOpenaiKey.querySelector('i').classList.toggle('fa-eye');
             toggleOpenaiKey.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+    }
+
+    // Toggle TikTok RapidAPI key visibility
+    const toggleTiktokRapidApiKey = document.getElementById('toggle-tiktok-rapidapi-key');
+    const tiktokRapidApiKeyInput = document.getElementById('tiktokRapidApiKey');
+    if (toggleTiktokRapidApiKey && tiktokRapidApiKeyInput) {
+        toggleTiktokRapidApiKey.addEventListener('click', () => {
+            const type = tiktokRapidApiKeyInput.type === 'password' ? 'text' : 'password';
+            tiktokRapidApiKeyInput.type = type;
+            toggleTiktokRapidApiKey.querySelector('i').classList.toggle('fa-eye');
+            toggleTiktokRapidApiKey.querySelector('i').classList.toggle('fa-eye-slash');
         });
     }
 
