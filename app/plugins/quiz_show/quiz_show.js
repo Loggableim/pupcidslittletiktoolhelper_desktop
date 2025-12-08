@@ -114,6 +114,55 @@
                 }, 100);
             });
         }
+
+        // Event delegation for dynamically created buttons
+        document.addEventListener('click', (e) => {
+            // Question actions
+            if (e.target.closest('.btn-edit-question')) {
+                const questionId = parseInt(e.target.closest('.btn-edit-question').dataset.questionId);
+                editQuestion(questionId);
+            } else if (e.target.closest('.btn-delete-question')) {
+                const questionId = parseInt(e.target.closest('.btn-delete-question').dataset.questionId);
+                deleteQuestion(questionId);
+            }
+            // Package actions
+            else if (e.target.closest('.btn-view-package')) {
+                const packageId = parseInt(e.target.closest('.btn-view-package').dataset.packageId);
+                viewPackageQuestions(packageId);
+            } else if (e.target.closest('.btn-delete-package')) {
+                const packageId = parseInt(e.target.closest('.btn-delete-package').dataset.packageId);
+                deletePackage(packageId);
+            }
+            // Layout actions
+            else if (e.target.closest('.btn-activate-layout')) {
+                const layoutId = parseInt(e.target.closest('.btn-activate-layout').dataset.layoutId);
+                activateLayout(layoutId);
+            } else if (e.target.closest('.btn-deactivate-layout')) {
+                deactivateLayout();
+            } else if (e.target.closest('.btn-edit-layout')) {
+                const layoutId = parseInt(e.target.closest('.btn-edit-layout').dataset.layoutId);
+                editLayout(layoutId);
+            } else if (e.target.closest('.btn-delete-layout')) {
+                const layoutId = parseInt(e.target.closest('.btn-delete-layout').dataset.layoutId);
+                deleteLayout(layoutId);
+            }
+            // Gift joker actions
+            else if (e.target.closest('.btn-edit-gift-joker')) {
+                const giftId = parseInt(e.target.closest('.btn-edit-gift-joker').dataset.giftId);
+                editGiftJoker(giftId);
+            } else if (e.target.closest('.btn-delete-gift-joker')) {
+                const giftId = parseInt(e.target.closest('.btn-delete-gift-joker').dataset.giftId);
+                deleteGiftJoker(giftId);
+            }
+        });
+
+        // Event delegation for package toggle checkboxes
+        document.addEventListener('change', (e) => {
+            if (e.target.closest('.package-toggle-checkbox')) {
+                const packageId = parseInt(e.target.closest('.package-toggle-checkbox').dataset.packageId);
+                togglePackage(packageId);
+            }
+        });
     }
 
     // Socket.IO Listeners
@@ -731,8 +780,8 @@
                     </div>
                 </div>
                 <div class="question-actions">
-                    <button class="btn-icon" onclick="window.quizShow.editQuestion(${q.id})" title="Bearbeiten">✏️</button>
-                    <button class="btn-icon" onclick="window.quizShow.deleteQuestion(${q.id})" title="Löschen">🗑️</button>
+                    <button class="btn-icon btn-edit-question" data-question-id="${q.id}" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon btn-delete-question" data-question-id="${q.id}" title="Löschen">🗑️</button>
                 </div>
             </div>
         `).join('');
@@ -1597,9 +1646,9 @@
             <div class="package-item ${pkg.is_selected ? 'selected' : ''}" data-id="${pkg.id}">
                 <input 
                     type="checkbox" 
-                    class="package-checkbox" 
+                    class="package-checkbox package-toggle-checkbox" 
                     ${pkg.is_selected ? 'checked' : ''}
-                    onchange="window.quizShow.togglePackage(${pkg.id})"
+                    data-package-id="${pkg.id}"
                 >
                 <div class="package-info">
                     <div class="package-header">
@@ -1616,10 +1665,10 @@
                     </div>
                 </div>
                 <div class="package-actions">
-                    <button class="btn-view" onclick="window.quizShow.viewPackageQuestions(${pkg.id})" title="Fragen anzeigen">
+                    <button class="btn-view btn-view-package" data-package-id="${pkg.id}" title="Fragen anzeigen">
                         👁️ Anzeigen
                     </button>
-                    <button class="btn-delete" onclick="window.quizShow.deletePackage(${pkg.id})" title="Paket löschen">
+                    <button class="btn-delete btn-delete-package" data-package-id="${pkg.id}" title="Paket löschen">
                         🗑️ Löschen
                     </button>
                 </div>
@@ -1764,11 +1813,11 @@
                 </div>
                 <div class="layout-actions">
                     ${isActive 
-                        ? `<button class="btn-icon" onclick="window.quizShow.deactivateLayout()" title="Deaktivieren">⏸️</button>`
-                        : `<button class="btn-icon" onclick="window.quizShow.activateLayout(${layout.id})" title="Aktivieren">▶️</button>`
+                        ? `<button class="btn-icon btn-deactivate-layout" title="Deaktivieren">⏸️</button>`
+                        : `<button class="btn-icon btn-activate-layout" data-layout-id="${layout.id}" title="Aktivieren">▶️</button>`
                     }
-                    <button class="btn-icon" onclick="window.quizShow.editLayout(${layout.id})" title="Bearbeiten">✏️</button>
-                    <button class="btn-icon" onclick="window.quizShow.deleteLayout(${layout.id})" title="Löschen">🗑️</button>
+                    <button class="btn-icon btn-edit-layout" data-layout-id="${layout.id}" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon btn-delete-layout" data-layout-id="${layout.id}" title="Löschen">🗑️</button>
                 </div>
             </div>
         `;
@@ -2174,8 +2223,8 @@
                 <td>${jokerNames[mapping.joker_type] || mapping.joker_type}</td>
                 <td><span class="status-badge ${mapping.enabled ? 'status-connected' : 'status-error'}">${mapping.enabled ? 'Aktiv' : 'Inaktiv'}</span></td>
                 <td>
-                    <button class="btn-icon" onclick="window.quizShow.editGiftJoker(${mapping.gift_id})" title="Bearbeiten">✏️</button>
-                    <button class="btn-icon" onclick="window.quizShow.deleteGiftJoker(${mapping.gift_id})" title="Löschen">🗑️</button>
+                    <button class="btn-icon btn-edit-gift-joker" data-gift-id="${mapping.gift_id}" title="Bearbeiten">✏️</button>
+                    <button class="btn-icon btn-delete-gift-joker" data-gift-id="${mapping.gift_id}" title="Löschen">🗑️</button>
                 </td>
             </tr>
         `).join('');
@@ -2298,19 +2347,4 @@
     // ============================================
     // END GIFT-JOKER MANAGEMENT
     // ============================================
-
-    // Expose functions to window for onclick handlers
-    window.quizShow = {
-        editQuestion,
-        deleteQuestion,
-        togglePackage,
-        deletePackage,
-        viewPackageQuestions,
-        editLayout,
-        deleteLayout,
-        activateLayout,
-        deactivateLayout,
-        editGiftJoker,
-        deleteGiftJoker
-    };
 })();
