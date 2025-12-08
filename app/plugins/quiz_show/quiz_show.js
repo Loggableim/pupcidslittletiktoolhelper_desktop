@@ -1872,12 +1872,12 @@
     }
 
     function collectLayoutConfig() {
-        const elements = {};
+        const config = {};
         const draggables = document.querySelectorAll('#previewCanvas .draggable');
         
         draggables.forEach(el => {
             const elementType = el.dataset.element;
-            elements[elementType] = {
+            config[elementType] = {
                 x: parseInt(el.style.left, 10) || 0,
                 y: parseInt(el.style.top, 10) || 0,
                 width: parseInt(el.style.width, 10) || 300,
@@ -1886,13 +1886,16 @@
             };
         });
         
-        return { elements };
+        return config;
     }
 
     function applyLayoutConfig(config) {
-        if (!config || !config.elements) return;
+        if (!config) return;
         
-        Object.entries(config.elements).forEach(([elementType, props]) => {
+        // Handle both old format (with elements wrapper) and new format (direct)
+        const elements = config.elements || config;
+        
+        Object.entries(elements).forEach(([elementType, props]) => {
             const el = document.querySelector(`#previewCanvas [data-element="${elementType}"]`);
             if (el) {
                 el.style.left = props.x + 'px';
@@ -1910,14 +1913,14 @@
 
     function resetLayoutPreview() {
         const defaultPositions = {
-            question: { x: 50, y: 50, width: 800, height: 150 },
-            answers: { x: 50, y: 220, width: 800, height: 400 },
-            timer: { x: 900, y: 50, width: 200, height: 200 },
-            leaderboard: { x: 900, y: 300, width: 300, height: 400 },
-            jokerInfo: { x: 50, y: 650, width: 400, height: 100 }
+            question: { x: 50, y: 50, width: 800, height: 150, visible: true },
+            answers: { x: 50, y: 220, width: 800, height: 400, visible: true },
+            timer: { x: 900, y: 50, width: 200, height: 200, visible: true },
+            leaderboard: { x: 900, y: 300, width: 300, height: 400, visible: true },
+            jokerInfo: { x: 50, y: 650, width: 400, height: 100, visible: true }
         };
         
-        applyLayoutConfig({ elements: defaultPositions });
+        applyLayoutConfig(defaultPositions);
     }
 
     function cancelLayoutEdit() {
