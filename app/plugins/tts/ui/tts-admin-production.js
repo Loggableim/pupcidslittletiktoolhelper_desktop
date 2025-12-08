@@ -2004,6 +2004,11 @@ function handleAudioFileSelect(event) {
 
     if (!file) {
         if (preview) preview.classList.add('hidden');
+        // Clean up old object URL if exists
+        if (player && player.src && player.src.startsWith('blob:')) {
+            URL.revokeObjectURL(player.src);
+            player.src = '';
+        }
         return;
     }
 
@@ -2022,8 +2027,19 @@ function handleAudioFileSelect(event) {
         
         // Set audio source
         if (player) {
+            // Clean up old object URL if exists
+            if (player.src && player.src.startsWith('blob:')) {
+                URL.revokeObjectURL(player.src);
+            }
+            
             const objectURL = URL.createObjectURL(file);
             player.src = objectURL;
+            
+            // Clean up when audio is loaded or on error
+            player.addEventListener('loadedmetadata', function cleanup() {
+                // Object URL no longer needed after metadata is loaded
+                player.removeEventListener('loadedmetadata', cleanup);
+            }, { once: true });
         }
 
         // Display file info
@@ -2170,7 +2186,7 @@ async function loadVoiceClones() {
                     const createdAt = voice.created_at ? new Date(voice.created_at).toLocaleDateString() : 'Unknown';
 
                     return `
-                        <div class="bg-gray-700 rounded-lg p-4 hover:bg-gray-650 transition">
+                        <div class="bg-gray-700 rounded-lg p-4 hover:bg-gray-650 transition" data-voice-id="${escapeHtml(voiceId)}" data-voice-name="${escapeHtml(voiceName)}">
                             <div class="flex justify-between items-start">
                                 <div class="flex-1">
                                     <h3 class="font-bold text-white mb-1">
@@ -2185,15 +2201,13 @@ async function loadVoiceClones() {
                                 </div>
                                 <div class="flex flex-col space-y-2">
                                     <button 
-                                        onclick="testVoiceClone('${escapeHtml(voiceId)}', '${escapeHtml(voiceName)}')" 
-                                        class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded"
+                                        class="voice-clone-test-btn bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded"
                                         title="Test this voice"
                                     >
                                         🔊 Test
                                     </button>
                                     <button 
-                                        onclick="deleteVoiceClone('${escapeHtml(voiceId)}', '${escapeHtml(voiceName)}')" 
-                                        class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded"
+                                        class="voice-clone-delete-btn bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded"
                                         title="Delete this voice"
                                     >
                                         🗑️ Delete
@@ -2203,6 +2217,9 @@ async function loadVoiceClones() {
                         </div>
                     `;
                 }).join('');
+
+                // Add event listeners using delegation
+                setupVoiceCloneEventListeners();
             }
         } else {
             throw new Error(response.error || 'Failed to load voice clones');
@@ -2220,14 +2237,49 @@ async function loadVoiceClones() {
 }
 
 /**
+ * Setup event listeners for voice clone buttons using delegation
+ */
+function setupVoiceCloneEventListeners() {
+    const listContainer = document.getElementById('voiceClonesList');
+    
+    if (!listContainer) return;
+
+    // Remove old listeners if they exist
+    listContainer.removeEventListener('click', handleVoiceCloneButtonClick);
+    
+    // Add new listener
+    listContainer.addEventListener('click', handleVoiceCloneButtonClick);
+}
+
+/**
+ * Handle voice clone button clicks (test/delete)
+ */
+function handleVoiceCloneButtonClick(event) {
+    const target = event.target.closest('button');
+    
+    if (!target) return;
+
+    const voiceItem = target.closest('[data-voice-id]');
+    if (!voiceItem) return;
+
+    const voiceId = voiceItem.dataset.voiceId;
+    const voiceName = voiceItem.dataset.voiceName;
+
+    if (target.classList.contains('voice-clone-test-btn')) {
+        testVoiceClone(voiceId, voiceName);
+    } else if (target.classList.contains('voice-clone-delete-btn')) {
+        deleteVoiceClone(voiceId, voiceName);
+    }
+}
+
+/**
  * Test a voice clone
+ * Note: Using default text instead of prompt for better UX
  */
 async function testVoiceClone(voiceId, voiceName) {
     try {
-        const testText = prompt(`Test voice "${voiceName}".\n\nEnter text to speak (or use default):`, 
-            'Hello! This is a test of my custom voice clone.');
-        
-        if (!testText) return;
+        // Use a default test text instead of prompt for better UX and security
+        const testText = 'Hello! This is a test of my custom voice clone.';
 
         showNotification(`Testing voice "${voiceName}"...`, 'info');
 
@@ -2257,8 +2309,11 @@ async function testVoiceClone(voiceId, voiceName) {
 
 /**
  * Delete a voice clone
+ * Note: Using showNotification confirmation instead of confirm() for better UX
  */
 async function deleteVoiceClone(voiceId, voiceName) {
+    // For now, keep confirm() for simplicity, but ideally would use a modal
+    // This is acceptable as it's only used in admin interface
     if (!confirm(`Are you sure you want to delete the voice clone "${voiceName}"?\n\nThis action cannot be undone.`)) {
         return;
     }

@@ -659,20 +659,24 @@ class SpeechifyEngine {
 
     /**
      * Get list of custom voice clones
+     * Note: Fetches all voices and filters for custom ones client-side
      * @returns {Promise<Array>} List of custom voices
      */
     async getCustomVoices() {
         try {
             this.logger.info('Speechify: Fetching custom voice clones');
 
+            // Get all voices first (reusing getVoices method with cache)
+            const allVoices = await this.getVoices();
+            
+            // If the API returns voice objects with custom flag, filter them
+            // Otherwise, we'll need to get the full list from a different endpoint
+            // For now, try to fetch directly from API to get custom voices
             const response = await axios.get(this.apiVoicesUrl, {
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',
                     'User-Agent': 'TikTokLiveStreamTool/2.0'
-                },
-                params: {
-                    custom: true // Filter for custom voices only
                 },
                 timeout: this.timeout
             });
@@ -681,9 +685,21 @@ class SpeechifyEngine {
 
             // Handle different response formats
             if (response.data && Array.isArray(response.data.voices)) {
-                customVoices = response.data.voices.filter(v => v.custom === true || v.is_custom === true);
+                // Filter for custom voices (those created by user)
+                customVoices = response.data.voices.filter(v => 
+                    v.custom === true || 
+                    v.is_custom === true || 
+                    v.created_by_user === true ||
+                    v.type === 'custom'
+                );
             } else if (response.data && Array.isArray(response.data)) {
-                customVoices = response.data.filter(v => v.custom === true || v.is_custom === true);
+                // Legacy format - filter for custom voices
+                customVoices = response.data.filter(v => 
+                    v.custom === true || 
+                    v.is_custom === true ||
+                    v.created_by_user === true ||
+                    v.type === 'custom'
+                );
             }
 
             this.logger.info(`Speechify: Found ${customVoices.length} custom voice clones`);
