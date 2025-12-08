@@ -1747,14 +1747,17 @@
 
         container.innerHTML = layouts.map(layout => {
             const isActive = activeLayoutId === layout.id;
+            const activeBadge = isActive ? '<span class="badge badge-success">Aktiv</span>' : '';
+            const defaultBadge = layout.is_default ? '<span class="badge">Standard</span>' : '';
+            
             return `
             <div class="layout-item ${isActive ? 'active' : ''}" data-id="${layout.id}">
                 <div class="layout-info">
-                    <div class="layout-name">${escapeHtml(layout.name)} ${isActive ? '<span class="badge badge-success">Aktiv</span>' : ''}</div>
+                    <div class="layout-name">${escapeHtml(layout.name)}${activeBadge}</div>
                     <div class="layout-meta">
                         ${layout.resolution_width}x${layout.resolution_height} | 
                         ${layout.orientation === 'horizontal' ? '🖼️ Landscape' : '📱 Portrait'}
-                        ${layout.is_default ? '<span class="badge">Standard</span>' : ''}
+                        ${defaultBadge}
                     </div>
                 </div>
                 <div class="layout-actions">
