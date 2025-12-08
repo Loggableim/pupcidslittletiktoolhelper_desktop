@@ -36,3 +36,8 @@ app/plugins/plugins_state.json
 tmp/
 temp/
 *.tmp
+
+# NSIS Installer Build
+build-src/assets/node/
+build-src/installer/*.exe
+LTTH-Setup-*.exe
