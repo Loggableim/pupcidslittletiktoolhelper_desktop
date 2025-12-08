@@ -509,7 +509,13 @@ class FireworksPlugin {
 
         // Follow event - new follower celebration
         this.api.registerTikTokEvent('follow', (data) => {
-            if (!this.config.enabled || !this.config.followerFireworksEnabled) return;
+            this.api.log(`🎯 [FIREWORKS] Follow event received! Enabled: ${this.config.enabled}, FollowerFireworks: ${this.config.followerFireworksEnabled}`, 'info');
+            this.api.log(`[FIREWORKS] Follow data:`, 'debug', data);
+            
+            if (!this.config.enabled || !this.config.followerFireworksEnabled) {
+                this.api.log(`[FIREWORKS] Skipping follower fireworks (enabled: ${this.config.enabled}, followerEnabled: ${this.config.followerFireworksEnabled})`, 'debug');
+                return;
+            }
             
             this.handleFollowerEvent(data);
         });

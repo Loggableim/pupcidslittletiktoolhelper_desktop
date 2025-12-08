@@ -387,7 +387,10 @@ class Firework {
         
         // Play explosion sound if callback is set
         if (this.onExplodeSound) {
+            console.log('[Fireworks] Explosion callback triggered - playing explosion sound');
             this.onExplodeSound(this.intensity);
+        } else {
+            console.log('[Fireworks] Explosion occurred but no audio callback set');
         }
         
         // For instant explode, use the position from constructor
@@ -1267,6 +1270,7 @@ class FireworksEngine {
                 // Play separate launch and explosion sounds
                 if (audioConfig.launchSound && !skipRockets) {
                     // Play launch sound immediately when rocket launches
+                    console.log(`[Fireworks] Playing launch sound: ${audioConfig.launchSound}`);
                     this.audioManager.play(audioConfig.launchSound, this.audioManager.LAUNCH_AUDIO_VOLUME);
                 }
                 
@@ -1275,8 +1279,10 @@ class FireworksEngine {
                     ? this.audioManager.INSTANT_EXPLODE_VOLUME 
                     : this.audioManager.NORMAL_EXPLOSION_VOLUME;
                 if (audioConfig.explosionSound) {
+                    console.log(`[Fireworks] Setting explosion callback for: ${audioConfig.explosionSound}`);
                     firework.onExplodeSound = (intensity) => {
                         // Play explosion sound synchronized with visual explosion
+                        console.log(`[Fireworks] Explosion callback firing - playing: ${audioConfig.explosionSound}`);
                         this.audioManager.play(audioConfig.explosionSound, intensity * soundVolume);
                         
                         // Add crackling layer if specified (plays with explosion)
@@ -1284,6 +1290,8 @@ class FireworksEngine {
                             this.audioManager.play(audioConfig.cracklingSound, this.audioManager.CRACKLING_VOLUME);
                         }
                     };
+                } else {
+                    console.log('[Fireworks] No explosion sound configured');
                 }
             }
         }
