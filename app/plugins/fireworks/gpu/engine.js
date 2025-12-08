@@ -742,6 +742,131 @@ class AudioManager {
     setEnabled(enabled) {
         this.enabled = enabled;
     }
+
+    /**
+     * Play a sound after a specified delay (in seconds)
+     * Useful for synchronizing explosion sounds with visual explosions
+     */
+    async playDelayed(name, delay, volume = 1.0) {
+        if (!this.enabled) return;
+        
+        await this.ensureAudioContext();
+        
+        if (!this.audioContext || !this.sounds.has(name)) return;
+        
+        try {
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+            
+            const source = this.audioContext.createBufferSource();
+            const gainNode = this.audioContext.createGain();
+            
+            source.buffer = this.sounds.get(name);
+            gainNode.gain.value = this.volume * volume;
+            
+            source.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            // Schedule playback after delay
+            const startTime = this.audioContext.currentTime + delay;
+            source.start(startTime);
+        } catch (e) {
+            console.warn('[Fireworks Audio] Delayed playback error:', e.message);
+        }
+    }
+
+    /**
+     * Select appropriate audio based on firework tier and combo
+     * Returns an object with audio configuration
+     */
+    selectAudio(tier, combo, instantExplode = false) {
+        // For instant explosions (high combo), use only explosion sounds
+        if (instantExplode) {
+            return {
+                useCombinedAudio: false,
+                launchSound: null,
+                explosionSound: 'explosion-basic',
+                explosionDelay: 0
+            };
+        }
+
+        // For high combos (5+), skip rockets but use combined audio for effect
+        if (combo >= 5) {
+            const tinyBangs = ['combined-whistle-tiny1', 'combined-whistle-tiny2', 'combined-whistle-tiny3', 'combined-whistle-tiny4'];
+            return {
+                useCombinedAudio: true,
+                combinedSound: tinyBangs[Math.floor(Math.random() * tinyBangs.length)],
+                explosionDelay: 0  // Explosion is already in the audio
+            };
+        }
+
+        // Tier-based audio selection for normal fireworks
+        switch (tier) {
+            case 'small':
+                // Small fireworks: quick tiny explosions
+                const smallSounds = ['combined-whistle-tiny1', 'combined-whistle-tiny2', 'combined-whistle-tiny3'];
+                return {
+                    useCombinedAudio: true,
+                    combinedSound: smallSounds[Math.floor(Math.random() * smallSounds.length)],
+                    explosionDelay: 1.2  // Tiny bangs have explosion at ~1.2s
+                };
+
+            case 'medium':
+                // Medium fireworks: whistle with normal bang or smooth launch with separate explosion
+                if (Math.random() < 0.6) {
+                    // 60% chance: use combined whistle + normal bang
+                    return {
+                        useCombinedAudio: true,
+                        combinedSound: 'combined-whistle-normal',
+                        explosionDelay: 2.2  // Normal bang has explosion at ~2.2s
+                    };
+                } else {
+                    // 40% chance: smooth launch + separate explosion
+                    return {
+                        useCombinedAudio: false,
+                        launchSound: Math.random() < 0.5 ? 'launch-smooth' : 'launch-smooth2',
+                        explosionSound: 'explosion-basic',
+                        explosionDelay: 1.0  // Smooth launches are ~1.3-1.5s, explosion at 1.0s
+                    };
+                }
+
+            case 'big':
+                // Big fireworks: crackling bang or whistle with separate big explosion
+                if (Math.random() < 0.5) {
+                    // 50% chance: use crackling bang (has built-in crackling + explosion)
+                    return {
+                        useCombinedAudio: true,
+                        combinedSound: 'combined-crackling-bang',
+                        explosionDelay: 3.2  // Crackling bang has explosion at ~3.2s
+                    };
+                } else {
+                    // 50% chance: whistle launch + explosion
+                    return {
+                        useCombinedAudio: false,
+                        launchSound: 'launch-whistle',
+                        explosionSound: 'explosion-basic',
+                        explosionDelay: 1.0  // Whistle launch is ~1.3s, explosion at 1.0s
+                    };
+                }
+
+            case 'massive':
+                // Massive fireworks: always use crackling bang for maximum impact
+                return {
+                    useCombinedAudio: true,
+                    combinedSound: 'combined-crackling-bang',
+                    explosionDelay: 3.2  // Crackling bang has explosion at ~3.2s
+                };
+
+            default:
+                // Fallback to medium settings
+                return {
+                    useCombinedAudio: true,
+                    combinedSound: 'combined-whistle-normal',
+                    explosionDelay: 2.2
+                };
+        }
+    }
 }
 
 // ============================================================================
@@ -980,23 +1105,38 @@ class FireworksEngine {
             instantExplode: instantExplode // Explode immediately without any delay
         });
         
-        // Set explosion sound callback
-        // Reduce volume for instant explosions instead of completely disabling
-        if (playSound) {
-            const soundVolume = instantExplode ? 0.2 : 0.5; // Quieter for instant explosions
-            firework.onExplodeSound = (intensity) => {
-                if (this.audioManager.enabled) {
-                    this.audioManager.play('explosion', intensity * soundVolume);
+        // Audio selection and playback with synchronization
+        if (playSound && this.audioManager.enabled) {
+            const audioConfig = this.audioManager.selectAudio(tier, combo, instantExplode);
+            
+            if (audioConfig.useCombinedAudio) {
+                // Play combined audio (launch + explosion in one file)
+                // The audio is already synchronized internally
+                this.audioManager.play(audioConfig.combinedSound, 0.6);
+                
+                // For combined audio, we don't need the explosion callback
+                // because the explosion sound is already in the combined file
+                console.log(`[Fireworks Audio] Playing combined: ${audioConfig.combinedSound}`);
+            } else {
+                // Play separate launch and explosion sounds
+                if (audioConfig.launchSound && !skipRockets) {
+                    // Play launch sound immediately
+                    this.audioManager.play(audioConfig.launchSound, 0.4);
+                    console.log(`[Fireworks Audio] Playing launch: ${audioConfig.launchSound}`);
                 }
-            };
+                
+                // Set explosion sound callback to trigger when firework explodes
+                const soundVolume = instantExplode ? 0.2 : 0.6;
+                if (audioConfig.explosionSound) {
+                    firework.onExplodeSound = (intensity) => {
+                        this.audioManager.play(audioConfig.explosionSound, intensity * soundVolume);
+                        console.log(`[Fireworks Audio] Playing explosion: ${audioConfig.explosionSound}`);
+                    };
+                }
+            }
         }
 
         this.fireworks.push(firework);
-
-        // Play launch sound only if not skipping rockets
-        if (playSound && !skipRockets && this.audioManager.enabled) {
-            this.audioManager.play('rocket', 0.3);
-        }
 
         // Show gift popup (always show, even for instant explosions)
         if (username && coins > 0) {
@@ -1425,9 +1565,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     engine = new FireworksEngine('fireworks-canvas');
     await engine.init();
 
-    // Preload sounds - using demo folder audio files
-    await engine.audioManager.preload('/assets/audio/sound2.mp3', 'explosion');
-    await engine.audioManager.preload('/assets/audio/sound1.mp3', 'rocket');
+    // Preload sounds - fireworks plugin audio files with synchronized timing
+    
+    // Basic launch sounds (short)
+    await engine.audioManager.preload('/plugins/fireworks/audio/abschussgeraeusch.mp3', 'launch-basic');
+    await engine.audioManager.preload('/plugins/fireworks/audio/abschussgeraeusch2.mp3', 'launch-basic2');
+    
+    // Basic explosion and rocket sounds
+    await engine.audioManager.preload('/plugins/fireworks/audio/explosion.mp3', 'explosion-basic');
+    await engine.audioManager.preload('/plugins/fireworks/audio/rocket.mp3', 'rocket-basic');
+    
+    // Combined sounds - synchronized launch + explosion in one file
+    // These play the entire sequence from launch to explosion
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_crackling_bang.mp3', 'combined-crackling-bang');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_normal-bang.mp3', 'combined-whistle-normal');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_tiny-bang.mp3', 'combined-whistle-tiny1');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_tiny-bang2.mp3', 'combined-whistle-tiny2');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_tiny-bang3.mp3', 'combined-whistle-tiny3');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_tiny-bang4.mp3', 'combined-whistle-tiny4');
+    
+    // Launch-only sounds (no explosion) - for when we want to play explosion separately
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_mit-pfeifen_no-bang.mp3', 'launch-whistle');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_nocrackling_no-bang.mp3', 'launch-smooth');
+    await engine.audioManager.preload('/plugins/fireworks/audio/woosh_abheben_nocrackling_no-bang2.mp3', 'launch-smooth2');
     
     // Enable audio context on first user interaction
     const enableAudio = async () => {
