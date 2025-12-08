@@ -171,6 +171,7 @@ class FireworksPlugin {
             
             // Performance
             gpuAcceleration: true,
+            toasterMode: false, // When enabled, uses Canvas 2D instead of WebGL for better compatibility
             particleSizeRange: [4, 12],
             trailsEnabled: true,
             trailLength: 10,

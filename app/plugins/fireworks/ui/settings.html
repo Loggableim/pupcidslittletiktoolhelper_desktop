@@ -495,6 +495,42 @@
                     </div>
                 </div>
 
+                <!-- Toaster Mode (Low-End PC Optimization) -->
+                <div class="card rounded-xl p-6 border-2 border-orange-500/30">
+                    <h2 class="section-title text-xl font-bold mb-4">🍞 Toaster Modus (Schwache PCs)</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label for="toaster_mode" style="display: flex; align-items: center; gap: 10px;">
+                                <strong>Toaster Modus aktivieren</strong>
+                            </label>
+                            <div id="toaster-toggle" class="toggle-switch" data-config="toasterMode"></div>
+                        </div>
+                        
+                        <p class="text-sm text-gray-400">
+                            Nutzt Canvas 2D Rendering anstatt WebGL für maximale Kompatibilität
+                        </p>
+                        
+                        <div class="bg-orange-900/20 border border-orange-500/30 rounded-lg p-4">
+                            <strong class="text-orange-400">🔧 Was wird geändert:</strong>
+                            <div class="mt-2 space-y-1 text-sm">
+                                <div>• <span class="text-gray-300">Renderer:</span> WebGL → Canvas 2D</div>
+                                <div>• <span class="text-gray-300">GPU-Beschleunigung:</span> Deaktiviert</div>
+                                <div>• <span class="text-gray-300">Kompatibilität:</span> Maximum</div>
+                                <div>• <span class="text-gray-300">Performance:</span> Reduziert aber stabil</div>
+                                <div>• <span class="text-gray-300">Visuelle Effekte:</span> Alle beibehalten</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                            <strong class="text-blue-400">💡 Tipp:</strong>
+                            <p class="text-sm text-gray-300 mt-1">
+                                Nutze den Toaster Modus, wenn dein PC bei Feuerwerk langsamer wird oder du Rendering-Probleme in OBS hast.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- User Avatar Integration -->
                 <div class="card rounded-xl p-6">
                     <h2 class="section-title text-xl font-bold mb-4" data-i18n="fireworks.user_avatar_integration">👤 User Avatar Integration</h2>

@@ -353,17 +353,29 @@ class FireworksEngine {
     }
 
     async init() {
-        // Try WebGL first
-        this.gl = this.canvas.getContext('webgl2') || this.canvas.getContext('webgl');
+        // Check if toaster mode is requested via config
+        // Toaster mode forces Canvas 2D rendering for maximum compatibility
+        const toasterModeRequested = this.config.toasterMode === true;
         
-        if (this.gl) {
-            this.useWebGL = true;
-            this.initWebGL();
-            document.getElementById('renderer-type').textContent = 'WebGL';
-        } else {
-            // Fallback to Canvas 2D
+        if (toasterModeRequested) {
+            // Toaster Mode: Force Canvas 2D rendering
             this.ctx = this.canvas.getContext('2d');
-            document.getElementById('renderer-type').textContent = 'Canvas 2D';
+            this.useWebGL = false;
+            document.getElementById('renderer-type').textContent = 'Canvas 2D (Toaster Mode)';
+            console.log('[Fireworks Engine] Toaster Mode enabled - using Canvas 2D');
+        } else {
+            // Try WebGL first for better performance
+            this.gl = this.canvas.getContext('webgl2') || this.canvas.getContext('webgl');
+            
+            if (this.gl) {
+                this.useWebGL = true;
+                this.initWebGL();
+                document.getElementById('renderer-type').textContent = 'WebGL';
+            } else {
+                // Fallback to Canvas 2D if WebGL not available
+                this.ctx = this.canvas.getContext('2d');
+                document.getElementById('renderer-type').textContent = 'Canvas 2D (Fallback)';
+            }
         }
 
         // Set canvas size
