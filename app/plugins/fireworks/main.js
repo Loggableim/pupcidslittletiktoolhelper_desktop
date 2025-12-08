@@ -144,8 +144,8 @@ class FireworksPlugin {
             
             // Audio
             audioEnabled: true,
-            rocketSound: '/plugins/fireworks/audio/rocket.mp3',
-            explosionSound: '/plugins/fireworks/audio/explosion.mp3',
+            rocketSound: '/assets/audio/sound1.mp3', // Using demo folder audio
+            explosionSound: '/assets/audio/sound2.mp3', // Using demo folder audio
             audioVolume: 0.7,
             
             // Colors
@@ -176,6 +176,14 @@ class FireworksPlugin {
             trailsEnabled: true,
             trailLength: 10,
             glowEnabled: true,
+            resolution: 1.0,
+            targetFps: 60,
+            minFps: 24, // User can configure down to 24 FPS
+            despawnFadeDuration: 1.5, // Duration for despawn fade effect in seconds
+            
+            // Gift popup
+            giftPopupEnabled: true, // Show gift animation text
+            giftPopupPosition: 'bottom', // 'top', 'middle', 'bottom', 'none'
             
             // Advanced
             gravity: 0.1,
@@ -718,7 +726,16 @@ class FireworksPlugin {
             particleSizeRange: this.config.particleSizeRange,
             
             // Avatar settings
-            avatarParticleChance: this.config.avatarParticleChance || 0.3
+            avatarParticleChance: this.config.avatarParticleChance || 0.3,
+            
+            // Performance settings
+            targetFps: this.config.targetFps || 60,
+            minFps: this.config.minFps || 24,
+            despawnFadeDuration: this.config.despawnFadeDuration || 1.5,
+            
+            // Gift popup settings
+            giftPopupEnabled: this.config.giftPopupEnabled !== false,
+            giftPopupPosition: this.config.giftPopupPosition || 'bottom'
         };
 
         this.api.emit('fireworks:trigger', payload);
