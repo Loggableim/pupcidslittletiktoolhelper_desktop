@@ -352,6 +352,7 @@ function setupEventListeners() {
     document.getElementById('test-shape-star-btn')?.addEventListener('click', () => triggerTestShape('star'));
     document.getElementById('test-shape-ring-btn')?.addEventListener('click', () => triggerTestShape('ring'));
     document.getElementById('test-shape-spiral-btn')?.addEventListener('click', () => triggerTestShape('spiral'));
+    document.getElementById('test-shape-paws-btn')?.addEventListener('click', () => triggerTestShape('paws'));
     document.getElementById('test-shape-random-btn')?.addEventListener('click', triggerTestRandom);
     
     // Master toggle
