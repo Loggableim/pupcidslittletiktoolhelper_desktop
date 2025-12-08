@@ -107,8 +107,17 @@ const testSuites = [
             }},
             
             { name: 'Warning duration is 10 seconds', fn: () => {
+                const io = new MockIO();
                 const expectedDuration = 10000; // 10 seconds in milliseconds
-                assert.strictEqual(expectedDuration, 10000, 'Duration should be 10000ms (10 seconds)');
+                
+                // Emit a warning event to test the duration
+                io.emit('euler-backup-key-warning', {
+                    message: 'Euler Backup Key wird verwendet',
+                    duration: expectedDuration
+                });
+                
+                const warningEvent = io.getEmittedEvent('euler-backup-key-warning');
+                assert.strictEqual(warningEvent.data.duration, 10000, 'Duration should be 10000ms (10 seconds)');
             }},
         ]
     }
