@@ -90,7 +90,7 @@ If you already built an unsigned installer, you can sign it manually:
 ```batch
 cd build-src\installer
 set SIGN_ENABLED=1
-sign-file.bat LTTH-Setup-1.2.0.exe
+sign-file.bat LTTH-Setup-<version>.exe
 ```
 
 ## 📁 Files Overview
@@ -168,7 +168,7 @@ signtool sign /a /fd sha256 /tr <timestamp_url> /td sha256 <file>
    - Re-embeds signed uninstaller in installer
 
 4. **NSIS calls !finalize**
-   - Executes: `sign-file.bat LTTH-Setup-1.2.0.exe`
+   - Executes: `sign-file.bat LTTH-Setup-<version>.exe`
    - Signs the final installer executable
 
 5. **Verification**
@@ -194,7 +194,7 @@ When `SIGN_ENABLED` is not set to "1":
 
 ### Verify Signed Installer (Windows Explorer)
 
-1. Right-click `LTTH-Setup-1.2.0.exe`
+1. Right-click `LTTH-Setup-<version>.exe`
 2. Select **Properties**
 3. Go to **Digital Signatures** tab
 4. Verify signature shows your certificate details
@@ -203,12 +203,12 @@ When `SIGN_ENABLED` is not set to "1":
 ### Verify Signed Installer (Command Line)
 
 ```batch
-signtool verify /pa LTTH-Setup-1.2.0.exe
+signtool verify /pa LTTH-Setup-<version>.exe
 ```
 
 Expected output:
 ```
-Successfully verified: LTTH-Setup-1.2.0.exe
+Successfully verified: LTTH-Setup-<version>.exe
 
 Number of files successfully Verified: 1
 Number of warnings: 0
@@ -365,7 +365,7 @@ Compiling NSIS installer...
 [SUCCESS] File signed successfully
 [SUCCESS] Signature verified
 
-[INFO] Signing: LTTH-Setup-1.2.0.exe
+[INFO] Signing: LTTH-Setup-<version>.exe
 [SUCCESS] File signed successfully
 [SUCCESS] Signature verified
 
@@ -387,7 +387,7 @@ build-installer.bat
 
 ```batch
 set SIGN_ENABLED=1
-sign-file.bat LTTH-Setup-1.2.0.exe
+sign-file.bat LTTH-Setup-<version>.exe
 ```
 
 ### Example 4: Build Without Signing (Default)

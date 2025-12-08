@@ -76,7 +76,7 @@ if "%SIGN_ENABLED%"=="1" (
     echo.
     echo The installer will be built without signing.
     echo You can sign it manually later using:
-    echo   sign-file.bat LTTH-Setup-1.2.0.exe
+    echo   sign-file.bat LTTH-Setup-^<version^>.exe
     echo.
 )
 
@@ -129,7 +129,7 @@ if %ERRORLEVEL% == 0 (
     echo.
     echo Installer created successfully!
     echo.
-    echo Output: LTTH-Setup-1.2.0.exe
+    echo Output: LTTH-Setup-^<version^>.exe
     echo Location: %CD%
     echo.
     echo You can now distribute this installer.
