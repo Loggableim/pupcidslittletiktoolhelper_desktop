@@ -1187,34 +1187,52 @@
     // HUD Tab Event Listeners
     if (document.getElementById('saveHUDConfigBtn')) {
         document.getElementById('saveHUDConfigBtn').addEventListener('click', saveHUDConfig);
+    }
+    if (document.getElementById('resetHUDConfigBtn')) {
         document.getElementById('resetHUDConfigBtn').addEventListener('click', resetHUDConfig);
+    }
+    if (document.getElementById('openOverlayBtn')) {
         document.getElementById('openOverlayBtn').addEventListener('click', openOverlay);
+    }
+    if (document.getElementById('openLeaderboardOverlayBtn')) {
         document.getElementById('openLeaderboardOverlayBtn').addEventListener('click', openLeaderboardOverlay);
+    }
+    if (document.getElementById('refreshPreviewBtn')) {
         document.getElementById('refreshPreviewBtn').addEventListener('click', refreshPreview);
+    }
 
-        // Range sliders
+    // Range sliders
+    if (document.getElementById('animationSpeed')) {
         document.getElementById('animationSpeed').addEventListener('input', (e) => {
-            document.getElementById('animationSpeedValue').textContent = parseFloat(e.target.value).toFixed(1);
+            const valueElement = document.getElementById('animationSpeedValue');
+            if (valueElement) {
+                valueElement.textContent = parseFloat(e.target.value).toFixed(1);
+            }
         });
+    }
 
+    if (document.getElementById('glowIntensity')) {
         document.getElementById('glowIntensity').addEventListener('input', (e) => {
-            document.getElementById('glowIntensityValue').textContent = parseFloat(e.target.value).toFixed(1);
+            const valueElement = document.getElementById('glowIntensityValue');
+            if (valueElement) {
+                valueElement.textContent = parseFloat(e.target.value).toFixed(1);
+            }
         });
+    }
 
-        // Load HUD config and layouts when overlay-config tab is opened
-        const overlayConfigTab = document.querySelector('[data-tab="overlay-config"]');
-        if (overlayConfigTab) {
-            overlayConfigTab.addEventListener('click', () => {
-                setTimeout(() => {
-                    loadHUDConfig();
-                    loadLayouts();
-                    // Initialize draggable elements
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(initializeDraggableElements);
-                    });
-                }, 100);
-            });
-        }
+    // Load HUD config and layouts when overlay-config tab is opened
+    const overlayConfigTab = document.querySelector('[data-tab="overlay-config"]');
+    if (overlayConfigTab) {
+        overlayConfigTab.addEventListener('click', () => {
+            setTimeout(() => {
+                loadHUDConfig();
+                loadLayouts();
+                // Initialize draggable elements
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(initializeDraggableElements);
+                });
+            }, 100);
+        });
     }
 
     function openLeaderboardOverlay() {
