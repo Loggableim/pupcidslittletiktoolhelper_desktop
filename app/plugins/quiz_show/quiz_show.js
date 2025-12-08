@@ -1123,13 +1123,13 @@
 
             if (data.success) {
                 hudConfig = data.config;
-                showMessage('hudSaveMessage', 'HUD-Konfiguration erfolgreich gespeichert!', 'success');
+                showMessage('HUD-Konfiguration erfolgreich gespeichert!', 'success', 'hudSaveMessage');
                 refreshPreview();
             } else {
-                showMessage('hudSaveMessage', 'Fehler beim Speichern: ' + data.error, 'error');
+                showMessage('Fehler beim Speichern: ' + data.error, 'error', 'hudSaveMessage');
             }
         } catch (error) {
-            showMessage('hudSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+            showMessage('Netzwerkfehler: ' + error.message, 'error', 'hudSaveMessage');
         }
     }
 
@@ -1148,13 +1148,13 @@
             if (data.success) {
                 hudConfig = data.config;
                 applyHUDConfigToForm();
-                showMessage('hudSaveMessage', 'HUD-Konfiguration auf Standard zurückgesetzt!', 'success');
+                showMessage('HUD-Konfiguration auf Standard zurückgesetzt!', 'success', 'hudSaveMessage');
                 refreshPreview();
             } else {
-                showMessage('hudSaveMessage', 'Fehler beim Zurücksetzen: ' + data.error, 'error');
+                showMessage('Fehler beim Zurücksetzen: ' + data.error, 'error', 'hudSaveMessage');
             }
         } catch (error) {
-            showMessage('hudSaveMessage', 'Netzwerkfehler: ' + error.message, 'error');
+            showMessage('Netzwerkfehler: ' + error.message, 'error', 'hudSaveMessage');
         }
     }
 
