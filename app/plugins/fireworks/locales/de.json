@@ -3,16 +3,17 @@
     "title": "Feuerwerk Superplugin Einstellungen",
     "subtitle": "GPU-beschleunigte Feuerwerkseffekte",
     "toaster_mode": {
-      "title": "Toaster Modus (Schwache PCs)",
+      "title": "🍞 Toaster Modus (Schwache PCs)",
       "description": "Nutzt Canvas 2D Rendering anstatt WebGL für maximale Kompatibilität",
       "enabled": "Toaster Modus aktivieren",
       "help": "Optimiert für schwache Systeme und maximale Kompatibilität",
-      "changes_title": "Was wird geändert:",
+      "changes_title": "🔧 Was wird geändert:",
       "renderer": "Renderer: WebGL → Canvas 2D",
       "gpu": "GPU-Beschleunigung: Deaktiviert",
       "compatibility": "Kompatibilität: Maximum",
       "performance": "Performance: Reduziert aber stabil",
-      "effects": "Alle visuellen Effekte beibehalten",
+      "effects": "Visuelle Effekte: Alle beibehalten",
+      "tip_title": "Tipp:",
       "tip": "Nutze den Toaster Modus, wenn dein PC bei Feuerwerk langsamer wird oder du Rendering-Probleme in OBS hast."
     }
   }

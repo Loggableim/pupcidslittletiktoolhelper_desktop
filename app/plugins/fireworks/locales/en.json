@@ -3,16 +3,17 @@
     "title": "Fireworks Superplugin Settings",
     "subtitle": "GPU-Accelerated Fireworks Effects",
     "toaster_mode": {
-      "title": "Toaster Mode (Low-End PCs)",
+      "title": "🍞 Toaster Mode (Low-End PCs)",
       "description": "Uses Canvas 2D rendering instead of WebGL for maximum compatibility",
       "enabled": "Enable Toaster Mode",
       "help": "Optimized for weak systems and maximum compatibility",
-      "changes_title": "What changes:",
+      "changes_title": "🔧 What changes:",
       "renderer": "Renderer: WebGL → Canvas 2D",
       "gpu": "GPU Acceleration: Disabled",
       "compatibility": "Compatibility: Maximum",
       "performance": "Performance: Reduced but stable",
-      "effects": "All visual effects maintained",
+      "effects": "Visual Effects: All maintained",
+      "tip_title": "Tip:",
       "tip": "Use Toaster Mode if your PC slows down during fireworks or if you experience rendering issues in OBS."
     }
   }
