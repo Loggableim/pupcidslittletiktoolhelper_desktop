@@ -744,7 +744,30 @@ class TTSPlugin {
         });
 
         // Refresh voices from Google API (force fresh fetch)
-        this.api.registerRoute('POST', '/api/tts/voices/refresh', async (req, res) => {
+        // Rate limited to prevent API abuse (max 10 refreshes per minute)
+        const rateLimiter = require('express-rate-limit');
+        const voiceRefreshLimiter = rateLimiter({
+            windowMs: 60 * 1000, // 1 minute
+            max: 10, // Max 10 refreshes per minute
+            message: {
+                success: false,
+                error: 'Too many voice refresh requests, please try again after a minute'
+            },
+            standardHeaders: true,
+            legacyHeaders: false,
+            handler: (req, res) => {
+                this.logger.warn('Voice refresh rate limit exceeded', {
+                    ip: req.ip,
+                    path: req.path
+                });
+                res.status(429).json({
+                    success: false,
+                    error: 'Too many voice refresh requests, please try again after a minute'
+                });
+            }
+        });
+
+        this.api.registerRoute('POST', '/api/tts/voices/refresh', voiceRefreshLimiter, async (req, res) => {
             try {
                 if (!this.engines.google) {
                     return res.status(400).json({
@@ -755,6 +778,11 @@ class TTSPlugin {
 
                 // Force fresh fetch from API
                 const voices = await this.engines.google.getAllVoices(true);
+                
+                this.logger.info('Google TTS voices manually refreshed', {
+                    voiceCount: Object.keys(voices).length,
+                    ip: req.ip
+                });
                 
                 return res.json({
                     success: true,

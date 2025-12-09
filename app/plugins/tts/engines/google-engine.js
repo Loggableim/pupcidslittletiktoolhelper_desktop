@@ -375,19 +375,12 @@ class GoogleEngine {
     _extractVoiceStyle(voiceId) {
         const nameLower = voiceId.toLowerCase();
         
-        // Order matters: check most specific patterns first
-        const stylePatterns = {
-            'neural2': 'neural2',
-            'wavenet': 'wavenet',
-            'studio': 'studio',
-            'polyglot': 'polyglot',
-            'news': 'news',
-            'journey': 'journey'
-        };
+        // Check patterns in order of specificity
+        const patterns = ['neural2', 'wavenet', 'studio', 'polyglot', 'news', 'journey'];
         
-        for (const [pattern, style] of Object.entries(stylePatterns)) {
+        for (const pattern of patterns) {
             if (nameLower.includes(pattern)) {
-                return style;
+                return pattern;
             }
         }
         
@@ -424,9 +417,12 @@ class GoogleEngine {
 
         try {
             const response = await axios.get(
-                `${this.voicesUrl}?key=${this.apiKey}`,
+                this.voicesUrl,
                 {
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Goog-Api-Key': this.apiKey
+                    },
                     timeout: this.timeout
                 }
             );
@@ -437,6 +433,13 @@ class GoogleEngine {
                 // Transform Google API format to our internal format
                 for (const voice of response.data.voices) {
                     const voiceId = voice.name;
+                    
+                    // Validate languageCodes array
+                    if (!voice.languageCodes || voice.languageCodes.length === 0) {
+                        this.logger.warn(`Google TTS: Skipping voice ${voiceId} - no language codes`);
+                        continue;
+                    }
+                    
                     const languageCode = voice.languageCodes[0];
                     
                     // Extract language prefix (e.g., 'de' from 'de-DE')
