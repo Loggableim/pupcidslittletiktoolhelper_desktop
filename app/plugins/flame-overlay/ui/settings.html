@@ -393,7 +393,20 @@
     
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        // Initialize socket.io with error handling
+        let socket = null;
+        try {
+            if (typeof io !== 'undefined') {
+                socket = io();
+                socket.on('connect_error', (error) => {
+                    console.warn('Socket.io connection error:', error);
+                });
+            } else {
+                console.warn('Socket.io not loaded - some features may not work');
+            }
+        } catch (error) {
+            console.error('Failed to initialize socket.io:', error);
+        }
         
         // Update slider value displays
         document.querySelectorAll('input[type="range"]').forEach(slider => {

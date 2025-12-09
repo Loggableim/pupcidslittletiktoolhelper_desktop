@@ -6,6 +6,12 @@
 class FlameRenderer {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
+        
+        if (!this.canvas) {
+            console.error('Canvas element not found:', canvasId);
+            return;
+        }
+        
         this.gl = null;
         this.program = null;
         this.textures = {};
@@ -18,6 +24,11 @@ class FlameRenderer {
     }
     
     init() {
+        if (!this.canvas) {
+            console.error('Cannot initialize: canvas is null');
+            return;
+        }
+        
         // Initialize WebGL context
         this.gl = this.canvas.getContext('webgl', {
             alpha: true,
@@ -81,12 +92,27 @@ class FlameRenderer {
     setupSocketListener() {
         // Check if socket.io is available
         if (typeof io !== 'undefined') {
-            const socket = io();
-            socket.on('flame-overlay:config-update', (data) => {
-                console.log('Config update received:', data);
-                this.config = data.config;
-                this.updateUniforms();
-            });
+            try {
+                const socket = io();
+                
+                socket.on('connect', () => {
+                    console.log('Socket.io connected for config updates');
+                });
+                
+                socket.on('connect_error', (error) => {
+                    console.warn('Socket.io connection error:', error);
+                });
+                
+                socket.on('flame-overlay:config-update', (data) => {
+                    console.log('Config update received:', data);
+                    this.config = data.config;
+                    this.updateUniforms();
+                });
+            } catch (error) {
+                console.error('Failed to setup socket listener:', error);
+            }
+        } else {
+            console.warn('Socket.io not available - config updates disabled');
         }
     }
     
@@ -319,6 +345,11 @@ class FlameRenderer {
 }
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        new FlameRenderer('flameCanvas');
+    });
+} else {
+    // DOM already loaded
     new FlameRenderer('flameCanvas');
-});
+}
