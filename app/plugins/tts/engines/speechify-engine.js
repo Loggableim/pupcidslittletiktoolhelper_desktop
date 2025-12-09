@@ -38,6 +38,42 @@ const axios = require('axios');
  * - Port 443 (HTTPS) must be open
  */
 class SpeechifyEngine {
+    // Supported emotions for SSML
+    static VALID_EMOTIONS = [
+        'angry', 'cheerful', 'sad', 'terrified', 'relaxed', 
+        'fearful', 'surprised', 'calm', 'assertive', 'energetic',
+        'warm', 'direct', 'bright'
+    ];
+
+    // Language code mapping for Speechify API
+    static LANGUAGE_MAP = {
+        'en': 'en',        // English (auto-detect variant)
+        'de': 'de-DE',     // German
+        'fr': 'fr-FR',     // French
+        'es': 'es-ES',     // Spanish
+        'pt': 'pt-BR',     // Portuguese (Brazil)
+        'it': 'it-IT',     // Italian (beta)
+        'ja': 'ja-JP',     // Japanese (beta)
+        'ru': 'ru-RU',     // Russian (beta)
+        'ar': 'ar-AE',     // Arabic (beta)
+        'nl': 'nl-NL',     // Dutch (beta)
+        'pl': 'pl-PL',     // Polish (beta)
+        'tr': 'tr-TR',     // Turkish (beta)
+        'ko': 'ko-KR',     // Korean (coming soon)
+        'zh': 'zh-CH',     // Mandarin (coming soon)
+        'vi': 'vi-VN',     // Vietnamese (beta)
+        'th': 'th-TH',     // Thai (coming soon)
+        'hi': 'hi-IN',     // Hindi (beta)
+        'he': 'he-IL',     // Hebrew (beta)
+        'sv': 'sv-SE',     // Swedish (beta)
+        'da': 'da-DK',     // Danish (beta)
+        'fi': 'fi-FI',     // Finnish (beta)
+        'no': 'nb-NO',     // Norwegian (beta)
+        'el': 'el-GR',     // Greek (beta)
+        'uk': 'uk-UA',     // Ukrainian (beta)
+        'et': 'et-EE'      // Estonian (beta)
+    };
+
     constructor(apiKey, logger, config = {}) {
         if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
             throw new Error('Speechify API key is required and must be a non-empty string');
@@ -296,14 +332,8 @@ class SpeechifyEngine {
     _generateSSMLWithEmotion(text, emotion) {
         if (!text) return '';
         
-        // Validate emotion
-        const validEmotions = [
-            'angry', 'cheerful', 'sad', 'terrified', 'relaxed', 
-            'fearful', 'surprised', 'calm', 'assertive', 'energetic',
-            'warm', 'direct', 'bright'
-        ];
-        
-        if (!emotion || !validEmotions.includes(emotion.toLowerCase())) {
+        // Validate emotion using class constant
+        if (!emotion || !SpeechifyEngine.VALID_EMOTIONS.includes(emotion.toLowerCase())) {
             // No emotion or invalid - just escape and wrap in speak tag
             return `<speak>${this._escapeSSML(text)}</speak>`;
         }
@@ -321,36 +351,7 @@ class SpeechifyEngine {
      */
     _mapLanguageCode(langCode) {
         if (!langCode) return null;
-        
-        const languageMap = {
-            'en': 'en',        // English (auto-detect variant)
-            'de': 'de-DE',     // German
-            'fr': 'fr-FR',     // French
-            'es': 'es-ES',     // Spanish
-            'pt': 'pt-BR',     // Portuguese (Brazil)
-            'it': 'it-IT',     // Italian (beta)
-            'ja': 'ja-JP',     // Japanese (beta)
-            'ru': 'ru-RU',     // Russian (beta)
-            'ar': 'ar-AE',     // Arabic (beta)
-            'nl': 'nl-NL',     // Dutch (beta)
-            'pl': 'pl-PL',     // Polish (beta)
-            'tr': 'tr-TR',     // Turkish (beta)
-            'ko': 'ko-KR',     // Korean (coming soon)
-            'zh': 'zh-CH',     // Mandarin (coming soon)
-            'vi': 'vi-VN',     // Vietnamese (beta)
-            'th': 'th-TH',     // Thai (coming soon)
-            'hi': 'hi-IN',     // Hindi (beta)
-            'he': 'he-IL',     // Hebrew (beta)
-            'sv': 'sv-SE',     // Swedish (beta)
-            'da': 'da-DK',     // Danish (beta)
-            'fi': 'fi-FI',     // Finnish (beta)
-            'no': 'nb-NO',     // Norwegian (beta)
-            'el': 'el-GR',     // Greek (beta)
-            'uk': 'uk-UA',     // Ukrainian (beta)
-            'et': 'et-EE'      // Estonian (beta)
-        };
-        
-        return languageMap[langCode.toLowerCase()] || null;
+        return SpeechifyEngine.LANGUAGE_MAP[langCode.toLowerCase()] || null;
     }
 
     /**
