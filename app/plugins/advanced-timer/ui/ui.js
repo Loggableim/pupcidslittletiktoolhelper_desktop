@@ -6,16 +6,16 @@
 const socket = io();
 let timers = [];
 let currentEditingTimer = null;
-let i18n = null;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize i18n
-    i18n = new I18nClient();
-    await i18n.init();
+    // Wait for global i18n to be ready (initialized by i18n-client.js)
+    if (!window.i18n.initialized) {
+        await window.i18n.init();
+    }
     
     // Listen for language changes
-    i18n.onLanguageChange((newLocale) => {
+    window.i18n.onLanguageChange((newLocale) => {
         console.log('Language changed to:', newLocale);
         // Re-render UI with new language
         renderTimers();
@@ -24,13 +24,91 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Also listen for language changes via socket (for real-time sync)
     socket.on('locale-changed', async (newLocale) => {
         console.log('Locale changed via socket:', newLocale);
-        await i18n.changeLanguage(newLocale);
+        await window.i18n.changeLanguage(newLocale);
         renderTimers();
     });
+    
+    // Setup event listeners
+    setupEventListeners();
     
     loadTimers();
     setupSocketListeners();
 });
+
+/**
+ * Setup UI event listeners
+ */
+function setupEventListeners() {
+    // Navigation buttons (sidebar)
+    document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tabName = e.currentTarget.getAttribute('data-tab');
+            showTab(tabName, e.currentTarget);
+        });
+    });
+    
+    // New Timer button in timers tab
+    const newTimerBtn = document.querySelector('#tab-timers .btn-primary[data-tab="create"]');
+    if (newTimerBtn) {
+        newTimerBtn.addEventListener('click', (e) => {
+            showTab('create', e.currentTarget);
+        });
+    }
+    
+    // Timer form submission
+    const timerForm = document.getElementById('timer-form');
+    if (timerForm) {
+        timerForm.addEventListener('submit', handleCreateTimer);
+    }
+    
+    // Timer mode change
+    const timerModeSelect = document.getElementById('timer-mode');
+    if (timerModeSelect) {
+        timerModeSelect.addEventListener('change', handleModeChange);
+    }
+    
+    // Cancel button in create form
+    const cancelBtn = document.querySelector('#tab-create .btn-secondary[data-tab="timers"]');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', (e) => {
+            showTab('timers', e.currentTarget);
+        });
+    }
+    
+    // Settings modal tabs
+    document.querySelectorAll('#timer-settings-modal .tab[data-settings-tab]').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            const tabName = e.currentTarget.getAttribute('data-settings-tab');
+            showSettingsTab(tabName, e.currentTarget);
+        });
+    });
+    
+    // Settings modal buttons
+    const saveSettingsBtn = document.getElementById('save-timer-settings');
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', saveTimerSettings);
+    }
+    
+    const closeModalBtn = document.getElementById('close-modal');
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeModal);
+    }
+    
+    const addEventBtn = document.getElementById('add-timer-event');
+    if (addEventBtn) {
+        addEventBtn.addEventListener('click', addTimerEvent);
+    }
+    
+    const copyUrlBtn = document.getElementById('copy-overlay-url');
+    if (copyUrlBtn) {
+        copyUrlBtn.addEventListener('click', copyOverlayURL);
+    }
+    
+    const exportLogsBtn = document.getElementById('export-logs');
+    if (exportLogsBtn) {
+        exportLogsBtn.addEventListener('click', exportLogs);
+    }
+}
 
 /**
  * Setup Socket.IO listeners for real-time updates
@@ -93,8 +171,8 @@ function renderTimers() {
     
     // Helper to get translation safely
     const t = (key, fallback) => {
-        if (!i18n || !i18n.initialized) return fallback;
-        const trans = i18n.t(key);
+        if (!window.i18n || !window.i18n.initialized) return fallback;
+        const trans = window.i18n.t(key);
         return trans === key ? fallback : trans;
     };
     
@@ -103,9 +181,17 @@ function renderTimers() {
             <div class="empty-state">
                 <div class="empty-state-icon">⏱️</div>
                 <div class="empty-state-text">${t('ui.messages.noTimers', 'No timers yet')}</div>
-                <button class="btn btn-primary" onclick="showTab('create')">${t('ui.messages.createFirst', 'Create Your First Timer')}</button>
+                <button class="btn btn-primary" data-tab="create">${t('ui.messages.createFirst', 'Create Your First Timer')}</button>
             </div>
         `;
+        
+        // Add event listener to the create button
+        const createBtn = container.querySelector('button[data-tab="create"]');
+        if (createBtn) {
+            createBtn.addEventListener('click', (e) => {
+                showTab('create', e.currentTarget);
+            });
+        }
         return;
     }
 
@@ -127,26 +213,90 @@ function renderTimers() {
 
             <div class="timer-controls">
                 ${timer.state === 'stopped' || timer.state === 'paused' || timer.state === 'completed' ? 
-                    `<button class="btn btn-success btn-sm" onclick="startTimer('${timer.id}')">▶️ ${t('ui.buttons.start', 'Start')}</button>` : ''}
+                    `<button class="btn btn-success btn-sm" data-action="start" data-timer-id="${timer.id}">▶️ ${t('ui.buttons.start', 'Start')}</button>` : ''}
                 ${timer.state === 'running' ? 
-                    `<button class="btn btn-warning btn-sm" onclick="pauseTimer('${timer.id}')">⏸️ ${t('ui.buttons.pause', 'Pause')}</button>` : ''}
+                    `<button class="btn btn-warning btn-sm" data-action="pause" data-timer-id="${timer.id}">⏸️ ${t('ui.buttons.pause', 'Pause')}</button>` : ''}
                 ${timer.state === 'running' || timer.state === 'paused' ? 
-                    `<button class="btn btn-danger btn-sm" onclick="stopTimer('${timer.id}')">⏹️ ${t('ui.buttons.stop', 'Stop')}</button>` : ''}
-                <button class="btn btn-secondary btn-sm" onclick="resetTimer('${timer.id}')">🔄 ${t('ui.buttons.reset', 'Reset')}</button>
-                <button class="btn btn-secondary btn-sm" onclick="openTimerSettings('${timer.id}')">⚙️ ${t('ui.buttons.settings', 'Settings')}</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteTimer('${timer.id}')">🗑️ ${t('ui.buttons.delete', 'Delete')}</button>
+                    `<button class="btn btn-danger btn-sm" data-action="stop" data-timer-id="${timer.id}">⏹️ ${t('ui.buttons.stop', 'Stop')}</button>` : ''}
+                <button class="btn btn-secondary btn-sm" data-action="reset" data-timer-id="${timer.id}">🔄 ${t('ui.buttons.reset', 'Reset')}</button>
+                <button class="btn btn-secondary btn-sm" data-action="settings" data-timer-id="${timer.id}">⚙️ ${t('ui.buttons.settings', 'Settings')}</button>
+                <button class="btn btn-danger btn-sm" data-action="delete" data-timer-id="${timer.id}">🗑️ ${t('ui.buttons.delete', 'Delete')}</button>
             </div>
 
             <div class="quick-actions">
-                <button class="btn btn-secondary btn-sm" onclick="addTime('${timer.id}', 10)">+10s</button>
-                <button class="btn btn-secondary btn-sm" onclick="addTime('${timer.id}', 30)">+30s</button>
-                <button class="btn btn-secondary btn-sm" onclick="addTime('${timer.id}', 60)">+1m</button>
-                <button class="btn btn-secondary btn-sm" onclick="addTime('${timer.id}', 300)">+5m</button>
-                <button class="btn btn-secondary btn-sm" onclick="removeTime('${timer.id}', 10)">-10s</button>
-                <button class="btn btn-secondary btn-sm" onclick="removeTime('${timer.id}', 30)">-30s</button>
+                <button class="btn btn-secondary btn-sm" data-action="add-time" data-timer-id="${timer.id}" data-seconds="10">+10s</button>
+                <button class="btn btn-secondary btn-sm" data-action="add-time" data-timer-id="${timer.id}" data-seconds="30">+30s</button>
+                <button class="btn btn-secondary btn-sm" data-action="add-time" data-timer-id="${timer.id}" data-seconds="60">+1m</button>
+                <button class="btn btn-secondary btn-sm" data-action="add-time" data-timer-id="${timer.id}" data-seconds="300">+5m</button>
+                <button class="btn btn-secondary btn-sm" data-action="remove-time" data-timer-id="${timer.id}" data-seconds="10">-10s</button>
+                <button class="btn btn-secondary btn-sm" data-action="remove-time" data-timer-id="${timer.id}" data-seconds="30">-30s</button>
             </div>
         </div>
     `).join('');
+    
+    // Setup event delegation for timer control buttons
+    setupTimerControlListeners();
+}
+
+/**
+ * Setup event listeners for timer control buttons (using event delegation)
+ */
+let timerControlsSetup = false; // Flag to prevent duplicate setup
+
+function setupTimerControlListeners() {
+    // Only setup once
+    if (timerControlsSetup) {
+        return;
+    }
+    
+    const container = document.getElementById('timers-container');
+    if (!container) return;
+    
+    // Event delegation for all timer buttons
+    container.addEventListener('click', (e) => {
+        const button = e.target.closest('button[data-action]');
+        if (!button) return;
+        
+        const action = button.getAttribute('data-action');
+        const timerId = button.getAttribute('data-timer-id');
+        const secondsAttr = button.getAttribute('data-seconds');
+        const seconds = secondsAttr ? parseInt(secondsAttr, 10) : 0;
+        
+        // Validate seconds for add/remove-time actions
+        if ((action === 'add-time' || action === 'remove-time') && (isNaN(seconds) || seconds <= 0)) {
+            console.error('Invalid seconds value:', secondsAttr);
+            return;
+        }
+        
+        switch (action) {
+            case 'start':
+                startTimer(timerId);
+                break;
+            case 'pause':
+                pauseTimer(timerId);
+                break;
+            case 'stop':
+                stopTimer(timerId);
+                break;
+            case 'reset':
+                resetTimer(timerId);
+                break;
+            case 'settings':
+                openTimerSettings(timerId);
+                break;
+            case 'delete':
+                deleteTimer(timerId);
+                break;
+            case 'add-time':
+                addTime(timerId, seconds);
+                break;
+            case 'remove-time':
+                removeTime(timerId, seconds);
+                break;
+        }
+    });
+    
+    timerControlsSetup = true;
 }
 
 /**
@@ -457,12 +607,14 @@ function copyOverlayURL() {
 /**
  * Tab navigation
  */
-function showTab(tabName) {
+function showTab(tabName, targetElement) {
     // Update nav buttons
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    event.target.classList.add('active');
+    if (targetElement) {
+        targetElement.classList.add('active');
+    }
 
     // Update tab content
     document.querySelectorAll('.tab-content').forEach(content => {
@@ -471,12 +623,14 @@ function showTab(tabName) {
     document.getElementById(`tab-${tabName}`).classList.add('active');
 }
 
-function showSettingsTab(tabName) {
+function showSettingsTab(tabName, targetElement) {
     // Update tabs
     document.querySelectorAll('#timer-settings-modal .tab').forEach(tab => {
         tab.classList.remove('active');
     });
-    event.target.classList.add('active');
+    if (targetElement) {
+        targetElement.classList.add('active');
+    }
 
     // Update tab content
     document.querySelectorAll('#timer-settings-modal .tab-content').forEach(content => {
@@ -506,7 +660,7 @@ function formatTimestamp(timestamp) {
 }
 
 function getModeLabel(mode) {
-    if (!i18n || !i18n.initialized) {
+    if (!window.i18n || !window.i18n.initialized) {
         // Fallback labels when i18n not ready
         const labels = {
             'countdown': 'Countdown',
@@ -519,13 +673,13 @@ function getModeLabel(mode) {
     }
     
     const key = `ui.modes.${mode}`;
-    const translation = i18n.t(key);
+    const translation = window.i18n.t(key);
     // If translation is same as key, it means it wasn't found, return the mode itself
     return translation === key ? mode : translation.split(' - ')[0]; // Take only the first part before " - "
 }
 
 function getStateLabel(state) {
-    if (!i18n || !i18n.initialized) {
+    if (!window.i18n || !window.i18n.initialized) {
         // Fallback labels when i18n not ready
         const labels = {
             'running': 'Running',
@@ -537,7 +691,7 @@ function getStateLabel(state) {
     }
     
     const key = `ui.states.${state}`;
-    const translation = i18n.t(key);
+    const translation = window.i18n.t(key);
     return translation === key ? state : translation;
 }
 
