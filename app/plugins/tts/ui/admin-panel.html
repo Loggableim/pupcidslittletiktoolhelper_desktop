@@ -45,10 +45,17 @@
 
     <div class="container mx-auto p-6 max-w-7xl">
         <!-- Header -->
-        <div class="mb-8">
-            <h1 class="text-4xl font-bold mb-2" data-i18n="tts.admin_panel.title">🔊 TTS Admin Panel</h1>
-            <p class="text-gray-400" data-i18n="tts.admin_panel.subtitle">Text-to-Speech System v2.0</p>
-            <div id="init-status" class="text-sm text-gray-500 mt-2" data-i18n="tts.admin_panel.initializing">Initializing...</div>
+        <div class="mb-8 flex justify-between items-start">
+            <div>
+                <h1 class="text-4xl font-bold mb-2" data-i18n="tts.admin_panel.title">🔊 TTS Admin Panel</h1>
+                <p class="text-gray-400" data-i18n="tts.admin_panel.subtitle">Text-to-Speech System v2.0</p>
+                <div id="init-status" class="text-sm text-gray-500 mt-2" data-i18n="tts.admin_panel.initializing">Initializing...</div>
+            </div>
+            <div>
+                <button id="saveConfigBtnTop" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition shadow-lg">
+                    💾 Save Configuration
+                </button>
+            </div>
         </div>
 
         <!-- Tabs -->
@@ -87,6 +94,27 @@
                             <select id="defaultVoice" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
                                 <!-- Populated dynamically -->
                             </select>
+                        </div>
+
+                        <div id="defaultEmotionContainer" style="display: none;">
+                            <label class="block text-sm font-medium mb-2">🎭 Default Emotion (Speechify only)</label>
+                            <select id="defaultEmotion" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="">None (Neutral)</option>
+                                <option value="angry">😡 Angry - Forceful, intense</option>
+                                <option value="cheerful">😄 Cheerful - Upbeat, positive</option>
+                                <option value="sad">😢 Sad - Downcast, melancholic</option>
+                                <option value="terrified">😱 Terrified - Extreme fear</option>
+                                <option value="relaxed">😌 Relaxed - Calm, at-ease</option>
+                                <option value="fearful">😰 Fearful - Anxious, worried</option>
+                                <option value="surprised">😲 Surprised - Astonished</option>
+                                <option value="calm">😊 Calm - Tranquil, peaceful</option>
+                                <option value="assertive">💪 Assertive - Confident, authoritative</option>
+                                <option value="energetic">⚡ Energetic - Dynamic, lively</option>
+                                <option value="warm">❤️ Warm - Friendly, inviting</option>
+                                <option value="direct">➡️ Direct - Straightforward, clear</option>
+                                <option value="bright">☀️ Bright - Optimistic, cheerful</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">Add emotional expression to Speechify voices. Works best with shorter sentences.</p>
                         </div>
 
                         <!-- Fallback Engines Activation -->
@@ -600,6 +628,27 @@
                     <option value="speechify">Speechify (Premium)</option>
                     <option value="elevenlabs">ElevenLabs (Premium)</option>
                     <option value="openai">OpenAI TTS (Premium)</option>
+                </select>
+            </div>
+
+            <!-- Emotion Selection (Speechify only) -->
+            <div id="modalEmotionContainer" class="mb-4" style="display: none;">
+                <label class="block text-sm font-bold mb-2">🎭 Emotion (Speechify only)</label>
+                <select id="modalEmotion" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2">
+                    <option value="">None (Neutral)</option>
+                    <option value="angry">😡 Angry</option>
+                    <option value="cheerful">😄 Cheerful</option>
+                    <option value="sad">😢 Sad</option>
+                    <option value="terrified">😱 Terrified</option>
+                    <option value="relaxed">😌 Relaxed</option>
+                    <option value="fearful">😰 Fearful</option>
+                    <option value="surprised">😲 Surprised</option>
+                    <option value="calm">😊 Calm</option>
+                    <option value="assertive">💪 Assertive</option>
+                    <option value="energetic">⚡ Energetic</option>
+                    <option value="warm">❤️ Warm</option>
+                    <option value="direct">➡️ Direct</option>
+                    <option value="bright">☀️ Bright</option>
                 </select>
             </div>
 

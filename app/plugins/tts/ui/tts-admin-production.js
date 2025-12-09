@@ -380,6 +380,13 @@ async function loadConfig() {
 
         currentConfig = data.config;
         populateConfig(currentConfig);
+        
+        // Show/hide emotion selector based on current engine
+        const selectedEngine = currentConfig.defaultEngine || 'google';
+        const emotionContainer = document.getElementById('defaultEmotionContainer');
+        if (emotionContainer) {
+            emotionContainer.style.display = (selectedEngine === 'speechify') ? 'block' : 'none';
+        }
 
     } catch (error) {
         console.error('Failed to load config:', error);
@@ -410,6 +417,7 @@ function populateConfig(config) {
     // Populate all fields
     // Note: TikTok TTS temporarily disabled in UI, defaulting to Google
     setValue('defaultEngine', config.defaultEngine || 'google');
+    setValue('defaultEmotion', config.defaultEmotion || '');
     setValue('volume', config.volume || 80);
     setText('volumeValue', config.volume || 80);
     setValue('speed', config.speed || 1.0);
@@ -530,6 +538,7 @@ async function saveConfig() {
         const config = {
             defaultEngine: document.getElementById('defaultEngine').value,
             defaultVoice: document.getElementById('defaultVoice').value,
+            defaultEmotion: document.getElementById('defaultEmotion')?.value || null,
             volume: parseInt(document.getElementById('volume').value, 10),
             speed: parseFloat(document.getElementById('speed').value),
             teamMinLevel: parseInt(document.getElementById('teamMinLevel').value, 10),
@@ -1031,16 +1040,21 @@ function assignVoiceDialog(userId, username) {
     modalState.username = username;
     modalState.selectedVoiceId = null;
     modalState.selectedEngine = 'google'; // TikTok TTS temporarily disabled in UI
+    modalState.selectedEmotion = null;
 
     const modal = document.getElementById('voiceAssignmentModal');
     const usernameEl = document.getElementById('modalUsername');
     const engineSelect = document.getElementById('modalEngine');
+    const emotionSelect = document.getElementById('modalEmotion');
+    const emotionContainer = document.getElementById('modalEmotionContainer');
     const voiceSearch = document.getElementById('modalVoiceSearch');
 
     console.log('[TTS] Modal elements found:', {
         modal: !!modal,
         usernameEl: !!usernameEl,
         engineSelect: !!engineSelect,
+        emotionSelect: !!emotionSelect,
+        emotionContainer: !!emotionContainer,
         voiceSearch: !!voiceSearch
     });
 
@@ -1057,12 +1071,30 @@ function assignVoiceDialog(userId, username) {
         engineSelect.onchange = () => {
             modalState.selectedEngine = engineSelect.value;
             console.log('[TTS] Engine changed to:', modalState.selectedEngine);
+            
+            // Show/hide emotion selector
+            if (emotionContainer) {
+                emotionContainer.style.display = (modalState.selectedEngine === 'speechify') ? 'block' : 'none';
+            }
+            
             renderModalVoiceList();
+        };
+    }
+    if (emotionSelect) {
+        emotionSelect.value = '';
+        emotionSelect.onchange = () => {
+            modalState.selectedEmotion = emotionSelect.value || null;
+            console.log('[TTS] Emotion changed to:', modalState.selectedEmotion);
         };
     }
     if (voiceSearch) {
         voiceSearch.value = '';
         voiceSearch.oninput = renderModalVoiceList;
+    }
+
+    // Initially hide emotion selector (will show if speechify is selected)
+    if (emotionContainer) {
+        emotionContainer.style.display = 'none';
     }
 
     console.log('[TTS] Rendering voice list...');
@@ -1078,8 +1110,8 @@ function assignVoiceDialog(userId, username) {
                 showNotification('Please select a voice', 'error');
                 return;
             }
-            console.log('[TTS] Assigning voice:', modalState.selectedVoiceId, 'to user:', username);
-            await assignVoice(modalState.userId, modalState.username, modalState.selectedVoiceId, modalState.selectedEngine);
+            console.log('[TTS] Assigning voice:', modalState.selectedVoiceId, 'with emotion:', modalState.selectedEmotion, 'to user:', username);
+            await assignVoice(modalState.userId, modalState.username, modalState.selectedVoiceId, modalState.selectedEngine, modalState.selectedEmotion);
             closeVoiceAssignmentModal();
         };
     }
@@ -1154,12 +1186,13 @@ function selectModalVoice(voiceId) {
     renderModalVoiceList();
 }
 
-async function assignVoice(userId, username, voiceId, engine) {
+async function assignVoice(userId, username, voiceId, engine, emotion = null) {
     try {
         const data = await postJSON(`/api/tts/users/${userId}/voice`, {
             username,
             voiceId,
-            engine
+            engine,
+            emotion
         });
 
         if (!data.success) {
@@ -1467,6 +1500,12 @@ function setupEventListeners() {
             populateVoiceSelect();
             const newVoice = document.getElementById('defaultVoice')?.value;
 
+            // Show/hide emotion selector
+            const emotionContainer = document.getElementById('defaultEmotionContainer');
+            if (emotionContainer) {
+                emotionContainer.style.display = (selectedEngine === 'speechify') ? 'block' : 'none';
+            }
+
             // Show/hide API key sections
             const googleKeySection = document.getElementById('google-api-key-section');
             const speechifyKeySection = document.getElementById('speechify-api-key-section');
@@ -1516,6 +1555,12 @@ function setupEventListeners() {
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     if (saveConfigBtn) {
         saveConfigBtn.addEventListener('click', saveConfig);
+    }
+    
+    // Also hook up the top save button
+    const saveConfigBtnTop = document.getElementById('saveConfigBtnTop');
+    if (saveConfigBtnTop) {
+        saveConfigBtnTop.addEventListener('click', saveConfig);
     }
 
     const clearQueueBtn = document.getElementById('clearQueueBtn');

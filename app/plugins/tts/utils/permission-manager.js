@@ -30,6 +30,7 @@ class PermissionManager {
                 assigned_engine TEXT,
                 lang_preference TEXT,
                 volume_gain REAL DEFAULT 1.0,
+                voice_emotion TEXT,
                 is_blacklisted INTEGER DEFAULT 0,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL
@@ -43,6 +44,20 @@ class PermissionManager {
         this.db.db.exec(`
             CREATE INDEX IF NOT EXISTS idx_tts_user_permissions_username ON tts_user_permissions(username)
         `);
+
+        // Migration: Add voice_emotion column if it doesn't exist
+        try {
+            const tableInfo = this.db.db.prepare('PRAGMA table_info(tts_user_permissions)').all();
+            const hasEmotionColumn = tableInfo.some(col => col.name === 'voice_emotion');
+            
+            if (!hasEmotionColumn) {
+                this.logger.info('TTS Permission Manager: Adding voice_emotion column to tts_user_permissions');
+                this.db.db.exec('ALTER TABLE tts_user_permissions ADD COLUMN voice_emotion TEXT');
+                this.logger.info('TTS Permission Manager: voice_emotion column added successfully');
+            }
+        } catch (error) {
+            this.logger.warn('TTS Permission Manager: Could not add voice_emotion column (may already exist):', error.message);
+        }
 
         this.logger.info('TTS Permission Manager: Database tables initialized');
     }
@@ -281,26 +296,33 @@ class PermissionManager {
 
     /**
      * Assign voice to user (auto-grants TTS permission)
+     * @param {string} userId - User ID
+     * @param {string} username - Username
+     * @param {string} voiceId - Voice ID
+     * @param {string} engine - Engine name
+     * @param {string} emotion - Optional emotion setting
      */
-    assignVoice(userId, username, voiceId, engine) {
+    assignVoice(userId, username, voiceId, engine, emotion = null) {
         try {
             const now = Math.floor(Date.now() / 1000);
 
             const stmt = this.db.db.prepare(`
-                INSERT INTO tts_user_permissions (user_id, username, assigned_voice_id, assigned_engine, allow_tts, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 1, ?, ?)
+                INSERT INTO tts_user_permissions (user_id, username, assigned_voice_id, assigned_engine, voice_emotion, allow_tts, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 1, ?, ?)
                 ON CONFLICT(user_id) DO UPDATE SET
                     assigned_voice_id = excluded.assigned_voice_id,
                     assigned_engine = excluded.assigned_engine,
+                    voice_emotion = excluded.voice_emotion,
                     allow_tts = 1,
                     is_blacklisted = 0,
                     updated_at = excluded.updated_at
             `);
 
-            stmt.run(userId, username, voiceId, engine, now, now);
+            stmt.run(userId, username, voiceId, engine, emotion, now, now);
             this.clearCache();
 
-            this.logger.info(`Voice assigned to ${username}: ${voiceId} (${engine})`);
+            const emotionInfo = emotion ? ` with emotion: ${emotion}` : '';
+            this.logger.info(`Voice assigned to ${username}: ${voiceId} (${engine})${emotionInfo}`);
             return true;
 
         } catch (error) {

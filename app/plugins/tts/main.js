@@ -260,7 +260,8 @@ class TTSPlugin {
             }
         }
 
-        const audioData = await this.engines[engineName].synthesize(text, fallbackVoice, this.config.speed);
+        const audioData = await this.engines[engineName].synthesize(text, fallbackVoice, this.config.speed, 
+            engineName === 'speechify' ? { language: this.languageDetector.detectLanguage(text)?.language } : {});
         
         return { audioData, voice: fallbackVoice };
     }
@@ -342,6 +343,7 @@ class TTSPlugin {
         const defaultConfig = {
             defaultEngine: 'google', // Changed from 'tiktok' to 'google'
             defaultVoice: 'de-DE-Wavenet-B', // Default German voice for Google
+            defaultEmotion: null, // Default emotion for Speechify (null = no emotion)
             volume: 80,
             speed: 1.0,
             teamMinLevel: 0,
@@ -823,7 +825,7 @@ class TTSPlugin {
 
         this.api.registerRoute('POST', '/api/tts/users/:userId/voice', (req, res) => {
             const { userId } = req.params;
-            const { username, voiceId, engine } = req.body;
+            const { username, voiceId, engine, emotion } = req.body;
 
             if (!voiceId || !engine) {
                 return res.status(400).json({
@@ -836,7 +838,8 @@ class TTSPlugin {
                 userId,
                 username || userId,
                 voiceId,
-                engine
+                engine,
+                emotion
             );
             res.json({ success: result });
         });
@@ -1726,11 +1729,35 @@ class TTSPlugin {
             let fallbackAttempts = [];
             
             try {
-                audioData = await ttsEngine.synthesize(finalText, selectedVoice, this.config.speed);
+                // Prepare synthesis options for Speechify
+                const synthesisOptions = {};
+                
+                // Add language parameter for Speechify if engine is speechify
+                if (selectedEngine === 'speechify' && this.config.autoLanguageDetection) {
+                    // Detect language from text
+                    const detectedLang = this.languageDetector.detectLanguage(finalText);
+                    if (detectedLang && detectedLang.language) {
+                        synthesisOptions.language = detectedLang.language;
+                        this._logDebug('SPEAK_STEP5', 'Language detected for Speechify', { language: detectedLang.language, confidence: detectedLang.confidence });
+                    }
+                }
+                
+                // Add emotion parameter for Speechify
+                if (selectedEngine === 'speechify') {
+                    // Priority: user emotion > default emotion
+                    const emotion = userSettings?.voice_emotion || this.config.defaultEmotion;
+                    if (emotion) {
+                        synthesisOptions.emotion = emotion;
+                        this._logDebug('SPEAK_STEP5', 'Emotion set for Speechify', { emotion });
+                    }
+                }
+                
+                audioData = await ttsEngine.synthesize(finalText, selectedVoice, this.config.speed, synthesisOptions);
                 this._logDebug('SPEAK_STEP5', 'TTS synthesis successful', {
                     engine: selectedEngine,
                     voice: selectedVoice,
-                    audioDataLength: audioData?.length || 0
+                    audioDataLength: audioData?.length || 0,
+                    options: synthesisOptions
                 });
             } catch (engineError) {
                 // Check if auto-fallback is enabled
