@@ -1248,7 +1248,7 @@
                 loadLayouts();
                 // Initialize draggable elements
                 requestAnimationFrame(() => {
-                    requestAnimationFrame(initializeDraggableElements);
+                    requestAnimationFrame(initializeGridEditor);
                 });
             }, 100);
         });
@@ -2051,16 +2051,22 @@
 
     function collectLayoutConfig() {
         const config = {};
-        const draggables = document.querySelectorAll('#previewCanvas .draggable');
         
-        draggables.forEach(el => {
-            const elementType = el.dataset.element;
+        // Collect grid-based configuration from table
+        const rows = document.querySelectorAll('.element-config-table tbody tr');
+        
+        rows.forEach(row => {
+            const elementType = row.dataset.element;
+            const column = row.querySelector('.grid-column').value;
+            const rowNum = parseInt(row.querySelector('.grid-row').value, 10);
+            const size = row.querySelector('.grid-size').value;
+            const visible = row.querySelector('.grid-visible').checked;
+            
             config[elementType] = {
-                x: parseInt(el.style.left, 10) || 0,
-                y: parseInt(el.style.top, 10) || 0,
-                width: parseInt(el.style.width, 10) || 300,
-                height: parseInt(el.style.height, 10) || 100,
-                visible: !el.classList.contains('hidden')
+                gridColumn: column,
+                gridRow: rowNum,
+                size: size,
+                visible: visible
             };
         });
         
@@ -2070,36 +2076,53 @@
     function applyLayoutConfig(config) {
         if (!config) return;
         
-        // TODO: Remove backward compatibility for old format (with elements wrapper) after all existing layouts are migrated
-        // Handle both old format (with elements wrapper) and new format (direct)
+        // Handle both old pixel format and new grid format
         const elements = config.elements || config;
         
         Object.entries(elements).forEach(([elementType, props]) => {
-            const el = document.querySelector(`#previewCanvas [data-element="${elementType}"]`);
-            if (el) {
-                el.style.left = props.x + 'px';
-                el.style.top = props.y + 'px';
-                el.style.width = props.width + 'px';
-                el.style.height = props.height + 'px';
-                if (props.visible === false) {
-                    el.classList.add('hidden');
-                } else {
-                    el.classList.remove('hidden');
-                }
+            const row = document.querySelector(`.element-config-table tbody tr[data-element="${elementType}"]`);
+            if (!row) return;
+            
+            // If it's the new grid format
+            if (props.gridColumn !== undefined) {
+                row.querySelector('.grid-column').value = props.gridColumn || 'C';
+                row.querySelector('.grid-row').value = props.gridRow || 1;
+                row.querySelector('.grid-size').value = props.size || 'medium';
+                row.querySelector('.grid-visible').checked = props.visible !== false;
+            } else {
+                // Old pixel-based format - convert to grid (approximate)
+                // This is for backwards compatibility
+                const width = props.width || 800;
+                const column = props.x ? String.fromCharCode(65 + Math.floor(props.x / 100)) : 'C';
+                const rowNum = props.y ? Math.max(1, Math.floor(props.y / 50)) : 1;
+                
+                // Determine size based on width
+                let size = 'medium';
+                if (width < 500) size = 'small';
+                else if (width > 1000) size = 'large';
+                else if (width > 1400) size = 'xlarge';
+                
+                row.querySelector('.grid-column').value = column;
+                row.querySelector('.grid-row').value = rowNum;
+                row.querySelector('.grid-size').value = size;
+                row.querySelector('.grid-visible').checked = props.visible !== false;
             }
         });
+        
+        // Update visual preview
+        updateGridPreview();
     }
 
     function resetLayoutPreview() {
-        const defaultPositions = {
-            question: { x: 50, y: 50, width: 800, height: 150, visible: true },
-            answers: { x: 50, y: 220, width: 800, height: 400, visible: true },
-            timer: { x: 900, y: 50, width: 200, height: 200, visible: true },
-            leaderboard: { x: 900, y: 300, width: 300, height: 400, visible: true },
-            jokerInfo: { x: 50, y: 650, width: 400, height: 100, visible: true }
+        const defaultConfig = {
+            question: { gridColumn: 'C', gridRow: 2, size: 'medium', visible: true },
+            answers: { gridColumn: 'C', gridRow: 5, size: 'medium', visible: true },
+            timer: { gridColumn: 'O', gridRow: 2, size: 'small', visible: true },
+            leaderboard: { gridColumn: 'O', gridRow: 6, size: 'medium', visible: true },
+            jokerInfo: { gridColumn: 'C', gridRow: 13, size: 'small', visible: true }
         };
         
-        applyLayoutConfig(defaultPositions);
+        applyLayoutConfig(defaultConfig);
     }
 
     function cancelLayoutEdit() {
@@ -2125,76 +2148,148 @@
         document.getElementById('cancelLayoutBtn').addEventListener('click', cancelLayoutEdit);
     }
 
-    // Initialize drag and drop for layout elements
-    function initializeDraggableElements() {
-        const canvas = document.getElementById('previewCanvas');
-        if (!canvas) return;
-
-        const draggables = canvas.querySelectorAll('.draggable');
+    // Initialize grid-based layout editor
+    function initializeGridEditor() {
+        // Create grid overlay
+        createGridOverlay();
         
-        draggables.forEach(element => {
-            // Skip if already initialized
-            if (element.dataset.draggableInitialized) return;
-            element.dataset.draggableInitialized = 'true';
+        // Add event listeners to grid inputs for live preview
+        const gridInputs = document.querySelectorAll('.grid-column, .grid-row, .grid-size, .grid-visible');
+        gridInputs.forEach(input => {
+            input.addEventListener('change', updateGridPreview);
+        });
+        
+        // Initialize visual preview
+        updateGridPreview();
+    }
+    
+    function createGridOverlay() {
+        const gridOverlay = document.querySelector('.grid-overlay');
+        if (!gridOverlay) return;
+        
+        gridOverlay.innerHTML = '';
+        
+        // Create 20 columns (A-T)
+        for (let i = 0; i < 20; i++) {
+            const line = document.createElement('div');
+            line.className = 'grid-line-vertical';
+            line.style.left = (i * 5) + '%';
+            gridOverlay.appendChild(line);
             
-            let isDragging = false;
-            let isResizing = false;
-            let startX, startY, startLeft, startTop, startWidth, startHeight;
-
-            const onMouseMove = (e) => {
-                if (isDragging) {
-                    const deltaX = e.clientX - startX;
-                    const deltaY = e.clientY - startY;
-                    element.style.left = Math.max(0, startLeft + deltaX) + 'px';
-                    element.style.top = Math.max(0, startTop + deltaY) + 'px';
-                } else if (isResizing) {
-                    const deltaX = e.clientX - startX;
-                    const deltaY = e.clientY - startY;
-                    element.style.width = Math.max(100, startWidth + deltaX) + 'px';
-                    element.style.height = Math.max(50, startHeight + deltaY) + 'px';
-                }
-            };
-
-            const onMouseUp = () => {
-                if (isDragging || isResizing) {
-                    element.classList.remove('dragging', 'resizing');
-                    isDragging = false;
-                    isResizing = false;
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                }
-            };
-
-            // Make element draggable
-            element.addEventListener('mousedown', (e) => {
-                // Check if clicking on resize handle
-                if (e.target.classList.contains('element-resize-handle')) {
-                    isResizing = true;
-                    startX = e.clientX;
-                    startY = e.clientY;
-                    startWidth = parseInt(element.style.width, 10) || element.offsetWidth;
-                    startHeight = parseInt(element.style.height, 10) || element.offsetHeight;
-                    element.classList.add('resizing');
-                    e.preventDefault();
-                } else {
-                    isDragging = true;
-                    startX = e.clientX;
-                    startY = e.clientY;
-                    startLeft = parseInt(element.style.left, 10) || element.offsetLeft;
-                    startTop = parseInt(element.style.top, 10) || element.offsetTop;
-                    element.classList.add('dragging');
-                    e.preventDefault();
-                }
-                
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-            });
-
-            // Add double-click to toggle visibility
-            element.addEventListener('dblclick', () => {
-                element.classList.toggle('hidden');
-                showMessage(`Element ${element.classList.contains('hidden') ? 'ausgeblendet' : 'eingeblendet'}`, 'info', 'layoutSaveMessage');
-            });
+            if (i < 20) {
+                const label = document.createElement('div');
+                label.className = 'grid-label';
+                label.textContent = String.fromCharCode(65 + i); // A, B, C, ...
+                label.style.left = (i * 5 + 1) + '%';
+                label.style.top = '5px';
+                gridOverlay.appendChild(label);
+            }
+        }
+        
+        // Create 20 rows
+        for (let i = 0; i < 20; i++) {
+            const line = document.createElement('div');
+            line.className = 'grid-line-horizontal';
+            line.style.top = (i * 5) + '%';
+            gridOverlay.appendChild(line);
+            
+            if (i < 20) {
+                const label = document.createElement('div');
+                label.className = 'grid-label';
+                label.textContent = (i + 1).toString();
+                label.style.left = '5px';
+                label.style.top = (i * 5 + 1) + '%';
+                gridOverlay.appendChild(label);
+            }
+        }
+    }
+    
+    function updateGridPreview() {
+        const gridElements = document.getElementById('gridElements');
+        if (!gridElements) return;
+        
+        gridElements.innerHTML = '';
+        
+        // Size definitions (width x height in pixels for standard 1920x1080)
+        const sizeDefinitions = {
+            question: {
+                small: { width: 400, height: 100 },
+                medium: { width: 800, height: 150 },
+                large: { width: 1200, height: 200 },
+                xlarge: { width: 1600, height: 250 }
+            },
+            answers: {
+                small: { width: 400, height: 300 },
+                medium: { width: 800, height: 400 },
+                large: { width: 1200, height: 500 },
+                xlarge: { width: 1600, height: 600 }
+            },
+            timer: {
+                small: { width: 150, height: 150 },
+                medium: { width: 200, height: 200 },
+                large: { width: 250, height: 250 },
+                xlarge: { width: 300, height: 300 }
+            },
+            leaderboard: {
+                small: { width: 250, height: 300 },
+                medium: { width: 300, height: 400 },
+                large: { width: 350, height: 500 },
+                xlarge: { width: 400, height: 600 }
+            },
+            jokerInfo: {
+                small: { width: 300, height: 80 },
+                medium: { width: 400, height: 100 },
+                large: { width: 500, height: 120 },
+                xlarge: { width: 600, height: 150 }
+            }
+        };
+        
+        const elementLabels = {
+            question: '❓ Frage',
+            answers: '🅰️ Antworten',
+            timer: '⏱️ Timer',
+            leaderboard: '🏆 Leaderboard',
+            jokerInfo: '🎯 Joker Info'
+        };
+        
+        // Get current resolution (using preview container size as reference)
+        const previewWidth = gridElements.parentElement.offsetWidth;
+        const previewHeight = gridElements.parentElement.offsetHeight;
+        
+        // Read grid settings from table
+        const rows = document.querySelectorAll('.element-config-table tbody tr');
+        rows.forEach(row => {
+            const elementType = row.dataset.element;
+            const column = row.querySelector('.grid-column').value;
+            const rowNum = parseInt(row.querySelector('.grid-row').value, 10);
+            const size = row.querySelector('.grid-size').value;
+            const visible = row.querySelector('.grid-visible').checked;
+            
+            if (!visible) return; // Skip invisible elements
+            
+            // Calculate position based on grid
+            const columnIndex = column.charCodeAt(0) - 65; // A=0, B=1, etc.
+            const x = (columnIndex * 5); // 5% per column
+            const y = ((rowNum - 1) * 5); // 5% per row
+            
+            // Get size dimensions
+            const dimensions = sizeDefinitions[elementType]?.[size] || { width: 300, height: 100 };
+            
+            // Calculate percentage sizes based on 1920x1080 reference
+            const widthPercent = (dimensions.width / 1920) * 100;
+            const heightPercent = (dimensions.height / 1080) * 100;
+            
+            // Create element
+            const element = document.createElement('div');
+            element.className = 'grid-element';
+            element.dataset.element = elementType;
+            element.textContent = elementLabels[elementType] || elementType;
+            element.style.left = x + '%';
+            element.style.top = y + '%';
+            element.style.width = widthPercent + '%';
+            element.style.height = heightPercent + '%';
+            
+            gridElements.appendChild(element);
         });
     }
 

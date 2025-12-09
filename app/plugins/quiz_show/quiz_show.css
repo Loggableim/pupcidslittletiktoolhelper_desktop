@@ -1714,3 +1714,172 @@ code {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================
+   Grid-Based Layout Editor Styles
+   ============================================ */
+
+.grid-config-table {
+    width: 100%;
+    margin: 20px 0;
+    overflow-x: auto;
+}
+
+.element-config-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--color-bg-primary);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.element-config-table thead {
+    background: var(--color-bg-secondary);
+}
+
+.element-config-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--color-text-primary);
+    border-bottom: 2px solid var(--color-border);
+}
+
+.element-config-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+}
+
+.element-config-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.element-config-table .grid-column,
+.element-config-table .grid-size {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: 14px;
+}
+
+.element-config-table .grid-row {
+    width: 80px;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    text-align: center;
+}
+
+.element-config-table .grid-visible {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--color-accent-primary);
+}
+
+/* Grid Visual Preview */
+.grid-visual-preview {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    background: #1a1a1a;
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 15px;
+}
+
+.grid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.grid-overlay .grid-line-vertical {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 1px;
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.grid-overlay .grid-line-horizontal {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.grid-overlay .grid-label {
+    position: absolute;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 600;
+}
+
+.grid-elements {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+}
+
+.grid-element {
+    position: absolute;
+    background: rgba(59, 130, 246, 0.3);
+    border: 2px solid #3b82f6;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.grid-element.hidden {
+    opacity: 0.2;
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    border-style: dashed;
+}
+
+.grid-element:hover {
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+    transform: translateY(-2px);
+}
+
+/* Responsive adjustments for grid table */
+@media (max-width: 768px) {
+    .element-config-table {
+        font-size: 12px;
+    }
+    
+    .element-config-table th,
+    .element-config-table td {
+        padding: 8px 10px;
+    }
+    
+    .element-config-table .grid-column,
+    .element-config-table .grid-size,
+    .element-config-table .grid-row {
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+}
