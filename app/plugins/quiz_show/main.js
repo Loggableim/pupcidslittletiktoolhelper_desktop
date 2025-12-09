@@ -33,6 +33,8 @@ class QuizShowPlugin {
             jokersPerRound: 3,
             gameMode: 'classic', // classic, fastestFinger, elimination, marathon
             marathonLength: 15,
+            totalRounds: 10, // Total rounds in a quiz session (0 = unlimited)
+            showRoundNumber: true, // Show round number in overlay
             ttsEnabled: false,
             ttsVoice: 'default',
             ttsVolume: 80, // NEW: TTS volume (0-100%)
@@ -49,7 +51,9 @@ class QuizShowPlugin {
             voterIconShowOnScoreboard: false, // Show avatars in scoreboard
             // NEW: Leaderboard display configuration
             leaderboardShowAfterRound: true,
-            leaderboardRoundDisplayType: 'both', // 'round', 'season', 'both'
+            leaderboardShowAfterQuestion: false, // Show leaderboard after each question
+            leaderboardQuestionDisplayType: 'season', // 'round', 'season', 'both' - for after question
+            leaderboardRoundDisplayType: 'both', // 'round', 'season', 'both' - for after round
             leaderboardEndGameDisplayType: 'season', // 'round', 'season'
             leaderboardAutoHideDelay: 10, // seconds
             leaderboardAnimationStyle: 'fade', // 'fade', 'slide', 'zoom'
@@ -77,6 +81,7 @@ class QuizShowPlugin {
             currentQuestion: null,
             currentQuestionIndex: -1, // Deprecated: kept for backwards compatibility
             currentQuestionId: null, // ID of the current question being asked
+            currentRound: 0, // Current round number (increments with each question)
             startTime: null,
             endTime: null,
             timeRemaining: 0,
@@ -285,6 +290,8 @@ class QuizShowPlugin {
                 CREATE TABLE IF NOT EXISTS leaderboard_display_config (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     show_after_round BOOLEAN DEFAULT TRUE,
+                    show_after_question BOOLEAN DEFAULT FALSE,
+                    question_display_type TEXT DEFAULT 'season' CHECK(question_display_type IN ('round', 'season', 'both')),
                     round_display_type TEXT DEFAULT 'both' CHECK(round_display_type IN ('round', 'season', 'both')),
                     end_game_display_type TEXT DEFAULT 'season' CHECK(end_game_display_type IN ('round', 'season')),
                     auto_hide_delay INTEGER DEFAULT 10,
@@ -354,8 +361,8 @@ class QuizShowPlugin {
             // Initialize leaderboard display config if not exists
             const leaderboardDisplayConfig = this.db.prepare('SELECT id FROM leaderboard_display_config WHERE id = 1').get();
             if (!leaderboardDisplayConfig) {
-                this.db.prepare('INSERT INTO leaderboard_display_config (id, show_after_round, round_display_type, end_game_display_type, auto_hide_delay, animation_style) VALUES (1, 1, ?, ?, 10, ?)')
-                    .run('both', 'season', 'fade');
+                this.db.prepare('INSERT INTO leaderboard_display_config (id, show_after_round, show_after_question, question_display_type, round_display_type, end_game_display_type, auto_hide_delay, animation_style) VALUES (1, 1, 0, ?, ?, ?, 10, ?)')
+                    .run('season', 'both', 'season', 'fade');
             }
 
             // Initialize default overlay layouts if none exist
@@ -455,6 +462,21 @@ class QuizShowPlugin {
                     this.db.exec('ROLLBACK');
                     throw error;
                 }
+            }
+
+            // Add new leaderboard display config columns if they don't exist
+            const leaderboardConfigColumns = this.db.pragma('table_info(leaderboard_display_config)');
+            const hasShowAfterQuestion = leaderboardConfigColumns.some(col => col.name === 'show_after_question');
+            const hasQuestionDisplayType = leaderboardConfigColumns.some(col => col.name === 'question_display_type');
+            
+            if (!hasShowAfterQuestion) {
+                this.api.log('Adding show_after_question column to leaderboard_display_config...', 'info');
+                this.db.exec('ALTER TABLE leaderboard_display_config ADD COLUMN show_after_question BOOLEAN DEFAULT FALSE');
+            }
+            
+            if (!hasQuestionDisplayType) {
+                this.api.log('Adding question_display_type column to leaderboard_display_config...', 'info');
+                this.db.exec("ALTER TABLE leaderboard_display_config ADD COLUMN question_display_type TEXT DEFAULT 'season' CHECK(question_display_type IN ('round', 'season', 'both'))");
             }
         } catch (error) {
             this.api.log('Error during schema migration: ' + error.message, 'warn');
@@ -1427,6 +1449,41 @@ class QuizShowPlugin {
             }
         });
 
+        // Batch generate multiple question packages with OpenAI
+        this.api.registerRoute('post', '/api/quiz-show/packages/batch-generate', async (req, res) => {
+            try {
+                const { categories, packageSize } = req.body;
+
+                if (!categories || !Array.isArray(categories) || categories.length === 0) {
+                    return res.status(400).json({ success: false, error: 'Kategorien erforderlich (Array)' });
+                }
+
+                // Get OpenAI config
+                const config = this.db.prepare('SELECT api_key, model FROM openai_config WHERE id = 1').get();
+                
+                if (!config || !config.api_key) {
+                    return res.status(400).json({ success: false, error: 'OpenAI API-Schlüssel nicht konfiguriert' });
+                }
+
+                const OpenAIQuizService = require('./openai-service');
+                const service = new OpenAIQuizService(config.api_key, config.model);
+                const size = packageSize || config.default_package_size || 10;
+
+                // Start batch generation - return immediately and process in background
+                res.json({ 
+                    success: true, 
+                    message: `Batch-Generierung gestartet für ${categories.length} Kategorien`,
+                    totalCategories: categories.length
+                });
+
+                // Process categories in background
+                this.processBatchGeneration(categories, size, service);
+            } catch (error) {
+                this.api.log('Error starting batch generation: ' + error.message, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
         // Toggle package selection
         this.api.registerRoute('post', '/api/quiz-show/packages/:id/toggle', (req, res) => {
             try {
@@ -1835,6 +1892,8 @@ class QuizShowPlugin {
                 const config = this.db.prepare('SELECT * FROM leaderboard_display_config WHERE id = 1').get();
                 res.json({ success: true, config: config || {
                     show_after_round: true,
+                    show_after_question: false,
+                    question_display_type: 'season',
                     round_display_type: 'both',
                     end_game_display_type: 'season',
                     auto_hide_delay: 10,
@@ -1848,9 +1907,12 @@ class QuizShowPlugin {
         // Update leaderboard display config
         this.api.registerRoute('post', '/api/quiz-show/leaderboard-config', (req, res) => {
             try {
-                const { showAfterRound, roundDisplayType, endGameDisplayType, autoHideDelay, animationStyle } = req.body;
+                const { showAfterRound, showAfterQuestion, questionDisplayType, roundDisplayType, endGameDisplayType, autoHideDelay, animationStyle } = req.body;
 
                 // Validate values
+                if (questionDisplayType && !['round', 'season', 'both'].includes(questionDisplayType)) {
+                    return res.status(400).json({ success: false, error: 'Invalid question display type' });
+                }
                 if (roundDisplayType && !['round', 'season', 'both'].includes(roundDisplayType)) {
                     return res.status(400).json({ success: false, error: 'Invalid round display type' });
                 }
@@ -1871,6 +1933,14 @@ class QuizShowPlugin {
                     if (showAfterRound !== undefined) {
                         updates.push('show_after_round = ?');
                         values.push(showAfterRound ? 1 : 0);
+                    }
+                    if (showAfterQuestion !== undefined) {
+                        updates.push('show_after_question = ?');
+                        values.push(showAfterQuestion ? 1 : 0);
+                    }
+                    if (questionDisplayType) {
+                        updates.push('question_display_type = ?');
+                        values.push(questionDisplayType);
                     }
                     if (roundDisplayType) {
                         updates.push('round_display_type = ?');
@@ -1893,12 +1963,22 @@ class QuizShowPlugin {
                         this.db.prepare(`UPDATE leaderboard_display_config SET ${updates.join(', ')} WHERE id = 1`).run(...values);
                     }
                 } else {
-                    this.db.prepare('INSERT INTO leaderboard_display_config (id, show_after_round, round_display_type, end_game_display_type, auto_hide_delay, animation_style) VALUES (1, ?, ?, ?, ?, ?)')
-                        .run(showAfterRound !== false ? 1 : 0, roundDisplayType || 'both', endGameDisplayType || 'season', autoHideDelay || 10, animationStyle || 'fade');
+                    this.db.prepare('INSERT INTO leaderboard_display_config (id, show_after_round, show_after_question, question_display_type, round_display_type, end_game_display_type, auto_hide_delay, animation_style) VALUES (1, ?, ?, ?, ?, ?, ?, ?)')
+                        .run(
+                            showAfterRound !== false ? 1 : 0, 
+                            showAfterQuestion === true ? 1 : 0,
+                            questionDisplayType || 'season',
+                            roundDisplayType || 'both', 
+                            endGameDisplayType || 'season', 
+                            autoHideDelay || 10, 
+                            animationStyle || 'fade'
+                        );
                 }
 
                 // Update config in memory
                 if (showAfterRound !== undefined) this.config.leaderboardShowAfterRound = showAfterRound;
+                if (showAfterQuestion !== undefined) this.config.leaderboardShowAfterQuestion = showAfterQuestion;
+                if (questionDisplayType) this.config.leaderboardQuestionDisplayType = questionDisplayType;
                 if (roundDisplayType) this.config.leaderboardRoundDisplayType = roundDisplayType;
                 if (endGameDisplayType) this.config.leaderboardEndGameDisplayType = endGameDisplayType;
                 if (autoHideDelay !== undefined) this.config.leaderboardAutoHideDelay = autoHideDelay;
@@ -2116,15 +2196,51 @@ class QuizShowPlugin {
             throw new Error('Alle verfügbaren Fragen wurden heute bereits gestellt. Bitte fügen Sie neue Fragen hinzu.');
         }
 
-        // Select question from available ones
+        // Select question from available ones with difficulty progression
         let selectedQuestion;
         if (this.config.randomQuestions) {
-            // Random selection
-            const randomIndex = Math.floor(Math.random() * availableQuestions.length);
-            selectedQuestion = availableQuestions[randomIndex];
+            // Random selection with difficulty progression
+            // Prioritize easier questions first, then medium, then hard
+            const questionsAskedCount = this.gameState.askedQuestionIds.size;
+            
+            // Determine preferred difficulty based on progression
+            // First 40% of session: prefer difficulty 1 (easy)
+            // Next 30% of session: prefer difficulty 2 (medium)
+            // Next 20% of session: prefer difficulty 3 (hard)
+            // Last 10% of session: prefer difficulty 4 (expert)
+            let preferredDifficulty = 1;
+            if (questionsAskedCount >= 0 && questionsAskedCount < 4) {
+                preferredDifficulty = 1; // Easy
+            } else if (questionsAskedCount >= 4 && questionsAskedCount < 7) {
+                preferredDifficulty = 2; // Medium
+            } else if (questionsAskedCount >= 7 && questionsAskedCount < 9) {
+                preferredDifficulty = 3; // Hard
+            } else {
+                preferredDifficulty = 4; // Expert
+            }
+            
+            // Try to find question with preferred difficulty
+            const preferredQuestions = availableQuestions.filter(q => q.difficulty === preferredDifficulty);
+            
+            if (preferredQuestions.length > 0) {
+                // Select random question from preferred difficulty
+                const randomIndex = Math.floor(Math.random() * preferredQuestions.length);
+                selectedQuestion = preferredQuestions[randomIndex];
+            } else {
+                // No questions with preferred difficulty, fall back to any available
+                const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+                selectedQuestion = availableQuestions[randomIndex];
+            }
         } else {
-            // Sequential mode: select the first available question by ID order
-            // This ensures consistent ordering even when questions are filtered
+            // Sequential mode with difficulty progression
+            // Sort by difficulty first, then by ID
+            availableQuestions.sort((a, b) => {
+                if (a.difficulty !== b.difficulty) {
+                    return a.difficulty - b.difficulty; // Easy to hard
+                }
+                return a.id - b.id; // Then by ID for consistency
+            });
+            
             selectedQuestion = availableQuestions[0];
         }
 
@@ -2133,6 +2249,9 @@ class QuizShowPlugin {
         
         // Add to session tracking (for round tracking)
         this.gameState.askedQuestionIds.add(selectedQuestion.id);
+        
+        // Increment round counter
+        this.gameState.currentRound++;
 
         // Prepare answers (shuffle if configured)
         let answers = [...selectedQuestion.answers];
@@ -2403,8 +2522,15 @@ class QuizShowPlugin {
 
         this.api.log(`Round ended. Correct answers: ${results.correctUsers.length}/${this.gameState.answers.size}`, 'info');
 
-        // Show leaderboard after round if configured
-        if (this.config.leaderboardShowAfterRound) {
+        // Show leaderboard after question if configured
+        if (this.config.leaderboardShowAfterQuestion) {
+            setTimeout(() => {
+                this.showLeaderboardAfterQuestion();
+            }, (this.config.answerDisplayDuration || 5) * 1000); // Show after answer display duration
+        }
+
+        // Show leaderboard after round if configured (only if not showing after question, to avoid duplication)
+        if (this.config.leaderboardShowAfterRound && !this.config.leaderboardShowAfterQuestion) {
             setTimeout(() => {
                 this.showLeaderboardAfterRound();
             }, (this.config.answerDisplayDuration || 5) * 1000); // Show after answer display duration
@@ -2442,8 +2568,8 @@ class QuizShowPlugin {
                 // Get season leaderboard
                 const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
                 if (activeSeason) {
-                    const seasonLeaderboard = this.db.prepare(
-                        'SELECT user_id, username, points FROM leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
+                    const seasonLeaderboard = this.mainDb.prepare(
+                        'SELECT user_id, username, points FROM quiz_leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
                     ).all(activeSeason.id);
                     
                     leaderboard = seasonLeaderboard.map((entry, index) => ({
@@ -2472,6 +2598,58 @@ class QuizShowPlugin {
         }
     }
 
+    async showLeaderboardAfterQuestion() {
+        try {
+            const displayType = this.config.leaderboardQuestionDisplayType || 'season';
+            const animationStyle = this.config.leaderboardAnimationStyle || 'fade';
+            
+            let leaderboard = [];
+
+            if (displayType === 'round' || displayType === 'both') {
+                // Get round leaderboard (current question results)
+                const results = this.calculateResults();
+                leaderboard = results.correctUsers.map((user, index) => ({
+                    username: user.username,
+                    points: index === 0 ? this.config.pointsFirstCorrect : this.config.pointsOtherCorrect,
+                    rank: index + 1
+                }));
+            }
+
+            if (displayType === 'season' || displayType === 'both') {
+                // Get season leaderboard
+                const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                if (activeSeason) {
+                    const seasonLeaderboard = this.mainDb.prepare(
+                        'SELECT user_id, username, points FROM quiz_leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
+                    ).all(activeSeason.id);
+                    
+                    leaderboard = seasonLeaderboard.map((entry, index) => ({
+                        username: entry.username,
+                        points: entry.points,
+                        rank: index + 1
+                    }));
+                }
+            }
+
+            // Emit leaderboard display event
+            this.api.emit('quiz-show:show-leaderboard', {
+                leaderboard,
+                displayType,
+                animationStyle,
+                context: 'after-question'
+            });
+
+            // Auto-hide leaderboard after configured delay
+            if (this.config.leaderboardAutoHideDelay > 0) {
+                setTimeout(() => {
+                    this.api.emit('quiz-show:hide-leaderboard');
+                }, this.config.leaderboardAutoHideDelay * 1000);
+            }
+        } catch (error) {
+            this.api.log('Error showing leaderboard after question: ' + error.message, 'error');
+        }
+    }
+
     async showLeaderboardAtEnd() {
         try {
             const displayType = this.config.leaderboardEndGameDisplayType || 'season';
@@ -2483,8 +2661,8 @@ class QuizShowPlugin {
                 // Get season leaderboard
                 const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
                 if (activeSeason) {
-                    const seasonLeaderboard = this.db.prepare(
-                        'SELECT user_id, username, points FROM leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
+                    const seasonLeaderboard = this.mainDb.prepare(
+                        'SELECT user_id, username, points FROM quiz_leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
                     ).all(activeSeason.id);
                     
                     leaderboard = seasonLeaderboard.map((entry, index) => ({
@@ -2910,6 +3088,9 @@ class QuizShowPlugin {
         const state = {
             isRunning: this.gameState.isRunning,
             roundState: this.gameState.roundState,
+            currentRound: this.gameState.currentRound,
+            totalRounds: this.config.totalRounds,
+            showRoundNumber: this.config.showRoundNumber,
             currentQuestion: {
                 question: this.gameState.currentQuestion.question,
                 answers: this.gameState.currentQuestion.answers,
@@ -2943,6 +3124,7 @@ class QuizShowPlugin {
             currentQuestion: null,
             currentQuestionIndex: -1, // Deprecated: kept for backwards compatibility
             currentQuestionId: null,
+            currentRound: 0,
             startTime: null,
             endTime: null,
             timeRemaining: 0,
@@ -3117,6 +3299,144 @@ class QuizShowPlugin {
             this.api.log('Error getting MVP: ' + error.message, 'error');
             return null;
         }
+    }
+
+    /**
+     * Process batch AI question generation in background
+     * @param {Array<string>} categories - Array of category names
+     * @param {number} size - Number of questions per package
+     * @param {Object} service - OpenAI service instance
+     */
+    async processBatchGeneration(categories, size, service) {
+        let successCount = 0;
+        let failedCategories = [];
+        
+        for (let i = 0; i < categories.length; i++) {
+            const category = categories[i].trim();
+            
+            if (!category) {
+                continue; // Skip empty categories
+            }
+            
+            try {
+                this.api.log(`Batch generation: Processing ${i + 1}/${categories.length} - ${category}`, 'info');
+                
+                // Emit progress update
+                this.api.emit('quiz-show:batch-generation-progress', {
+                    current: i + 1,
+                    total: categories.length,
+                    category,
+                    status: 'processing'
+                });
+
+                // Get existing questions for this category to avoid duplicates
+                const existingQuestions = this.db.prepare(`
+                    SELECT question FROM questions WHERE category = ?
+                `).all(category).map(q => q.question);
+
+                // Generate questions using OpenAI
+                const questions = await service.generateQuestions(category, size, existingQuestions);
+
+                if (questions.length === 0) {
+                    this.api.log(`No questions generated for category: ${category}`, 'warn');
+                    failedCategories.push(category);
+                    
+                    this.api.emit('quiz-show:batch-generation-progress', {
+                        current: i + 1,
+                        total: categories.length,
+                        category,
+                        status: 'failed',
+                        error: 'Keine Fragen generiert'
+                    });
+                    continue;
+                }
+
+                // Create question package
+                const name = `${category} - ${new Date().toLocaleDateString('de-DE')}`;
+                const packageResult = this.db.prepare(`
+                    INSERT INTO question_packages (name, category, question_count) 
+                    VALUES (?, ?, ?)
+                `).run(name, category, questions.length);
+
+                const packageId = packageResult.lastInsertRowid;
+
+                // Insert questions with package reference
+                const insertQuestion = this.db.prepare(`
+                    INSERT INTO questions (question, answers, correct, category, difficulty, info, package_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                `);
+
+                const insertMany = this.mainDb.transaction((questions) => {
+                    for (const q of questions) {
+                        insertQuestion.run(
+                            q.question,
+                            JSON.stringify(q.answers),
+                            q.correct,
+                            q.category,
+                            q.difficulty,
+                            q.info,
+                            packageId
+                        );
+                    }
+                });
+
+                insertMany(questions);
+
+                // Add category if it doesn't exist
+                this.db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)').run(category);
+
+                successCount++;
+                
+                this.api.log(`Batch generation: Successfully created package for ${category} (${questions.length} questions)`, 'info');
+                
+                this.api.emit('quiz-show:batch-generation-progress', {
+                    current: i + 1,
+                    total: categories.length,
+                    category,
+                    status: 'success',
+                    packageId,
+                    questionCount: questions.length
+                });
+                
+                // Small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+            } catch (error) {
+                this.api.log(`Batch generation error for ${category}: ${error.message}`, 'error');
+                failedCategories.push(category);
+                
+                this.api.emit('quiz-show:batch-generation-progress', {
+                    current: i + 1,
+                    total: categories.length,
+                    category,
+                    status: 'failed',
+                    error: error.message
+                });
+            }
+        }
+
+        // Emit completion event
+        this.api.emit('quiz-show:batch-generation-complete', {
+            totalCategories: categories.length,
+            successCount,
+            failedCount: failedCategories.length,
+            failedCategories
+        });
+
+        // Broadcast questions updated
+        const allQuestions = this.db.prepare('SELECT * FROM questions').all().map(q => ({
+            id: q.id,
+            question: q.question,
+            answers: JSON.parse(q.answers),
+            correct: q.correct,
+            category: q.category,
+            difficulty: q.difficulty,
+            info: q.info,
+            package_id: q.package_id
+        }));
+        this.api.emit('quiz-show:questions-updated', allQuestions);
+        
+        this.api.log(`Batch generation complete: ${successCount}/${categories.length} successful`, 'info');
     }
 
     async destroy() {

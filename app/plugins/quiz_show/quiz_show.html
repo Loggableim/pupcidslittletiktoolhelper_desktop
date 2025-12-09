@@ -382,6 +382,73 @@
                         </div>
                     </div>
 
+                    <!-- Batch Generate Question Packages Section -->
+                    <div class="panel" style="margin-bottom: 20px;">
+                        <div class="panel-header">
+                            <h3>🚀 Batch Fragenpakete Generieren</h3>
+                        </div>
+                        <div class="panel-body">
+                            <div id="batchGenerateWarning" class="warning-message" style="margin-bottom: 15px; display: none;">
+                                ⚠️ Bitte konfigurieren Sie zuerst Ihren OpenAI API-Schlüssel oben.
+                            </div>
+
+                            <div class="form-group">
+                                <label for="batchCategories">Kategorien (eine pro Zeile) *</label>
+                                <textarea 
+                                    id="batchCategories" 
+                                    class="form-control" 
+                                    rows="8"
+                                    placeholder="Geographie&#10;Geschichte&#10;Mathematik&#10;Naturwissenschaften&#10;Sport&#10;Musik&#10;Film & Fernsehen&#10;..."
+                                    style="font-family: monospace; resize: vertical;"
+                                ></textarea>
+                                <small style="color: #666; margin-top: 5px; display: block;">
+                                    Geben Sie jede Kategorie in eine neue Zeile ein. Leere Zeilen werden ignoriert.
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="batchPackageSize">Anzahl Fragen pro Paket</label>
+                                <input 
+                                    type="number" 
+                                    id="batchPackageSize" 
+                                    class="form-control" 
+                                    min="5" 
+                                    max="50" 
+                                    value="10"
+                                    style="max-width: 200px;"
+                                >
+                            </div>
+
+                            <div class="info-box" style="margin: 15px 0; padding: 10px; background: #f0fdf4; border-left: 4px solid #10b981; border-radius: 4px;">
+                                <strong>ℹ️ Batch-Generierung:</strong>
+                                <ul style="margin: 5px 0 0 20px; padding: 0;">
+                                    <li>Die Generierung läuft im Hintergrund</li>
+                                    <li>Sie können die Seite während der Generierung nutzen</li>
+                                    <li>Fortschritt wird in Echtzeit angezeigt</li>
+                                    <li>Zwischen den Kategorien wird eine kurze Pause eingelegt</li>
+                                </ul>
+                            </div>
+
+                            <div class="form-actions">
+                                <button id="batchGenerateBtn" class="btn btn-success">🤖 Batch Generierung Starten</button>
+                            </div>
+                            <div id="batchGenerateMessage" class="message hidden" style="margin-top: 10px;"></div>
+                            <div id="batchGenerationProgress" class="hidden" style="margin-top: 15px;">
+                                <div style="background: #f3f4f6; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <strong>Fortschritt:</strong>
+                                        <span id="batchProgressText">0 / 0</span>
+                                    </div>
+                                    <div class="progress-bar" style="height: 10px; background: #e5e7eb; border-radius: 5px; overflow: hidden;">
+                                        <div class="progress-fill" id="batchProgressBar" style="height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); width: 0%; transition: width 0.3s ease;"></div>
+                                    </div>
+                                </div>
+                                <div id="batchProgressLog" style="max-height: 300px; overflow-y: auto; background: #1f2937; color: #f3f4f6; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.85em;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Question Packages List -->
                     <div class="panel">
                         <div class="panel-header">
@@ -458,6 +525,23 @@
                             <label>
                                 <input type="checkbox" id="randomQuestions" checked>
                                 <span>Fragen in zufälliger Reihenfolge</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label title="Anzahl der Runden im Quiz (0 = unbegrenzt)">
+                                Anzahl Runden:
+                            </label>
+                            <input type="number" id="totalRounds" class="form-control" min="0" max="100" value="10">
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                0 = Unbegrenzt, sonst Anzahl der Fragen pro Quiz-Session
+                            </small>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="showRoundNumber" checked>
+                                <span>Rundenzahl im OBS HUD anzeigen</span>
                             </label>
                         </div>
                     </div>
@@ -1564,18 +1648,46 @@
                     <div class="panel-body">
                         <div class="form-group">
                             <label>
-                                <input type="checkbox" id="leaderboardShowAfterRound" checked>
-                                Leaderboard nach jeder Runde anzeigen
+                                <input type="checkbox" id="leaderboardShowAfterQuestion">
+                                Leaderboard nach jeder Frage anzeigen
                             </label>
+                            <small style="color: #666; display: block; margin-top: 5px; margin-left: 20px;">
+                                Zeigt das Leaderboard sofort nach jeder einzelnen Frage an
+                            </small>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" id="questionDisplayTypeGroup" style="display: none; margin-left: 20px;">
+                            <label>Fragen-Anzeige Typ</label>
+                            <select id="leaderboardQuestionDisplayType" class="form-control">
+                                <option value="round">Nur Runden-Leaderboard (aktuelle Frage)</option>
+                                <option value="season" selected>Nur Season-Leaderboard (Gesamtwertung)</option>
+                                <option value="both">Runde + Season</option>
+                            </select>
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                Was nach jeder Frage angezeigt werden soll
+                            </small>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label>
+                                <input type="checkbox" id="leaderboardShowAfterRound" checked>
+                                Leaderboard am Ende der Runde anzeigen
+                            </label>
+                            <small style="color: #666; display: block; margin-top: 5px; margin-left: 20px;">
+                                Zeigt das Leaderboard am Ende einer Quiz-Runde an (wenn Sie manuell "Stop" drücken)
+                            </small>
+                        </div>
+
+                        <div class="form-group" id="roundDisplayTypeGroup" style="margin-left: 20px;">
                             <label>Runden-Anzeige Typ</label>
                             <select id="leaderboardRoundDisplayType" class="form-control">
                                 <option value="round">Nur Runden-Leaderboard</option>
                                 <option value="season">Nur Season-Leaderboard</option>
                                 <option value="both">Runde + Season</option>
                             </select>
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                Was am Ende der Runde angezeigt werden soll
+                            </small>
                         </div>
 
                         <div class="form-group">
@@ -1584,11 +1696,17 @@
                                 <option value="round">Runden-Leaderboard</option>
                                 <option value="season">Season-Leaderboard</option>
                             </select>
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                Was beim Beenden des gesamten Quiz angezeigt werden soll
+                            </small>
                         </div>
 
                         <div class="form-group">
                             <label>Auto-Hide Verzögerung (Sekunden)</label>
                             <input type="number" id="leaderboardAutoHideDelay" class="form-control" value="10" min="0" max="60">
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                Wie lange das Leaderboard angezeigt wird (0 = nicht automatisch ausblenden)
+                            </small>
                         </div>
 
                         <div class="form-group">

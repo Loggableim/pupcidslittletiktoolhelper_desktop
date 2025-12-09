@@ -466,6 +466,8 @@
             showAnswersAfterTime: document.getElementById('showAnswersAfterTime').checked,
             shuffleAnswers: document.getElementById('shuffleAnswers').checked,
             randomQuestions: document.getElementById('randomQuestions').checked,
+            totalRounds: parseInt(document.getElementById('totalRounds').value),
+            showRoundNumber: document.getElementById('showRoundNumber').checked,
             joker50Enabled: document.getElementById('joker50Enabled').checked,
             jokerInfoEnabled: document.getElementById('jokerInfoEnabled').checked,
             jokerTimeEnabled: document.getElementById('jokerTimeEnabled').checked,
@@ -731,6 +733,8 @@
         document.getElementById('showAnswersAfterTime').checked = config.showAnswersAfterTime || false;
         document.getElementById('shuffleAnswers').checked = config.shuffleAnswers || false;
         document.getElementById('randomQuestions').checked = config.randomQuestions !== false;
+        document.getElementById('totalRounds').value = config.totalRounds || 10;
+        document.getElementById('showRoundNumber').checked = config.showRoundNumber !== false;
         document.getElementById('joker50Enabled').checked = config.joker50Enabled !== false;
         document.getElementById('jokerInfoEnabled').checked = config.jokerInfoEnabled !== false;
         document.getElementById('jokerTimeEnabled').checked = config.jokerTimeEnabled !== false;
@@ -2873,5 +2877,259 @@
             }
         });
     }
+
+    // ===== Leaderboard Display Configuration =====
+    
+    // Load leaderboard configuration
+    async function loadLeaderboardConfig() {
+        try {
+            const response = await fetch('/api/quiz-show/leaderboard-config');
+            const data = await response.json();
+            
+            if (data.success && data.config) {
+                const config = data.config;
+                
+                // Set checkbox values
+                const showAfterQuestion = document.getElementById('leaderboardShowAfterQuestion');
+                const showAfterRound = document.getElementById('leaderboardShowAfterRound');
+                
+                if (showAfterQuestion) showAfterQuestion.checked = config.show_after_question;
+                if (showAfterRound) showAfterRound.checked = config.show_after_round;
+                
+                // Set select values
+                const questionDisplayType = document.getElementById('leaderboardQuestionDisplayType');
+                const roundDisplayType = document.getElementById('leaderboardRoundDisplayType');
+                const endGameDisplayType = document.getElementById('leaderboardEndGameDisplayType');
+                const animationStyle = document.getElementById('leaderboardAnimationStyle');
+                const autoHideDelay = document.getElementById('leaderboardAutoHideDelay');
+                
+                if (questionDisplayType) questionDisplayType.value = config.question_display_type || 'season';
+                if (roundDisplayType) roundDisplayType.value = config.round_display_type || 'both';
+                if (endGameDisplayType) endGameDisplayType.value = config.end_game_display_type || 'season';
+                if (animationStyle) animationStyle.value = config.animation_style || 'fade';
+                if (autoHideDelay) autoHideDelay.value = config.auto_hide_delay || 10;
+                
+                // Toggle visibility of question display type based on checkbox
+                toggleQuestionDisplayType();
+                toggleRoundDisplayType();
+            }
+        } catch (error) {
+            console.error('Error loading leaderboard config:', error);
+        }
+    }
+    
+    // Toggle visibility of question display type options
+    function toggleQuestionDisplayType() {
+        const showAfterQuestion = document.getElementById('leaderboardShowAfterQuestion');
+        const questionDisplayTypeGroup = document.getElementById('questionDisplayTypeGroup');
+        
+        if (showAfterQuestion && questionDisplayTypeGroup) {
+            questionDisplayTypeGroup.style.display = showAfterQuestion.checked ? 'block' : 'none';
+        }
+    }
+    
+    // Toggle visibility of round display type options
+    function toggleRoundDisplayType() {
+        const showAfterRound = document.getElementById('leaderboardShowAfterRound');
+        const roundDisplayTypeGroup = document.getElementById('roundDisplayTypeGroup');
+        
+        if (showAfterRound && roundDisplayTypeGroup) {
+            roundDisplayTypeGroup.style.display = showAfterRound.checked ? 'block' : 'none';
+        }
+    }
+    
+    // Save leaderboard configuration
+    if (document.getElementById('saveLeaderboardConfigBtn')) {
+        document.getElementById('saveLeaderboardConfigBtn').addEventListener('click', async () => {
+            try {
+                const showAfterQuestion = document.getElementById('leaderboardShowAfterQuestion');
+                const showAfterRound = document.getElementById('leaderboardShowAfterRound');
+                const questionDisplayType = document.getElementById('leaderboardQuestionDisplayType');
+                const roundDisplayType = document.getElementById('leaderboardRoundDisplayType');
+                const endGameDisplayType = document.getElementById('leaderboardEndGameDisplayType');
+                const autoHideDelay = document.getElementById('leaderboardAutoHideDelay');
+                const animationStyle = document.getElementById('leaderboardAnimationStyle');
+                
+                const config = {
+                    showAfterQuestion: showAfterQuestion ? showAfterQuestion.checked : false,
+                    showAfterRound: showAfterRound ? showAfterRound.checked : true,
+                    questionDisplayType: questionDisplayType ? questionDisplayType.value : 'season',
+                    roundDisplayType: roundDisplayType ? roundDisplayType.value : 'both',
+                    endGameDisplayType: endGameDisplayType ? endGameDisplayType.value : 'season',
+                    autoHideDelay: autoHideDelay ? parseInt(autoHideDelay.value) : 10,
+                    animationStyle: animationStyle ? animationStyle.value : 'fade'
+                };
+                
+                const response = await fetch('/api/quiz-show/leaderboard-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('Leaderboard-Einstellungen gespeichert!', 'success', 'leaderboardConfigSaveMessage');
+                } else {
+                    showMessage('Fehler: ' + data.error, 'error', 'leaderboardConfigSaveMessage');
+                }
+            } catch (error) {
+                showMessage('Netzwerkfehler: ' + error.message, 'error', 'leaderboardConfigSaveMessage');
+            }
+        });
+    }
+    
+    // Add change listeners for checkboxes to toggle visibility
+    if (document.getElementById('leaderboardShowAfterQuestion')) {
+        document.getElementById('leaderboardShowAfterQuestion').addEventListener('change', toggleQuestionDisplayType);
+    }
+    if (document.getElementById('leaderboardShowAfterRound')) {
+        document.getElementById('leaderboardShowAfterRound').addEventListener('change', toggleRoundDisplayType);
+    }
+    
+    // Load leaderboard config on page load
+    loadLeaderboardConfig();
+
+    // ===== Batch AI Question Generation =====
+    
+    let batchGenerationActive = false;
+    
+    // Batch generate button
+    if (document.getElementById('batchGenerateBtn')) {
+        document.getElementById('batchGenerateBtn').addEventListener('click', async () => {
+            try {
+                const categoriesTextarea = document.getElementById('batchCategories');
+                const batchPackageSize = document.getElementById('batchPackageSize');
+                const batchGenerateBtn = document.getElementById('batchGenerateBtn');
+                const batchGenerationProgress = document.getElementById('batchGenerationProgress');
+                const batchProgressLog = document.getElementById('batchProgressLog');
+                
+                if (!categoriesTextarea) return;
+                
+                const categoriesText = categoriesTextarea.value.trim();
+                if (!categoriesText) {
+                    showMessage('Bitte geben Sie mindestens eine Kategorie ein', 'error', 'batchGenerateMessage');
+                    return;
+                }
+                
+                // Parse categories (one per line)
+                const categories = categoriesText
+                    .split('\n')
+                    .map(c => c.trim())
+                    .filter(c => c.length > 0);
+                
+                if (categories.length === 0) {
+                    showMessage('Bitte geben Sie mindestens eine Kategorie ein', 'error', 'batchGenerateMessage');
+                    return;
+                }
+                
+                const packageSize = batchPackageSize ? parseInt(batchPackageSize.value) : 10;
+                
+                // Disable button
+                if (batchGenerateBtn) {
+                    batchGenerateBtn.disabled = true;
+                    batchGenerateBtn.textContent = '⏳ Generierung läuft...';
+                }
+                
+                // Show progress
+                if (batchGenerationProgress) {
+                    batchGenerationProgress.classList.remove('hidden');
+                }
+                if (batchProgressLog) {
+                    batchProgressLog.innerHTML = '';
+                    batchProgressLog.innerHTML += `<div style="color: #10b981;">[${new Date().toLocaleTimeString()}] Batch-Generierung gestartet für ${categories.length} Kategorien...</div>`;
+                }
+                
+                batchGenerationActive = true;
+                
+                const response = await fetch('/api/quiz-show/packages/batch-generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ categories, packageSize })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(`Batch-Generierung gestartet für ${data.totalCategories} Kategorien`, 'success', 'batchGenerateMessage');
+                } else {
+                    showMessage('Fehler: ' + data.error, 'error', 'batchGenerateMessage');
+                    if (batchGenerateBtn) {
+                        batchGenerateBtn.disabled = false;
+                        batchGenerateBtn.textContent = '🤖 Batch Generierung Starten';
+                    }
+                    batchGenerationActive = false;
+                }
+            } catch (error) {
+                showMessage('Netzwerkfehler: ' + error.message, 'error', 'batchGenerateMessage');
+                const batchGenerateBtn = document.getElementById('batchGenerateBtn');
+                if (batchGenerateBtn) {
+                    batchGenerateBtn.disabled = false;
+                    batchGenerateBtn.textContent = '🤖 Batch Generierung Starten';
+                }
+                batchGenerationActive = false;
+            }
+        });
+    }
+    
+    // Listen for batch generation progress events
+    socket.on('quiz-show:batch-generation-progress', (data) => {
+        const batchProgressText = document.getElementById('batchProgressText');
+        const batchProgressBar = document.getElementById('batchProgressBar');
+        const batchProgressLog = document.getElementById('batchProgressLog');
+        
+        if (batchProgressText) {
+            batchProgressText.textContent = `${data.current} / ${data.total}`;
+        }
+        
+        if (batchProgressBar) {
+            const percentage = (data.current / data.total) * 100;
+            batchProgressBar.style.width = percentage + '%';
+        }
+        
+        if (batchProgressLog) {
+            const timestamp = new Date().toLocaleTimeString();
+            let logLine = '';
+            
+            if (data.status === 'processing') {
+                logLine = `<div style="color: #3b82f6;">[${timestamp}] Verarbeite ${data.current}/${data.total}: ${data.category}...</div>`;
+            } else if (data.status === 'success') {
+                logLine = `<div style="color: #10b981;">[${timestamp}] ✓ ${data.category} - ${data.questionCount} Fragen generiert</div>`;
+            } else if (data.status === 'failed') {
+                logLine = `<div style="color: #ef4444;">[${timestamp}] ✗ ${data.category} - Fehler: ${data.error}</div>`;
+            }
+            
+            batchProgressLog.innerHTML += logLine;
+            batchProgressLog.scrollTop = batchProgressLog.scrollHeight;
+        }
+    });
+    
+    // Listen for batch generation complete event
+    socket.on('quiz-show:batch-generation-complete', (data) => {
+        const batchGenerateBtn = document.getElementById('batchGenerateBtn');
+        const batchProgressLog = document.getElementById('batchProgressLog');
+        
+        if (batchGenerateBtn) {
+            batchGenerateBtn.disabled = false;
+            batchGenerateBtn.textContent = '🤖 Batch Generierung Starten';
+        }
+        
+        if (batchProgressLog) {
+            const timestamp = new Date().toLocaleTimeString();
+            batchProgressLog.innerHTML += `<div style="color: #10b981; font-weight: bold; margin-top: 10px;">[${timestamp}] Batch-Generierung abgeschlossen!</div>`;
+            batchProgressLog.innerHTML += `<div style="color: #a0a0a0;">Erfolgreich: ${data.successCount} | Fehlgeschlagen: ${data.failedCount}</div>`;
+            batchProgressLog.scrollTop = batchProgressLog.scrollHeight;
+        }
+        
+        showMessage(`Batch-Generierung abgeschlossen: ${data.successCount}/${data.totalCategories} erfolgreich`, 
+            data.failedCount > 0 ? 'warning' : 'success', 
+            'batchGenerateMessage'
+        );
+        
+        batchGenerationActive = false;
+        
+        // Reload packages list
+        loadPackages();
+    });
 
 })();

@@ -33,6 +33,9 @@
         correctIndex: null,
         timeRemaining: 0,
         totalTime: 30,
+        currentRound: 0,
+        totalRounds: 0,
+        showRoundNumber: true,
         hiddenAnswers: [],
         revealedWrongAnswer: null,
         answerDisplayDuration: 5, // Default to 5 seconds
@@ -568,6 +571,9 @@
                 correctIndex: null,
                 timeRemaining: state.timeRemaining,
                 totalTime: state.totalTime,
+                currentRound: state.currentRound || 0,
+                totalRounds: state.totalRounds || 0,
+                showRoundNumber: state.showRoundNumber !== undefined ? state.showRoundNumber : true,
                 hiddenAnswers: state.hiddenAnswers || [],
                 revealedWrongAnswer: state.revealedWrongAnswer,
                 info: state.currentQuestion.info || null,
@@ -585,10 +591,20 @@
             displayQuestion(gameData.question);
             displayAnswers(gameData.answers);
             
-            // Update round indicator to show question is ready
-            const roundIndicator = document.getElementById('roundIndicator');
-            if (roundIndicator) {
-                roundIndicator.textContent = 'Aktuelle Frage';
+            // Update round number display
+            const roundNumberDisplay = document.getElementById('roundNumberDisplay');
+            const roundNumberText = document.getElementById('roundNumberText');
+            
+            if (gameData.showRoundNumber && roundNumberDisplay && roundNumberText) {
+                roundNumberDisplay.style.display = 'flex';
+                
+                if (gameData.totalRounds > 0) {
+                    roundNumberText.textContent = `Runde ${gameData.currentRound} / ${gameData.totalRounds}`;
+                } else {
+                    roundNumberText.textContent = `Runde ${gameData.currentRound}`;
+                }
+            } else if (roundNumberDisplay) {
+                roundNumberDisplay.style.display = 'none';
             }
 
             if (gameData.hiddenAnswers.length > 0) {
