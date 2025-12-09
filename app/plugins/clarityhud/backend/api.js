@@ -75,7 +75,10 @@ class ClarityHUDBackend {
       animationSpeed: 'medium',
       lineHeight: 1.2,
       opacity: 1,
-      keepOnTop: false
+      keepOnTop: false,
+      // Gift display settings
+      showGiftImages: false, // Show gift catalogue images instead of emoji
+      giftImageSize: 'medium' // 'small', 'medium', 'large'
     };
 
     // Current settings
