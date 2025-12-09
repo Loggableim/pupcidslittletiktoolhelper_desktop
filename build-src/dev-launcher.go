@@ -281,7 +281,15 @@ func (l *Launcher) startTool() (*exec.Cmd, error) {
 
 	// Set environment variable to disable automatic browser opening
 	// The GUI launcher handles the redirect to dashboard after server is ready
-	env := os.Environ()
+	// Build environment explicitly to ensure OPEN_BROWSER is properly set
+	env := []string{}
+	for _, e := range os.Environ() {
+		// Skip any existing OPEN_BROWSER variable to avoid conflicts
+		if len(e) >= 12 && e[:12] == "OPEN_BROWSER" {
+			continue
+		}
+		env = append(env, e)
+	}
 	env = append(env, "OPEN_BROWSER=false")
 	
 	// DEV MODE: Force unbuffered output from Node.js
