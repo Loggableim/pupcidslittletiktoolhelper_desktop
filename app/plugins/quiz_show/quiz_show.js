@@ -466,6 +466,8 @@
             showAnswersAfterTime: document.getElementById('showAnswersAfterTime').checked,
             shuffleAnswers: document.getElementById('shuffleAnswers').checked,
             randomQuestions: document.getElementById('randomQuestions').checked,
+            totalRounds: parseInt(document.getElementById('totalRounds').value),
+            showRoundNumber: document.getElementById('showRoundNumber').checked,
             joker50Enabled: document.getElementById('joker50Enabled').checked,
             jokerInfoEnabled: document.getElementById('jokerInfoEnabled').checked,
             jokerTimeEnabled: document.getElementById('jokerTimeEnabled').checked,
@@ -731,6 +733,8 @@
         document.getElementById('showAnswersAfterTime').checked = config.showAnswersAfterTime || false;
         document.getElementById('shuffleAnswers').checked = config.shuffleAnswers || false;
         document.getElementById('randomQuestions').checked = config.randomQuestions !== false;
+        document.getElementById('totalRounds').value = config.totalRounds || 10;
+        document.getElementById('showRoundNumber').checked = config.showRoundNumber !== false;
         document.getElementById('joker50Enabled').checked = config.joker50Enabled !== false;
         document.getElementById('jokerInfoEnabled').checked = config.jokerInfoEnabled !== false;
         document.getElementById('jokerTimeEnabled').checked = config.jokerTimeEnabled !== false;

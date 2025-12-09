@@ -527,6 +527,23 @@
                                 <span>Fragen in zufälliger Reihenfolge</span>
                             </label>
                         </div>
+
+                        <div class="form-group">
+                            <label title="Anzahl der Runden im Quiz (0 = unbegrenzt)">
+                                Anzahl Runden:
+                            </label>
+                            <input type="number" id="totalRounds" class="form-control" min="0" max="100" value="10">
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                0 = Unbegrenzt, sonst Anzahl der Fragen pro Quiz-Session
+                            </small>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="showRoundNumber" checked>
+                                <span>Rundenzahl im OBS HUD anzeigen</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 

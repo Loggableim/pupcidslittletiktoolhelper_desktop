@@ -33,6 +33,8 @@ class QuizShowPlugin {
             jokersPerRound: 3,
             gameMode: 'classic', // classic, fastestFinger, elimination, marathon
             marathonLength: 15,
+            totalRounds: 10, // Total rounds in a quiz session (0 = unlimited)
+            showRoundNumber: true, // Show round number in overlay
             ttsEnabled: false,
             ttsVoice: 'default',
             ttsVolume: 80, // NEW: TTS volume (0-100%)
@@ -79,6 +81,7 @@ class QuizShowPlugin {
             currentQuestion: null,
             currentQuestionIndex: -1, // Deprecated: kept for backwards compatibility
             currentQuestionId: null, // ID of the current question being asked
+            currentRound: 0, // Current round number (increments with each question)
             startTime: null,
             endTime: null,
             timeRemaining: 0,
@@ -2246,6 +2249,9 @@ class QuizShowPlugin {
         
         // Add to session tracking (for round tracking)
         this.gameState.askedQuestionIds.add(selectedQuestion.id);
+        
+        // Increment round counter
+        this.gameState.currentRound++;
 
         // Prepare answers (shuffle if configured)
         let answers = [...selectedQuestion.answers];
@@ -3082,6 +3088,9 @@ class QuizShowPlugin {
         const state = {
             isRunning: this.gameState.isRunning,
             roundState: this.gameState.roundState,
+            currentRound: this.gameState.currentRound,
+            totalRounds: this.config.totalRounds,
+            showRoundNumber: this.config.showRoundNumber,
             currentQuestion: {
                 question: this.gameState.currentQuestion.question,
                 answers: this.gameState.currentQuestion.answers,
@@ -3115,6 +3124,7 @@ class QuizShowPlugin {
             currentQuestion: null,
             currentQuestionIndex: -1, // Deprecated: kept for backwards compatibility
             currentQuestionId: null,
+            currentRound: 0,
             startTime: null,
             endTime: null,
             timeRemaining: 0,
