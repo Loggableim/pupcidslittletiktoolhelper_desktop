@@ -92,10 +92,66 @@ class CoinBattlePlugin {
   }
 
   /**
-   * Register API routes
+   * Register API routes with rate limiting
    */
   registerRoutes() {
-    // Get current match state
+    // Rate limiter configurations
+    const strictLimiter = {
+      windowMs: 60 * 1000, // 1 minute
+      max: 10, // 10 requests per minute
+      message: { success: false, error: 'Too many requests, please try again later.' }
+    };
+
+    const moderateLimiter = {
+      windowMs: 60 * 1000,
+      max: 30,
+      message: { success: false, error: 'Rate limit exceeded.' }
+    };
+
+    const relaxedLimiter = {
+      windowMs: 60 * 1000,
+      max: 100,
+      message: { success: false, error: 'Too many requests.' }
+    };
+
+    // Helper to create rate limiter
+    const createLimiter = (config) => {
+      const requests = new Map();
+      return (req, res, next) => {
+        const key = req.ip || req.connection.remoteAddress;
+        const now = Date.now();
+        
+        if (!requests.has(key)) {
+          requests.set(key, []);
+        }
+        
+        const userRequests = requests.get(key);
+        const recentRequests = userRequests.filter(time => now - time < config.windowMs);
+        
+        if (recentRequests.length >= config.max) {
+          return res.status(429).json(config.message);
+        }
+        
+        recentRequests.push(now);
+        requests.set(key, recentRequests);
+        
+        // Cleanup old entries periodically
+        if (Math.random() < 0.01) {
+          for (const [k, v] of requests.entries()) {
+            const filtered = v.filter(time => now - time < config.windowMs);
+            if (filtered.length === 0) {
+              requests.delete(k);
+            } else {
+              requests.set(k, filtered);
+            }
+          }
+        }
+        
+        next();
+      };
+    };
+
+    // Get current match state (relaxed - read-only)
     this.api.registerRoute('GET', '/api/plugins/coinbattle/state', (req, res) => {
       try {
         const state = this.engine.getMatchState();

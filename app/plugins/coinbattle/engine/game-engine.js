@@ -46,6 +46,15 @@ class CoinBattleEngine {
     // Offline simulation
     this.simulationInterval = null;
     this.simulationPlayers = [];
+
+    // Event cache cleanup interval (every 5 minutes)
+    this.cacheCleanupInterval = setInterval(() => {
+      try {
+        this.db.cleanupEventCache();
+      } catch (error) {
+        this.logger.error(`Event cache cleanup failed: ${error.message}`);
+      }
+    }, 5 * 60 * 1000);
   }
 
   /**
@@ -299,9 +308,9 @@ class CoinBattleEngine {
   }
 
   /**
-   * Process gift event
+   * Process gift event with idempotency
    */
-  processGift(giftData, userData) {
+  processGift(giftData, userData, eventId = null) {
     if (!this.currentMatch) {
       // Auto-start if enabled
       if (this.config.autoStart) {
@@ -316,68 +325,95 @@ class CoinBattleEngine {
       return null;
     }
 
-    // Get or create player
-    const player = this.db.getOrCreatePlayer({
-      userId: userData.userId,
-      uniqueId: userData.uniqueId,
-      nickname: userData.nickname,
-      profilePictureUrl: userData.profilePictureUrl
-    });
+    // Generate event identifiers for idempotency
+    const generatedEventId = eventId || `evt_${this.currentMatch.id}_${userData.userId}_${giftData.giftId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const idempotencyKey = `gift_${this.currentMatch.id}_${userData.userId}_${giftData.giftId}_${giftData.diamondCount || giftData.coins}_${Date.now()}`;
 
-    // Assign team if in team mode
-    let team = null;
-    if (this.currentMatch.mode === 'team') {
-      team = this.assignTeam(userData.userId, player.id);
+    // Check if event already processed (deduplication)
+    if (this.db.isEventProcessed(generatedEventId, idempotencyKey)) {
+      this.logger.warn(`Duplicate event detected and rejected: ${generatedEventId}`);
+      return { duplicate: true, eventId: generatedEventId };
     }
 
-    // Add to match participants
-    this.db.addMatchParticipant(this.currentMatch.id, player.id, userData.userId, team);
+    // Mark event as being processed (atomic operation)
+    this.db.markEventProcessed(generatedEventId, idempotencyKey, this.currentMatch.id, userData.userId, 3600);
 
-    // Calculate coins with multiplier
-    const coins = giftData.diamondCount || giftData.coins || 1;
-    const multipliedCoins = Math.floor(coins * this.activeMultiplier);
-
-    // Record gift event
-    this.db.recordGiftEvent(
-      this.currentMatch.id,
-      player.id,
-      userData.userId,
-      {
-        giftId: giftData.giftId,
-        giftName: giftData.giftName,
-        coins: coins
-      },
-      team,
-      this.activeMultiplier
-    );
-
-    // Update in-memory player data
-    if (!this.players.has(userData.userId)) {
-      this.players.set(userData.userId, {
-        ...userData,
-        coins: 0,
-        gifts: 0,
-        team
+    try {
+      // Get or create player
+      const player = this.db.getOrCreatePlayer({
+        userId: userData.userId,
+        uniqueId: userData.uniqueId,
+        nickname: userData.nickname,
+        profilePictureUrl: userData.profilePictureUrl
       });
+
+      // Assign team if in team mode
+      let team = null;
+      if (this.currentMatch.mode === 'team') {
+        team = this.assignTeam(userData.userId, player.id);
+      }
+
+      // Add to match participants
+      this.db.addMatchParticipant(this.currentMatch.id, player.id, userData.userId, team);
+
+      // Calculate coins with multiplier
+      const coins = giftData.diamondCount || giftData.coins || 1;
+      const multipliedCoins = Math.floor(coins * this.activeMultiplier);
+
+      // Record gift event with idempotency keys
+      const recorded = this.db.recordGiftEvent(
+        this.currentMatch.id,
+        player.id,
+        userData.userId,
+        {
+          giftId: giftData.giftId,
+          giftName: giftData.giftName,
+          coins: coins
+        },
+        team,
+        this.activeMultiplier,
+        generatedEventId,
+        idempotencyKey
+      );
+
+      if (!recorded) {
+        this.logger.warn(`Event was duplicate in recordGiftEvent: ${generatedEventId}`);
+        return { duplicate: true, eventId: generatedEventId };
+      }
+
+      // Update in-memory player data
+      if (!this.players.has(userData.userId)) {
+        this.players.set(userData.userId, {
+          ...userData,
+          coins: 0,
+          gifts: 0,
+          team
+        });
+      }
+
+      const playerData = this.players.get(userData.userId);
+      playerData.coins += multipliedCoins;
+      playerData.gifts += 1;
+
+      // Emit gift event
+      this.io.emit('coinbattle:gift-received', {
+        player: playerData,
+        gift: giftData,
+        coins: multipliedCoins,
+        multiplier: this.activeMultiplier,
+        team,
+        eventId: generatedEventId
+      });
+
+      // Update leaderboard
+      this.emitLeaderboard();
+
+      return { player: playerData, coins: multipliedCoins, eventId: generatedEventId, duplicate: false };
+    } catch (error) {
+      this.logger.error(`Error processing gift: ${error.message}`);
+      // Event failed to process, but cache entry prevents retry
+      throw error;
     }
-
-    const playerData = this.players.get(userData.userId);
-    playerData.coins += multipliedCoins;
-    playerData.gifts += 1;
-
-    // Emit gift event
-    this.io.emit('coinbattle:gift-received', {
-      player: playerData,
-      gift: giftData,
-      coins: multipliedCoins,
-      multiplier: this.activeMultiplier,
-      team
-    });
-
-    // Update leaderboard
-    this.emitLeaderboard();
-
-    return { player: playerData, coins: multipliedCoins };
   }
 
   /**
@@ -581,6 +617,9 @@ class CoinBattleEngine {
     this.stopSimulation();
     if (this.multiplierTimer) {
       clearTimeout(this.multiplierTimer);
+    }
+    if (this.cacheCleanupInterval) {
+      clearInterval(this.cacheCleanupInterval);
     }
   }
 }

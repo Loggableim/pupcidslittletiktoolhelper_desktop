@@ -87,9 +87,24 @@ class CoinBattleDatabase {
           coins INTEGER NOT NULL,
           multiplier REAL DEFAULT 1.0,
           team TEXT,
+          event_id TEXT UNIQUE,
+          idempotency_key TEXT UNIQUE,
           timestamp INTEGER DEFAULT (strftime('%s', 'now')),
           FOREIGN KEY (match_id) REFERENCES coinbattle_matches(id),
           FOREIGN KEY (player_id) REFERENCES coinbattle_players(id)
+        )
+      `).run();
+
+      // Event deduplication cache - tracks recent events to prevent replays
+      this.db.prepare(`
+        CREATE TABLE IF NOT EXISTS coinbattle_event_cache (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_id TEXT UNIQUE NOT NULL,
+          idempotency_key TEXT UNIQUE NOT NULL,
+          match_id INTEGER NOT NULL,
+          user_id TEXT NOT NULL,
+          processed_at INTEGER DEFAULT (strftime('%s', 'now')),
+          expires_at INTEGER NOT NULL
         )
       `).run();
 
@@ -141,6 +156,11 @@ class CoinBattleDatabase {
       this.db.prepare('CREATE INDEX IF NOT EXISTS idx_participants_player ON coinbattle_match_participants(player_id)').run();
       this.db.prepare('CREATE INDEX IF NOT EXISTS idx_gifts_match ON coinbattle_gift_events(match_id)').run();
       this.db.prepare('CREATE INDEX IF NOT EXISTS idx_gifts_player ON coinbattle_gift_events(player_id)').run();
+      this.db.prepare('CREATE INDEX IF NOT EXISTS idx_gifts_eventid ON coinbattle_gift_events(event_id)').run();
+      this.db.prepare('CREATE INDEX IF NOT EXISTS idx_gifts_idempotency ON coinbattle_gift_events(idempotency_key)').run();
+      this.db.prepare('CREATE INDEX IF NOT EXISTS idx_event_cache_eventid ON coinbattle_event_cache(event_id)').run();
+      this.db.prepare('CREATE INDEX IF NOT EXISTS idx_event_cache_idempotency ON coinbattle_event_cache(idempotency_key)').run();
+      this.db.prepare('CREATE INDEX IF NOT EXISTS idx_event_cache_expires ON coinbattle_event_cache(expires_at)').run();
 
       // Initialize default badges
       this.initializeDefaultBadges();
@@ -286,28 +306,101 @@ class CoinBattleDatabase {
   /**
    * Record gift event
    */
-  recordGiftEvent(matchId, playerId, userId, giftData, team, multiplier = 1.0) {
-    this.db.prepare(`
-      INSERT INTO coinbattle_gift_events 
-      (match_id, player_id, user_id, gift_id, gift_name, coins, multiplier, team)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      matchId,
-      playerId,
-      userId,
-      giftData.giftId,
-      giftData.giftName,
-      giftData.coins,
-      multiplier,
-      team
-    );
+  recordGiftEvent(matchId, playerId, userId, giftData, team, multiplier = 1.0, eventId = null, idempotencyKey = null) {
+    // Generate event ID and idempotency key if not provided
+    const finalEventId = eventId || `${matchId}_${userId}_${giftData.giftId}_${Date.now()}_${Math.random()}`;
+    const finalIdempotencyKey = idempotencyKey || `gift_${userId}_${giftData.giftId}_${Date.now()}`;
 
-    // Update participant coins
-    this.db.prepare(`
-      UPDATE coinbattle_match_participants
-      SET coins = coins + ?, gifts = gifts + 1
-      WHERE match_id = ? AND player_id = ?
-    `).run(Math.floor(giftData.coins * multiplier), matchId, playerId);
+    try {
+      this.db.prepare(`
+        INSERT INTO coinbattle_gift_events 
+        (match_id, player_id, user_id, gift_id, gift_name, coins, multiplier, team, event_id, idempotency_key)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        matchId,
+        playerId,
+        userId,
+        giftData.giftId,
+        giftData.giftName,
+        giftData.coins,
+        multiplier,
+        team,
+        finalEventId,
+        finalIdempotencyKey
+      );
+
+      // Update participant coins
+      this.db.prepare(`
+        UPDATE coinbattle_match_participants
+        SET coins = coins + ?, gifts = gifts + 1
+        WHERE match_id = ? AND player_id = ?
+      `).run(Math.floor(giftData.coins * multiplier), matchId, playerId);
+
+      return true;
+    } catch (error) {
+      // Check if it's a duplicate (UNIQUE constraint violation)
+      if (error.message.includes('UNIQUE constraint failed')) {
+        this.logger.warn(`Duplicate event detected: ${finalEventId} or ${finalIdempotencyKey}`);
+        return false; // Event already processed
+      }
+      throw error; // Re-throw other errors
+    }
+  }
+
+  /**
+   * Check if event has been processed (idempotency check)
+   */
+  isEventProcessed(eventId, idempotencyKey) {
+    // Check event cache first (fast path)
+    const cached = this.db.prepare(`
+      SELECT id FROM coinbattle_event_cache
+      WHERE event_id = ? OR idempotency_key = ?
+    `).get(eventId, idempotencyKey);
+
+    if (cached) {
+      return true;
+    }
+
+    // Check gift events table (slower but persistent)
+    const event = this.db.prepare(`
+      SELECT id FROM coinbattle_gift_events
+      WHERE event_id = ? OR idempotency_key = ?
+    `).get(eventId, idempotencyKey);
+
+    return !!event;
+  }
+
+  /**
+   * Mark event as processed
+   */
+  markEventProcessed(eventId, idempotencyKey, matchId, userId, ttlSeconds = 3600) {
+    const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+
+    try {
+      this.db.prepare(`
+        INSERT OR IGNORE INTO coinbattle_event_cache
+        (event_id, idempotency_key, match_id, user_id, expires_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(eventId, idempotencyKey, matchId, userId, expiresAt);
+    } catch (error) {
+      this.logger.warn(`Failed to cache event: ${error.message}`);
+    }
+  }
+
+  /**
+   * Clean up expired events from cache (run periodically)
+   */
+  cleanupEventCache() {
+    const now = Math.floor(Date.now() / 1000);
+    const result = this.db.prepare(`
+      DELETE FROM coinbattle_event_cache
+      WHERE expires_at < ?
+    `).run(now);
+
+    if (result.changes > 0) {
+      this.logger.info(`Cleaned up ${result.changes} expired events from cache`);
+    }
+    return result.changes;
   }
 
   /**
