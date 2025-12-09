@@ -1530,12 +1530,14 @@
             }
         };
         
-        // Convert grid column (A-T) to percentage (0-95%)
-        const columnIndex = gridConfig.gridColumn.charCodeAt(0) - 65; // A=0, B=1, etc.
+        // Validate and clamp gridColumn to A-T (indices 0-19)
+        const columnChar = (gridConfig.gridColumn || 'A').toUpperCase();
+        const columnIndex = Math.max(0, Math.min(19, columnChar.charCodeAt(0) - 65));
         const xPercent = columnIndex * 5; // 5% per column
         
-        // Convert grid row (1-20) to percentage (0-95%)
-        const yPercent = (gridConfig.gridRow - 1) * 5; // 5% per row
+        // Validate and clamp gridRow to 1-20
+        const rowNum = Math.max(1, Math.min(20, parseInt(gridConfig.gridRow, 10) || 1));
+        const yPercent = (rowNum - 1) * 5; // 5% per row
         
         // Get size dimensions
         const dimensions = sizeDefinitions[gridConfig.elementType]?.[gridConfig.size] || { width: 300, height: 100 };

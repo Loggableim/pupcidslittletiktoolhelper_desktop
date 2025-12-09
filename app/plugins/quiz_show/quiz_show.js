@@ -2126,14 +2126,19 @@
                 // Old pixel-based format - convert to grid (approximate)
                 // This is for backwards compatibility
                 const width = props.width || 800;
-                const column = props.x ? String.fromCharCode(65 + Math.floor(props.x / 100)) : 'C';
-                const rowNum = props.y ? Math.max(1, Math.floor(props.y / 50)) : 1;
+                
+                // Convert X position to column, clamped to A-T (0-19 indices)
+                const columnIndex = props.x ? Math.min(19, Math.floor(props.x / 100)) : 2; // Default C
+                const column = String.fromCharCode(65 + columnIndex);
+                
+                // Convert Y position to row, clamped to 1-20
+                const rowNum = props.y ? Math.min(20, Math.max(1, Math.floor(props.y / 50))) : 1;
                 
                 // Determine size based on width
                 let size = 'medium';
                 if (width < 500) size = 'small';
-                else if (width > 1000) size = 'large';
                 else if (width > 1400) size = 'xlarge';
+                else if (width > 1000) size = 'large';
                 
                 row.querySelector('.grid-column').value = column;
                 row.querySelector('.grid-row').value = rowNum;
@@ -2303,21 +2308,34 @@
         const previewWidth = gridElements.parentElement.offsetWidth;
         const previewHeight = gridElements.parentElement.offsetHeight;
         
-        // Read grid settings from table
-        const rows = document.querySelectorAll('.element-config-table tbody tr');
+        // Read grid settings from table (use specific ID to avoid conflicts)
+        const layoutEditorTable = document.getElementById('layoutEditorSection');
+        if (!layoutEditorTable) return;
+        
+        const rows = layoutEditorTable.querySelectorAll('.element-config-table tbody tr');
         rows.forEach(row => {
             const elementType = row.dataset.element;
-            const column = row.querySelector('.grid-column').value;
-            const rowNum = parseInt(row.querySelector('.grid-row').value, 10);
-            const size = row.querySelector('.grid-size').value;
-            const visible = row.querySelector('.grid-visible').checked;
+            const columnInput = row.querySelector('.grid-column');
+            const rowInput = row.querySelector('.grid-row');
+            const sizeInput = row.querySelector('.grid-size');
+            const visibleInput = row.querySelector('.grid-visible');
+            
+            if (!columnInput || !rowInput || !sizeInput || !visibleInput) return;
+            
+            const column = columnInput.value || 'C';
+            const rowNum = parseInt(rowInput.value, 10) || 1;
+            const size = sizeInput.value || 'medium';
+            const visible = visibleInput.checked;
             
             if (!visible) return; // Skip invisible elements
             
-            // Calculate position based on grid
-            const columnIndex = column.charCodeAt(0) - 65; // A=0, B=1, etc.
+            // Calculate position based on grid, with validation
+            const columnChar = column.toUpperCase();
+            const columnIndex = Math.max(0, Math.min(19, columnChar.charCodeAt(0) - 65));
+            const validatedRow = Math.max(1, Math.min(20, rowNum));
+            
             const x = (columnIndex * 5); // 5% per column
-            const y = ((rowNum - 1) * 5); // 5% per row
+            const y = ((validatedRow - 1) * 5); // 5% per row
             
             // Get size dimensions
             const dimensions = sizeDefinitions[elementType]?.[size] || { width: 300, height: 100 };
