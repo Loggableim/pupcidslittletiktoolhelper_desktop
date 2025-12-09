@@ -281,10 +281,10 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="logo">⏱️ Advanced Timer</div>
-            <button class="nav-btn active" onclick="showTab('timers')">📊 Timers</button>
-            <button class="nav-btn" onclick="showTab('create')">➕ Create Timer</button>
-            <button class="nav-btn" onclick="showTab('profiles')">💾 Profiles</button>
-            <button class="nav-btn" onclick="showTab('help')">❓ Help</button>
+            <button class="nav-btn active" data-tab="timers">📊 Timers</button>
+            <button class="nav-btn" data-tab="create">➕ Create Timer</button>
+            <button class="nav-btn" data-tab="profiles">💾 Profiles</button>
+            <button class="nav-btn" data-tab="help">❓ Help</button>
         </div>
 
         <!-- Main Content -->
@@ -293,7 +293,7 @@
             <div id="tab-timers" class="tab-content active">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                     <h1>Active Timers</h1>
-                    <button class="btn btn-primary" onclick="showTab('create')">➕ New Timer</button>
+                    <button class="btn btn-primary" data-tab="create">➕ New Timer</button>
                 </div>
                 
                 <div id="timers-container"></div>
@@ -303,7 +303,7 @@
             <div id="tab-create" class="tab-content">
                 <h1 style="margin-bottom: 24px;">Create New Timer</h1>
                 
-                <form id="timer-form" onsubmit="handleCreateTimer(event)">
+                <form id="timer-form">
                     <div class="form-group">
                         <label class="form-label">Timer Name</label>
                         <input type="text" class="form-control" id="timer-name" placeholder="My Timer" required>
@@ -311,7 +311,7 @@
 
                     <div class="form-group">
                         <label class="form-label">Timer Mode</label>
-                        <select class="form-control" id="timer-mode" required onchange="handleModeChange()">
+                        <select class="form-control" id="timer-mode" required>
                             <option value="countdown">Countdown - Count down from a time</option>
                             <option value="countup">Count Up - Count up to a target</option>
                             <option value="stopwatch">Stopwatch - Count up indefinitely</option>
@@ -339,7 +339,7 @@
 
                     <div style="display: flex; gap: 12px; margin-top: 24px;">
                         <button type="submit" class="btn btn-primary">Create Timer</button>
-                        <button type="button" class="btn btn-secondary" onclick="showTab('timers')">Cancel</button>
+                        <button type="button" class="btn btn-secondary" data-tab="timers">Cancel</button>
                     </div>
                 </form>
             </div>
@@ -394,10 +394,10 @@
             <div class="modal-header">⚙️ Timer Settings</div>
             
             <div class="tabs">
-                <button class="tab active" onclick="showSettingsTab('basic')">Basic</button>
-                <button class="tab" onclick="showSettingsTab('events')">Events</button>
-                <button class="tab" onclick="showSettingsTab('overlay')">Overlay</button>
-                <button class="tab" onclick="showSettingsTab('logs')">Logs</button>
+                <button class="tab active" data-settings-tab="basic">Basic</button>
+                <button class="tab" data-settings-tab="events">Events</button>
+                <button class="tab" data-settings-tab="overlay">Overlay</button>
+                <button class="tab" data-settings-tab="logs">Logs</button>
             </div>
 
             <div id="settings-tab-basic" class="tab-content active">
@@ -406,22 +406,22 @@
                     <input type="text" class="form-control" id="edit-timer-name">
                 </div>
                 <div style="display: flex; gap: 12px;">
-                    <button class="btn btn-primary" onclick="saveTimerSettings()">Save</button>
-                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="save-timer-settings">Save</button>
+                    <button class="btn btn-secondary" id="close-modal">Cancel</button>
                 </div>
             </div>
 
             <div id="settings-tab-events" class="tab-content">
                 <p style="margin-bottom: 16px;">Configure how TikTok events affect this timer</p>
                 <div id="events-list"></div>
-                <button class="btn btn-primary" onclick="addTimerEvent()">+ Add Event Rule</button>
+                <button class="btn btn-primary" id="add-timer-event">+ Add Event Rule</button>
             </div>
 
             <div id="settings-tab-overlay" class="tab-content">
                 <div class="form-group">
                     <label class="form-label">Overlay URL</label>
                     <div class="overlay-url" id="overlay-url"></div>
-                    <button class="copy-btn" onclick="copyOverlayURL()">📋 Copy URL</button>
+                    <button class="copy-btn" id="copy-overlay-url">📋 Copy URL</button>
                 </div>
                 <div class="info-box">
                     <p>Add this URL as a Browser Source in OBS to display this timer</p>
@@ -431,7 +431,7 @@
             <div id="settings-tab-logs" class="tab-content">
                 <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                     <h3>Activity Log</h3>
-                    <button class="btn btn-sm btn-secondary" onclick="exportLogs()">📥 Export</button>
+                    <button class="btn btn-sm btn-secondary" id="export-logs">📥 Export</button>
                 </div>
                 <div id="logs-container"></div>
             </div>
