@@ -1264,29 +1264,6 @@ class FireworksEngine {
         this.offscreenCanvas = null;
         this.workerMode = false;
         
-        // Try to initialize OffscreenCanvas + Web Worker for multithreading
-        if (this.useWorker && typeof OffscreenCanvas !== 'undefined' && typeof Worker !== 'undefined') {
-            try {
-                this.offscreenCanvas = this.canvas.transferControlToOffscreen();
-                this.worker = new Worker('/plugins/fireworks/gpu/fireworks-worker.js');
-                this.workerMode = true;
-                console.log('[Fireworks Engine] ✅ Multithreading enabled: OffscreenCanvas + Web Worker');
-            } catch (error) {
-                console.warn('[Fireworks Engine] ⚠️ Worker initialization failed, falling back to main thread:', error);
-                this.workerMode = false;
-            }
-        }
-        
-        // Fallback to main thread rendering if worker mode failed
-        if (!this.workerMode) {
-            this.ctx = this.canvas.getContext('2d', {
-                alpha: true,
-                desynchronized: true,  // Enable GPU acceleration for better performance
-                willReadFrequently: false
-            });
-            console.log('[Fireworks Engine] ✅ GPU acceleration enabled (main thread mode)');
-        }
-        
         this.fireworks = [];
         this.audioManager = new AudioManager();
         
@@ -1326,9 +1303,34 @@ class FireworksEngine {
     }
 
     async init() {
-        // Setup canvas
+        // Setup canvas FIRST before trying to transfer control
         this.resize();
         window.addEventListener('resize', () => this.resize());
+
+        // Now try to initialize worker AFTER canvas is configured
+        if (this.useWorker && typeof OffscreenCanvas !== 'undefined' && typeof Worker !== 'undefined') {
+            try {
+                this.offscreenCanvas = this.canvas.transferControlToOffscreen();
+                this.worker = new Worker('/plugins/fireworks/gpu/fireworks-worker.js');
+                this.workerMode = true;
+                console.log('[Fireworks Engine] ✅ Multithreading enabled: OffscreenCanvas + Web Worker');
+            } catch (error) {
+                console.warn('[Fireworks Engine] ⚠️ Worker initialization failed, falling back to main thread:', error);
+                this.workerMode = false;
+                this.offscreenCanvas = null;
+                this.worker = null;
+            }
+        }
+        
+        // Initialize context for main thread mode if worker mode failed or disabled
+        if (!this.workerMode) {
+            this.ctx = this.canvas.getContext('2d', {
+                alpha: true,
+                desynchronized: true,  // Enable GPU acceleration for better performance
+                willReadFrequently: false
+            });
+            console.log('[Fireworks Engine] ✅ GPU acceleration enabled (main thread mode)');
+        }
 
         // Initialize audio
         await this.audioManager.init();
