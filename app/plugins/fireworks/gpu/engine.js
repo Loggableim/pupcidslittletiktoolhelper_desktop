@@ -1355,28 +1355,28 @@ class FireworksEngine {
         return new Promise((resolve, reject) => {
             // Set up worker message handler
             this.worker.onmessage = (e) => {
-                const { type, data } = e.data;
+                const { type } = e.data;
                 
                 switch (type) {
                     case 'initialized':
-                        if (data && data.success) {
+                        if (e.data.success) {
                             console.log('[Fireworks Engine] Worker initialized successfully');
                             resolve();
                         } else {
-                            console.error('[Fireworks Engine] Worker initialization failed:', data && data.error);
-                            reject(new Error(data && data.error || 'Unknown error'));
+                            console.error('[Fireworks Engine] Worker initialization failed:', e.data.error);
+                            reject(new Error(e.data.error || 'Unknown error'));
                         }
                         break;
                         
                     case 'stats':
                         // Update stats from worker
-                        this.fps = data.fps || 0;
+                        this.fps = e.data.fps || 0;
                         if (this.debugMode) {
                             const fpsEl = document.getElementById('fps');
                             const particleEl = document.getElementById('particle-count');
                             const rendererEl = document.getElementById('renderer-type');
-                            if (fpsEl) fpsEl.textContent = data.fps || 0;
-                            if (particleEl) particleEl.textContent = data.particleCount || 0;
+                            if (fpsEl) fpsEl.textContent = e.data.fps || 0;
+                            if (particleEl) particleEl.textContent = e.data.particleCount || 0;
                             if (rendererEl) rendererEl.textContent = 'Multithreaded';
                         }
                         break;
@@ -1387,7 +1387,7 @@ class FireworksEngine {
                         break;
                         
                     default:
-                        console.log('[Fireworks Engine] Worker message:', type, data);
+                        console.log('[Fireworks Engine] Worker message:', type, e.data);
                 }
             };
             

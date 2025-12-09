@@ -15,6 +15,9 @@
 
 'use strict';
 
+// Constants
+const TARGET_FRAME_DURATION = 1000 / 60;  // 16.67ms for 60 FPS
+
 // Import the main engine code (will be shared between main and worker)
 // We'll need to refactor the engine to work in both contexts
 let canvas = null;
@@ -182,13 +185,11 @@ function render() {
     if (!running || !ctx) return;
     
     const now = performance.now();
-    const deltaTime = Math.min((now - engine.lastTime) / 16.67, 3);
+    const deltaTime = Math.min((now - engine.lastTime) / TARGET_FRAME_DURATION, 3);
     engine.lastTime = now;
     
     // Clear canvas
     ctx.clearRect(0, 0, engine.width, engine.height);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-    ctx.fillRect(0, 0, engine.width, engine.height);
     
     // Update and render all fireworks
     for (let i = engine.fireworks.length - 1; i >= 0; i--) {
