@@ -1,0 +1,151 @@
+{
+  "plugin": {
+    "name": "CoinBattle",
+    "description": "Live-Kampfspiel, bei dem Zuschauer durch das Senden von TikTok-Geschenken Coins sammeln"
+  },
+  "ui": {
+    "title": "CoinBattle Konfiguration",
+    "subtitle": "Verwalten Sie Live-Kämpfe und Ranglisten",
+    "tabs": {
+      "control": "Steuerung",
+      "settings": "Einstellungen",
+      "history": "Verlauf",
+      "leaderboard": "Rangliste"
+    }
+  },
+  "match": {
+    "start": "Match starten",
+    "end": "Match beenden",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "extend": "Verlängern",
+    "active": "Aktives Match",
+    "inactive": "Kein aktives Match",
+    "duration": "Dauer",
+    "remaining": "Verbleibend",
+    "elapsed": "Vergangen",
+    "mode": "Modus",
+    "status": "Status"
+  },
+  "modes": {
+    "solo": "Solo",
+    "team": "Team"
+  },
+  "teams": {
+    "red": "Team Rot",
+    "blue": "Team Blau",
+    "assignment": "Teamzuweisung",
+    "random": "Zufällig",
+    "manual": "Manuell",
+    "alternate": "Abwechselnd"
+  },
+  "multiplier": {
+    "title": "Multiplikator",
+    "activate": "Aktivieren",
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "duration": "Dauer (Sekunden)",
+    "value": "Wert"
+  },
+  "settings": {
+    "general": "Allgemein",
+    "gameplay": "Gameplay",
+    "display": "Anzeige",
+    "advanced": "Erweitert",
+    "matchDuration": "Match-Dauer (Sekunden)",
+    "autoStart": "Auto-Start bei Geschenk",
+    "autoReset": "Auto-Reset nach Match",
+    "autoExtension": "Auto-Verlängerung",
+    "extensionThreshold": "Verlängerungs-Schwelle (Coins)",
+    "extensionDuration": "Verlängerungs-Dauer (Sekunden)",
+    "enableMultipliers": "Multiplikatoren aktivieren",
+    "theme": "Theme",
+    "skin": "Skin",
+    "layout": "Layout",
+    "language": "Sprache",
+    "font": "Schriftart",
+    "fontSize": "Schriftgröße",
+    "showAvatars": "Avatare anzeigen",
+    "showBadges": "Abzeichen anzeigen",
+    "animationSpeed": "Animationsgeschwindigkeit",
+    "toasterMode": "Toaster-Modus (Performance)"
+  },
+  "themes": {
+    "light": "Hell",
+    "dark": "Dunkel",
+    "neon": "Neon",
+    "minimal": "Minimal"
+  },
+  "skins": {
+    "gold": "Gold",
+    "futuristic": "Futuristisch",
+    "retro": "Retro"
+  },
+  "layouts": {
+    "fullscreen": "Vollbild",
+    "compact": "Kompakt"
+  },
+  "leaderboard": {
+    "title": "Rangliste",
+    "session": "Sitzung",
+    "lifetime": "Lebensdauer",
+    "rank": "Rang",
+    "player": "Spieler",
+    "coins": "Coins",
+    "gifts": "Geschenke",
+    "team": "Team",
+    "badges": "Abzeichen"
+  },
+  "history": {
+    "title": "Match-Verlauf",
+    "matchId": "Match-ID",
+    "date": "Datum",
+    "duration": "Dauer",
+    "mode": "Modus",
+    "winner": "Gewinner",
+    "totalCoins": "Gesamte Coins",
+    "participants": "Teilnehmer",
+    "export": "Exportieren"
+  },
+  "badges": {
+    "top_donator": "Top-Spender",
+    "legend": "Legende",
+    "supporter": "Unterstützer",
+    "team_player": "Teamspieler",
+    "coin_master": "Coin-Meister",
+    "generous": "Großzügig",
+    "champion": "Champion",
+    "veteran": "Veteran"
+  },
+  "simulation": {
+    "title": "Offline-Simulation",
+    "start": "Simulation starten",
+    "stop": "Simulation stoppen",
+    "description": "Teste Layouts und Animationen ohne TikTok Live"
+  },
+  "overlay": {
+    "title": "Overlay",
+    "url": "OBS Browser Source URL",
+    "copy": "URL kopieren",
+    "preview": "Vorschau",
+    "customize": "Anpassen"
+  },
+  "messages": {
+    "matchStarted": "Match gestartet",
+    "matchEnded": "Match beendet",
+    "matchPaused": "Match pausiert",
+    "matchResumed": "Match fortgesetzt",
+    "matchExtended": "Match verlängert",
+    "multiplierActivated": "Multiplikator aktiviert",
+    "configSaved": "Konfiguration gespeichert",
+    "error": "Fehler",
+    "success": "Erfolg"
+  },
+  "buttons": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "reset": "Zurücksetzen",
+    "apply": "Anwenden",
+    "close": "Schließen"
+  }
+}
