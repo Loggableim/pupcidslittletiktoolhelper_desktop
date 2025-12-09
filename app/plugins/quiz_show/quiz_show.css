@@ -1790,11 +1790,13 @@ code {
     position: relative;
     width: 100%;
     height: 500px;
+    max-height: 600px;
     background: #1a1a1a;
     border: 2px solid var(--color-border);
     border-radius: 8px;
     overflow: hidden;
-    margin-top: 15px;
+    margin: 15px auto 0;
+    transition: all 0.3s ease;
 }
 
 .grid-overlay {
@@ -1851,6 +1853,8 @@ code {
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
     transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    cursor: move;
+    user-select: none;
 }
 
 .grid-element.hidden {
@@ -1863,6 +1867,11 @@ code {
 .grid-element:hover {
     box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
     transform: translateY(-2px);
+    background: rgba(59, 130, 246, 0.5);
+}
+
+.grid-element:active {
+    cursor: grabbing;
 }
 
 /* Responsive adjustments for grid table */

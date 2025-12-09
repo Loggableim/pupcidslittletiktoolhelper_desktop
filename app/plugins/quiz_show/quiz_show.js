@@ -2211,6 +2211,24 @@
             input.addEventListener('change', updateGridPreview);
         });
         
+        // Add event listeners for layout resolution and orientation changes
+        const layoutWidth = document.getElementById('layoutWidth');
+        const layoutHeight = document.getElementById('layoutHeight');
+        const layoutOrientation = document.getElementById('layoutOrientation');
+        
+        if (layoutWidth) {
+            layoutWidth.addEventListener('input', updateGridPreviewWithResolution);
+        }
+        if (layoutHeight) {
+            layoutHeight.addEventListener('input', updateGridPreviewWithResolution);
+        }
+        if (layoutOrientation) {
+            layoutOrientation.addEventListener('change', updateGridPreviewWithResolution);
+        }
+        
+        // Initialize drag and drop functionality
+        initializeDragAndDrop();
+        
         // Initialize visual preview
         updateGridPreview();
     }
@@ -2254,6 +2272,41 @@
                 gridOverlay.appendChild(label);
             }
         }
+    }
+    
+    // Helper function to update preview when resolution/orientation changes
+    function updateGridPreviewWithResolution() {
+        // Update the preview container aspect ratio based on orientation
+        const gridPreview = document.getElementById('gridVisualPreview');
+        if (!gridPreview) return;
+        
+        const layoutWidth = parseInt(document.getElementById('layoutWidth')?.value, 10) || 1920;
+        const layoutHeight = parseInt(document.getElementById('layoutHeight')?.value, 10) || 1080;
+        const orientation = document.getElementById('layoutOrientation')?.value || 'horizontal';
+        
+        // Calculate aspect ratio with validation to prevent division by zero
+        const aspectRatio = layoutHeight > 0 ? layoutWidth / layoutHeight : 16/9;
+        
+        // Update container to maintain aspect ratio
+        if (orientation === 'vertical') {
+            // Portrait mode - adjust width based on height
+            gridPreview.style.width = (500 / aspectRatio) + 'px';
+            gridPreview.style.height = '500px';
+        } else {
+            // Landscape mode - use full width
+            gridPreview.style.width = '100%';
+            gridPreview.style.height = '';
+            // Use requestAnimationFrame to ensure the width change has been applied
+            requestAnimationFrame(() => {
+                const actualWidth = gridPreview.getBoundingClientRect().width;
+                if (actualWidth > 0) {
+                    gridPreview.style.height = (actualWidth / aspectRatio) + 'px';
+                }
+            });
+        }
+        
+        // Update the grid preview with new dimensions
+        updateGridPreview();
     }
     
     function updateGridPreview() {
@@ -2304,9 +2357,9 @@
             jokerInfo: '🎯 Joker Info'
         };
         
-        // Get current resolution (using preview container size as reference)
-        const previewWidth = gridElements.parentElement.offsetWidth;
-        const previewHeight = gridElements.parentElement.offsetHeight;
+        // Get layout resolution from inputs (fallback to 1920x1080)
+        const layoutWidth = parseInt(document.getElementById('layoutWidth')?.value, 10) || 1920;
+        const layoutHeight = parseInt(document.getElementById('layoutHeight')?.value, 10) || 1080;
         
         // Read grid settings from table (use specific ID to avoid conflicts)
         const layoutEditorTable = document.getElementById('layoutEditorSection');
@@ -2340,9 +2393,9 @@
             // Get size dimensions
             const dimensions = sizeDefinitions[elementType]?.[size] || { width: 300, height: 100 };
             
-            // Calculate percentage sizes based on 1920x1080 reference
-            const widthPercent = (dimensions.width / 1920) * 100;
-            const heightPercent = (dimensions.height / 1080) * 100;
+            // Calculate percentage sizes based on actual layout resolution
+            const widthPercent = (dimensions.width / layoutWidth) * 100;
+            const heightPercent = (dimensions.height / layoutHeight) * 100;
             
             // Create element
             const element = document.createElement('div');
@@ -2354,8 +2407,87 @@
             element.style.width = widthPercent + '%';
             element.style.height = heightPercent + '%';
             
+            // Make element draggable
+            element.draggable = true;
+            element.addEventListener('dragstart', handleDragStart);
+            element.addEventListener('dragend', handleDragEnd);
+            
             gridElements.appendChild(element);
         });
+    }
+    
+    // Drag and Drop handlers for grid elements
+    function handleDragStart(e) {
+        draggedElement = e.target;
+        e.target.style.opacity = '0.5';
+        e.dataTransfer.effectAllowed = 'move';
+    }
+    
+    function handleDragEnd(e) {
+        e.target.style.opacity = '1';
+        draggedElement = null;
+    }
+    
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+    }
+    
+    function handleDrop(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        if (!draggedElement) return false;
+        
+        // Get the drop position relative to the preview container
+        const previewContainer = document.getElementById('gridVisualPreview');
+        if (!previewContainer) return false;
+        
+        const rect = previewContainer.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Calculate grid position (each cell is 5%)
+        const xPercent = (x / rect.width) * 100;
+        const yPercent = (y / rect.height) * 100;
+        
+        // Convert to grid coordinates
+        const columnIndex = Math.max(0, Math.min(19, Math.floor(xPercent / 5)));
+        const rowIndex = Math.max(0, Math.min(19, Math.floor(yPercent / 5)));
+        
+        const column = String.fromCharCode(65 + columnIndex); // A, B, C, ...
+        const row = rowIndex + 1; // 1-20
+        
+        // Update the form inputs for the dragged element
+        const elementType = draggedElement.dataset.element;
+        const layoutEditorTable = document.getElementById('layoutEditorSection');
+        if (layoutEditorTable) {
+            const targetRow = layoutEditorTable.querySelector(`tr[data-element="${elementType}"]`);
+            if (targetRow) {
+                const columnInput = targetRow.querySelector('.grid-column');
+                const rowInput = targetRow.querySelector('.grid-row');
+                
+                if (columnInput && rowInput) {
+                    columnInput.value = column;
+                    rowInput.value = row;
+                    
+                    // Update the preview
+                    updateGridPreview();
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    // Initialize drag and drop on preview container
+    function initializeDragAndDrop() {
+        const gridPreview = document.getElementById('gridVisualPreview');
+        if (gridPreview) {
+            gridPreview.addEventListener('dragover', handleDragOver);
+            gridPreview.addEventListener('drop', handleDrop);
+        }
     }
 
     // ============================================
