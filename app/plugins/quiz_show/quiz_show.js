@@ -2226,6 +2226,9 @@
             layoutOrientation.addEventListener('change', updateGridPreviewWithResolution);
         }
         
+        // Initialize drag and drop functionality
+        initializeDragAndDrop();
+        
         // Initialize visual preview
         updateGridPreview();
     }
@@ -2397,8 +2400,91 @@
             element.style.width = widthPercent + '%';
             element.style.height = heightPercent + '%';
             
+            // Make element draggable
+            element.draggable = true;
+            element.addEventListener('dragstart', handleDragStart);
+            element.addEventListener('dragend', handleDragEnd);
+            
             gridElements.appendChild(element);
         });
+    }
+    
+    // Drag and Drop handlers for grid elements
+    function handleDragStart(e) {
+        draggedElement = e.target;
+        e.target.style.opacity = '0.5';
+        e.dataTransfer.effectAllowed = 'move';
+    }
+    
+    function handleDragEnd(e) {
+        e.target.style.opacity = '1';
+        draggedElement = null;
+    }
+    
+    function handleDragOver(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+    }
+    
+    function handleDrop(e) {
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+        e.preventDefault();
+        
+        if (!draggedElement) return false;
+        
+        // Get the drop position relative to the preview container
+        const previewContainer = document.getElementById('gridVisualPreview');
+        if (!previewContainer) return false;
+        
+        const rect = previewContainer.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Calculate grid position (each cell is 5%)
+        const xPercent = (x / rect.width) * 100;
+        const yPercent = (y / rect.height) * 100;
+        
+        // Convert to grid coordinates
+        const columnIndex = Math.max(0, Math.min(19, Math.floor(xPercent / 5)));
+        const rowIndex = Math.max(0, Math.min(19, Math.floor(yPercent / 5)));
+        
+        const column = String.fromCharCode(65 + columnIndex); // A, B, C, ...
+        const row = rowIndex + 1; // 1-20
+        
+        // Update the form inputs for the dragged element
+        const elementType = draggedElement.dataset.element;
+        const layoutEditorTable = document.getElementById('layoutEditorSection');
+        if (layoutEditorTable) {
+            const targetRow = layoutEditorTable.querySelector(`tr[data-element="${elementType}"]`);
+            if (targetRow) {
+                const columnInput = targetRow.querySelector('.grid-column');
+                const rowInput = targetRow.querySelector('.grid-row');
+                
+                if (columnInput && rowInput) {
+                    columnInput.value = column;
+                    rowInput.value = row;
+                    
+                    // Update the preview
+                    updateGridPreview();
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    // Initialize drag and drop on preview container
+    function initializeDragAndDrop() {
+        const gridPreview = document.getElementById('gridVisualPreview');
+        if (gridPreview) {
+            gridPreview.addEventListener('dragover', handleDragOver);
+            gridPreview.addEventListener('drop', handleDrop);
+        }
     }
 
     // ============================================
