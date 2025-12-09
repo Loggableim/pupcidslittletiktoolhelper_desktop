@@ -218,6 +218,7 @@ curl -X POST http://localhost:3000/api/tts/users/{userId}/blacklist \
 #### Voices
 - `GET /api/tts/voices?engine={engine}` - Get available voices
   - `engine`: `all`, `tiktok`, or `google`
+- `POST /api/tts/voices/refresh` - Refresh Google TTS voices from API (force fresh fetch)
 
 #### Speech
 - `POST /api/tts/speak` - Trigger TTS manually
@@ -278,16 +279,20 @@ curl -X POST http://localhost:3000/api/tts/users/{userId}/blacklist \
 - **Plus**: Italian, Russian, Arabic, Turkish, Thai, Vietnamese, Indonesian, Dutch, Polish
 
 ### Google Cloud TTS (with API key)
-- **German**: 10 voices (Wavenet, Neural2, Standard)
-- **English US**: 20+ voices
-- **English GB**: 9 voices
-- **English AU**: 6 voices
-- **Spanish**: 3 voices
-- **French**: 5 voices
-- **Italian**: 4 voices
-- **Japanese**: 6 voices
-- **Korean**: 4 voices
-- **Portuguese BR**: 4 voices
+- **200+ voices** across 18+ languages with dynamic fetching from Google API
+- **Voice Types:**
+  - **Neural2** (59 voices): Latest generation, most natural-sounding voices
+  - **Wavenet** (85+ voices): High-quality neural network-based voices
+  - **Studio** (10 voices): Premium voices for professional content
+  - **News** (14 voices): Optimized for news reading
+  - **Polyglot** (3 voices): Multilingual capable voices
+  - **Standard** (33+ voices): Basic quality voices
+- **Languages:**
+  - **Germanic**: German (6 Neural2 + Wavenet + Studio + Polyglot), Dutch, English (US, GB, AU, IN)
+  - **Romance**: French (5 Neural2 + Studio + Polyglot), Spanish (ES, US with Studio/News), Italian, Portuguese (BR, PT)
+  - **Asian**: Japanese, Korean, Chinese (Mandarin), Hindi (4 Neural2), Thai, Vietnamese, Indonesian
+  - **Other**: Arabic, Turkish, Russian, Polish
+- **Dynamic Updates**: Voices automatically fetched from Google API with 24-hour caching
 
 ## 🔧 Advanced Features
 
