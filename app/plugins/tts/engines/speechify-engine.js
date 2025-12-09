@@ -16,11 +16,21 @@ const axios = require('axios');
  * Features:
  * - 200+ voices in 30+ languages
  * - Human-like speech quality with voice cloning support
+ * - SSML support with emotion control (angry, cheerful, sad, etc.)
+ * - Language detection and multilingual support
  * - 1-hour voice caching for performance
  * - Automatic retry with exponential backoff
  * - Comprehensive error handling
  * - Cost tracking & budget monitoring
  * - Network diagnostics for troubleshooting
+ *
+ * Supported Languages (Fully):
+ * - English (en), French (fr-FR), German (de-DE), Spanish (es-ES)
+ * - Portuguese Brazil (pt-BR), Portuguese Portugal (pt-PT)
+ *
+ * Supported Emotions:
+ * - angry, cheerful, sad, terrified, relaxed, fearful, surprised
+ * - calm, assertive, energetic, warm, direct, bright
  *
  * Network Requirements:
  * - Outbound HTTPS access to api.sws.speechify.com
@@ -250,6 +260,100 @@ class SpeechifyEngine {
     }
 
     /**
+     * Escape special characters for SSML
+     * @private
+     * @param {string} text - Text to escape
+     * @returns {string} SSML-safe text
+     */
+    _escapeSSML(text) {
+        if (!text) return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
+    }
+
+    /**
+     * Check if text is already SSML (contains <speak> tag)
+     * @private
+     * @param {string} text - Text to check
+     * @returns {boolean} True if text is SSML
+     */
+    _isSSML(text) {
+        if (!text) return false;
+        return text.trim().startsWith('<speak>') || text.trim().startsWith('<speak ');
+    }
+
+    /**
+     * Generate SSML with emotion tag
+     * @private
+     * @param {string} text - Plain text to wrap
+     * @param {string} emotion - Emotion (angry, cheerful, sad, etc.)
+     * @returns {string} SSML with emotion
+     */
+    _generateSSMLWithEmotion(text, emotion) {
+        if (!text) return '';
+        
+        // Validate emotion
+        const validEmotions = [
+            'angry', 'cheerful', 'sad', 'terrified', 'relaxed', 
+            'fearful', 'surprised', 'calm', 'assertive', 'energetic',
+            'warm', 'direct', 'bright'
+        ];
+        
+        if (!emotion || !validEmotions.includes(emotion.toLowerCase())) {
+            // No emotion or invalid - just escape and wrap in speak tag
+            return `<speak>${this._escapeSSML(text)}</speak>`;
+        }
+        
+        // Escape text and wrap with emotion tag
+        const escapedText = this._escapeSSML(text);
+        return `<speak><speechify:style emotion="${emotion}">${escapedText}</speechify:style></speak>`;
+    }
+
+    /**
+     * Map language code to Speechify language parameter
+     * @private
+     * @param {string} langCode - ISO language code (e.g., "en", "de")
+     * @returns {string} Speechify language code (e.g., "en", "de-DE")
+     */
+    _mapLanguageCode(langCode) {
+        if (!langCode) return null;
+        
+        const languageMap = {
+            'en': 'en',        // English (auto-detect variant)
+            'de': 'de-DE',     // German
+            'fr': 'fr-FR',     // French
+            'es': 'es-ES',     // Spanish
+            'pt': 'pt-BR',     // Portuguese (Brazil)
+            'it': 'it-IT',     // Italian (beta)
+            'ja': 'ja-JP',     // Japanese (beta)
+            'ru': 'ru-RU',     // Russian (beta)
+            'ar': 'ar-AE',     // Arabic (beta)
+            'nl': 'nl-NL',     // Dutch (beta)
+            'pl': 'pl-PL',     // Polish (beta)
+            'tr': 'tr-TR',     // Turkish (beta)
+            'ko': 'ko-KR',     // Korean (coming soon)
+            'zh': 'zh-CH',     // Mandarin (coming soon)
+            'vi': 'vi-VN',     // Vietnamese (beta)
+            'th': 'th-TH',     // Thai (coming soon)
+            'hi': 'hi-IN',     // Hindi (beta)
+            'he': 'he-IL',     // Hebrew (beta)
+            'sv': 'sv-SE',     // Swedish (beta)
+            'da': 'da-DK',     // Danish (beta)
+            'fi': 'fi-FI',     // Finnish (beta)
+            'no': 'nb-NO',     // Norwegian (beta)
+            'el': 'el-GR',     // Greek (beta)
+            'uk': 'uk-UA',     // Ukrainian (beta)
+            'et': 'et-EE'      // Estonian (beta)
+        };
+        
+        return languageMap[langCode.toLowerCase()] || null;
+    }
+
+    /**
      * Get fallback voices when API is unavailable
      * Static list of most common Speechify voices
      * 
@@ -334,9 +438,12 @@ class SpeechifyEngine {
      * @param {string} text - Text to synthesize (max 300 chars recommended)
      * @param {string} voiceId - Speechify voice ID
      * @param {number} speed - Speaking rate (0.5 - 2.0)
+     * @param {Object} options - Optional parameters
+     * @param {string} options.language - Language code (e.g., "en", "de-DE") for better quality
+     * @param {string} options.emotion - Emotion for SSML (angry, cheerful, sad, etc.)
      * @returns {Promise<string>} Base64-encoded MP3 audio
      */
-    async synthesize(text, voiceId, speed = 1.0) {
+    async synthesize(text, voiceId, speed = 1.0, options = {}) {
         if (!text || typeof text !== 'string') {
             throw new Error('Text is required and must be a string');
         }
@@ -348,6 +455,20 @@ class SpeechifyEngine {
         // Validate and clamp speed
         speed = Math.max(0.5, Math.min(2.0, parseFloat(speed) || 1.0));
 
+        // Process options
+        const { language, emotion } = options;
+        
+        // Prepare input text (apply SSML if emotion is specified)
+        let inputText = text;
+        let isSSML = this._isSSML(text);
+        
+        if (emotion && !isSSML) {
+            // Generate SSML with emotion tag
+            inputText = this._generateSSMLWithEmotion(text, emotion);
+            isSSML = true;
+            this.logger.debug(`Speechify: Generated SSML with emotion: ${emotion}`);
+        }
+
         // Track usage
         this.usageStats.totalRequests++;
         this.usageStats.totalCharacters += text.length;
@@ -357,14 +478,26 @@ class SpeechifyEngine {
         // Retry loop with exponential backoff
         for (let attempt = 0; attempt < this.maxRetries + 1; attempt++) {
             try {
+                // Build request body
+                const requestBody = {
+                    input: inputText,
+                    voice_id: voiceId,
+                    audio_format: 'mp3',
+                    speed: speed
+                };
+
+                // Add language parameter if specified (for better quality)
+                if (language) {
+                    const mappedLanguage = this._mapLanguageCode(language);
+                    if (mappedLanguage) {
+                        requestBody.language = mappedLanguage;
+                        this.logger.debug(`Speechify: Using language parameter: ${mappedLanguage}`);
+                    }
+                }
+
                 const response = await axios.post(
                     this.apiSynthesisUrl,
-                    {
-                        input: text,
-                        voice_id: voiceId,
-                        audio_format: 'mp3',
-                        speed: speed
-                    },
+                    requestBody,
                     {
                         headers: {
                             'Authorization': `Bearer ${this.apiKey}`,
@@ -416,10 +549,25 @@ class SpeechifyEngine {
                         const cost = this._calculateCost(text.length);
                         this.usageStats.totalCost += cost;
 
+                        const logDetails = [
+                            `voice: ${voiceId}`,
+                            `speed: ${speed}`,
+                            `attempt: ${attempt + 1}`,
+                            `chars: ${text.length}`,
+                            `cost: $${cost.toFixed(4)}`
+                        ];
+                        
+                        if (language) {
+                            logDetails.push(`lang: ${language}`);
+                        }
+                        
+                        if (emotion) {
+                            logDetails.push(`emotion: ${emotion}`);
+                        }
+
                         this.logger.info(
                             `Speechify TTS success: "${text.substring(0, 30)}..." ` +
-                            `(voice: ${voiceId}, speed: ${speed}, attempt: ${attempt + 1}, ` +
-                            `chars: ${text.length}, cost: $${cost.toFixed(4)})`
+                            `(${logDetails.join(', ')})`
                         );
 
                         return audioData;
