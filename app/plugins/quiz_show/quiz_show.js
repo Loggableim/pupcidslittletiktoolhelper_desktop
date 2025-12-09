@@ -2211,6 +2211,21 @@
             input.addEventListener('change', updateGridPreview);
         });
         
+        // Add event listeners for layout resolution and orientation changes
+        const layoutWidth = document.getElementById('layoutWidth');
+        const layoutHeight = document.getElementById('layoutHeight');
+        const layoutOrientation = document.getElementById('layoutOrientation');
+        
+        if (layoutWidth) {
+            layoutWidth.addEventListener('input', updateGridPreviewWithResolution);
+        }
+        if (layoutHeight) {
+            layoutHeight.addEventListener('input', updateGridPreviewWithResolution);
+        }
+        if (layoutOrientation) {
+            layoutOrientation.addEventListener('change', updateGridPreviewWithResolution);
+        }
+        
         // Initialize visual preview
         updateGridPreview();
     }
@@ -2254,6 +2269,34 @@
                 gridOverlay.appendChild(label);
             }
         }
+    }
+    
+    // Helper function to update preview when resolution/orientation changes
+    function updateGridPreviewWithResolution() {
+        // Update the preview container aspect ratio based on orientation
+        const gridPreview = document.getElementById('gridVisualPreview');
+        if (!gridPreview) return;
+        
+        const layoutWidth = parseInt(document.getElementById('layoutWidth')?.value, 10) || 1920;
+        const layoutHeight = parseInt(document.getElementById('layoutHeight')?.value, 10) || 1080;
+        const orientation = document.getElementById('layoutOrientation')?.value || 'horizontal';
+        
+        // Calculate aspect ratio
+        const aspectRatio = layoutWidth / layoutHeight;
+        
+        // Update container to maintain aspect ratio
+        if (orientation === 'vertical') {
+            // Portrait mode - adjust width based on height
+            gridPreview.style.width = (500 / aspectRatio) + 'px';
+            gridPreview.style.height = '500px';
+        } else {
+            // Landscape mode - use full width
+            gridPreview.style.width = '100%';
+            gridPreview.style.height = (gridPreview.offsetWidth / aspectRatio) + 'px';
+        }
+        
+        // Update the grid preview with new dimensions
+        updateGridPreview();
     }
     
     function updateGridPreview() {
@@ -2304,9 +2347,9 @@
             jokerInfo: '🎯 Joker Info'
         };
         
-        // Get current resolution (using preview container size as reference)
-        const previewWidth = gridElements.parentElement.offsetWidth;
-        const previewHeight = gridElements.parentElement.offsetHeight;
+        // Get layout resolution from inputs (fallback to 1920x1080)
+        const layoutWidth = parseInt(document.getElementById('layoutWidth')?.value, 10) || 1920;
+        const layoutHeight = parseInt(document.getElementById('layoutHeight')?.value, 10) || 1080;
         
         // Read grid settings from table (use specific ID to avoid conflicts)
         const layoutEditorTable = document.getElementById('layoutEditorSection');
@@ -2340,9 +2383,9 @@
             // Get size dimensions
             const dimensions = sizeDefinitions[elementType]?.[size] || { width: 300, height: 100 };
             
-            // Calculate percentage sizes based on 1920x1080 reference
-            const widthPercent = (dimensions.width / 1920) * 100;
-            const heightPercent = (dimensions.height / 1080) * 100;
+            // Calculate percentage sizes based on actual layout resolution
+            const widthPercent = (dimensions.width / layoutWidth) * 100;
+            const heightPercent = (dimensions.height / layoutHeight) * 100;
             
             // Create element
             const element = document.createElement('div');
