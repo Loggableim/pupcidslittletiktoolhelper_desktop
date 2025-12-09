@@ -420,7 +420,7 @@ class GoogleEngine {
                 this.voicesUrl,
                 {
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-Goog-Api-Key': this.apiKey
                     },
                     timeout: this.timeout
@@ -509,6 +509,29 @@ class GoogleEngine {
     }
 
     /**
+     * Extract language code from voice ID
+     * @private
+     * @param {string} voiceId - Voice identifier (e.g., 'de-DE-Wavenet-A', 'cmn-CN-Wavenet-A')
+     * @returns {string} Language code (e.g., 'de-DE', 'cmn-CN')
+     */
+    _extractLanguageCode(voiceId) {
+        // Match language code pattern before voice type (Wavenet, Neural2, etc.)
+        const match = voiceId.match(/^([a-z]{2,3}-[A-Z]{2})/);
+        if (match) {
+            return match[1];
+        }
+        
+        // Fallback: try to extract first two parts separated by dash
+        const parts = voiceId.split('-');
+        if (parts.length >= 2) {
+            return `${parts[0]}-${parts[1]}`;
+        }
+        
+        // Last resort: return first 5 characters (works for most cases)
+        return voiceId.substring(0, 5);
+    }
+
+    /**
      * Generate TTS audio from text
      * @param {string} text - Text to synthesize
      * @param {string} voiceId - Google voice ID
@@ -521,15 +544,15 @@ class GoogleEngine {
             throw new Error('Google TTS API key not configured');
         }
 
-        // Parse language code from voice ID (e.g., "de-DE-Wavenet-A" -> "de-DE")
-        const languageCode = voiceId.substring(0, 5);
+        // Extract language code from voice ID using proper parsing
+        const languageCode = this._extractLanguageCode(voiceId);
 
         let lastError;
 
         for (let attempt = 0; attempt < this.maxRetries; attempt++) {
             try {
                 const response = await axios.post(
-                    `${this.apiUrl}?key=${this.apiKey}`,
+                    this.apiUrl,
                     {
                         input: { text: text },
                         voice: {
@@ -545,7 +568,8 @@ class GoogleEngine {
                     },
                     {
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'X-Goog-Api-Key': this.apiKey
                         },
                         timeout: this.timeout
                     }

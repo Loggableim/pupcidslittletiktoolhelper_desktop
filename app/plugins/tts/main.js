@@ -744,7 +744,7 @@ class TTSPlugin {
         });
 
         // Refresh voices from Google API (force fresh fetch)
-        // Rate limited to prevent API abuse (max 10 refreshes per minute)
+        // Rate-limited to prevent API abuse (max 10 refreshes per minute)
         const rateLimiter = require('express-rate-limit');
         const voiceRefreshLimiter = rateLimiter({
             windowMs: 60 * 1000, // 1 minute
