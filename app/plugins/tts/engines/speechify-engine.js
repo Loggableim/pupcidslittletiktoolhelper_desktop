@@ -7,14 +7,14 @@ const axios = require('axios');
  * API Documentation (2025):
  * - Official Docs: https://docs.sws.speechify.com
  * - Base URL: https://api.sws.speechify.com/v1
- * - Voices: GET /v1/voices (https://docs.sws.speechify.com/api-reference/api-reference/tts/voices/list)
- * - Synthesis: POST /v1/audio/speech (https://docs.sws.speechify.com/api-reference/api-reference/tts/audio/speech)
+ * - Voices: GET /v1/voices - https://docs.sws.speechify.com/api-reference/tts/voices/list
+ * - Synthesis: POST /v1/audio/speech - https://docs.sws.speechify.com/api-reference/tts/audio/speech
  * - Audio Formats: mp3, wav, ogg, aac, pcm
  * - Speed Range: 0.5 - 2.0
  * - Authentication: Bearer token in Authorization header
  *
  * Features:
- * - 200+ voices in 30+ languages (as of 2025)
+ * - 200+ voices in 30+ languages
  * - Human-like speech quality with voice cloning support
  * - 1-hour voice caching for performance
  * - Automatic retry with exponential backoff
@@ -251,7 +251,7 @@ class SpeechifyEngine {
 
     /**
      * Get fallback voices when API is unavailable
-     * Static list of most common Speechify voices (as of 2025)
+     * Static list of most common Speechify voices
      * 
      * Note: Speechify offers 200+ voices. This is a curated list of popular ones.
      * For the full list, use the API endpoint: GET /v1/voices
