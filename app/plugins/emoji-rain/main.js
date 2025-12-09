@@ -12,7 +12,7 @@ class EmojiRainPlugin {
     constructor(api) {
         this.api = api;
         // Use persistent storage in user profile directory (survives updates)
-        const pluginDataDir = api.getConfigPathManager().getPluginDataDir('emoji-rain');
+        const pluginDataDir = api.getPluginDataDir();
         this.emojiRainUploadDir = path.join(pluginDataDir, 'uploads');
         this.userMappingsPath = path.join(pluginDataDir, 'users.json');
         this.emojiRainUpload = null;

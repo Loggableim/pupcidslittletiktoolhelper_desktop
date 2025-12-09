@@ -31,7 +31,8 @@ class MockPluginAPI {
                         baseDir = path.join(homeDir, '.local', 'share', 'pupcidslittletiktokhelper');
                 }
                 
-                return path.join(baseDir, 'plugins', id);
+                // Match actual ConfigPathManager: includes 'data' subdirectory
+                return path.join(baseDir, 'plugins', id, 'data');
             }
         };
     }
@@ -69,7 +70,9 @@ function testPluginDataStorage() {
     const pluginDataDir = api.getPluginDataDir();
     console.log(`  Plugin data dir: ${pluginDataDir}`);
     
-    const isOutsideApp = !pluginDataDir.includes('pupcidslittletiktoolhelper_desktop');
+    // Check it's not in common app directory patterns
+    const appDirPatterns = ['pupcidslittletiktoolhelper_desktop', '/app/', '\\app\\'];
+    const isOutsideApp = !appDirPatterns.some(pattern => pluginDataDir.includes(pattern));
     if (isOutsideApp) {
         console.log('  ✅ PASS: Data directory is outside app directory');
     } else {

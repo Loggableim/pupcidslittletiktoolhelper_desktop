@@ -12,7 +12,7 @@ class GiftMilestonePlugin {
     constructor(api) {
         this.api = api;
         // Use persistent storage in user profile directory (survives updates)
-        const pluginDataDir = api.getConfigPathManager().getPluginDataDir('gift-milestone');
+        const pluginDataDir = api.getPluginDataDir();
         this.uploadDir = path.join(pluginDataDir, 'uploads');
         this.upload = null;
         this.exclusiveMode = false; // Track if we're in exclusive playback mode

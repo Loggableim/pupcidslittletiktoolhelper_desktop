@@ -26,7 +26,7 @@ class FireworksPlugin {
     constructor(api) {
         this.api = api;
         // Use persistent storage in user profile directory (survives updates)
-        const pluginDataDir = api.getConfigPathManager().getPluginDataDir('fireworks');
+        const pluginDataDir = api.getPluginDataDir();
         this.uploadDir = path.join(pluginDataDir, 'uploads');
         this.upload = null;
         
