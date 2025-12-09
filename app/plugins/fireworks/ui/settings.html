@@ -112,13 +112,6 @@
             transform: scale(1.2);
         }
         
-        .overlay-preview {
-            background: linear-gradient(180deg, #1a0a2e 0%, #0a0a1a 100%);
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-        }
-        
         .gift-list {
             max-height: 400px;
             overflow-y: auto;
@@ -543,15 +536,37 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block mb-2"><strong>OBS Overlay Resolution</strong></label>
-                            <select id="resolution-select" class="w-full bg-black/30 rounded-lg px-4 py-2" data-config="resolution">
-                                <option value="1.0">Full Resolution (100%) - Best Quality</option>
-                                <option value="0.75">High Resolution (75%) - Balanced</option>
-                                <option value="0.5">Medium Resolution (50%) - Better Performance</option>
-                                <option value="0.33">Low Resolution (33%) - Maximum Performance</option>
+                            <select id="resolution-preset" class="w-full bg-black/30 rounded-lg px-4 py-2" data-config="resolutionPreset">
+                                <option value="360p">360p (640x360) - Minimum</option>
+                                <option value="540p">540p (960x540) - Low</option>
+                                <option value="720p">720p (1280x720) - Medium</option>
+                                <option value="1080p" selected>1080p (1920x1080) - High (Default)</option>
+                                <option value="1440p">1440p (2560x1440) - Very High</option>
+                                <option value="4k">4K (3840x2160) - Ultra</option>
                             </select>
                             <p class="text-xs text-gray-400 mt-1">
                                 Lower resolution reduces GPU load and improves performance
                             </p>
+                        </div>
+                        
+                        <div>
+                            <label class="block mb-2"><strong>Orientation</strong></label>
+                            <select id="resolution-orientation" class="w-full bg-black/30 rounded-lg px-4 py-2" data-config="orientation">
+                                <option value="landscape" selected>Landscape (Horizontal)</option>
+                                <option value="portrait">Portrait (Vertical)</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">
+                                Choose orientation based on your streaming setup
+                            </p>
+                        </div>
+                        
+                        <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                            <strong class="text-blue-400">💡 Resolution Info:</strong>
+                            <div class="mt-2 space-y-1 text-sm text-gray-300" id="resolution-info">
+                                <div>• Current: <span id="current-resolution">1920x1080</span></div>
+                                <div>• Orientation: <span id="current-orientation">Landscape</span></div>
+                                <div>• Performance Impact: <span id="performance-impact">Medium</span></div>
+                            </div>
                         </div>
                         
                         <div>
@@ -818,13 +833,13 @@
                     </div>
                 </div>
 
-                <!-- Overlay Preview -->
+                <!-- OBS Overlay URL -->
                 <div class="card rounded-xl p-6">
-                    <h2 class="section-title text-xl font-bold mb-4" data-i18n="fireworks.overlay">📺 Overlay</h2>
+                    <h2 class="section-title text-xl font-bold mb-4" data-i18n="fireworks.overlay">📺 OBS Overlay</h2>
                     
-                    <div class="overlay-preview h-48 mb-4" id="overlay-preview">
-                        <iframe src="/fireworks/overlay" class="w-full h-full border-0"></iframe>
-                    </div>
+                    <p class="text-sm text-gray-400 mb-4" data-i18n="fireworks.use_this_url_in_obs">
+                        Use this URL in OBS as a Browser Source. Preview is available directly in OBS.
+                    </p>
                     
                     <div class="flex gap-2">
                         <button id="copy-overlay-url" class="flex-1 bg-white/10 hover:bg-white/20 py-2 rounded-lg transition" data-i18n="fireworks.copy_overlay_url">
