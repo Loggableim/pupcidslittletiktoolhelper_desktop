@@ -342,6 +342,74 @@ class GoogleEngine {
     }
 
     /**
+     * Check if voice cache is still valid
+     * @private
+     * @returns {boolean} True if cache is valid and not expired
+     */
+    _isCacheValid() {
+        if (!this.dynamicVoices || !this.voicesCacheTimestamp) {
+            return false;
+        }
+        const cacheAge = Date.now() - this.voicesCacheTimestamp;
+        return cacheAge < this.voicesCacheTTL;
+    }
+
+    /**
+     * Get cache age in minutes
+     * @private
+     * @returns {number} Cache age in minutes
+     */
+    _getCacheAgeMinutes() {
+        if (!this.voicesCacheTimestamp) {
+            return 0;
+        }
+        return Math.round((Date.now() - this.voicesCacheTimestamp) / 1000 / 60);
+    }
+
+    /**
+     * Extract voice style from voice ID
+     * @private
+     * @param {string} voiceId - Voice identifier (e.g., 'en-US-Neural2-A')
+     * @returns {string} Voice style
+     */
+    _extractVoiceStyle(voiceId) {
+        const nameLower = voiceId.toLowerCase();
+        
+        // Order matters: check most specific patterns first
+        const stylePatterns = {
+            'neural2': 'neural2',
+            'wavenet': 'wavenet',
+            'studio': 'studio',
+            'polyglot': 'polyglot',
+            'news': 'news',
+            'journey': 'journey'
+        };
+        
+        for (const [pattern, style] of Object.entries(stylePatterns)) {
+            if (nameLower.includes(pattern)) {
+                return style;
+            }
+        }
+        
+        return 'standard';
+    }
+
+    /**
+     * Map gender to human-readable label
+     * @private
+     * @param {string} gender - Gender string
+     * @returns {string} Gender label
+     */
+    _getGenderLabel(gender) {
+        const genderMap = {
+            'male': 'Male',
+            'female': 'Female',
+            'neutral': 'Neutral'
+        };
+        return genderMap[gender] || 'Neutral';
+    }
+
+    /**
      * Fetch all available voices from Google TTS API
      * This provides the most up-to-date list including new voice types
      * (Neural2, Journey, Studio, Polyglot, etc.)
@@ -349,12 +417,9 @@ class GoogleEngine {
      */
     async fetchVoicesFromAPI() {
         // Check cache first
-        if (this.dynamicVoices && this.voicesCacheTimestamp) {
-            const cacheAge = Date.now() - this.voicesCacheTimestamp;
-            if (cacheAge < this.voicesCacheTTL) {
-                this.logger.info(`Google TTS: Using cached voices (age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
-                return this.dynamicVoices;
-            }
+        if (this._isCacheValid()) {
+            this.logger.info(`Google TTS: Using cached voices (age: ${this._getCacheAgeMinutes()} minutes)`);
+            return this.dynamicVoices;
         }
 
         try {
@@ -377,21 +442,14 @@ class GoogleEngine {
                     // Extract language prefix (e.g., 'de' from 'de-DE')
                     const lang = languageCode.split('-')[0];
                     
-                    // Extract voice style from name (wavenet, neural2, studio, etc.)
-                    let style = 'standard';
-                    const nameLower = voiceId.toLowerCase();
-                    if (nameLower.includes('wavenet')) style = 'wavenet';
-                    else if (nameLower.includes('neural2')) style = 'neural2';
-                    else if (nameLower.includes('studio')) style = 'studio';
-                    else if (nameLower.includes('polyglot')) style = 'polyglot';
-                    else if (nameLower.includes('news')) style = 'news';
-                    else if (nameLower.includes('journey')) style = 'journey';
+                    // Extract voice style from name
+                    const style = this._extractVoiceStyle(voiceId);
                     
                     // Map gender
                     const gender = voice.ssmlGender ? voice.ssmlGender.toLowerCase() : 'neutral';
+                    const genderLabel = this._getGenderLabel(gender);
                     
                     // Create human-readable name
-                    const genderLabel = gender === 'male' ? 'Male' : gender === 'female' ? 'Female' : 'Neutral';
                     const styleName = style.charAt(0).toUpperCase() + style.slice(1);
                     const name = `${languageCode} (${styleName} - ${genderLabel})`;
                     
@@ -429,16 +487,19 @@ class GoogleEngine {
      */
     async getAllVoices(forceFresh = false) {
         // Try to fetch from API if we have an API key
-        if (this.apiKey && (forceFresh || !this.dynamicVoices)) {
-            const dynamicVoices = await this.fetchVoicesFromAPI();
-            if (dynamicVoices) {
-                return dynamicVoices;
+        if (this.apiKey) {
+            // Fetch if forced or if cache is invalid/expired
+            if (forceFresh || !this._isCacheValid()) {
+                const dynamicVoices = await this.fetchVoicesFromAPI();
+                if (dynamicVoices) {
+                    return dynamicVoices;
+                }
             }
-        }
-        
-        // Use cached dynamic voices if available
-        if (this.dynamicVoices) {
-            return this.dynamicVoices;
+            
+            // Use cached dynamic voices if still valid
+            if (this._isCacheValid()) {
+                return this.dynamicVoices;
+            }
         }
         
         // Fallback to static list
