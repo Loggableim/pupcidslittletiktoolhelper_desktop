@@ -420,11 +420,26 @@
   /**
    * Copy overlay URL
    */
-  function copyOverlayURL() {
+  async function copyOverlayURL() {
     const input = document.getElementById('overlay-url');
-    input.select();
-    document.execCommand('copy');
-    showNotification('URL copied to clipboard!', 'success');
+    const url = input.value;
+    
+    try {
+      // Try modern Clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        showNotification('URL copied to clipboard!', 'success');
+      } else {
+        // Fallback to legacy method
+        input.select();
+        document.execCommand('copy');
+        showNotification('URL copied to clipboard!', 'success');
+      }
+    } catch (error) {
+      // Final fallback - manual selection
+      input.select();
+      showNotification('Please copy the URL manually (Ctrl+C)', 'warning');
+    }
   }
 
   /**
@@ -683,11 +698,28 @@
    * Show notification
    */
   function showNotification(message, type = 'info') {
-    // Simple console log for now - could add toast notifications
     console.log(`[${type.toUpperCase()}] ${message}`);
     
-    // Could implement a toast notification system here
-    alert(message);
+    // Create toast notification element
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type}`;
+    toast.style.position = 'fixed';
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.style.minWidth = '300px';
+    toast.style.animation = 'slideInRight 0.3s';
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      toast.style.animation = 'fadeOut 0.3s';
+      setTimeout(() => {
+        toast.remove();
+      }, 300);
+    }, 3000);
   }
 
   /**
