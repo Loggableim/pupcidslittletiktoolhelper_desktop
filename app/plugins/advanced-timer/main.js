@@ -197,6 +197,9 @@ class AdvancedTimerPlugin extends EventEmitter {
                         const timer = this.engine.getTimer(action.timerId);
                         if (timer) {
                             const seconds = parseFloat(action.seconds);
+                            if (isNaN(seconds) || seconds < 0) {
+                                throw new Error('Invalid seconds value');
+                            }
                             timer.addTime(seconds, 'flow');
                             this.db.updateTimerState(action.timerId, timer.state, timer.currentValue);
                             this.db.addTimerLog(action.timerId, 'flow', null, seconds, 'Added via flow');
@@ -220,6 +223,9 @@ class AdvancedTimerPlugin extends EventEmitter {
                         const timer = this.engine.getTimer(action.timerId);
                         if (timer) {
                             const seconds = parseFloat(action.seconds);
+                            if (isNaN(seconds) || seconds < 0) {
+                                throw new Error('Invalid seconds value');
+                            }
                             timer.removeTime(seconds, 'flow');
                             this.db.updateTimerState(action.timerId, timer.state, timer.currentValue);
                             this.db.addTimerLog(action.timerId, 'flow', null, -seconds, 'Removed via flow');
