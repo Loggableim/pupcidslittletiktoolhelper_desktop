@@ -1040,16 +1040,21 @@ function assignVoiceDialog(userId, username) {
     modalState.username = username;
     modalState.selectedVoiceId = null;
     modalState.selectedEngine = 'google'; // TikTok TTS temporarily disabled in UI
+    modalState.selectedEmotion = null;
 
     const modal = document.getElementById('voiceAssignmentModal');
     const usernameEl = document.getElementById('modalUsername');
     const engineSelect = document.getElementById('modalEngine');
+    const emotionSelect = document.getElementById('modalEmotion');
+    const emotionContainer = document.getElementById('modalEmotionContainer');
     const voiceSearch = document.getElementById('modalVoiceSearch');
 
     console.log('[TTS] Modal elements found:', {
         modal: !!modal,
         usernameEl: !!usernameEl,
         engineSelect: !!engineSelect,
+        emotionSelect: !!emotionSelect,
+        emotionContainer: !!emotionContainer,
         voiceSearch: !!voiceSearch
     });
 
@@ -1066,12 +1071,30 @@ function assignVoiceDialog(userId, username) {
         engineSelect.onchange = () => {
             modalState.selectedEngine = engineSelect.value;
             console.log('[TTS] Engine changed to:', modalState.selectedEngine);
+            
+            // Show/hide emotion selector
+            if (emotionContainer) {
+                emotionContainer.style.display = (modalState.selectedEngine === 'speechify') ? 'block' : 'none';
+            }
+            
             renderModalVoiceList();
+        };
+    }
+    if (emotionSelect) {
+        emotionSelect.value = '';
+        emotionSelect.onchange = () => {
+            modalState.selectedEmotion = emotionSelect.value || null;
+            console.log('[TTS] Emotion changed to:', modalState.selectedEmotion);
         };
     }
     if (voiceSearch) {
         voiceSearch.value = '';
         voiceSearch.oninput = renderModalVoiceList;
+    }
+
+    // Initially hide emotion selector (will show if speechify is selected)
+    if (emotionContainer) {
+        emotionContainer.style.display = 'none';
     }
 
     console.log('[TTS] Rendering voice list...');
@@ -1087,8 +1110,8 @@ function assignVoiceDialog(userId, username) {
                 showNotification('Please select a voice', 'error');
                 return;
             }
-            console.log('[TTS] Assigning voice:', modalState.selectedVoiceId, 'to user:', username);
-            await assignVoice(modalState.userId, modalState.username, modalState.selectedVoiceId, modalState.selectedEngine);
+            console.log('[TTS] Assigning voice:', modalState.selectedVoiceId, 'with emotion:', modalState.selectedEmotion, 'to user:', username);
+            await assignVoice(modalState.userId, modalState.username, modalState.selectedVoiceId, modalState.selectedEngine, modalState.selectedEmotion);
             closeVoiceAssignmentModal();
         };
     }
@@ -1163,12 +1186,13 @@ function selectModalVoice(voiceId) {
     renderModalVoiceList();
 }
 
-async function assignVoice(userId, username, voiceId, engine) {
+async function assignVoice(userId, username, voiceId, engine, emotion = null) {
     try {
         const data = await postJSON(`/api/tts/users/${userId}/voice`, {
             username,
             voiceId,
-            engine
+            engine,
+            emotion
         });
 
         if (!data.success) {
