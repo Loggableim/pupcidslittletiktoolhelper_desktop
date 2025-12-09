@@ -371,7 +371,7 @@ async function openTimerSettings(timerId) {
     document.getElementById('edit-timer-name').value = currentEditingTimer.name;
     
     // Set overlay URL
-    const overlayUrl = `${window.location.origin}/plugins/advanced-timer/overlay/?timer=${timerId}`;
+    const overlayUrl = `${window.location.origin}/advanced-timer/overlay?timer=${timerId}`;
     document.getElementById('overlay-url').textContent = overlayUrl;
 
     // Load logs

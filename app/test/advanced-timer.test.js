@@ -52,6 +52,8 @@ describe('Advanced Timer Plugin', () => {
             const overlayDir = path.join(pluginDir, 'overlay');
             expect(fs.existsSync(path.join(overlayDir, 'index.html'))).toBe(true);
             expect(fs.existsSync(path.join(overlayDir, 'overlay.js'))).toBe(true);
+            // Also check for overlay.html in plugin root (served by routes)
+            expect(fs.existsSync(path.join(pluginDir, 'overlay.html'))).toBe(true);
         });
 
         test('README exists', () => {
