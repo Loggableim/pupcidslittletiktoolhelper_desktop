@@ -5,6 +5,18 @@ All notable changes to PupCid's Little TikTool Helper will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2025-12-09
+
+### Fixed
+- **Advanced Timer Plugin** - Overlay routes and storage improvements
+  - Added missing overlay routes for seamless OBS integration
+  - Migrated timer storage from global scope to user profile storage
+  - Improved timer state persistence and auto-recovery on restart
+  - Fixed timer overlay URL generation and routing
+  - Enhanced WebSocket communication for real-time timer updates
+  - Resolved timer data loss issues on server restart
+  - Better error handling for timer operations
+
 ## [Unreleased]
 
 ### Added
