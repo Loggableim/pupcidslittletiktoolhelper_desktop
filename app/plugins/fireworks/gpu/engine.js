@@ -1324,18 +1324,9 @@ class FireworksEngine {
         const orientation = this.config.orientation || 'landscape';
         const targetResolution = this.getResolutionFromPreset(resolutionPreset, orientation);
         
-        // Calculate scale to fit target resolution in viewport
-        const scaleW = targetResolution.width / rect.width;
-        const scaleH = targetResolution.height / rect.height;
-        const scale = Math.min(scaleW, scaleH);
-        
         // Apply target resolution
         this.canvas.width = targetResolution.width;
         this.canvas.height = targetResolution.height;
-        
-        // Scale context to match viewport
-        const scaleFactor = Math.min(rect.width / targetResolution.width, rect.height / targetResolution.height);
-        this.ctx.scale(1, 1); // Reset scale first
         
         this.width = targetResolution.width;
         this.height = targetResolution.height;
