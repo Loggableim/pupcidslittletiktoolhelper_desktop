@@ -11,12 +11,21 @@ const multer = require('multer');
 class EmojiRainPlugin {
     constructor(api) {
         this.api = api;
-        this.emojiRainUploadDir = path.join(__dirname, 'uploads');
+        // Use persistent storage in user profile directory (survives updates)
+        const pluginDataDir = api.getPluginDataDir();
+        this.emojiRainUploadDir = path.join(pluginDataDir, 'uploads');
+        this.userMappingsPath = path.join(pluginDataDir, 'users.json');
         this.emojiRainUpload = null;
     }
 
     async init() {
         this.api.log('🌧️ [EMOJI RAIN] Initializing Emoji Rain Plugin...', 'info');
+
+        // Ensure plugin data directory exists
+        this.api.ensurePluginDataDir();
+
+        // Migrate old uploads if they exist
+        await this.migrateOldData();
 
         // Create upload directory
         if (!fs.existsSync(this.emojiRainUploadDir)) {
@@ -25,6 +34,8 @@ class EmojiRainPlugin {
         } else {
             this.api.log('📁 [EMOJI RAIN] Upload directory exists', 'debug');
         }
+
+        this.api.log(`📂 [EMOJI RAIN] Using persistent storage: ${this.emojiRainUploadDir}`, 'info');
 
         // Setup multer for file uploads
         const emojiRainStorage = multer.diskStorage({
@@ -66,6 +77,62 @@ class EmojiRainPlugin {
         this.registerFlowActions();
 
         this.api.log('✅ [EMOJI RAIN] Emoji Rain Plugin initialized successfully', 'info');
+    }
+
+    /**
+     * Migrate old data from app directory to user profile directory
+     */
+    async migrateOldData() {
+        const oldUploadDir = path.join(__dirname, 'uploads');
+        const oldMappingsPath = path.join(__dirname, '..', '..', 'data', 'plugins', 'emojirain', 'users.json');
+        
+        let migrated = false;
+
+        // Migrate uploads directory
+        if (fs.existsSync(oldUploadDir)) {
+            const oldFiles = fs.readdirSync(oldUploadDir).filter(f => f !== '.gitkeep');
+            if (oldFiles.length > 0) {
+                this.api.log(`📦 [EMOJI RAIN] Migrating ${oldFiles.length} files from old upload directory...`, 'info');
+                
+                // Ensure new directory exists
+                if (!fs.existsSync(this.emojiRainUploadDir)) {
+                    fs.mkdirSync(this.emojiRainUploadDir, { recursive: true });
+                }
+                
+                // Copy files
+                for (const file of oldFiles) {
+                    const oldPath = path.join(oldUploadDir, file);
+                    const newPath = path.join(this.emojiRainUploadDir, file);
+                    if (!fs.existsSync(newPath)) {
+                        fs.copyFileSync(oldPath, newPath);
+                        migrated = true;
+                    }
+                }
+                
+                if (migrated) {
+                    this.api.log(`✅ [EMOJI RAIN] Migrated uploads to: ${this.emojiRainUploadDir}`, 'info');
+                }
+            }
+        }
+
+        // Migrate user mappings
+        if (fs.existsSync(oldMappingsPath) && !fs.existsSync(this.userMappingsPath)) {
+            this.api.log('📦 [EMOJI RAIN] Migrating user mappings...', 'info');
+            
+            // Ensure directory exists
+            const userMappingsDir = path.dirname(this.userMappingsPath);
+            if (!fs.existsSync(userMappingsDir)) {
+                fs.mkdirSync(userMappingsDir, { recursive: true });
+            }
+            
+            fs.copyFileSync(oldMappingsPath, this.userMappingsPath);
+            this.api.log(`✅ [EMOJI RAIN] Migrated user mappings to: ${this.userMappingsPath}`, 'info');
+            migrated = true;
+        }
+
+        if (migrated) {
+            this.api.log('💡 [EMOJI RAIN] Old files are kept for safety. You can manually delete them after verifying the migration.', 'info');
+        }
     }
 
     registerRoutes() {
@@ -285,9 +352,8 @@ class EmojiRainPlugin {
         // Get user emoji mappings
         this.api.registerRoute('get', '/api/emoji-rain/user-mappings', (req, res) => {
             try {
-                const mappingsPath = path.join(__dirname, '..', '..', 'data', 'plugins', 'emojirain', 'users.json');
-                if (fs.existsSync(mappingsPath)) {
-                    const mappings = JSON.parse(fs.readFileSync(mappingsPath, 'utf8'));
+                if (fs.existsSync(this.userMappingsPath)) {
+                    const mappings = JSON.parse(fs.readFileSync(this.userMappingsPath, 'utf8'));
                     res.json({ success: true, mappings });
                 } else {
                     res.json({ success: true, mappings: {} });
@@ -306,13 +372,13 @@ class EmojiRainPlugin {
                     return res.status(400).json({ success: false, error: 'mappings is required' });
                 }
 
-                const dataDir = path.join(__dirname, '..', '..', 'data', 'plugins', 'emojirain');
-                if (!fs.existsSync(dataDir)) {
-                    fs.mkdirSync(dataDir, { recursive: true });
+                // Ensure directory exists
+                const userMappingsDir = path.dirname(this.userMappingsPath);
+                if (!fs.existsSync(userMappingsDir)) {
+                    fs.mkdirSync(userMappingsDir, { recursive: true });
                 }
 
-                const mappingsPath = path.join(dataDir, 'users.json');
-                fs.writeFileSync(mappingsPath, JSON.stringify(mappings, null, 2));
+                fs.writeFileSync(this.userMappingsPath, JSON.stringify(mappings, null, 2));
 
                 // Notify overlays about mapping update
                 this.api.emit('emoji-rain:user-mappings-update', { mappings });

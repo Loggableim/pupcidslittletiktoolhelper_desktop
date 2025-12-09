@@ -25,7 +25,9 @@ const multer = require('multer');
 class FireworksPlugin {
     constructor(api) {
         this.api = api;
-        this.uploadDir = path.join(__dirname, 'uploads');
+        // Use persistent storage in user profile directory (survives updates)
+        const pluginDataDir = api.getPluginDataDir();
+        this.uploadDir = path.join(pluginDataDir, 'uploads');
         this.upload = null;
         
         // Plugin state
@@ -41,11 +43,19 @@ class FireworksPlugin {
     async init() {
         this.api.log('🎆 [FIREWORKS] Initializing Fireworks Superplugin...', 'info');
 
+        // Ensure plugin data directory exists
+        this.api.ensurePluginDataDir();
+
+        // Migrate old uploads if they exist
+        await this.migrateOldData();
+
         // Create upload directory for custom audio/video
         if (!fs.existsSync(this.uploadDir)) {
             fs.mkdirSync(this.uploadDir, { recursive: true });
             this.api.log('📁 [FIREWORKS] Upload directory created', 'debug');
         }
+
+        this.api.log(`📂 [FIREWORKS] Using persistent storage: ${this.uploadDir}`, 'info');
 
         // Setup multer for file uploads
         const storage = multer.diskStorage({
@@ -89,6 +99,37 @@ class FireworksPlugin {
 
         this.api.log('✅ [FIREWORKS] Fireworks Superplugin initialized successfully', 'info');
         this.logRoutes();
+    }
+
+    /**
+     * Migrate old data from app directory to user profile directory
+     */
+    async migrateOldData() {
+        const oldUploadDir = path.join(__dirname, 'uploads');
+        
+        if (fs.existsSync(oldUploadDir)) {
+            const oldFiles = fs.readdirSync(oldUploadDir).filter(f => f !== '.gitkeep');
+            if (oldFiles.length > 0) {
+                this.api.log(`📦 [FIREWORKS] Migrating ${oldFiles.length} files from old upload directory...`, 'info');
+                
+                // Ensure new directory exists
+                if (!fs.existsSync(this.uploadDir)) {
+                    fs.mkdirSync(this.uploadDir, { recursive: true });
+                }
+                
+                // Copy files
+                for (const file of oldFiles) {
+                    const oldPath = path.join(oldUploadDir, file);
+                    const newPath = path.join(this.uploadDir, file);
+                    if (!fs.existsSync(newPath)) {
+                        fs.copyFileSync(oldPath, newPath);
+                    }
+                }
+                
+                this.api.log(`✅ [FIREWORKS] Migrated uploads to: ${this.uploadDir}`, 'info');
+                this.api.log('💡 [FIREWORKS] Old files are kept for safety. You can manually delete them after verifying the migration.', 'info');
+            }
+        }
     }
 
     /**

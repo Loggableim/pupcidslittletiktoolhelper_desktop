@@ -26,8 +26,9 @@ class OSCBridgePlugin {
         this.isRunning = false;
         this.config = null;
 
-        // Logging
-        this.logDir = path.join(__dirname, '..', '..', 'user_data', 'logs');
+        // Logging - use persistent storage in user profile directory
+        const configPathManager = api.getConfigPathManager();
+        this.logDir = path.join(configPathManager.getUserDataDir(), 'logs');
         this.logFile = path.join(this.logDir, 'oscBridge.log');
 
         // Statistiken

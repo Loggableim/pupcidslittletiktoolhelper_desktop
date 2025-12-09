@@ -28,6 +28,9 @@ class MinecraftConnectPlugin {
     constructor(api) {
         this.api = api;
 
+        // Use persistent storage in user profile directory (survives updates)
+        this.pluginDataDir = api.getPluginDataDir();
+
         // Configuration
         this.config = {
             websocket: {
@@ -126,7 +129,19 @@ class MinecraftConnectPlugin {
      */
     async loadConfig() {
         try {
-            const configPath = path.join(this.api.pluginDir, 'config.json');
+            // Ensure plugin data directory exists
+            this.api.ensurePluginDataDir();
+            
+            const configPath = path.join(this.pluginDataDir, 'config.json');
+            const oldConfigPath = path.join(this.api.pluginDir, 'config.json');
+            
+            // Migrate old config if it exists
+            if (!await this.fileExists(configPath) && await this.fileExists(oldConfigPath)) {
+                this.api.log('📦 Migrating config.json to user profile directory...', 'info');
+                const oldConfig = await fs.readFile(oldConfigPath, 'utf8');
+                await fs.writeFile(configPath, oldConfig);
+                this.api.log(`✅ Migrated config to: ${configPath}`, 'info');
+            }
             
             try {
                 const configData = await fs.readFile(configPath, 'utf8');
@@ -141,13 +156,26 @@ class MinecraftConnectPlugin {
             this.api.log(`Error loading config: ${error.message}`, 'error');
         }
     }
+    
+    /**
+     * Helper to check if file exists
+     */
+    async fileExists(filePath) {
+        try {
+            await fs.access(filePath);
+            return true;
+        } catch {
+            return false;
+        }
+    }
 
     /**
      * Save configuration
      */
     async saveConfig() {
         try {
-            const configPath = path.join(this.api.pluginDir, 'config.json');
+            this.api.ensurePluginDataDir();
+            const configPath = path.join(this.pluginDataDir, 'config.json');
             await fs.writeFile(configPath, JSON.stringify(this.config, null, 2));
             this.api.log('Configuration saved');
         } catch (error) {

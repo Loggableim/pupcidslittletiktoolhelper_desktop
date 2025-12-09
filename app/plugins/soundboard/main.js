@@ -384,13 +384,16 @@ class SoundboardPlugin {
             error: (msg) => this.api.log(msg, 'error')
         });
 
-        // Initialize Audio Cache Manager
-        const cacheDir = path.join(__dirname, '../../data/soundboard-cache/sounds');
+        // Initialize Audio Cache Manager with persistent storage
+        const configPathManager = this.api.getConfigPathManager();
+        const cacheDir = path.join(configPathManager.getUserDataDir(), 'soundboard-cache', 'sounds');
         this.audioCacheManager = new AudioCacheManager(db, {
             info: (msg) => this.api.log(msg, 'info'),
             warn: (msg) => this.api.log(msg, 'warn'),
             error: (msg) => this.api.log(msg, 'error')
         }, cacheDir);
+
+        this.api.log(`📂 [SOUNDBOARD] Using persistent cache storage: ${cacheDir}`, 'info');
 
         // Initialize Cache Cleanup Job
         this.cleanupJob = new CacheCleanupJob(this.audioCacheManager, {
