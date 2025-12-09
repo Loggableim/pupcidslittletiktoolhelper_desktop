@@ -13,7 +13,6 @@ class TimerDatabase {
     constructor(api) {
         this.api = api;
         this.db = null;
-        this.configPathManager = api.configPathManager;
     }
 
     /**
@@ -21,8 +20,14 @@ class TimerDatabase {
      */
     initDatabase() {
         try {
+            // Get config path manager
+            const configPathManager = this.api.getConfigPathManager();
+            if (!configPathManager) {
+                throw new Error('ConfigPathManager not available');
+            }
+            
             // Get plugin data directory from config path manager
-            const pluginDataDir = this.configPathManager.getPluginDataDir('advanced-timer');
+            const pluginDataDir = configPathManager.getPluginDataDir('advanced-timer');
             
             // Ensure directory exists
             if (!fs.existsSync(pluginDataDir)) {
