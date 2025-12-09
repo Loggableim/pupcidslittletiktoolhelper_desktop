@@ -135,6 +135,30 @@ module.exports = MyPlugin;
 - `log(message, level)` - Logger wrapper
 - `getSocketIO()` - Get Socket.io instance
 - `getDatabase()` - Get database instance
+- `getPluginDataDir()` - Get persistent data directory for this plugin (survives updates)
+- `ensurePluginDataDir()` - Ensure plugin data directory exists (creates if needed)
+- `getConfigPathManager()` - Get ConfigPathManager instance for advanced path operations
+
+### ⚠️ Critical: Plugin Data Storage
+
+**NEVER** store plugin data in the plugin directory (`__dirname`), application directory, or any location inside the app folder. This data will be **lost during updates**.
+
+**✅ ALWAYS** use:
+- `this.api.getPluginDataDir()` for file storage (uploads, logs, cache)
+- `this.api.setConfig()` / `this.api.getConfig()` for configuration and API keys
+- Database tables for structured data
+
+**Example:**
+```javascript
+// ✅ CORRECT: Persistent storage
+const pluginDataDir = this.api.getPluginDataDir();
+this.uploadDir = path.join(pluginDataDir, 'uploads');
+
+// ❌ WRONG: Lost on update!
+this.uploadDir = path.join(__dirname, 'uploads');
+```
+
+See `/app/docs/PLUGIN_DATA_STORAGE_GUIDE.md` for complete documentation.
 
 ### Plugin Events
 
