@@ -1,18 +1,110 @@
 /**
  * Advanced Timer Database Module
  * Handles all database operations for timer configurations, states, and logs
+ * 
+ * Stores data in user profile folder for persistence across updates
  */
+
+const path = require('path');
+const fs = require('fs');
+const Database = require('better-sqlite3');
 
 class TimerDatabase {
     constructor(api) {
         this.api = api;
-        this.db = api.getDatabase();
+        this.db = null;
+        this.configPathManager = api.configPathManager;
+    }
+
+    /**
+     * Initialize plugin database in user profile folder
+     */
+    initDatabase() {
+        try {
+            // Get plugin data directory from config path manager
+            const pluginDataDir = this.configPathManager.getPluginDataDir('advanced-timer');
+            
+            // Ensure directory exists
+            if (!fs.existsSync(pluginDataDir)) {
+                fs.mkdirSync(pluginDataDir, { recursive: true });
+                this.api.log(`Created plugin data directory: ${pluginDataDir}`, 'info');
+            }
+            
+            // Database path in user profile folder
+            const dbPath = path.join(pluginDataDir, 'timers.db');
+            this.api.log(`Using database at: ${dbPath}`, 'info');
+            
+            // Check if old database exists in plugin directory (migration)
+            const oldDbPath = path.join(this.api.pluginDir, 'data', 'timers.db');
+            const shouldMigrate = fs.existsSync(oldDbPath) && !fs.existsSync(dbPath);
+            
+            // Open database
+            this.db = new Database(dbPath);
+            this.db.pragma('journal_mode = WAL');
+            
+            // Migrate old data if needed
+            if (shouldMigrate) {
+                this.migrateOldDatabase(oldDbPath);
+            }
+            
+        } catch (error) {
+            this.api.log(`Error initializing plugin database: ${error.message}`, 'error');
+            throw error;
+        }
+    }
+
+    /**
+     * Migrate data from old database in plugin directory
+     */
+    migrateOldDatabase(oldDbPath) {
+        try {
+            this.api.log('Migrating timer data from old location...', 'info');
+            
+            const oldDb = new Database(oldDbPath, { readonly: true });
+            
+            // Copy all tables
+            const tables = ['advanced_timers', 'advanced_timer_events', 'advanced_timer_rules', 
+                          'advanced_timer_chains', 'advanced_timer_logs', 'advanced_timer_profiles'];
+            
+            for (const table of tables) {
+                try {
+                    const rows = oldDb.prepare(`SELECT * FROM ${table}`).all();
+                    if (rows.length > 0) {
+                        // Tables will be created by initialize() first
+                        const columns = Object.keys(rows[0]);
+                        const placeholders = columns.map(() => '?').join(',');
+                        const insert = this.db.prepare(`INSERT OR REPLACE INTO ${table} (${columns.join(',')}) VALUES (${placeholders})`);
+                        
+                        const insertMany = this.db.transaction((data) => {
+                            for (const row of data) {
+                                insert.run(Object.values(row));
+                            }
+                        });
+                        
+                        insertMany(rows);
+                        this.api.log(`Migrated ${rows.length} rows from ${table}`, 'info');
+                    }
+                } catch (tableError) {
+                    // Table might not exist in old database, that's okay
+                    this.api.log(`Skipping migration of ${table}: ${tableError.message}`, 'debug');
+                }
+            }
+            
+            oldDb.close();
+            this.api.log('Migration completed successfully', 'info');
+            
+        } catch (error) {
+            this.api.log(`Migration error (non-fatal): ${error.message}`, 'warn');
+        }
     }
 
     /**
      * Initialize database tables
      */
     initialize() {
+        // First initialize the database connection
+        this.initDatabase();
+        
         try {
             // Timers table - stores timer configurations
             this.db.prepare(`
@@ -489,6 +581,20 @@ class TimerDatabase {
         } catch (error) {
             this.api.log(`Error deleting profile: ${error.message}`, 'error');
             return false;
+        }
+    }
+
+    /**
+     * Cleanup - close database connection
+     */
+    destroy() {
+        try {
+            if (this.db) {
+                this.db.close();
+                this.api.log('Advanced Timer database closed', 'info');
+            }
+        } catch (error) {
+            this.api.log(`Error closing database: ${error.message}`, 'error');
         }
     }
 }

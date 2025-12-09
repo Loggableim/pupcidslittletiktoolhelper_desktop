@@ -3,6 +3,8 @@
  * Handles all REST API endpoints for timer management
  */
 
+const path = require('path');
+
 class TimerAPI {
     constructor(plugin) {
         this.plugin = plugin;
@@ -10,6 +12,46 @@ class TimerAPI {
     }
 
     registerRoutes() {
+        // Serve overlay HTML
+        this.api.registerRoute('get', '/advanced-timer/overlay', (req, res) => {
+            try {
+                res.sendFile(path.join(this.api.pluginDir, 'overlay.html'));
+            } catch (error) {
+                this.api.log(`Error serving overlay: ${error.message}`, 'error');
+                res.status(500).send('Error loading overlay');
+            }
+        });
+
+        // Serve overlay JavaScript
+        this.api.registerRoute('get', '/advanced-timer/overlay.js', (req, res) => {
+            try {
+                res.sendFile(path.join(this.api.pluginDir, 'overlay', 'overlay.js'));
+            } catch (error) {
+                this.api.log(`Error serving overlay JS: ${error.message}`, 'error');
+                res.status(500).send('Error loading overlay JS');
+            }
+        });
+
+        // Serve UI HTML
+        this.api.registerRoute('get', '/advanced-timer/ui', (req, res) => {
+            try {
+                res.sendFile(path.join(this.api.pluginDir, 'ui.html'));
+            } catch (error) {
+                this.api.log(`Error serving UI: ${error.message}`, 'error');
+                res.status(500).send('Error loading UI');
+            }
+        });
+
+        // Serve UI JavaScript
+        this.api.registerRoute('get', '/advanced-timer/ui.js', (req, res) => {
+            try {
+                res.sendFile(path.join(this.api.pluginDir, 'ui', 'ui.js'));
+            } catch (error) {
+                this.api.log(`Error serving UI JS: ${error.message}`, 'error');
+                res.status(500).send('Error loading UI JS');
+            }
+        });
+
         // Get all timers
         this.api.registerRoute('get', '/api/advanced-timer/timers', (req, res) => {
             try {

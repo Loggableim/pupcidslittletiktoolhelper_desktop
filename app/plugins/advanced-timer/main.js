@@ -302,6 +302,11 @@ class AdvancedTimerPlugin extends EventEmitter {
                 this.engine.destroy();
             }
 
+            // Close database connection
+            if (this.db) {
+                this.db.destroy();
+            }
+
             this.api.log('✅ Advanced Timer Plugin shutdown complete', 'info');
         } catch (error) {
             this.api.log(`Error during shutdown: ${error.message}`, 'error');
