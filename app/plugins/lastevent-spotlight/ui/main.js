@@ -406,27 +406,27 @@ function renderSettingsForm(type) {
           Choose which events should be included in the rotation
         </small>
         <div class="checkbox-group">
-          <input type="checkbox" id="event-follower" value="follower" ${settings.selectedEvents && settings.selectedEvents.includes('follower') ? 'checked' : 'checked'}>
+          <input type="checkbox" id="event-follower" value="follower" ${!settings.selectedEvents || settings.selectedEvents.includes('follower') ? 'checked' : ''}>
           <label for="event-follower">👤 Follower</label>
         </div>
         <div class="checkbox-group">
-          <input type="checkbox" id="event-like" value="like" ${settings.selectedEvents && settings.selectedEvents.includes('like') ? 'checked' : 'checked'}>
+          <input type="checkbox" id="event-like" value="like" ${!settings.selectedEvents || settings.selectedEvents.includes('like') ? 'checked' : ''}>
           <label for="event-like">❤️ Like</label>
         </div>
         <div class="checkbox-group">
-          <input type="checkbox" id="event-chatter" value="chatter" ${settings.selectedEvents && settings.selectedEvents.includes('chatter') ? 'checked' : 'checked'}>
+          <input type="checkbox" id="event-chatter" value="chatter" ${!settings.selectedEvents || settings.selectedEvents.includes('chatter') ? 'checked' : ''}>
           <label for="event-chatter">💬 Chatter</label>
         </div>
         <div class="checkbox-group">
-          <input type="checkbox" id="event-share" value="share" ${settings.selectedEvents && settings.selectedEvents.includes('share') ? 'checked' : 'checked'}>
+          <input type="checkbox" id="event-share" value="share" ${!settings.selectedEvents || settings.selectedEvents.includes('share') ? 'checked' : ''}>
           <label for="event-share">🔗 Share</label>
         </div>
         <div class="checkbox-group">
-          <input type="checkbox" id="event-gifter" value="gifter" ${settings.selectedEvents && settings.selectedEvents.includes('gifter') ? 'checked' : 'checked'}>
+          <input type="checkbox" id="event-gifter" value="gifter" ${!settings.selectedEvents || settings.selectedEvents.includes('gifter') ? 'checked' : ''}>
           <label for="event-gifter">🎁 Gifter</label>
         </div>
         <div class="checkbox-group">
-          <input type="checkbox" id="event-subscriber" value="subscriber" ${settings.selectedEvents && settings.selectedEvents.includes('subscriber') ? 'checked' : 'checked'}>
+          <input type="checkbox" id="event-subscriber" value="subscriber" ${!settings.selectedEvents || settings.selectedEvents.includes('subscriber') ? 'checked' : ''}>
           <label for="event-subscriber">⭐ Subscriber</label>
         </div>
         <div class="checkbox-group">
