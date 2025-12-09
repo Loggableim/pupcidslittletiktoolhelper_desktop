@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoinBattle - Admin Panel</title>
+    <link rel="stylesheet" href="/css/themes.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--color-bg-primary, #0a0e27);
+            color: var(--color-text-primary, #ffffff);
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--color-border, #2d3748);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            color: var(--color-text-secondary, #a0aec0);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab:hover {
+            color: var(--color-text-primary, #ffffff);
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: var(--color-bg-card, #1a1f36);
+            border: 1px solid var(--color-border, #2d3748);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title .icon {
+            font-size: 1.5rem;
+        }
+
+        .grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        .grid-4 {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+
+        .stat-card {
+            background: var(--color-bg-secondary, #0f1419);
+            border: 1px solid var(--color-border, #2d3748);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: var(--color-text-secondary, #a0aec0);
+            font-size: 0.875rem;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-accent-primary, #667eea);
+        }
+
+        .stat-value.success { color: #48bb78; }
+        .stat-value.warning { color: #ed8936; }
+        .stat-value.danger { color: #f56565; }
+        .stat-value.info { color: #4299e1; }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--color-text-primary, #ffffff);
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px;
+            background: var(--color-bg-secondary, #0f1419);
+            border: 1px solid var(--color-border, #2d3748);
+            border-radius: 6px;
+            color: var(--color-text-primary, #ffffff);
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .form-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--color-bg-secondary, #2d3748);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 0.875rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .match-status {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .match-status.active {
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+        }
+
+        .match-status.inactive {
+            background: rgba(160, 174, 192, 0.2);
+            color: #a0aec0;
+        }
+
+        .match-status.paused {
+            background: rgba(237, 137, 54, 0.2);
+            color: #ed8936;
+        }
+
+        .timer-display {
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            margin: 20px 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-display.warning {
+            color: #ed8936;
+        }
+
+        .timer-display.danger {
+            color: #f56565;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .leaderboard-table th,
+        .leaderboard-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--color-border, #2d3748);
+        }
+
+        .leaderboard-table th {
+            background: var(--color-bg-secondary, #0f1419);
+            font-weight: 600;
+            color: var(--color-text-secondary, #a0aec0);
+            text-transform: uppercase;
+            font-size: 0.875rem;
+        }
+
+        .leaderboard-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--color-bg-secondary, #2d3748);
+        }
+
+        .player-name {
+            font-weight: 600;
+        }
+
+        .team-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .team-badge.red {
+            background: rgba(245, 101, 101, 0.2);
+            color: #f56565;
+        }
+
+        .team-badge.blue {
+            background: rgba(66, 153, 225, 0.2);
+            color: #4299e1;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 4px;
+        }
+
+        .badge.common {
+            background: rgba(160, 174, 192, 0.2);
+            color: #a0aec0;
+        }
+
+        .badge.rare {
+            background: rgba(66, 153, 225, 0.2);
+            color: #4299e1;
+        }
+
+        .badge.epic {
+            background: rgba(159, 122, 234, 0.2);
+            color: #9f7aea;
+        }
+
+        .badge.legendary {
+            background: rgba(237, 137, 54, 0.2);
+            color: #ed8936;
+        }
+
+        .multiplier-indicator {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 16px 0;
+        }
+
+        .multiplier-indicator .value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .multiplier-indicator .label {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .alert-info {
+            background: rgba(66, 153, 225, 0.2);
+            border: 1px solid #4299e1;
+            color: #4299e1;
+        }
+
+        .alert-success {
+            background: rgba(72, 187, 120, 0.2);
+            border: 1px solid #48bb78;
+            color: #48bb78;
+        }
+
+        .alert-warning {
+            background: rgba(237, 137, 54, 0.2);
+            border: 1px solid #ed8936;
+            color: #ed8936;
+        }
+
+        .alert-danger {
+            background: rgba(245, 101, 101, 0.2);
+            border: 1px solid #f56565;
+            color: #f56565;
+        }
+
+        .overlay-url {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .overlay-url input {
+            flex: 1;
+        }
+
+        .history-item {
+            padding: 16px;
+            background: var(--color-bg-secondary, #0f1419);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-info {
+            flex: 1;
+        }
+
+        .history-meta {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary, #a0aec0);
+            margin-top: 4px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--color-text-secondary, #a0aec0);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .grid-2, .grid-3, .grid-4 {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .timer-display {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🎮 CoinBattle</h1>
+                <p>Live battle game management</p>
+            </div>
+            <div class="header-actions">
+                <select id="languageSelector" class="form-select" style="width: auto;">
+                    <option value="en">English</option>
+                    <option value="de">Deutsch</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="control">🎮 Control</button>
+            <button class="tab" data-tab="settings">⚙️ Settings</button>
+            <button class="tab" data-tab="leaderboard">🏆 Leaderboard</button>
+            <button class="tab" data-tab="history">📊 History</button>
+        </div>
+
+        <!-- Control Tab -->
+        <div id="control-tab" class="tab-content active">
+            <div class="grid grid-4">
+                <div class="stat-card">
+                    <div class="stat-label">Match Status</div>
+                    <div class="stat-value" id="match-status-text">Inactive</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Time Remaining</div>
+                    <div class="stat-value info" id="time-remaining">--:--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Coins</div>
+                    <div class="stat-value success" id="total-coins">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Participants</div>
+                    <div class="stat-value warning" id="participant-count">0</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">⏱️ Match Timer</div>
+                <div class="timer-display" id="timer-display">00:00</div>
+                <div class="btn-group">
+                    <button class="btn btn-success" id="btn-start-match">▶️ Start Match</button>
+                    <button class="btn btn-danger" id="btn-end-match" disabled>⏹️ End Match</button>
+                    <button class="btn btn-warning" id="btn-pause-match" disabled>⏸️ Pause</button>
+                    <button class="btn btn-warning" id="btn-extend-match" disabled>⏰ Extend +60s</button>
+                </div>
+            </div>
+
+            <div class="card" id="multiplier-card" style="display: none;">
+                <div class="card-title">✨ Active Multiplier</div>
+                <div class="multiplier-indicator">
+                    <div class="value" id="multiplier-value">2.0x</div>
+                    <div class="label" id="multiplier-time">Ends in <span id="multiplier-remaining">--</span></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🎯 Match Controls</div>
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Match Mode</label>
+                        <select class="form-select" id="match-mode">
+                            <option value="solo">Solo</option>
+                            <option value="team">Team Battle</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duration (seconds)</label>
+                        <input type="number" class="form-input" id="match-duration" value="300" min="30" step="30">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button class="btn" id="btn-activate-multiplier">✨ Activate 2x Multiplier (30s)</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🎪 Testing & Simulation</div>
+                <div class="alert alert-info">
+                    Test layouts and animations without TikTok Live connection
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="btn-start-simulation">🎲 Start Simulation</button>
+                    <button class="btn btn-danger" id="btn-stop-simulation" disabled>⏹️ Stop Simulation</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📺 Current Match Leaderboard</div>
+                <div id="current-leaderboard">
+                    <p class="loading">No active match</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content">
+            <div class="card">
+                <div class="card-title">⚙️ Gameplay Settings</div>
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label class="form-checkbox">
+                            <input type="checkbox" id="setting-autostart">
+                            <span>Auto-start on first gift</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-checkbox">
+                            <input type="checkbox" id="setting-autoreset" checked>
+                            <span>Auto-reset after match</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-checkbox">
+                            <input type="checkbox" id="setting-autoextension" checked>
+                            <span>Auto-extension on close match</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-checkbox">
+                            <input type="checkbox" id="setting-multipliers" checked>
+                            <span>Enable multipliers</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Extension Threshold (coins)</label>
+                        <input type="number" class="form-input" id="setting-extension-threshold" value="15" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Extension Duration (seconds)</label>
+                        <input type="number" class="form-input" id="setting-extension-duration" value="60" min="10" step="10">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">👥 Team Settings</div>
+                <div class="form-group">
+                    <label class="form-label">Team Assignment Method</label>
+                    <select class="form-select" id="setting-team-assignment">
+                        <option value="random">Random</option>
+                        <option value="alternate">Alternate (Balance)</option>
+                        <option value="manual">Manual</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🎨 Display Settings</div>
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Theme</label>
+                        <select class="form-select" id="setting-theme">
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                            <option value="neon">Neon</option>
+                            <option value="minimal">Minimal</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Leaderboard Skin</label>
+                        <select class="form-select" id="setting-skin">
+                            <option value="gold">Gold</option>
+                            <option value="futuristic">Futuristic</option>
+                            <option value="retro">Retro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Layout</label>
+                        <select class="form-select" id="setting-layout">
+                            <option value="fullscreen">Fullscreen</option>
+                            <option value="compact">Compact</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Font Size</label>
+                        <input type="number" class="form-input" id="setting-fontsize" value="16" min="12" max="32">
+                    </div>
+                </div>
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label class="form-checkbox">
+                            <input type="checkbox" id="setting-show-avatars" checked>
+                            <span>Show player avatars</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-checkbox">
+                            <input type="checkbox" id="setting-show-badges" checked>
+                            <span>Show badges</span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-checkbox">
+                            <input type="checkbox" id="setting-toaster-mode">
+                            <span>Toaster mode (performance)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📺 Overlay Configuration</div>
+                <div class="form-group">
+                    <label class="form-label">OBS Browser Source URL</label>
+                    <div class="overlay-url">
+                        <input type="text" class="form-input" id="overlay-url" readonly>
+                        <button class="btn btn-sm" id="btn-copy-url">📋 Copy</button>
+                        <button class="btn btn-sm btn-secondary" id="btn-preview-overlay">👁️ Preview</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-success" id="btn-save-settings">💾 Save Settings</button>
+                <button class="btn btn-secondary" id="btn-reset-settings">🔄 Reset to Defaults</button>
+            </div>
+        </div>
+
+        <!-- Leaderboard Tab -->
+        <div id="leaderboard-tab" class="tab-content">
+            <div class="card">
+                <div class="card-title">🏆 Lifetime Leaderboard</div>
+                <div id="lifetime-leaderboard">
+                    <p class="loading">Loading...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="history-tab" class="tab-content">
+            <div class="card">
+                <div class="card-title">📊 Match History</div>
+                <div id="match-history">
+                    <p class="loading">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/plugins/coinbattle/ui.js"></script>
+</body>
+</html>
