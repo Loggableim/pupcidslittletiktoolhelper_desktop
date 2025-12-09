@@ -19,7 +19,8 @@ class LastEventSpotlightPlugin {
       'gifter': { event: 'gift', label: 'New Gift' },
       'subscriber': { event: 'subscribe', label: 'New Subscriber' },
       'topgift': { event: 'gift', label: 'Top Gift' },
-      'giftstreak': { event: 'gift', label: 'Gift Streak' }
+      'giftstreak': { event: 'gift', label: 'Gift Streak' },
+      'multihud': { event: 'multi', label: 'Multi-HUD Rotation' }
     };
 
     // Store last user for each type
@@ -31,7 +32,8 @@ class LastEventSpotlightPlugin {
       gifter: null,
       subscriber: null,
       topgift: null,
-      giftstreak: null
+      giftstreak: null,
+      multihud: null
     };
 
     // Track top gift (most expensive) in current session
@@ -101,7 +103,11 @@ class LastEventSpotlightPlugin {
       // Behavior
       refreshIntervalSeconds: 0, // 0 = no auto-refresh
       hideOnNullUser: true,
-      preloadImages: true
+      preloadImages: true,
+
+      // Multi-HUD specific settings
+      selectedEvents: ['follower', 'like', 'chatter', 'share', 'gifter', 'subscriber'], // Events to show in rotation
+      rotationIntervalSeconds: 5 // Rotation interval in seconds
     };
   }
 
@@ -285,6 +291,23 @@ class LastEventSpotlightPlugin {
       }
     });
 
+    // Get all last users (for multihud rotation)
+    this.api.registerRoute('GET', '/api/lastevent/all', async (req, res) => {
+      try {
+        const allUsers = {};
+        for (const type of Object.keys(this.eventTypes)) {
+          // Skip multihud itself
+          if (type !== 'multihud') {
+            allUsers[type] = this.lastUsers[type];
+          }
+        }
+        res.json({ success: true, users: allUsers });
+      } catch (error) {
+        this.api.log(`Error getting all last users: ${error.message}`);
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
     // Test endpoint - simulate event for testing
     this.api.registerRoute('POST', '/api/lastevent/test/:type', async (req, res) => {
       try {
@@ -423,6 +446,9 @@ class LastEventSpotlightPlugin {
       // Broadcast to overlays
       this.api.emit(`lastevent.update.${overlayType}`, userData);
 
+      // Also broadcast to multihud overlay if it's tracking this event type
+      this.api.emit('lastevent.multihud.update', { type: overlayType, user: userData });
+
       this.api.log(`Updated last ${overlayType}: ${userData.nickname}`);
 
       // Handle gift-specific tracking (top gift and streak)
@@ -453,6 +479,7 @@ class LastEventSpotlightPlugin {
       };
       await this.saveLastUser('topgift', this.topGift);
       this.api.emit('lastevent.update.topgift', this.topGift);
+      this.api.emit('lastevent.multihud.update', { type: 'topgift', user: this.topGift });
       this.api.log(`New top gift: ${giftName} (${giftCoins} coins) from ${userData.nickname}`);
     }
 
@@ -498,6 +525,7 @@ class LastEventSpotlightPlugin {
           
           await this.saveLastUser('giftstreak', streakData);
           this.api.emit('lastevent.update.giftstreak', streakData);
+          this.api.emit('lastevent.multihud.update', { type: 'giftstreak', user: streakData });
           this.api.log(`New gift streak record: ${this.longestStreak.count}x ${this.longestStreak.giftName}`);
         }
       }
