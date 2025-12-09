@@ -198,7 +198,8 @@ app.use((req, res, next) => {
     const isPluginUI = req.path.includes('/goals/ui') || req.path.includes('/goals/overlay') ||
                        req.path.includes('/emoji-rain/ui') || req.path.includes('/gift-milestone/ui') ||
                        req.path.includes('/plugins/') ||
-                       req.path.includes('/openshock/');
+                       req.path.includes('/openshock/') ||
+                       req.path.includes('/viewer-xp/');
 
     if (isDashboard || isPluginUI) {
         // Dashboard & Plugin UI CSP: Strict policy - no inline scripts allowed
