@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws: wss:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <title>CoinBattle Overlay</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="/plugins/coinbattle/overlay/styles.css">
+</head>
+<body>
+    <!-- Main container -->
+    <div id="overlay-container" class="overlay-container">
+        <!-- Match Timer -->
+        <div id="timer-container" class="timer-container">
+            <div class="timer-bg"></div>
+            <div class="timer-content">
+                <div class="timer-label">TIME</div>
+                <div id="timer-display" class="timer-display">05:00</div>
+            </div>
+            <svg class="timer-circle" viewBox="0 0 100 100">
+                <circle class="timer-circle-bg" cx="50" cy="50" r="45"></circle>
+                <circle id="timer-circle-progress" class="timer-circle-progress" cx="50" cy="50" r="45"></circle>
+            </svg>
+        </div>
+
+        <!-- Multiplier Indicator -->
+        <div id="multiplier-container" class="multiplier-container" style="display: none;">
+            <div class="multiplier-icon">✨</div>
+            <div class="multiplier-value" id="multiplier-value">2.0x</div>
+            <div class="multiplier-time" id="multiplier-time">30s</div>
+        </div>
+
+        <!-- Team Scores (for team mode) -->
+        <div id="team-scores-container" class="team-scores-container" style="display: none;">
+            <div class="team-score team-red">
+                <div class="team-name">RED TEAM</div>
+                <div class="team-coins" id="team-red-coins">0</div>
+            </div>
+            <div class="vs-divider">VS</div>
+            <div class="team-score team-blue">
+                <div class="team-name">BLUE TEAM</div>
+                <div class="team-coins" id="team-blue-coins">0</div>
+            </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div id="leaderboard-container" class="leaderboard-container">
+            <div class="leaderboard-header">
+                <div class="leaderboard-title">🏆 LEADERBOARD</div>
+            </div>
+            <div id="leaderboard-content" class="leaderboard-content">
+                <!-- Dynamic leaderboard entries -->
+            </div>
+        </div>
+
+        <!-- Winner Reveal -->
+        <div id="winner-reveal" class="winner-reveal" style="display: none;">
+            <div class="winner-bg"></div>
+            <div class="winner-content">
+                <div class="winner-trophy">🏆</div>
+                <div class="winner-label">WINNER</div>
+                <div class="winner-name" id="winner-name">Player Name</div>
+                <div class="winner-stats">
+                    <div class="winner-stat">
+                        <span class="stat-label">Coins:</span>
+                        <span class="stat-value" id="winner-coins">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="confetti-container" id="confetti"></div>
+        </div>
+
+        <!-- Gift Animation Container -->
+        <div id="gift-animations" class="gift-animations"></div>
+
+        <!-- Badge Notification -->
+        <div id="badge-notification" class="badge-notification" style="display: none;">
+            <div class="badge-icon" id="badge-icon">🏆</div>
+            <div class="badge-text">
+                <div class="badge-title" id="badge-title">Achievement Unlocked!</div>
+                <div class="badge-name" id="badge-name">Badge Name</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/plugins/coinbattle/overlay/overlay.js"></script>
+</body>
+</html>
