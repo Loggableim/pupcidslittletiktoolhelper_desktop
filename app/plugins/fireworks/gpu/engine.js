@@ -1257,7 +1257,11 @@ class AudioManager {
 class FireworksEngine {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext('2d', {
+            alpha: true,
+            desynchronized: true,  // Enable GPU acceleration for better performance
+            willReadFrequently: false
+        });
         
         this.fireworks = [];
         this.audioManager = new AudioManager();

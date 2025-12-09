@@ -8,10 +8,11 @@ This document describes the GPU rendering optimizations applied to the Emoji Rai
 
 ### Modified Files
 
-1. **app/plugins/emoji-rain/overlay.html** - Main emoji rain overlay
-2. **app/plugins/emoji-rain/obs-hud.html** - OBS HUD overlay for emoji rain
-3. **app/plugins/weather-control/overlay.html** - Weather control overlay
-4. **app/plugins/fireworks/overlay.html** - Fireworks overlay
+1. **app/plugins/emoji-rain/overlay.html** - Main emoji rain overlay (CSS only)
+2. **app/plugins/emoji-rain/obs-hud.html** - OBS HUD overlay for emoji rain (CSS only)
+3. **app/plugins/weather-control/overlay.html** - Weather control overlay (CSS only)
+4. **app/plugins/fireworks/overlay.html** - Fireworks overlay (CSS only)
+5. **app/plugins/fireworks/gpu/engine.js** - Fireworks engine (Canvas 2D context options)
 
 ### CSS Properties Added
 
@@ -34,6 +35,23 @@ backface-visibility: hidden;
 ```
 
 **Note**: Canvas elements use only `will-change: transform` (not opacity) because the canvas element itself doesn't have opacity animations. Canvas drawing operations use the 2D context API's `globalAlpha` property instead.
+
+### Canvas 2D Context Options
+
+For canvas-based rendering (Fireworks and Weather Control plugins), the following context options are used:
+
+```javascript
+const ctx = canvas.getContext('2d', {
+    alpha: true,
+    desynchronized: true,  // Enable GPU acceleration for better performance
+    willReadFrequently: false
+});
+```
+
+**Key options:**
+- **`desynchronized: true`** - Allows the canvas to be updated asynchronously from the compositor, enabling GPU acceleration and reducing input latency
+- **`willReadFrequently: false`** - Indicates the canvas will not be read frequently, allowing the browser to optimize for GPU-only operations
+- **`alpha: true`** - Enables transparency for overlay effects
 
 ## How It Works
 
