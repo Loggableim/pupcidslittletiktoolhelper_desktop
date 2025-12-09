@@ -40,7 +40,9 @@ const CONFIG = {
     sparkleChance: 0.15,
     secondaryExplosionChance: 0.1,
     backgroundColor: 'rgba(0, 0, 0, 0)',
-    resolution: 1.0, // Canvas resolution multiplier (0.5 = half res, 1.0 = full res)
+    resolution: 1.0, // Legacy - Canvas resolution multiplier (0.5 = half res, 1.0 = full res)
+    resolutionPreset: '1080p', // Resolution preset: 360p, 540p, 720p, 1080p, 1440p, 4k
+    orientation: 'landscape', // 'landscape' or 'portrait'
     giftPopupPosition: 'bottom', // 'top', 'middle', 'bottom', 'none', or {x, y} coordinates
     giftPopupEnabled: true, // Whether to show gift popup at all
     despawnFadeDuration: 1.5, // Duration in seconds for rocket despawn fade effect (when rockets are removed due to overload)
@@ -1279,6 +1281,8 @@ class FireworksEngine {
             trailsEnabled: true,
             glowEnabled: true,
             resolution: CONFIG.resolution,
+            resolutionPreset: CONFIG.resolutionPreset,
+            orientation: CONFIG.orientation,
             targetFps: CONFIG.targetFps,
             minFps: CONFIG.minFps,
             giftPopupPosition: CONFIG.giftPopupPosition
@@ -1314,17 +1318,34 @@ class FireworksEngine {
     resize() {
         const dpr = window.devicePixelRatio || 1;
         const rect = this.canvas.getBoundingClientRect();
-        const resolution = this.config.resolution || 1.0;
         
-        // Apply resolution multiplier for performance control
-        this.canvas.width = rect.width * dpr * resolution;
-        this.canvas.height = rect.height * dpr * resolution;
-        this.ctx.scale(dpr * resolution, dpr * resolution);
+        // Get resolution from preset
+        const resolutionPreset = this.config.resolutionPreset || '1080p';
+        const orientation = this.config.orientation || 'landscape';
+        const targetResolution = this.getResolutionFromPreset(resolutionPreset, orientation);
         
-        this.width = rect.width;
-        this.height = rect.height;
+        // Apply target resolution
+        this.canvas.width = targetResolution.width;
+        this.canvas.height = targetResolution.height;
         
-        console.log(`[Fireworks] Canvas resolution: ${this.canvas.width}x${this.canvas.height} (${Math.round(resolution * 100)}%)`);
+        this.width = targetResolution.width;
+        this.height = targetResolution.height;
+        
+        console.log(`[Fireworks] Canvas resolution: ${this.canvas.width}x${this.canvas.height} (${resolutionPreset}, ${orientation})`);
+    }
+    
+    getResolutionFromPreset(preset, orientation) {
+        const resolutions = {
+            '360p': { landscape: { width: 640, height: 360 }, portrait: { width: 360, height: 640 } },
+            '540p': { landscape: { width: 960, height: 540 }, portrait: { width: 540, height: 960 } },
+            '720p': { landscape: { width: 1280, height: 720 }, portrait: { width: 720, height: 1280 } },
+            '1080p': { landscape: { width: 1920, height: 1080 }, portrait: { width: 1080, height: 1920 } },
+            '1440p': { landscape: { width: 2560, height: 1440 }, portrait: { width: 1440, height: 2560 } },
+            '4k': { landscape: { width: 3840, height: 2160 }, portrait: { width: 2160, height: 3840 } }
+        };
+        
+        const presetData = resolutions[preset] || resolutions['1080p'];
+        return orientation === 'portrait' ? presetData.portrait : presetData.landscape;
     }
 
     connectSocket() {
@@ -1354,6 +1375,9 @@ class FireworksEngine {
             this.socket.on('fireworks:config-update', (data) => {
                 if (data.config) {
                     const oldResolution = this.config.resolution;
+                    const oldPreset = this.config.resolutionPreset;
+                    const oldOrientation = this.config.orientation;
+                    
                     Object.assign(this.config, data.config);
                     this.audioManager.setEnabled(this.config.audioEnabled);
                     this.audioManager.setVolume(this.config.audioVolume);
@@ -1375,8 +1399,10 @@ class FireworksEngine {
                         CONFIG.giftPopupPosition = data.config.giftPopupPosition;
                     }
                     
-                    // Resize canvas if resolution changed
-                    if (oldResolution !== this.config.resolution) {
+                    // Resize canvas if resolution or orientation changed
+                    if (oldResolution !== this.config.resolution || 
+                        oldPreset !== this.config.resolutionPreset ||
+                        oldOrientation !== this.config.orientation) {
                         this.resize();
                     }
                     

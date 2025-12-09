@@ -189,7 +189,9 @@ class FireworksPlugin {
             trailsEnabled: true,
             trailLength: 10,
             glowEnabled: true,
-            resolution: 1.0,
+            resolution: 1.0, // Legacy - kept for backward compatibility
+            resolutionPreset: '1080p', // Resolution preset: 360p, 540p, 720p, 1080p, 1440p, 4k
+            orientation: 'landscape', // 'landscape' or 'portrait'
             targetFps: 60,
             minFps: 24, // User can configure down to 24 FPS
             despawnFadeDuration: 1.5, // Duration for despawn fade effect in seconds

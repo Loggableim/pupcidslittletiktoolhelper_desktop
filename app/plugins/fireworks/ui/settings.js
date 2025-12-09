@@ -275,10 +275,22 @@ function updateUI() {
     
     // Performance & Resolution settings
     updateToggle('toaster-toggle', config.toasterMode);
-    const resolutionSelect = document.getElementById('resolution-select');
-    if (resolutionSelect) {
-        resolutionSelect.value = config.resolution || 1.0;
+    
+    // Update resolution preset
+    const resolutionPreset = document.getElementById('resolution-preset');
+    if (resolutionPreset) {
+        resolutionPreset.value = config.resolutionPreset || '1080p';
     }
+    
+    // Update orientation
+    const orientationSelect = document.getElementById('resolution-orientation');
+    if (orientationSelect) {
+        orientationSelect.value = config.orientation || 'landscape';
+    }
+    
+    // Update resolution info display
+    updateResolutionInfo(config.resolutionPreset || '1080p', config.orientation || 'landscape');
+    
     const targetFps = config.targetFps || 60;
     const targetFpsSlider = document.getElementById('target-fps');
     const targetFpsValue = document.getElementById('target-fps-value');
@@ -322,6 +334,28 @@ function updateToggle(id, value) {
     if (toggle) {
         toggle.classList.toggle('active', value !== false);
     }
+}
+
+function updateResolutionInfo(preset, orientation) {
+    const resolutions = {
+        '360p': { landscape: '640x360', portrait: '360x640', impact: 'Minimal' },
+        '540p': { landscape: '960x540', portrait: '540x960', impact: 'Low' },
+        '720p': { landscape: '1280x720', portrait: '720x1280', impact: 'Medium' },
+        '1080p': { landscape: '1920x1080', portrait: '1080x1920', impact: 'High' },
+        '1440p': { landscape: '2560x1440', portrait: '1440x2560', impact: 'Very High' },
+        '4k': { landscape: '3840x2160', portrait: '2160x3840', impact: 'Ultra' }
+    };
+    
+    const info = resolutions[preset] || resolutions['1080p'];
+    const resolution = orientation === 'portrait' ? info.portrait : info.landscape;
+    
+    const currentResEl = document.getElementById('current-resolution');
+    const currentOrientEl = document.getElementById('current-orientation');
+    const performanceEl = document.getElementById('performance-impact');
+    
+    if (currentResEl) currentResEl.textContent = resolution;
+    if (currentOrientEl) currentOrientEl.textContent = orientation === 'portrait' ? 'Portrait' : 'Landscape';
+    if (performanceEl) performanceEl.textContent = info.impact;
 }
 
 // ============================================================================
@@ -453,11 +487,31 @@ function setupEventListeners() {
     });
     
     // Performance & Resolution settings
-    document.getElementById('resolution-select')?.addEventListener('change', function() {
-        config.resolution = parseFloat(this.value);
+    document.getElementById('resolution-preset')?.addEventListener('change', function() {
+        config.resolutionPreset = this.value;
+        updateResolutionInfo(this.value, config.orientation || 'landscape');
         // Notify engine to resize canvas
         if (socket) {
-            socket.emit('fireworks:config-update', { config: { resolution: config.resolution } });
+            socket.emit('fireworks:config-update', { 
+                config: { 
+                    resolutionPreset: config.resolutionPreset,
+                    orientation: config.orientation 
+                } 
+            });
+        }
+    });
+    
+    document.getElementById('resolution-orientation')?.addEventListener('change', function() {
+        config.orientation = this.value;
+        updateResolutionInfo(config.resolutionPreset || '1080p', this.value);
+        // Notify engine to resize canvas
+        if (socket) {
+            socket.emit('fireworks:config-update', { 
+                config: { 
+                    resolutionPreset: config.resolutionPreset,
+                    orientation: config.orientation 
+                } 
+            });
         }
     });
     
