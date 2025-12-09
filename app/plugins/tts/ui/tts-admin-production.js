@@ -380,6 +380,13 @@ async function loadConfig() {
 
         currentConfig = data.config;
         populateConfig(currentConfig);
+        
+        // Show/hide emotion selector based on current engine
+        const selectedEngine = currentConfig.defaultEngine || 'google';
+        const emotionContainer = document.getElementById('defaultEmotionContainer');
+        if (emotionContainer) {
+            emotionContainer.style.display = (selectedEngine === 'speechify') ? 'block' : 'none';
+        }
 
     } catch (error) {
         console.error('Failed to load config:', error);
@@ -410,6 +417,7 @@ function populateConfig(config) {
     // Populate all fields
     // Note: TikTok TTS temporarily disabled in UI, defaulting to Google
     setValue('defaultEngine', config.defaultEngine || 'google');
+    setValue('defaultEmotion', config.defaultEmotion || '');
     setValue('volume', config.volume || 80);
     setText('volumeValue', config.volume || 80);
     setValue('speed', config.speed || 1.0);
@@ -530,6 +538,7 @@ async function saveConfig() {
         const config = {
             defaultEngine: document.getElementById('defaultEngine').value,
             defaultVoice: document.getElementById('defaultVoice').value,
+            defaultEmotion: document.getElementById('defaultEmotion')?.value || null,
             volume: parseInt(document.getElementById('volume').value, 10),
             speed: parseFloat(document.getElementById('speed').value),
             teamMinLevel: parseInt(document.getElementById('teamMinLevel').value, 10),
@@ -1467,6 +1476,12 @@ function setupEventListeners() {
             populateVoiceSelect();
             const newVoice = document.getElementById('defaultVoice')?.value;
 
+            // Show/hide emotion selector
+            const emotionContainer = document.getElementById('defaultEmotionContainer');
+            if (emotionContainer) {
+                emotionContainer.style.display = (selectedEngine === 'speechify') ? 'block' : 'none';
+            }
+
             // Show/hide API key sections
             const googleKeySection = document.getElementById('google-api-key-section');
             const speechifyKeySection = document.getElementById('speechify-api-key-section');
@@ -1516,6 +1531,12 @@ function setupEventListeners() {
     const saveConfigBtn = document.getElementById('saveConfigBtn');
     if (saveConfigBtn) {
         saveConfigBtn.addEventListener('click', saveConfig);
+    }
+    
+    // Also hook up the top save button
+    const saveConfigBtnTop = document.getElementById('saveConfigBtnTop');
+    if (saveConfigBtnTop) {
+        saveConfigBtnTop.addEventListener('click', saveConfig);
     }
 
     const clearQueueBtn = document.getElementById('clearQueueBtn');
