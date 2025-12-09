@@ -6,8 +6,10 @@ Enterprise-grade Text-to-Speech plugin for Pup Cids Little TikTok Helper with mu
 
 ### Core Features
 - **Multi-Engine Support**
-  - TikTok TTS (Free, 75+ voices, multiple languages)
   - Google Cloud TTS (Optional, premium quality, 100+ voices)
+  - Speechify (Optional, 200+ AI voices, voice cloning)
+  - ElevenLabs (Optional, ultra-realistic voices)
+  - OpenAI TTS (Optional, HD quality voices)
   - Automatic fallback between engines
   - Engine-specific voice selection
 
@@ -57,18 +59,20 @@ plugins/tts/
 ├── main.js                      # Main plugin class
 ├── plugin.json                  # Plugin manifest
 ├── README.md                    # This file
+├── TROUBLESHOOTING.md          # Troubleshooting guide
 ├── engines/
-│   ├── tiktok-engine.js        # TikTok TTS implementation
-│   └── google-engine.js        # Google Cloud TTS implementation
+│   ├── google-engine.js        # Google Cloud TTS implementation
+│   ├── speechify-engine.js     # Speechify TTS implementation
+│   ├── elevenlabs-engine.js    # ElevenLabs TTS implementation
+│   └── openai-engine.js        # OpenAI TTS implementation
 ├── utils/
-│   ├── cache-manager.js        # Audio caching system
 │   ├── language-detector.js   # Language detection
 │   ├── profanity-filter.js    # Content filtering
 │   ├── permission-manager.js  # Permission system
 │   └── queue-manager.js       # Queue & rate limiting
 ├── ui/
 │   ├── admin-panel.html       # Admin control panel
-│   └── tts-admin.js           # Admin panel logic
+│   └── tts-admin-production.js # Admin panel logic
 └── cache/                      # Cached audio files (auto-generated)
 ```
 
@@ -85,7 +89,7 @@ The plugin is automatically loaded by the plugin system. No manual installation 
    - Or integrate into main dashboard
 
 2. **Basic Setup**
-   - Select default engine (TikTok is free, no setup needed)
+   - Select default engine (Google, Speechify, ElevenLabs, or OpenAI)
    - Choose default voice
    - Set team level requirement (0 = everyone)
    - Enable/disable chat TTS
@@ -96,6 +100,28 @@ The plugin is automatically loaded by the plugin system. No manual installation 
    - Enable "Cloud Text-to-Speech API"
    - Enter API key in admin panel
    - Select Google as default engine
+
+4. **Speechify TTS (Optional)**
+   - Sign up at [Speechify Console](https://console.speechify.com)
+   - Generate API key from dashboard
+   - Enter API key in admin panel
+   - Select Speechify as default engine
+   - **Network Requirements:**
+     - Outbound HTTPS access to `api.sws.speechify.com`
+     - DNS resolution must work for `api.sws.speechify.com`
+     - Port 443 (HTTPS) must be open
+   - **Troubleshooting:** See TROUBLESHOOTING.md for connectivity issues
+   - **Documentation:** https://docs.sws.speechify.com
+
+5. **ElevenLabs TTS (Optional)**
+   - Get API key from [ElevenLabs](https://elevenlabs.io)
+   - Enter API key in admin panel
+   - Select ElevenLabs as default engine
+
+6. **OpenAI TTS (Optional)**
+   - Get API key from [OpenAI](https://platform.openai.com/api-keys)
+   - Enter API key in admin panel
+   - Select OpenAI as default engine
 
 ### Configuration Options
 
