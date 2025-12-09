@@ -346,6 +346,24 @@ function renderTabContent(dock, tabId) {
             <label for="showJoins">Show User Joins</label>
           </div>
         </div>
+        <div class="settings-group">
+          <h3>Gift Display</h3>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showGiftImages" ${s.showGiftImages ? 'checked' : ''}>
+            <label for="showGiftImages">Show Gift Images from Catalogue (instead of emoji)</label>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Gift Image Size</label>
+              <select id="giftImageSize">
+                <option value="small" ${s.giftImageSize === 'small' ? 'selected' : ''}>Small</option>
+                <option value="medium" ${s.giftImageSize === 'medium' || !s.giftImageSize ? 'selected' : ''}>Medium</option>
+                <option value="large" ${s.giftImageSize === 'large' ? 'selected' : ''}>Large</option>
+              </select>
+              <span class="help-text">Size of gift images when "Show Gift Images" is enabled</span>
+            </div>
+          </div>
+        </div>
       `;
 
     case 'layout':
@@ -709,6 +727,8 @@ async function saveSettings() {
       animationIn: getFieldValue('animationIn'),
       animationOut: getFieldValue('animationOut'),
       animationSpeed: getFieldValue('animationSpeed'),
+      showGiftImages: getFieldValue('showGiftImages', 'checkbox'),
+      giftImageSize: getFieldValue('giftImageSize')
     });
   }
 

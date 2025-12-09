@@ -97,19 +97,36 @@
       display: grid;
       gap: var(--spacing);
       height: 100%;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      grid-auto-rows: minmax(200px, 1fr);
+      grid-template-columns: repeat(3, 1fr);
+      grid-auto-rows: minmax(200px, auto);
     }
 
     @media (min-width: 1200px) {
       .layout-structured {
         grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+      }
+      
+      /* Make chat block span 2 columns in structured layout for better visibility */
+      .layout-structured .event-block[data-event-type="chat"] {
+        grid-column: span 2;
       }
     }
 
     @media (min-width: 768px) and (max-width: 1199px) {
       .layout-structured {
         grid-template-columns: repeat(2, 1fr);
+      }
+      
+      /* Make chat block span full width on medium screens */
+      .layout-structured .event-block[data-event-type="chat"] {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .layout-structured {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -291,6 +308,30 @@
       opacity: 0.9;
       margin-left: 6px;
       line-height: var(--line-height);
+    }
+
+    /* Gift image styling */
+    .gift-image {
+      display: inline-block;
+      vertical-align: middle;
+      object-fit: contain;
+      margin: 0 4px;
+      border-radius: 4px;
+    }
+
+    .gift-image.size-small {
+      height: 1.5em;
+      width: 1.5em;
+    }
+
+    .gift-image.size-medium {
+      height: 2.5em;
+      width: 2.5em;
+    }
+
+    .gift-image.size-large {
+      height: 4em;
+      width: 4em;
     }
 
     /* Event Type Colors */

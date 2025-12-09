@@ -163,6 +163,10 @@ function getDefaultSettings() {
     animationOut: 'fade',
     animationSpeed: 'medium',
 
+    // Gift display settings
+    showGiftImages: false,
+    giftImageSize: 'medium',
+
     // Accessibility
     nightMode: true,
     dayMode: false,
@@ -185,8 +189,15 @@ function applySettings() {
     applyAccessibilityPreset(s.accessibilityPreset);
   } else {
     // Apply individual accessibility settings
-    body.classList.toggle('night-mode', s.nightMode);
-    body.classList.toggle('day-mode', s.dayMode);
+    // Handle both old format (nightMode/dayMode) and new format (mode)
+    if (s.mode) {
+      body.classList.toggle('night-mode', s.mode === 'night');
+      body.classList.toggle('day-mode', s.mode === 'day');
+    } else {
+      body.classList.toggle('night-mode', s.nightMode);
+      body.classList.toggle('day-mode', s.dayMode);
+    }
+    
     body.classList.toggle('high-contrast', s.highContrastMode);
     body.classList.toggle('colorblind-safe', s.colorblindSafeMode);
     body.classList.toggle('vision-impaired', s.visionImpairedMode);
@@ -432,6 +443,7 @@ function renderStructured() {
 
     const block = document.createElement('div');
     block.className = 'event-block';
+    block.dataset.eventType = type; // Add data attribute for CSS targeting
 
     const header = document.createElement('div');
     header.className = `block-header ${EVENT_TYPES[type].colorClass}`;
@@ -456,20 +468,22 @@ function renderStructured() {
 
 function renderAdaptive() {
   const eventTypes = ['chat', 'follow', 'share', 'like', 'gift', 'sub', 'treasure', 'join'];
-  const activeTypes = eventTypes.filter(type => {
+  
+  // Get enabled types (not filtered by events length - show blocks even if empty)
+  const enabledTypes = eventTypes.filter(type => {
     const settingKey = `show${capitalize(type === 'sub' ? 'subs' : type === 'treasure' ? 'treasureChests' : type === 'like' ? 'likes' : type + 's')}`;
-    return STATE.settings[settingKey] && STATE.events[type].length > 0;
+    return STATE.settings[settingKey];
   });
 
-  // Determine flex class based on number of active types
+  // Determine flex class based on number of enabled types
   let flexClass = 'flex-1';
-  if (activeTypes.length === 2) {
+  if (enabledTypes.length === 2) {
     flexClass = 'flex-2';
-  } else if (activeTypes.length >= 3) {
+  } else if (enabledTypes.length >= 3) {
     flexClass = 'flex-3';
   }
 
-  activeTypes.forEach(type => {
+  enabledTypes.forEach(type => {
     const block = document.createElement('div');
     block.className = `event-block ${flexClass}`;
 
@@ -483,8 +497,8 @@ function renderAdaptive() {
     content.dataset.type = type;
     block.appendChild(content);
 
-    // Add events
-    const maxEventsPerBlock = Math.floor((STATE.settings.maxLines || 50) / Math.max(activeTypes.length, 1));
+    // Add events if available
+    const maxEventsPerBlock = Math.floor((STATE.settings.maxLines || 50) / Math.max(enabledTypes.length, 1));
     STATE.events[type].slice(0, maxEventsPerBlock).forEach(event => {
       const element = createEventElement(event, 'adaptive');
       content.appendChild(element);
@@ -658,6 +672,19 @@ function createEventElement(event, layoutMode) {
       type.className = 'event-type';
       type.textContent = `(${EVENT_TYPES[event.type].label})`;
       element.appendChild(type);
+    }
+
+    // Show gift image if enabled and available
+    if (STATE.settings.showGiftImages && (event.data.giftPictureUrl || event.data.gift?.image_url)) {
+      const giftImage = document.createElement('img');
+      giftImage.className = `gift-image size-${STATE.settings.giftImageSize || 'medium'}`;
+      giftImage.src = event.data.giftPictureUrl || event.data.gift?.image_url;
+      giftImage.alt = event.data.gift?.name || event.data.giftName || 'Gift';
+      giftImage.onerror = function() {
+        // Fallback to emoji icon if image fails to load
+        this.style.display = 'none';
+      };
+      element.appendChild(giftImage);
     }
 
     const giftInfo = document.createElement('span');
