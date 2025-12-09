@@ -7,6 +7,13 @@ class CoinBattleDatabase {
   constructor(db, logger = console) {
     this.db = db;
     this.logger = logger;
+    
+    // Batch processing for high-performance event inserts
+    this.eventBatch = [];
+    this.batchSize = 50; // Flush after 50 events
+    this.batchTimeout = 100; // or after 100ms
+    this.batchTimer = null;
+    this.batchInsertStatement = null;
   }
 
   /**
@@ -165,7 +172,14 @@ class CoinBattleDatabase {
       // Initialize default badges
       this.initializeDefaultBadges();
 
-      this.logger.info('✅ CoinBattle database tables initialized');
+      // Prepare batch insert statement for performance
+      this.batchInsertStatement = this.db.prepare(`
+        INSERT INTO coinbattle_gift_events 
+        (match_id, player_id, user_id, gift_id, gift_name, coins, multiplier, team, event_id, idempotency_key)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      this.logger.info('✅ CoinBattle database tables initialized with batch support');
     } catch (error) {
       this.logger.error(`Failed to initialize CoinBattle tables: ${error.message}`);
       throw error;
@@ -234,29 +248,46 @@ class CoinBattleDatabase {
   }
 
   /**
-   * End a match
+   * End a match with database transaction for consistency
    */
   endMatch(matchId, winnerData) {
-    const endTime = Math.floor(Date.now() / 1000);
-    const match = this.db.prepare('SELECT start_time FROM coinbattle_matches WHERE id = ?').get(matchId);
-    const duration = endTime - match.start_time;
+    // Wrap in transaction for atomic all-or-nothing execution
+    const transaction = this.db.transaction(() => {
+      const endTime = Math.floor(Date.now() / 1000);
+      const match = this.db.prepare('SELECT start_time FROM coinbattle_matches WHERE id = ?').get(matchId);
+      
+      if (!match) {
+        throw new Error(`Match ${matchId} not found`);
+      }
+      
+      const duration = endTime - match.start_time;
 
-    this.db.prepare(`
-      UPDATE coinbattle_matches
-      SET end_time = ?, duration = ?, status = 'completed',
-          winner_team = ?, winner_player_id = ?,
-          team_red_score = ?, team_blue_score = ?, total_coins = ?
-      WHERE id = ?
-    `).run(
-      endTime,
-      duration,
-      winnerData.winner_team || null,
-      winnerData.winner_player_id || null,
-      winnerData.team_red_score || 0,
-      winnerData.team_blue_score || 0,
-      winnerData.total_coins || 0,
-      matchId
-    );
+      this.db.prepare(`
+        UPDATE coinbattle_matches
+        SET end_time = ?, duration = ?, status = 'completed',
+            winner_team = ?, winner_player_id = ?,
+            team_red_score = ?, team_blue_score = ?, total_coins = ?
+        WHERE id = ?
+      `).run(
+        endTime,
+        duration,
+        winnerData.winner_team || null,
+        winnerData.winner_player_id || null,
+        winnerData.team_red_score || 0,
+        winnerData.team_blue_score || 0,
+        winnerData.total_coins || 0,
+        matchId
+      );
+    });
+
+    // Execute transaction atomically
+    try {
+      transaction();
+      this.logger.info(`Match ${matchId} ended successfully (transaction committed)`);
+    } catch (error) {
+      this.logger.error(`Transaction failed for match ${matchId}: ${error.message}`);
+      throw error;
+    }
   }
 
   /**
@@ -644,6 +675,110 @@ class CoinBattleDatabase {
       SET auto_extended = auto_extended + 1
       WHERE id = ?
     `).run(matchId);
+  }
+
+  /**
+   * Queue gift event for batch processing (high performance mode)
+   */
+  queueGiftEventBatch(matchId, playerId, userId, giftData, team, multiplier, eventId, idempotencyKey) {
+    this.eventBatch.push([
+      matchId,
+      playerId,
+      userId,
+      giftData.giftId,
+      giftData.giftName,
+      giftData.coins,
+      multiplier,
+      team,
+      eventId,
+      idempotencyKey
+    ]);
+
+    // Clear existing timer
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+    }
+
+    // Auto-flush if batch size reached
+    if (this.eventBatch.length >= this.batchSize) {
+      this.flushEventBatch();
+    } else {
+      // Set timer to flush after timeout
+      this.batchTimer = setTimeout(() => {
+        this.flushEventBatch();
+      }, this.batchTimeout);
+    }
+  }
+
+  /**
+   * Flush batched events to database (atomic transaction)
+   */
+  flushEventBatch() {
+    if (this.eventBatch.length === 0) {
+      return 0;
+    }
+
+    const batchToProcess = this.eventBatch.splice(0); // Empty the queue
+    
+    // Clear timer
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+      this.batchTimer = null;
+    }
+
+    // Batch insert in transaction for maximum performance
+    const transaction = this.db.transaction((events) => {
+      for (const eventData of events) {
+        try {
+          this.batchInsertStatement.run(...eventData);
+        } catch (error) {
+          // Handle duplicate key silently (idempotency)
+          if (!error.message.includes('UNIQUE constraint failed')) {
+            this.logger.error(`Batch insert error: ${error.message}`);
+          }
+        }
+      }
+    });
+
+    try {
+      transaction(batchToProcess);
+      this.logger.info(`Flushed ${batchToProcess.length} events to database (batch mode)`);
+      return batchToProcess.length;
+    } catch (error) {
+      this.logger.error(`Batch transaction failed: ${error.message}`);
+      // Re-queue events for retry
+      this.eventBatch.unshift(...batchToProcess);
+      return 0;
+    }
+  }
+
+  /**
+   * Enable batch mode for high-throughput scenarios (5k+ events/min)
+   */
+  enableBatchMode() {
+    this.batchMode = true;
+    this.logger.info('Batch mode enabled for high-performance event processing');
+  }
+
+  /**
+   * Disable batch mode and flush remaining events
+   */
+  disableBatchMode() {
+    this.batchMode = false;
+    this.flushEventBatch();
+    this.logger.info('Batch mode disabled');
+  }
+
+  /**
+   * Cleanup on destruction
+   */
+  destroy() {
+    // Flush any remaining batched events
+    this.flushEventBatch();
+    
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+    }
   }
 }
 

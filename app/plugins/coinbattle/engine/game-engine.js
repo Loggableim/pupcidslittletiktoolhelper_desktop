@@ -47,6 +47,10 @@ class CoinBattleEngine {
     this.simulationInterval = null;
     this.simulationPlayers = [];
 
+    // Atomic operation locks for race condition prevention
+    this.matchEndLock = false;
+    this.matchStartLock = false;
+
     // Event cache cleanup interval (every 5 minutes)
     this.cacheCleanupInterval = setInterval(() => {
       try {
@@ -66,126 +70,148 @@ class CoinBattleEngine {
   }
 
   /**
-   * Start a new match
+   * Start a new match with atomic locking
    */
   startMatch(mode = null, duration = null) {
+    // Atomic lock to prevent concurrent starts
+    if (this.matchStartLock) {
+      this.logger.warn('Match start already in progress');
+      throw new Error('Match start already in progress');
+    }
+
     if (this.currentMatch) {
       throw new Error('Match already in progress');
     }
 
-    const matchMode = mode || this.config.mode;
-    const matchDuration = duration || this.config.matchDuration;
+    this.matchStartLock = true;
+    try {
+      const matchMode = mode || this.config.mode;
+      const matchDuration = duration || this.config.matchDuration;
 
-    // Create match in database
-    const matchUuid = uuidv4();
-    const matchId = this.db.createMatch({ match_uuid: matchUuid, mode: matchMode });
+      // Create match in database
+      const matchUuid = uuidv4();
+      const matchId = this.db.createMatch({ match_uuid: matchUuid, mode: matchMode });
 
-    this.currentMatch = {
-      id: matchId,
-      uuid: matchUuid,
-      mode: matchMode,
-      duration: matchDuration,
-      status: 'active'
-    };
+      this.currentMatch = {
+        id: matchId,
+        uuid: matchUuid,
+        mode: matchMode,
+        duration: matchDuration,
+        status: 'active'
+      };
 
-    this.matchStartTime = Date.now();
-    this.matchDuration = matchDuration;
-    this.totalPausedTime = 0;
-    this.isPaused = false;
-    this.players.clear();
-    this.teams.red.clear();
-    this.teams.blue.clear();
+      this.matchStartTime = Date.now();
+      this.matchDuration = matchDuration;
+      this.totalPausedTime = 0;
+      this.isPaused = false;
+      this.players.clear();
+      this.teams.red.clear();
+      this.teams.blue.clear();
 
-    // Start countdown timer
-    this.startTimer();
+      // Start countdown timer
+      this.startTimer();
 
-    // Emit match start event
-    this.emitMatchState();
+      // Emit match start event
+      this.emitMatchState();
 
-    this.logger.info(`Match started: ${matchUuid} (${matchMode} mode, ${matchDuration}s)`);
-    return this.currentMatch;
+      this.logger.info(`Match started: ${matchUuid} (${matchMode} mode, ${matchDuration}s)`);
+      return this.currentMatch;
+    } finally {
+      this.matchStartLock = false;
+    }
   }
 
   /**
-   * End current match
+   * End current match with atomic locking
    */
   endMatch() {
+    // Atomic lock to prevent concurrent calls
+    if (this.matchEndLock) {
+      this.logger.warn('Match end already in progress');
+      return null;
+    }
+
     if (!this.currentMatch) {
       throw new Error('No active match');
     }
 
-    this.stopTimer();
+    this.matchEndLock = true;
+    try {
+      this.stopTimer();
 
-    // Calculate winner
-    const leaderboard = this.db.getMatchLeaderboard(this.currentMatch.id, 100);
-    const teamScores = this.currentMatch.mode === 'team' ? this.db.getTeamScores(this.currentMatch.id) : null;
+      // Calculate winner
+      const leaderboard = this.db.getMatchLeaderboard(this.currentMatch.id, 100);
+      const teamScores = this.currentMatch.mode === 'team' ? this.db.getTeamScores(this.currentMatch.id) : null;
 
-    let winnerData = {
-      total_coins: leaderboard.reduce((sum, p) => sum + p.coins, 0)
-    };
+      let winnerData = {
+        total_coins: leaderboard.reduce((sum, p) => sum + p.coins, 0)
+      };
 
-    if (this.currentMatch.mode === 'team') {
-      winnerData.team_red_score = teamScores.red;
-      winnerData.team_blue_score = teamScores.blue;
-      winnerData.winner_team = teamScores.red > teamScores.blue ? 'red' : 'blue';
-    } else {
-      winnerData.winner_player_id = leaderboard[0]?.user_id || null;
-    }
-
-    // End match in database
-    this.db.endMatch(this.currentMatch.id, winnerData);
-
-    // Update player lifetime stats
-    for (const participant of leaderboard) {
-      const isWinner = this.currentMatch.mode === 'team' 
-        ? participant.team === winnerData.winner_team
-        : participant.user_id === winnerData.winner_player_id;
-      
-      const isTeamMatch = this.currentMatch.mode === 'team';
-      
-      this.db.updatePlayerLifetimeStats(
-        participant.player_id,
-        participant.coins,
-        participant.gifts,
-        isWinner,
-        isWinner && isTeamMatch
-      );
-
-      // Check and award badges
-      const newBadges = this.db.checkAndAwardBadges(participant.player_id);
-      if (newBadges.length > 0) {
-        this.io.emit('coinbattle:badges-awarded', {
-          userId: participant.user_id,
-          badges: newBadges
-        });
+      if (this.currentMatch.mode === 'team') {
+        winnerData.team_red_score = teamScores.red;
+        winnerData.team_blue_score = teamScores.blue;
+        winnerData.winner_team = teamScores.red > teamScores.blue ? 'red' : 'blue';
+      } else {
+        winnerData.winner_player_id = leaderboard[0]?.user_id || null;
       }
+
+      // End match in database
+      this.db.endMatch(this.currentMatch.id, winnerData);
+
+      // Update player lifetime stats
+      for (const participant of leaderboard) {
+        const isWinner = this.currentMatch.mode === 'team' 
+          ? participant.team === winnerData.winner_team
+          : participant.user_id === winnerData.winner_player_id;
+        
+        const isTeamMatch = this.currentMatch.mode === 'team';
+        
+        this.db.updatePlayerLifetimeStats(
+          participant.player_id,
+          participant.coins,
+          participant.gifts,
+          isWinner,
+          isWinner && isTeamMatch
+        );
+
+        // Check and award badges
+        const newBadges = this.db.checkAndAwardBadges(participant.player_id);
+        if (newBadges.length > 0) {
+          this.io.emit('coinbattle:badges-awarded', {
+            userId: participant.user_id,
+            badges: newBadges
+          });
+        }
+      }
+
+      // Update match stats
+      this.db.updateMatchStats(this.currentMatch.id);
+
+      // Emit match end event
+      this.io.emit('coinbattle:match-ended', {
+        matchId: this.currentMatch.id,
+        winner: winnerData,
+        leaderboard: leaderboard.slice(0, 10),
+        teamScores
+      });
+
+      const matchId = this.currentMatch.id;
+      this.currentMatch = null;
+
+      this.logger.info(`Match ended: ${matchId}`);
+
+      // Auto-reset if enabled
+      if (this.config.autoReset) {
+        setTimeout(() => {
+          this.logger.info('Auto-reset triggered');
+          // Optionally auto-start a new match
+        }, 5000);
+      }
+
+      return { matchId, winnerData, leaderboard };
+    } finally {
+      this.matchEndLock = false;
     }
-
-    // Update match stats
-    this.db.updateMatchStats(this.currentMatch.id);
-
-    // Emit match end event
-    this.io.emit('coinbattle:match-ended', {
-      matchId: this.currentMatch.id,
-      winner: winnerData,
-      leaderboard: leaderboard.slice(0, 10),
-      teamScores
-    });
-
-    const matchId = this.currentMatch.id;
-    this.currentMatch = null;
-
-    this.logger.info(`Match ended: ${matchId}`);
-
-    // Auto-reset if enabled
-    if (this.config.autoReset) {
-      setTimeout(() => {
-        this.logger.info('Auto-reset triggered');
-        // Optionally auto-start a new match
-      }, 5000);
-    }
-
-    return { matchId, winnerData, leaderboard };
   }
 
   /**

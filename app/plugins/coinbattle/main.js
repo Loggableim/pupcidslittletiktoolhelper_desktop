@@ -92,7 +92,7 @@ class CoinBattlePlugin {
   }
 
   /**
-   * Register API routes with rate limiting
+   * Register API routes with rate limiting and CSP headers
    */
   registerRoutes() {
     // Rate limiter configurations
@@ -114,11 +114,11 @@ class CoinBattlePlugin {
       message: { success: false, error: 'Too many requests.' }
     };
 
-    // Helper to create rate limiter
+    // Helper to create rate limiter middleware
     const createLimiter = (config) => {
       const requests = new Map();
       return (req, res, next) => {
-        const key = req.ip || req.connection.remoteAddress;
+        const key = req.ip || req.connection.remoteAddress || 'unknown';
         const now = Date.now();
         
         if (!requests.has(key)) {
@@ -129,13 +129,14 @@ class CoinBattlePlugin {
         const recentRequests = userRequests.filter(time => now - time < config.windowMs);
         
         if (recentRequests.length >= config.max) {
+          this.logger.warn(`Rate limit exceeded for ${key} on ${req.path}`);
           return res.status(429).json(config.message);
         }
         
         recentRequests.push(now);
         requests.set(key, recentRequests);
         
-        // Cleanup old entries periodically
+        // Cleanup old entries periodically (1% chance per request)
         if (Math.random() < 0.01) {
           for (const [k, v] of requests.entries()) {
             const filtered = v.filter(time => now - time < config.windowMs);
@@ -151,6 +152,58 @@ class CoinBattlePlugin {
       };
     };
 
+    // CSP middleware for overlay and UI routes
+    const cspMiddleware = (req, res, next) => {
+      res.setHeader('Content-Security-Policy', 
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' https://cdn.socket.io; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data: https:; " +
+        "connect-src 'self' ws: wss:; " +
+        "font-src 'self'; " +
+        "object-src 'none'; " +
+        "base-uri 'self'; " +
+        "form-action 'self';"
+      );
+      next();
+    };
+
+    // Helper to wrap handler with rate limiting
+    const withRateLimit = (limiter, handler) => {
+      return async (req, res) => {
+        // Apply rate limiting logic inline
+        const key = req.ip || req.connection.remoteAddress || 'unknown';
+        const now = Date.now();
+        
+        if (!limiter.requests) {
+          limiter.requests = new Map();
+        }
+        
+        if (!limiter.requests.has(key)) {
+          limiter.requests.set(key, []);
+        }
+        
+        const userRequests = limiter.requests.get(key);
+        const recentRequests = userRequests.filter(time => now - time < limiter.windowMs);
+        
+        if (recentRequests.length >= limiter.max) {
+          this.logger.warn(`Rate limit exceeded for ${key} on ${req.path}`);
+          return res.status(429).json(limiter.message);
+        }
+        
+        recentRequests.push(now);
+        limiter.requests.set(key, recentRequests);
+        
+        // Execute the actual handler
+        return handler(req, res);
+      };
+    };
+
+    // Create rate limiters
+    const strictLimit = strictLimiter;
+    const moderateLimit = moderateLimiter;
+    const relaxedLimit = relaxedLimiter;
+
     // Get current match state (relaxed - read-only)
     this.api.registerRoute('GET', '/api/plugins/coinbattle/state', (req, res) => {
       try {
@@ -162,70 +215,81 @@ class CoinBattlePlugin {
       }
     });
 
-    // Start match
-    this.api.registerRoute('POST', '/api/plugins/coinbattle/match/start', (req, res) => {
-      try {
-        const { mode, duration } = req.body;
-        const match = this.engine.startMatch(mode, duration);
-        res.json({ success: true, data: match });
-      } catch (error) {
-        this.api.log(`Error starting match: ${error.message}`, 'error');
-        res.status(500).json({ success: false, error: error.message });
-      }
-    });
+    // Start match (strict rate limiting - prevent spam)
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/match/start', 
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const { mode, duration } = req.body;
+          const match = this.engine.startMatch(mode, duration);
+          res.json({ success: true, data: match });
+        } catch (error) {
+          this.api.log(`Error starting match: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
 
-    // End match
-    this.api.registerRoute('POST', '/api/plugins/coinbattle/match/end', (req, res) => {
-      try {
-        const result = this.engine.endMatch();
-        res.json({ success: true, data: result });
-      } catch (error) {
-        this.api.log(`Error ending match: ${error.message}`, 'error');
-        res.status(500).json({ success: false, error: error.message });
-      }
-    });
+    // End match (strict rate limiting)
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/match/end', 
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const result = this.engine.endMatch();
+          res.json({ success: true, data: result });
+        } catch (error) {
+          this.api.log(`Error ending match: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
 
-    // Pause match
-    this.api.registerRoute('POST', '/api/plugins/coinbattle/match/pause', (req, res) => {
-      try {
-        const success = this.engine.pauseMatch();
-        res.json({ success });
-      } catch (error) {
-        this.api.log(`Error pausing match: ${error.message}`, 'error');
-        res.status(500).json({ success: false, error: error.message });
-      }
-    });
+    // Pause match (strict rate limiting)
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/match/pause', 
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const success = this.engine.pauseMatch();
+          res.json({ success });
+        } catch (error) {
+          this.api.log(`Error pausing match: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
 
-    // Resume match
-    this.api.registerRoute('POST', '/api/plugins/coinbattle/match/resume', (req, res) => {
-      try {
-        const success = this.engine.resumeMatch();
-        res.json({ success });
-      } catch (error) {
-        this.api.log(`Error resuming match: ${error.message}`, 'error');
-        res.status(500).json({ success: false, error: error.message });
-      }
-    });
+    // Resume match (strict rate limiting)
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/match/resume', 
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const success = this.engine.resumeMatch();
+          res.json({ success });
+        } catch (error) {
+          this.api.log(`Error resuming match: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
 
-    // Extend match
-    this.api.registerRoute('POST', '/api/plugins/coinbattle/match/extend', (req, res) => {
-      try {
-        const { seconds } = req.body;
-        const success = this.engine.extendMatch(seconds || 60);
-        res.json({ success });
-      } catch (error) {
-        this.api.log(`Error extending match: ${error.message}`, 'error');
-        res.status(500).json({ success: false, error: error.message });
-      }
-    });
+    // Extend match (strict rate limiting)
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/match/extend', 
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const { seconds } = req.body;
+          const success = this.engine.extendMatch(seconds || 60);
+          res.json({ success });
+        } catch (error) {
+          this.api.log(`Error extending match: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
 
-    // Activate multiplier
-    this.api.registerRoute('POST', '/api/plugins/coinbattle/multiplier/activate', (req, res) => {
-      try {
-        const { multiplier, duration, activatedBy } = req.body;
-        const success = this.engine.activateMultiplier(
-          multiplier || 2.0,
-          duration || 30,
+    // Activate multiplier (strict rate limiting - prevent coin inflation)
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/multiplier/activate', 
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const { multiplier, duration, activatedBy } = req.body;
+          const success = this.engine.activateMultiplier(
+            multiplier || 2.0,
+            duration || 30,
           activatedBy
         );
         res.json({ success });
@@ -233,9 +297,10 @@ class CoinBattlePlugin {
         this.api.log(`Error activating multiplier: ${error.message}`, 'error');
         res.status(500).json({ success: false, error: error.message });
       }
-    });
+    })
+    );
 
-    // Get lifetime leaderboard
+    // Get lifetime leaderboard (relaxed)
     this.api.registerRoute('GET', '/api/plugins/coinbattle/leaderboard/lifetime', (req, res) => {
       try {
         const limit = parseInt(req.query.limit) || 10;
@@ -247,7 +312,7 @@ class CoinBattlePlugin {
       }
     });
 
-    // Get match history
+    // Get match history (relaxed)
     this.api.registerRoute('GET', '/api/plugins/coinbattle/history', (req, res) => {
       try {
         const limit = parseInt(req.query.limit) || 20;
@@ -260,7 +325,7 @@ class CoinBattlePlugin {
       }
     });
 
-    // Get player stats
+    // Get player stats (relaxed)
     this.api.registerRoute('GET', '/api/plugins/coinbattle/player/:userId', (req, res) => {
       try {
         const { userId } = req.params;
@@ -273,7 +338,7 @@ class CoinBattlePlugin {
       }
     });
 
-    // Get configuration
+    // Get configuration (relaxed)
     this.api.registerRoute('GET', '/api/plugins/coinbattle/config', (req, res) => {
       try {
         const config = this.loadConfiguration();
@@ -284,41 +349,47 @@ class CoinBattlePlugin {
       }
     });
 
-    // Update configuration
-    this.api.registerRoute('POST', '/api/plugins/coinbattle/config', (req, res) => {
-      try {
-        const config = req.body;
-        this.saveConfiguration(config);
-        res.json({ success: true, data: config });
-      } catch (error) {
-        this.api.log(`Error updating config: ${error.message}`, 'error');
-        res.status(500).json({ success: false, error: error.message });
-      }
-    });
+    // Update configuration (moderate rate limiting)
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/config', 
+      withRateLimit(moderateLimit, (req, res) => {
+        try {
+          const config = req.body;
+          this.saveConfiguration(config);
+          res.json({ success: true, data: config });
+        } catch (error) {
+          this.api.log(`Error updating config: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
 
-    // Start offline simulation
-    this.api.registerRoute('POST', '/api/plugins/coinbattle/simulation/start', (req, res) => {
-      try {
-        this.engine.startSimulation();
-        res.json({ success: true });
-      } catch (error) {
-        this.api.log(`Error starting simulation: ${error.message}`, 'error');
-        res.status(500).json({ success: false, error: error.message });
-      }
-    });
+    // Start offline simulation (moderate rate limiting)
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/simulation/start', 
+      withRateLimit(moderateLimit, (req, res) => {
+        try {
+          this.engine.startSimulation();
+          res.json({ success: true });
+        } catch (error) {
+          this.api.log(`Error starting simulation: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
 
-    // Stop offline simulation
-    this.api.registerRoute('POST', '/api/plugins/coinbattle/simulation/stop', (req, res) => {
-      try {
-        this.engine.stopSimulation();
-        res.json({ success: true });
-      } catch (error) {
-        this.api.log(`Error stopping simulation: ${error.message}`, 'error');
-        res.status(500).json({ success: false, error: error.message });
-      }
-    });
+    // Stop offline simulation (moderate rate limiting)
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/simulation/stop', 
+      withRateLimit(moderateLimit, (req, res) => {
+        try {
+          this.engine.stopSimulation();
+          res.json({ success: true });
+        } catch (error) {
+          this.api.log(`Error stopping simulation: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
 
-    // Export match data
+    // Export match data (relaxed)
     this.api.registerRoute('GET', '/api/plugins/coinbattle/export/:matchId', (req, res) => {
       try {
         const { matchId } = req.params;
@@ -342,12 +413,24 @@ class CoinBattlePlugin {
       }
     });
 
-    // Serve overlay
+    // Serve overlay with CSP headers
     this.api.registerRoute('GET', '/plugins/coinbattle/overlay', (req, res) => {
+      // Apply CSP headers for XSS protection
+      res.setHeader('Content-Security-Policy', 
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' https://cdn.socket.io; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data: https:; " +
+        "connect-src 'self' ws: wss:; " +
+        "font-src 'self'; " +
+        "object-src 'none'; " +
+        "base-uri 'self'; " +
+        "form-action 'self';"
+      );
       res.sendFile(path.join(__dirname, 'overlay', 'overlay.html'));
     });
 
-    this.api.log('CoinBattle routes registered', 'info');
+    this.api.log('CoinBattle routes registered with rate limiting and CSP', 'info');
   }
 
   /**
