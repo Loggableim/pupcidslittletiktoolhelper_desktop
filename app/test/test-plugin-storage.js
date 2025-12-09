@@ -71,7 +71,7 @@ function testPluginDataStorage() {
     console.log(`  Plugin data dir: ${pluginDataDir}`);
     
     // Check it's not in common app directory patterns
-    const appDirPatterns = ['pupcidslittletiktoolhelper_desktop', '/app/', '\\app\\'];
+    const appDirPatterns = ['pupcidslittletiktokhelper_desktop', '/app/', '\\app\\'];
     const isOutsideApp = !appDirPatterns.some(pattern => pluginDataDir.includes(pattern));
     if (isOutsideApp) {
         console.log('  ✅ PASS: Data directory is outside app directory');
@@ -94,12 +94,11 @@ function testPluginDataStorage() {
     const dirExists = fs.existsSync(createdDir);
     if (dirExists) {
         console.log('  ✅ PASS: Directory was created');
-        // Cleanup
+        // Cleanup - recursively remove entire plugin directory structure
         try {
-            fs.rmdirSync(createdDir);
-            const parentDir = path.dirname(createdDir);
-            if (fs.existsSync(parentDir) && fs.readdirSync(parentDir).length === 0) {
-                fs.rmdirSync(parentDir);
+            const pluginBaseDir = path.join(path.dirname(path.dirname(createdDir)), testPluginId);
+            if (fs.existsSync(pluginBaseDir)) {
+                fs.rmSync(pluginBaseDir, { recursive: true, force: true });
             }
         } catch (e) {
             // Ignore cleanup errors
