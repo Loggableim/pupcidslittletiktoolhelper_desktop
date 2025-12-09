@@ -6,7 +6,8 @@ const overlayTypes = [
   { id: 'gifter', name: 'Last Gifter', icon: '🎁', color: '#ffc107' },
   { id: 'subscriber', name: 'Last Subscriber', icon: '⭐', color: '#6f42c1' },
   { id: 'topgift', name: 'Top Gift', icon: '💎', color: '#fd7e14', description: 'Most expensive gift of the stream' },
-  { id: 'giftstreak', name: 'Gift Streak', icon: '🔥', color: '#e83e8c', description: 'Longest consecutive gift streak' }
+  { id: 'giftstreak', name: 'Gift Streak', icon: '🔥', color: '#e83e8c', description: 'Longest consecutive gift streak' },
+  { id: 'multihud', name: 'Multi-HUD Rotation', icon: '🔄', color: '#6610f2', description: 'Rotating display of selected events' }
 ];
 
 let currentType = null;
@@ -387,6 +388,58 @@ function renderSettingsForm(type) {
         <label for="preloadImages">Preload Profile Images</label>
       </div>
     </div>
+
+    ${type === 'multihud' ? `
+    <!-- Multi-HUD Rotation Settings -->
+    <div class="settings-section">
+      <h4>🔄 Multi-HUD Rotation Settings</h4>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Rotation Interval (seconds)</label>
+          <input type="number" id="rotationIntervalSeconds" value="${settings.rotationIntervalSeconds || 5}" min="1" max="60">
+          <small style="color: var(--color-text-muted);">How often to switch between events</small>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label>Select Events to Display</label>
+        <small style="color: var(--color-text-muted); display: block; margin-bottom: 10px;">
+          Choose which events should be included in the rotation
+        </small>
+        <div class="checkbox-group">
+          <input type="checkbox" id="event-follower" value="follower" ${settings.selectedEvents && settings.selectedEvents.includes('follower') ? 'checked' : 'checked'}>
+          <label for="event-follower">👤 Follower</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="event-like" value="like" ${settings.selectedEvents && settings.selectedEvents.includes('like') ? 'checked' : 'checked'}>
+          <label for="event-like">❤️ Like</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="event-chatter" value="chatter" ${settings.selectedEvents && settings.selectedEvents.includes('chatter') ? 'checked' : 'checked'}>
+          <label for="event-chatter">💬 Chatter</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="event-share" value="share" ${settings.selectedEvents && settings.selectedEvents.includes('share') ? 'checked' : 'checked'}>
+          <label for="event-share">🔗 Share</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="event-gifter" value="gifter" ${settings.selectedEvents && settings.selectedEvents.includes('gifter') ? 'checked' : 'checked'}>
+          <label for="event-gifter">🎁 Gifter</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="event-subscriber" value="subscriber" ${settings.selectedEvents && settings.selectedEvents.includes('subscriber') ? 'checked' : 'checked'}>
+          <label for="event-subscriber">⭐ Subscriber</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="event-topgift" value="topgift" ${settings.selectedEvents && settings.selectedEvents.includes('topgift') ? 'checked' : ''}>
+          <label for="event-topgift">💎 Top Gift</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="event-giftstreak" value="giftstreak" ${settings.selectedEvents && settings.selectedEvents.includes('giftstreak') ? 'checked' : ''}>
+          <label for="event-giftstreak">🔥 Gift Streak</label>
+        </div>
+      </div>
+    </div>
+    ` : ''}
   `;
 
   // Setup color picker sync
@@ -462,6 +515,28 @@ async function saveSettings() {
     hideOnNullUser: document.getElementById('hideOnNullUser').checked,
     preloadImages: document.getElementById('preloadImages').checked
   };
+
+  // Add multi-HUD specific settings if this is the multihud overlay
+  if (currentType === 'multihud') {
+    // Get rotation interval
+    newSettings.rotationIntervalSeconds = parseInt(document.getElementById('rotationIntervalSeconds').value) || 5;
+    
+    // Get selected events
+    const selectedEvents = [];
+    const eventCheckboxes = [
+      'event-follower', 'event-like', 'event-chatter', 'event-share',
+      'event-gifter', 'event-subscriber', 'event-topgift', 'event-giftstreak'
+    ];
+    
+    eventCheckboxes.forEach(checkboxId => {
+      const checkbox = document.getElementById(checkboxId);
+      if (checkbox && checkbox.checked) {
+        selectedEvents.push(checkbox.value);
+      }
+    });
+    
+    newSettings.selectedEvents = selectedEvents;
+  }
 
   try {
     const response = await fetch(`/api/lastevent/settings/${currentType}`, {
