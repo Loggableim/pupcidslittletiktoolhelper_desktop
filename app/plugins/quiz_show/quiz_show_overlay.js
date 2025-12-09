@@ -1494,6 +1494,73 @@
     // CUSTOM LAYOUT SUPPORT
     // ============================================
 
+    // Helper function to convert grid coordinates to pixel positions
+    function gridToPixels(gridConfig, streamWidth, streamHeight) {
+        // Size definitions (width x height in pixels for standard 1920x1080)
+        const sizeDefinitions = {
+            question: {
+                small: { width: 400, height: 100 },
+                medium: { width: 800, height: 150 },
+                large: { width: 1200, height: 200 },
+                xlarge: { width: 1600, height: 250 }
+            },
+            answers: {
+                small: { width: 400, height: 300 },
+                medium: { width: 800, height: 400 },
+                large: { width: 1200, height: 500 },
+                xlarge: { width: 1600, height: 600 }
+            },
+            timer: {
+                small: { width: 150, height: 150 },
+                medium: { width: 200, height: 200 },
+                large: { width: 250, height: 250 },
+                xlarge: { width: 300, height: 300 }
+            },
+            leaderboard: {
+                small: { width: 250, height: 300 },
+                medium: { width: 300, height: 400 },
+                large: { width: 350, height: 500 },
+                xlarge: { width: 400, height: 600 }
+            },
+            jokerInfo: {
+                small: { width: 300, height: 80 },
+                medium: { width: 400, height: 100 },
+                large: { width: 500, height: 120 },
+                xlarge: { width: 600, height: 150 }
+            }
+        };
+        
+        // Validate and clamp gridColumn to A-T (indices 0-19)
+        const columnChar = (gridConfig.gridColumn || 'A').toUpperCase();
+        const columnIndex = Math.max(0, Math.min(19, columnChar.charCodeAt(0) - 65));
+        const xPercent = columnIndex * 5; // 5% per column
+        
+        // Validate and clamp gridRow to 1-20
+        const rowNum = Math.max(1, Math.min(20, parseInt(gridConfig.gridRow, 10) || 1));
+        const yPercent = (rowNum - 1) * 5; // 5% per row
+        
+        // Get size dimensions
+        const dimensions = sizeDefinitions[gridConfig.elementType]?.[gridConfig.size] || { width: 300, height: 100 };
+        
+        // Scale dimensions to current stream resolution
+        const widthScale = streamWidth / 1920;
+        const heightScale = streamHeight / 1080;
+        
+        const scaledWidth = dimensions.width * widthScale;
+        const scaledHeight = dimensions.height * heightScale;
+        
+        // Convert percentage to pixels
+        const x = (streamWidth * xPercent) / 100;
+        const y = (streamHeight * yPercent) / 100;
+        
+        return {
+            x: Math.round(x),
+            y: Math.round(y),
+            width: Math.round(scaledWidth),
+            height: Math.round(scaledHeight)
+        };
+    }
+
     function handleLayoutUpdated(data) {
         try {
             const { layout, customLayoutEnabled } = data;
@@ -1514,46 +1581,53 @@
                 : layout.layout_config;
 
             const root = document.documentElement;
+            
+            // Get stream resolution (default to 1920x1080)
+            const streamWidth = layout.resolution_width || 1920;
+            const streamHeight = layout.resolution_height || 1080;
 
-            // Question section
-            if (config.question) {
-                root.style.setProperty('--question-top', `${config.question.y}px`);
-                root.style.setProperty('--question-left', `${config.question.x}px`);
-                root.style.setProperty('--question-width', `${config.question.width}px`);
-                root.style.setProperty('--question-height', `${config.question.height}px`);
-            }
-
-            // Answers section
-            if (config.answers) {
-                root.style.setProperty('--answers-top', `${config.answers.y}px`);
-                root.style.setProperty('--answers-left', `${config.answers.x}px`);
-                root.style.setProperty('--answers-width', `${config.answers.width}px`);
-                root.style.setProperty('--answers-height', `${config.answers.height}px`);
-            }
-
-            // Timer section
-            if (config.timer) {
-                root.style.setProperty('--timer-top', `${config.timer.y}px`);
-                root.style.setProperty('--timer-left', `${config.timer.x}px`);
-                root.style.setProperty('--timer-width', `${config.timer.width}px`);
-                root.style.setProperty('--timer-height', `${config.timer.height}px`);
-            }
-
-            // Leaderboard
-            if (config.leaderboard) {
-                root.style.setProperty('--leaderboard-top', `${config.leaderboard.y}px`);
-                root.style.setProperty('--leaderboard-left', `${config.leaderboard.x}px`);
-                root.style.setProperty('--leaderboard-width', `${config.leaderboard.width}px`);
-                root.style.setProperty('--leaderboard-height', `${config.leaderboard.height}px`);
-            }
-
-            // Joker info
-            if (config.jokerInfo) {
-                root.style.setProperty('--joker-info-top', `${config.jokerInfo.y}px`);
-                root.style.setProperty('--joker-info-left', `${config.jokerInfo.x}px`);
-                root.style.setProperty('--joker-info-width', `${config.jokerInfo.width}px`);
-                root.style.setProperty('--joker-info-height', `${config.jokerInfo.height}px`);
-            }
+            // Convert each element's grid coordinates to pixel positions
+            const elements = ['question', 'answers', 'timer', 'leaderboard', 'jokerInfo'];
+            elements.forEach(elementType => {
+                if (config[elementType]) {
+                    const elementConfig = config[elementType];
+                    
+                    // Check if it's the new grid format or old pixel format
+                    if (elementConfig.gridColumn !== undefined) {
+                        // New grid-based format
+                        const pixels = gridToPixels({
+                            elementType: elementType,
+                            gridColumn: elementConfig.gridColumn,
+                            gridRow: elementConfig.gridRow,
+                            size: elementConfig.size
+                        }, streamWidth, streamHeight);
+                        
+                        root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-top`, `${pixels.y}px`);
+                        root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-left`, `${pixels.x}px`);
+                        root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-width`, `${pixels.width}px`);
+                        root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-height`, `${pixels.height}px`);
+                        
+                        // Handle visibility
+                        if (elementConfig.visible === false) {
+                            root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-display`, 'none');
+                        } else {
+                            root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-display`, 'block');
+                        }
+                    } else {
+                        // Old pixel-based format (backwards compatibility)
+                        root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-top`, `${elementConfig.y}px`);
+                        root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-left`, `${elementConfig.x}px`);
+                        root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-width`, `${elementConfig.width}px`);
+                        root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-height`, `${elementConfig.height}px`);
+                        
+                        if (elementConfig.visible === false) {
+                            root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-display`, 'none');
+                        } else {
+                            root.style.setProperty(`--${elementType.replace(/([A-Z])/g, '-$1').toLowerCase()}-display`, 'block');
+                        }
+                    }
+                }
+            });
 
             console.log('Custom layout applied:', layout.name);
         } catch (error) {
