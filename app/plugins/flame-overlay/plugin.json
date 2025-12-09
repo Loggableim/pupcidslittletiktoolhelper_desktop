@@ -1,0 +1,22 @@
+{
+  "id": "flame-overlay",
+  "name": "TikTok Flame Overlay",
+  "version": "1.0.0",
+  "description": "Configurable WebGL flame border overlay for TikTok livestreams. Features customizable colors, intensity, speed, and frame thickness with transparent background for OBS.",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": false,
+  "permissions": [
+    "socket.io",
+    "routes",
+    "database"
+  ],
+  "features": [
+    "webgl-flames",
+    "customizable-colors",
+    "adjustable-intensity",
+    "obs-transparent-overlay",
+    "tiktok-format-presets",
+    "configurable-frame-borders"
+  ]
+}
