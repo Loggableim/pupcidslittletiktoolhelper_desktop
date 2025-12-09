@@ -101,152 +101,138 @@ class AdvancedTimerPlugin extends EventEmitter {
      */
     registerFlowActions() {
         try {
-            // Register custom flow actions if the flow API is available
-            const flowAPI = this.api.registerFlowAction;
-            
-            if (typeof flowAPI === 'function') {
+            // Register IFTTT actions for the visual flow editor
+            if (this.api.registerIFTTTAction) {
                 // Timer control actions
-                flowAPI({
-                    id: 'advanced-timer-start',
+                this.api.registerIFTTTAction('advanced-timer:start', {
                     name: 'Start Timer',
                     description: 'Start a specific timer',
                     category: 'advanced-timer',
-                    config: {
-                        timerId: {
-                            type: 'select',
-                            label: 'Timer',
-                            required: true
-                        }
-                    },
-                    execute: async (config) => {
-                        const timer = this.engine.getTimer(config.timerId);
+                    icon: 'play',
+                    fields: [
+                        { name: 'timerId', label: 'Timer', type: 'select', required: true }
+                    ],
+                    executor: async (action, context, services) => {
+                        const timer = this.engine.getTimer(action.timerId);
                         if (timer) {
                             timer.start();
-                            this.db.updateTimerState(config.timerId, 'running', timer.currentValue);
+                            this.db.updateTimerState(action.timerId, 'running', timer.currentValue);
+                            services.logger?.info(`⏱️  Advanced Timer: Started timer ${action.timerId}`);
+                            return { success: true, timerId: action.timerId };
                         }
+                        throw new Error('Timer not found');
                     }
                 });
 
-                flowAPI({
-                    id: 'advanced-timer-pause',
+                this.api.registerIFTTTAction('advanced-timer:pause', {
                     name: 'Pause Timer',
                     description: 'Pause a specific timer',
                     category: 'advanced-timer',
-                    config: {
-                        timerId: {
-                            type: 'select',
-                            label: 'Timer',
-                            required: true
-                        }
-                    },
-                    execute: async (config) => {
-                        const timer = this.engine.getTimer(config.timerId);
+                    icon: 'pause',
+                    fields: [
+                        { name: 'timerId', label: 'Timer', type: 'select', required: true }
+                    ],
+                    executor: async (action, context, services) => {
+                        const timer = this.engine.getTimer(action.timerId);
                         if (timer) {
                             timer.pause();
-                            this.db.updateTimerState(config.timerId, 'paused', timer.currentValue);
+                            this.db.updateTimerState(action.timerId, 'paused', timer.currentValue);
+                            services.logger?.info(`⏱️  Advanced Timer: Paused timer ${action.timerId}`);
+                            return { success: true, timerId: action.timerId };
                         }
+                        throw new Error('Timer not found');
                     }
                 });
 
-                flowAPI({
-                    id: 'advanced-timer-stop',
+                this.api.registerIFTTTAction('advanced-timer:stop', {
                     name: 'Stop Timer',
                     description: 'Stop a specific timer',
                     category: 'advanced-timer',
-                    config: {
-                        timerId: {
-                            type: 'select',
-                            label: 'Timer',
-                            required: true
-                        }
-                    },
-                    execute: async (config) => {
-                        const timer = this.engine.getTimer(config.timerId);
+                    icon: 'square',
+                    fields: [
+                        { name: 'timerId', label: 'Timer', type: 'select', required: true }
+                    ],
+                    executor: async (action, context, services) => {
+                        const timer = this.engine.getTimer(action.timerId);
                         if (timer) {
                             timer.stop();
-                            this.db.updateTimerState(config.timerId, 'stopped', timer.currentValue);
+                            this.db.updateTimerState(action.timerId, 'stopped', timer.currentValue);
+                            services.logger?.info(`⏱️  Advanced Timer: Stopped timer ${action.timerId}`);
+                            return { success: true, timerId: action.timerId };
                         }
+                        throw new Error('Timer not found');
                     }
                 });
 
-                flowAPI({
-                    id: 'advanced-timer-reset',
+                this.api.registerIFTTTAction('advanced-timer:reset', {
                     name: 'Reset Timer',
                     description: 'Reset a timer to its initial value',
                     category: 'advanced-timer',
-                    config: {
-                        timerId: {
-                            type: 'select',
-                            label: 'Timer',
-                            required: true
-                        }
-                    },
-                    execute: async (config) => {
-                        const timer = this.engine.getTimer(config.timerId);
+                    icon: 'rotate-ccw',
+                    fields: [
+                        { name: 'timerId', label: 'Timer', type: 'select', required: true }
+                    ],
+                    executor: async (action, context, services) => {
+                        const timer = this.engine.getTimer(action.timerId);
                         if (timer) {
                             timer.reset();
-                            this.db.updateTimerState(config.timerId, 'stopped', timer.currentValue);
+                            this.db.updateTimerState(action.timerId, 'stopped', timer.currentValue);
+                            services.logger?.info(`⏱️  Advanced Timer: Reset timer ${action.timerId}`);
+                            return { success: true, timerId: action.timerId };
                         }
+                        throw new Error('Timer not found');
                     }
                 });
 
-                flowAPI({
-                    id: 'advanced-timer-add-time',
+                this.api.registerIFTTTAction('advanced-timer:add-time', {
                     name: 'Add Time to Timer',
                     description: 'Add seconds to a timer',
                     category: 'advanced-timer',
-                    config: {
-                        timerId: {
-                            type: 'select',
-                            label: 'Timer',
-                            required: true
-                        },
-                        seconds: {
-                            type: 'number',
-                            label: 'Seconds to Add',
-                            required: true,
-                            min: 0
-                        }
-                    },
-                    execute: async (config) => {
-                        const timer = this.engine.getTimer(config.timerId);
+                    icon: 'plus',
+                    fields: [
+                        { name: 'timerId', label: 'Timer', type: 'select', required: true },
+                        { name: 'seconds', label: 'Seconds to Add', type: 'number', required: true, min: 0 }
+                    ],
+                    executor: async (action, context, services) => {
+                        const timer = this.engine.getTimer(action.timerId);
                         if (timer) {
-                            timer.addTime(config.seconds, 'flow');
-                            this.db.updateTimerState(config.timerId, timer.state, timer.currentValue);
-                            this.db.addTimerLog(config.timerId, 'flow', null, config.seconds, 'Added via flow');
+                            const seconds = parseFloat(action.seconds);
+                            timer.addTime(seconds, 'flow');
+                            this.db.updateTimerState(action.timerId, timer.state, timer.currentValue);
+                            this.db.addTimerLog(action.timerId, 'flow', null, seconds, 'Added via flow');
+                            services.logger?.info(`⏱️  Advanced Timer: Added ${seconds}s to timer ${action.timerId}`);
+                            return { success: true, timerId: action.timerId, seconds };
                         }
+                        throw new Error('Timer not found');
                     }
                 });
 
-                flowAPI({
-                    id: 'advanced-timer-remove-time',
+                this.api.registerIFTTTAction('advanced-timer:remove-time', {
                     name: 'Remove Time from Timer',
                     description: 'Remove seconds from a timer',
                     category: 'advanced-timer',
-                    config: {
-                        timerId: {
-                            type: 'select',
-                            label: 'Timer',
-                            required: true
-                        },
-                        seconds: {
-                            type: 'number',
-                            label: 'Seconds to Remove',
-                            required: true,
-                            min: 0
-                        }
-                    },
-                    execute: async (config) => {
-                        const timer = this.engine.getTimer(config.timerId);
+                    icon: 'minus',
+                    fields: [
+                        { name: 'timerId', label: 'Timer', type: 'select', required: true },
+                        { name: 'seconds', label: 'Seconds to Remove', type: 'number', required: true, min: 0 }
+                    ],
+                    executor: async (action, context, services) => {
+                        const timer = this.engine.getTimer(action.timerId);
                         if (timer) {
-                            timer.removeTime(config.seconds, 'flow');
-                            this.db.updateTimerState(config.timerId, timer.state, timer.currentValue);
-                            this.db.addTimerLog(config.timerId, 'flow', null, -config.seconds, 'Removed via flow');
+                            const seconds = parseFloat(action.seconds);
+                            timer.removeTime(seconds, 'flow');
+                            this.db.updateTimerState(action.timerId, timer.state, timer.currentValue);
+                            this.db.addTimerLog(action.timerId, 'flow', null, -seconds, 'Removed via flow');
+                            services.logger?.info(`⏱️  Advanced Timer: Removed ${seconds}s from timer ${action.timerId}`);
+                            return { success: true, timerId: action.timerId, seconds };
                         }
+                        throw new Error('Timer not found');
                     }
                 });
 
-                this.api.log('Advanced Timer flow actions registered', 'info');
+                this.api.log('Advanced Timer IFTTT actions registered', 'info');
+            } else {
+                this.api.log('IFTTT action registration not available, skipping flow actions', 'warn');
             }
         } catch (error) {
             this.api.log(`Error registering flow actions: ${error.message}`, 'error');
