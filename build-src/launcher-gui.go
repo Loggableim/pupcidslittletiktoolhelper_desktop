@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -291,7 +292,7 @@ func (l *Launcher) startTool() (*exec.Cmd, error) {
 	env := []string{}
 	for _, e := range os.Environ() {
 		// Skip any existing OPEN_BROWSER variable to avoid conflicts
-		if len(e) >= 12 && e[:12] == "OPEN_BROWSER" {
+		if strings.HasPrefix(e, "OPEN_BROWSER=") {
 			continue
 		}
 		env = append(env, e)
