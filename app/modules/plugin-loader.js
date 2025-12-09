@@ -443,6 +443,29 @@ class PluginAPI {
     getConfigPathManager() {
         return this.configPathManager;
     }
+
+    /**
+     * Get the persistent data directory for this plugin
+     * This directory is located in the user profile and survives updates
+     * @returns {string} Absolute path to plugin's data directory
+     */
+    getPluginDataDir() {
+        return this.configPathManager.getPluginDataDir(this.pluginId);
+    }
+
+    /**
+     * Ensure the plugin's data directory exists
+     * @returns {string} Absolute path to plugin's data directory
+     */
+    ensurePluginDataDir() {
+        const pluginDataDir = this.getPluginDataDir();
+        const fs = require('fs');
+        if (!fs.existsSync(pluginDataDir)) {
+            fs.mkdirSync(pluginDataDir, { recursive: true });
+            this.log(`Created plugin data directory: ${pluginDataDir}`);
+        }
+        return pluginDataDir;
+    }
 }
 
 /**

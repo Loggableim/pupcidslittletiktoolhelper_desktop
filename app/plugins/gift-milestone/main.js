@@ -11,7 +11,9 @@ const multer = require('multer');
 class GiftMilestonePlugin {
     constructor(api) {
         this.api = api;
-        this.uploadDir = path.join(__dirname, 'uploads');
+        // Use persistent storage in user profile directory (survives updates)
+        const pluginDataDir = api.getConfigPathManager().getPluginDataDir('gift-milestone');
+        this.uploadDir = path.join(pluginDataDir, 'uploads');
         this.upload = null;
         this.exclusiveMode = false; // Track if we're in exclusive playback mode
     }
@@ -22,10 +24,18 @@ class GiftMilestonePlugin {
         // Initialize database tables and defaults
         this.initializeDatabase();
 
+        // Ensure plugin data directory exists
+        this.api.ensurePluginDataDir();
+
+        // Migrate old uploads if they exist
+        await this.migrateOldData();
+
         // Create upload directory
         if (!fs.existsSync(this.uploadDir)) {
             fs.mkdirSync(this.uploadDir, { recursive: true });
         }
+
+        this.api.log(`📂 [GIFT-MILESTONE] Using persistent storage: ${this.uploadDir}`, 'info');
 
         // Setup multer for file uploads
         this.setupFileUpload();
@@ -40,6 +50,37 @@ class GiftMilestonePlugin {
         this.checkSessionReset();
 
         this.api.log('✅ Gift Milestone Celebration Plugin initialized', 'info');
+    }
+
+    /**
+     * Migrate old data from app directory to user profile directory
+     */
+    async migrateOldData() {
+        const oldUploadDir = path.join(__dirname, 'uploads');
+        
+        if (fs.existsSync(oldUploadDir)) {
+            const oldFiles = fs.readdirSync(oldUploadDir).filter(f => f !== '.gitkeep');
+            if (oldFiles.length > 0) {
+                this.api.log(`📦 [GIFT-MILESTONE] Migrating ${oldFiles.length} files from old upload directory...`, 'info');
+                
+                // Ensure new directory exists
+                if (!fs.existsSync(this.uploadDir)) {
+                    fs.mkdirSync(this.uploadDir, { recursive: true });
+                }
+                
+                // Copy files
+                for (const file of oldFiles) {
+                    const oldPath = path.join(oldUploadDir, file);
+                    const newPath = path.join(this.uploadDir, file);
+                    if (!fs.existsSync(newPath)) {
+                        fs.copyFileSync(oldPath, newPath);
+                    }
+                }
+                
+                this.api.log(`✅ [GIFT-MILESTONE] Migrated uploads to: ${this.uploadDir}`, 'info');
+                this.api.log('💡 [GIFT-MILESTONE] Old files are kept for safety. You can manually delete them after verifying the migration.', 'info');
+            }
+        }
     }
 
     initializeDatabase() {
