@@ -28,10 +28,12 @@ backface-visibility: hidden;
 #### Canvas Elements
 ```css
 /* Force GPU rendering for canvas */
-will-change: transform, opacity;
+will-change: transform;
 transform: translate3d(0, 0, 0);
 backface-visibility: hidden;
 ```
+
+**Note**: Canvas elements use only `will-change: transform` (not opacity) because the canvas element itself doesn't have opacity animations. Canvas drawing operations use the 2D context API's `globalAlpha` property instead.
 
 ## How It Works
 
