@@ -211,9 +211,16 @@ app.use((req, res, next) => {
         // 'unsafe-inline' in script-src-elem allows Chatango's inline JSON configuration tags
         // Hash values allow specific trusted inline scripts (Socket.IO, admin panel)
         // When hashes are present, 'unsafe-inline' is ignored for script execution (secure)
+        // 'unsafe-hashes' allows specific inline event handlers (onclick, onchange) by hash
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'sha256-c4w6M/3j2U1Cx+Flf6JkYQY5MJP+YrJdgD4X3VC1Iho=' 'unsafe-eval' https://st.chatango.com; ` +  // Socket.IO hash + admin-panel hash + Chatango eval
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'sha256-c4w6M/3j2U1Cx+Flf6JkYQY5MJP+YrJdgD4X3VC1Iho=' 'unsafe-eval' 'unsafe-hashes' ` +
+            `'sha256-yTT/2KVTQpd5jHFCHbEeJzUylNrUFt3XI9cEFapDHD8=' 'sha256-Bqhs/2Ph5wewVirN87MMeK3kQ72brnPHI7XTMcQu9JA=' 'sha256-gqLyQrF2cS5exPbEQFCeMLr9iGXnKTNLkXEJM35fDYs=' ` +
+            `'sha256-Jw5NghBkRZFrm6K45vNtyPk754rmysyQHbrzcGEEwQw=' 'sha256-SOoNvL5qrOUcMTnWe69ljOIhjtqC+26gMSCiSunJ864=' 'sha256-tyBLiSno8nu+gezcbY8m8hjujWw2qc4l0AIFkvBPxpU=' ` +
+            `'sha256-56d7YS02VhJKaBsXX+A0KTvkume5cBUobKSNjsB5efc=' 'sha256-T/RK2SHYk5O+vuvnyy6xzIswVp1EXbv8qFZxkEFT52k=' 'sha256-xTS/Zd4fyhjnPqbFzjTX2bLT2Pwa6HdhMyiYThQ99Hs=' ` +
+            `'sha256-5glbgXYCBUSMRmOhuA2aNQ4eOtGpx+JvzWrRF5yqu8w=' 'sha256-Zv9umbrL9etIXXf8h4Tn2ZxuKtNawP2FWmnDyd98SoQ=' 'sha256-CD1bRL7x9KCE4rebgiB2VJkyQhr1MatT/FO9KY9cVIw=' ` +
+            `'sha256-8ma2zXygpXCcq3kiJv4rS0k32SKVcMSL3R+NJdxoVjo=' 'sha256-/tlEW4dBeTXnKAtOeyarIXN7OLveaWQ4JyoQJIEpsHQ=' 'sha256-xu3YClpWdm0JUcsxMW/B0+Lk3vovecXUA4vWkTi/mgA=' ` +
+            `'sha256-JIPGJRCq83TqVvN3m7kkxylwHWo0b79G40zWfnZbrQw=' 'sha256-AdSuaVgmlfGgsCXjbD31dRAR3hljDmdiX0yJiFmG55A=' https://st.chatango.com; ` +  // Socket.IO hash + admin-panel hash + viewer-xp inline handlers + Chatango eval
             `script-src-elem 'self' 'unsafe-inline' https://st.chatango.com https://cdnjs.cloudflare.com; ` +  // Allow Chatango inline script elements with JSON config + GSAP from cdnjs
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
@@ -228,9 +235,16 @@ app.use((req, res, next) => {
         );
     } else {
         // Strict CSP for other routes (including overlays for OBS)
+        // 'unsafe-hashes' allows specific inline event handlers (onclick, onchange) by hash
         res.header('Content-Security-Policy',
             `default-src 'self'; ` +
-            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'sha256-c4w6M/3j2U1Cx+Flf6JkYQY5MJP+YrJdgD4X3VC1Iho=' 'unsafe-eval' https://st.chatango.com; ` +  // Socket.IO hash + admin-panel hash + Chatango eval
+            `script-src 'self' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU=' 'sha256-c4w6M/3j2U1Cx+Flf6JkYQY5MJP+YrJdgD4X3VC1Iho=' 'unsafe-eval' 'unsafe-hashes' ` +
+            `'sha256-yTT/2KVTQpd5jHFCHbEeJzUylNrUFt3XI9cEFapDHD8=' 'sha256-Bqhs/2Ph5wewVirN87MMeK3kQ72brnPHI7XTMcQu9JA=' 'sha256-gqLyQrF2cS5exPbEQFCeMLr9iGXnKTNLkXEJM35fDYs=' ` +
+            `'sha256-Jw5NghBkRZFrm6K45vNtyPk754rmysyQHbrzcGEEwQw=' 'sha256-SOoNvL5qrOUcMTnWe69ljOIhjtqC+26gMSCiSunJ864=' 'sha256-tyBLiSno8nu+gezcbY8m8hjujWw2qc4l0AIFkvBPxpU=' ` +
+            `'sha256-56d7YS02VhJKaBsXX+A0KTvkume5cBUobKSNjsB5efc=' 'sha256-T/RK2SHYk5O+vuvnyy6xzIswVp1EXbv8qFZxkEFT52k=' 'sha256-xTS/Zd4fyhjnPqbFzjTX2bLT2Pwa6HdhMyiYThQ99Hs=' ` +
+            `'sha256-5glbgXYCBUSMRmOhuA2aNQ4eOtGpx+JvzWrRF5yqu8w=' 'sha256-Zv9umbrL9etIXXf8h4Tn2ZxuKtNawP2FWmnDyd98SoQ=' 'sha256-CD1bRL7x9KCE4rebgiB2VJkyQhr1MatT/FO9KY9cVIw=' ` +
+            `'sha256-8ma2zXygpXCcq3kiJv4rS0k32SKVcMSL3R+NJdxoVjo=' 'sha256-/tlEW4dBeTXnKAtOeyarIXN7OLveaWQ4JyoQJIEpsHQ=' 'sha256-xu3YClpWdm0JUcsxMW/B0+Lk3vovecXUA4vWkTi/mgA=' ` +
+            `'sha256-JIPGJRCq83TqVvN3m7kkxylwHWo0b79G40zWfnZbrQw=' 'sha256-AdSuaVgmlfGgsCXjbD31dRAR3hljDmdiX0yJiFmG55A=' https://st.chatango.com; ` +  // Socket.IO hash + admin-panel hash + viewer-xp inline handlers + Chatango eval
             `script-src-elem 'self' 'unsafe-inline' https://st.chatango.com https://cdnjs.cloudflare.com; ` +  // Allow Chatango inline script elements with JSON config + GSAP from cdnjs
             `style-src 'self' 'unsafe-inline'; ` +
             `img-src 'self' data: blob: https:; ` +
