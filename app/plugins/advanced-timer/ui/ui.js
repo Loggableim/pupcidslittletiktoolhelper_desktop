@@ -241,22 +241,32 @@ function renderTimers() {
 /**
  * Setup event listeners for timer control buttons (using event delegation)
  */
+let timerControlsSetup = false; // Flag to prevent duplicate setup
+
 function setupTimerControlListeners() {
-    const container = document.getElementById('timers-container');
+    // Only setup once
+    if (timerControlsSetup) {
+        return;
+    }
     
-    // Remove existing listener to avoid duplicates
-    const oldContainer = container.cloneNode(true);
-    container.parentNode.replaceChild(oldContainer, container);
-    const newContainer = document.getElementById('timers-container');
+    const container = document.getElementById('timers-container');
+    if (!container) return;
     
     // Event delegation for all timer buttons
-    newContainer.addEventListener('click', (e) => {
+    container.addEventListener('click', (e) => {
         const button = e.target.closest('button[data-action]');
         if (!button) return;
         
         const action = button.getAttribute('data-action');
         const timerId = button.getAttribute('data-timer-id');
-        const seconds = parseInt(button.getAttribute('data-seconds'));
+        const secondsAttr = button.getAttribute('data-seconds');
+        const seconds = secondsAttr ? parseInt(secondsAttr, 10) : 0;
+        
+        // Validate seconds for add/remove-time actions
+        if ((action === 'add-time' || action === 'remove-time') && (isNaN(seconds) || seconds <= 0)) {
+            console.error('Invalid seconds value:', secondsAttr);
+            return;
+        }
         
         switch (action) {
             case 'start':
@@ -285,6 +295,8 @@ function setupTimerControlListeners() {
                 break;
         }
     });
+    
+    timerControlsSetup = true;
 }
 
 /**
