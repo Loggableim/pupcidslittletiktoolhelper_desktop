@@ -488,17 +488,15 @@ class GoogleEngine {
     async getAllVoices(forceFresh = false) {
         // Try to fetch from API if we have an API key
         if (this.apiKey) {
-            // Fetch if forced or if cache is invalid/expired
-            if (forceFresh || !this._isCacheValid()) {
-                const dynamicVoices = await this.fetchVoicesFromAPI();
-                if (dynamicVoices) {
-                    return dynamicVoices;
-                }
+            // Return cached voices if valid and not forcing fresh
+            if (!forceFresh && this._isCacheValid()) {
+                return this.dynamicVoices;
             }
             
-            // Use cached dynamic voices if still valid
-            if (this._isCacheValid()) {
-                return this.dynamicVoices;
+            // Fetch fresh voices from API
+            const dynamicVoices = await this.fetchVoicesFromAPI();
+            if (dynamicVoices) {
+                return dynamicVoices;
             }
         }
         
