@@ -4,20 +4,28 @@ const axios = require('axios');
  * Speechify TTS Engine
  * Premium TTS with high-quality AI voices (requires API key)
  *
- * API Documentation:
+ * API Documentation (2025):
+ * - Official Docs: https://docs.sws.speechify.com
  * - Base URL: https://api.sws.speechify.com/v1
- * - Voices: GET /voices
- * - Synthesis: POST /audio/speech
- * - Audio Format: MP3
+ * - Voices: GET /v1/voices - https://docs.sws.speechify.com/api-reference/tts/voices/list
+ * - Synthesis: POST /v1/audio/speech - https://docs.sws.speechify.com/api-reference/tts/audio/speech
+ * - Audio Formats: mp3, wav, ogg, aac, pcm
  * - Speed Range: 0.5 - 2.0
+ * - Authentication: Bearer token in Authorization header
  *
  * Features:
- * - 100+ voices in 30+ languages
- * - Human-like speech quality
- * - 1-hour voice caching
+ * - 200+ voices in 30+ languages
+ * - Human-like speech quality with voice cloning support
+ * - 1-hour voice caching for performance
  * - Automatic retry with exponential backoff
  * - Comprehensive error handling
  * - Cost tracking & budget monitoring
+ * - Network diagnostics for troubleshooting
+ *
+ * Network Requirements:
+ * - Outbound HTTPS access to api.sws.speechify.com
+ * - DNS resolution for api.sws.speechify.com
+ * - Port 443 (HTTPS) must be open
  */
 class SpeechifyEngine {
     constructor(apiKey, logger, config = {}) {
@@ -156,10 +164,18 @@ class SpeechifyEngine {
                                error.message;
             
             // Log detailed error for debugging
-            if (statusCode === 404) {
+            if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+                this.logger.error(`Speechify: Network connectivity error - Unable to reach api.sws.speechify.com`);
+                this.logger.error(`Speechify: Error code: ${error.code}`);
+                this.logger.error(`Speechify: This may be caused by:`);
+                this.logger.error(`Speechify:   1. Firewall blocking outbound HTTPS to api.sws.speechify.com`);
+                this.logger.error(`Speechify:   2. DNS resolution failure for api.sws.speechify.com`);
+                this.logger.error(`Speechify:   3. No internet connection or proxy issues`);
+                this.logger.error(`Speechify: Please verify network settings and firewall rules`);
+            } else if (statusCode === 404) {
                 this.logger.error(`Speechify: Voices API returned 404 - API endpoint may have changed`);
                 this.logger.error(`Speechify: Attempted URL: ${this.apiVoicesUrl}`);
-                this.logger.error(`Speechify: Please check https://speechify.com/api for updated endpoint`);
+                this.logger.error(`Speechify: Please check https://docs.sws.speechify.com for updated endpoint`);
             } else {
                 this.logger.error(`Speechify: Failed to fetch voices from API (${statusCode || 'network error'}): ${errorMessage}`);
             }
@@ -236,6 +252,10 @@ class SpeechifyEngine {
     /**
      * Get fallback voices when API is unavailable
      * Static list of most common Speechify voices
+     * 
+     * Note: Speechify offers 200+ voices. This is a curated list of popular ones.
+     * For the full list, use the API endpoint: GET /v1/voices
+     * 
      * @private
      * @returns {Object} Fallback voice map
      */
@@ -359,19 +379,34 @@ class SpeechifyEngine {
                     }
                 );
 
-                // Handle response
+                // Handle response - try different response formats based on API version
                 if (response.data) {
                     let audioData = null;
 
-                    // Try different response formats
+                    // Format 1: New API format (audio_data field)
                     if (response.data.audio_data) {
                         audioData = response.data.audio_data;
-                    } else if (response.data.data) {
+                        this.logger.debug('Speechify: Using response format: audio_data');
+                    } 
+                    // Format 2: Alternative field name (data)
+                    else if (response.data.data) {
                         audioData = response.data.data;
-                    } else if (response.data.audioContent) {
+                        this.logger.debug('Speechify: Using response format: data');
+                    } 
+                    // Format 3: Alternative field name (audioContent)
+                    else if (response.data.audioContent) {
                         audioData = response.data.audioContent;
-                    } else if (typeof response.data === 'string' && response.data.length > 100) {
+                        this.logger.debug('Speechify: Using response format: audioContent');
+                    } 
+                    // Format 4: Direct base64 string response
+                    else if (typeof response.data === 'string' && response.data.length > 100) {
                         audioData = response.data;
+                        this.logger.debug('Speechify: Using response format: direct string');
+                    }
+                    // Format 5: Buffer/binary data (convert to base64)
+                    else if (Buffer.isBuffer(response.data)) {
+                        audioData = response.data.toString('base64');
+                        this.logger.debug('Speechify: Using response format: buffer converted to base64');
                     }
 
                     if (audioData) {
@@ -388,10 +423,15 @@ class SpeechifyEngine {
                         );
 
                         return audioData;
+                    } else {
+                        // Log the response structure for debugging
+                        this.logger.warn('Speechify: Unexpected response structure');
+                        this.logger.debug('Speechify: Response keys:', Object.keys(response.data).join(', '));
+                        throw new Error('Invalid response format from Speechify API - no audio data found');
                     }
+                } else {
+                    throw new Error('Empty response from Speechify API');
                 }
-
-                throw new Error('Invalid response format from Speechify API');
 
             } catch (error) {
                 lastError = error;
@@ -431,8 +471,25 @@ class SpeechifyEngine {
                         `Speechify TTS attempt ${attempt + 1} failed: ` +
                         `HTTP ${status} - ${errorMessage}`
                     );
+                } else if (error.code === 'ENOTFOUND') {
+                    // DNS resolution failure - network issue
+                    this.logger.warn(
+                        `Speechify TTS attempt ${attempt + 1} failed: DNS resolution error (ENOTFOUND)`
+                    );
+                    this.logger.warn('Speechify: Cannot resolve api.sws.speechify.com - check network/firewall');
+                } else if (error.code === 'ECONNREFUSED') {
+                    // Connection refused - network/firewall issue
+                    this.logger.warn(
+                        `Speechify TTS attempt ${attempt + 1} failed: Connection refused (ECONNREFUSED)`
+                    );
+                    this.logger.warn('Speechify: Connection blocked - check firewall settings');
+                } else if (error.code === 'ETIMEDOUT') {
+                    // Timeout error
+                    this.logger.warn(
+                        `Speechify TTS attempt ${attempt + 1} failed: Request timeout after ${this.timeout}ms`
+                    );
                 } else {
-                    // Network or timeout error
+                    // Other network or timeout error
                     this.logger.warn(
                         `Speechify TTS attempt ${attempt + 1} failed: ${error.message}`
                     );
@@ -528,8 +585,135 @@ class SpeechifyEngine {
             return false;
         } catch (error) {
             this.logger.error(`Speechify: Test failed - ${error.message}`);
+            
+            // Provide helpful diagnostic information
+            if (error.message.includes('ENOTFOUND') || error.message.includes('ECONNREFUSED')) {
+                this.logger.error('Speechify: Network connectivity issue detected');
+                this.logger.error('Speechify: Run network diagnostics with testConnectivity() method');
+            }
+            
             return false;
         }
+    }
+
+    /**
+     * Test network connectivity to Speechify API
+     * Useful for diagnosing connection issues
+     * @returns {Promise<Object>} Diagnostic results
+     */
+    async testConnectivity() {
+        const diagnostics = {
+            timestamp: new Date().toISOString(),
+            baseUrl: this.apiBaseUrl,
+            voicesUrl: this.apiVoicesUrl,
+            synthesisUrl: this.apiSynthesisUrl,
+            results: {
+                dnsResolution: 'unknown',
+                voicesEndpoint: 'unknown',
+                synthesisEndpoint: 'unknown',
+                authentication: 'unknown'
+            },
+            errors: []
+        };
+
+        this.logger.info('Speechify: Running network connectivity diagnostics...');
+
+        // Test 1: Voices endpoint (checks DNS + connectivity + auth)
+        try {
+            const response = await axios.get(this.apiVoicesUrl, {
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'TikTokLiveStreamTool/2.0'
+                },
+                timeout: this.timeout,
+                validateStatus: () => true // Don't throw on any status
+            });
+
+            diagnostics.results.dnsResolution = 'success';
+            diagnostics.results.voicesEndpoint = 'reachable';
+
+            if (response.status === 200) {
+                diagnostics.results.authentication = 'valid';
+                this.logger.info('Speechify: ✓ Voices endpoint accessible and authenticated');
+            } else if (response.status === 401 || response.status === 403) {
+                diagnostics.results.authentication = 'invalid';
+                diagnostics.errors.push(`Authentication failed: ${response.status} - ${response.data?.message || 'Invalid API key'}`);
+                this.logger.warn('Speechify: ✗ Authentication failed - check API key');
+            } else {
+                diagnostics.results.voicesEndpoint = `error-${response.status}`;
+                diagnostics.errors.push(`Voices endpoint returned ${response.status}`);
+                this.logger.warn(`Speechify: ⚠ Voices endpoint returned ${response.status}`);
+            }
+        } catch (error) {
+            if (error.code === 'ENOTFOUND') {
+                diagnostics.results.dnsResolution = 'failed';
+                diagnostics.errors.push('DNS resolution failed for api.sws.speechify.com');
+                this.logger.error('Speechify: ✗ DNS resolution failed - domain not found');
+            } else if (error.code === 'ECONNREFUSED') {
+                diagnostics.results.dnsResolution = 'success';
+                diagnostics.results.voicesEndpoint = 'connection-refused';
+                diagnostics.errors.push('Connection refused by api.sws.speechify.com');
+                this.logger.error('Speechify: ✗ Connection refused - firewall may be blocking');
+            } else if (error.code === 'ETIMEDOUT') {
+                diagnostics.results.dnsResolution = 'success';
+                diagnostics.results.voicesEndpoint = 'timeout';
+                diagnostics.errors.push(`Request timeout after ${this.timeout}ms`);
+                this.logger.error('Speechify: ✗ Request timeout - slow connection or firewall');
+            } else {
+                diagnostics.results.voicesEndpoint = 'error';
+                diagnostics.errors.push(`Network error: ${error.message}`);
+                this.logger.error(`Speechify: ✗ Network error: ${error.message}`);
+            }
+        }
+
+        // Test 2: Synthesis endpoint (if voices succeeded)
+        if (diagnostics.results.authentication === 'valid') {
+            try {
+                const response = await axios.post(
+                    this.apiSynthesisUrl,
+                    { input: 'test', voice_id: 'george', audio_format: 'mp3' },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${this.apiKey}`,
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'TikTokLiveStreamTool/2.0'
+                        },
+                        timeout: this.timeout,
+                        validateStatus: () => true
+                    }
+                );
+
+                if (response.status === 200) {
+                    diagnostics.results.synthesisEndpoint = 'working';
+                    this.logger.info('Speechify: ✓ Synthesis endpoint working correctly');
+                } else {
+                    diagnostics.results.synthesisEndpoint = `error-${response.status}`;
+                    diagnostics.errors.push(`Synthesis endpoint returned ${response.status}`);
+                    this.logger.warn(`Speechify: ⚠ Synthesis endpoint returned ${response.status}`);
+                }
+            } catch (error) {
+                diagnostics.results.synthesisEndpoint = 'error';
+                diagnostics.errors.push(`Synthesis test failed: ${error.message}`);
+                this.logger.error(`Speechify: ✗ Synthesis test error: ${error.message}`);
+            }
+        }
+
+        // Log summary
+        this.logger.info('Speechify: Diagnostic summary:');
+        this.logger.info(`  DNS Resolution: ${diagnostics.results.dnsResolution}`);
+        this.logger.info(`  Voices Endpoint: ${diagnostics.results.voicesEndpoint}`);
+        this.logger.info(`  Synthesis Endpoint: ${diagnostics.results.synthesisEndpoint}`);
+        this.logger.info(`  Authentication: ${diagnostics.results.authentication}`);
+        
+        if (diagnostics.errors.length > 0) {
+            this.logger.error('Speechify: Errors encountered:');
+            diagnostics.errors.forEach((err, idx) => {
+                this.logger.error(`  ${idx + 1}. ${err}`);
+            });
+        }
+
+        return diagnostics;
     }
 
     /**
