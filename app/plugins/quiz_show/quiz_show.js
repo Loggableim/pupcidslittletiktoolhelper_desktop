@@ -1896,8 +1896,19 @@
         document.getElementById('layoutOrientation').value = 'horizontal';
         document.getElementById('layoutIsDefault').checked = false;
         
+        // Show layout editor section
+        const editorSection = document.getElementById('layoutEditorSection');
+        if (editorSection) {
+            editorSection.style.display = 'block';
+        }
+        
         // Reset preview
         resetLayoutPreview();
+        
+        // Scroll to editor
+        if (editorSection) {
+            editorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
         
         showMessage('Neues Layout erstellen', 'info', 'layoutSaveMessage');
     }
@@ -1916,10 +1927,21 @@
                 document.getElementById('layoutOrientation').value = data.layout.orientation;
                 document.getElementById('layoutIsDefault').checked = data.layout.is_default;
                 
+                // Show layout editor section
+                const editorSection = document.getElementById('layoutEditorSection');
+                if (editorSection) {
+                    editorSection.style.display = 'block';
+                }
+                
                 // Load layout config
                 if (data.layout.layout_config) {
                     const config = JSON.parse(data.layout.layout_config);
                     applyLayoutConfig(config);
+                }
+                
+                // Scroll to editor
+                if (editorSection) {
+                    editorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
                 
                 showMessage('Layout wird bearbeitet', 'info', 'layoutSaveMessage');
@@ -1972,6 +1994,12 @@
                 showMessage('Layout gespeichert', 'success', 'layoutSaveMessage');
                 await loadLayouts();
                 currentLayout = null;
+                
+                // Hide layout editor section after save
+                const editorSection = document.getElementById('layoutEditorSection');
+                if (editorSection) {
+                    editorSection.style.display = 'none';
+                }
             } else {
                 showMessage('Fehler: ' + data.error, 'error', 'layoutSaveMessage');
             }
@@ -1996,7 +2024,12 @@
                 await loadLayouts();
                 if (currentLayout && currentLayout.id === layoutId) {
                     currentLayout = null;
-                    createNewLayout();
+                    
+                    // Hide layout editor section after delete
+                    const editorSection = document.getElementById('layoutEditorSection');
+                    if (editorSection) {
+                        editorSection.style.display = 'none';
+                    }
                 }
             } else {
                 showMessage('Fehler: ' + data.error, 'error', 'layoutSaveMessage');
@@ -2127,7 +2160,21 @@
 
     function cancelLayoutEdit() {
         currentLayout = null;
-        createNewLayout();
+        
+        // Hide layout editor section
+        const editorSection = document.getElementById('layoutEditorSection');
+        if (editorSection) {
+            editorSection.style.display = 'none';
+        }
+        
+        // Clear form
+        document.getElementById('layoutName').value = '';
+        document.getElementById('layoutWidth').value = 1920;
+        document.getElementById('layoutHeight').value = 1080;
+        document.getElementById('layoutOrientation').value = 'horizontal';
+        document.getElementById('layoutIsDefault').checked = false;
+        
+        showMessage('', '', 'layoutSaveMessage'); // Clear message
     }
 
     // Initialize layout editor event listeners
