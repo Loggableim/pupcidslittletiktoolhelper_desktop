@@ -2284,8 +2284,8 @@
         const layoutHeight = parseInt(document.getElementById('layoutHeight')?.value, 10) || 1080;
         const orientation = document.getElementById('layoutOrientation')?.value || 'horizontal';
         
-        // Calculate aspect ratio
-        const aspectRatio = layoutWidth / layoutHeight;
+        // Calculate aspect ratio with validation to prevent division by zero
+        const aspectRatio = layoutHeight > 0 ? layoutWidth / layoutHeight : 16/9;
         
         // Update container to maintain aspect ratio
         if (orientation === 'vertical') {
@@ -2295,7 +2295,14 @@
         } else {
             // Landscape mode - use full width
             gridPreview.style.width = '100%';
-            gridPreview.style.height = (gridPreview.offsetWidth / aspectRatio) + 'px';
+            gridPreview.style.height = '';
+            // Use requestAnimationFrame to ensure the width change has been applied
+            requestAnimationFrame(() => {
+                const actualWidth = gridPreview.getBoundingClientRect().width;
+                if (actualWidth > 0) {
+                    gridPreview.style.height = (actualWidth / aspectRatio) + 'px';
+                }
+            });
         }
         
         // Update the grid preview with new dimensions
@@ -2422,17 +2429,13 @@
     }
     
     function handleDragOver(e) {
-        if (e.preventDefault) {
-            e.preventDefault();
-        }
+        e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         return false;
     }
     
     function handleDrop(e) {
-        if (e.stopPropagation) {
-            e.stopPropagation();
-        }
+        e.stopPropagation();
         e.preventDefault();
         
         if (!draggedElement) return false;
