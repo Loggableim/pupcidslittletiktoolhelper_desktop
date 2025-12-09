@@ -2,17 +2,25 @@
 
 ## 📖 Beschreibung
 
-Das **LastEvent Spotlight** Plugin bietet sechs permanente Live-Overlays, die jeweils den zuletzt aktiven Nutzer für verschiedene Event-Typen anzeigen. Perfekt für OBS, LIVE Studio und andere Streaming-Software.
+Das **LastEvent Spotlight** Plugin bietet permanente Live-Overlays, die jeweils den zuletzt aktiven Nutzer für verschiedene Event-Typen anzeigen. Perfekt für OBS, LIVE Studio und andere Streaming-Software.
 
 ## ✨ Features
 
-- **6 Live-Overlays** für verschiedene Event-Typen:
+- **8 Live-Overlays** für verschiedene Event-Typen:
   - 👤 **Follower** - Zeigt den letzten neuen Follower
   - ❤️ **Like** - Zeigt den letzten Like
   - 💬 **Chatter** - Zeigt den letzten Chat-Nutzer
   - 🔗 **Share** - Zeigt den letzten Share
   - 🎁 **Gifter** - Zeigt den letzten Gift-Sender
   - ⭐ **Subscriber** - Zeigt den letzten Subscriber
+  - 💎 **Top Gift** - Zeigt das teuerste Gift des Streams
+  - 🔥 **Gift Streak** - Zeigt die längste Gift-Streak
+
+- **🔄 Multi-HUD Rotation** - NEU!
+  - Kombiniere mehrere Events in einem rotierenden Display
+  - Wählbare Events (z.B. nur Follower, Like und Gifter)
+  - Konfigurierbares Rotations-Intervall (in Sekunden)
+  - Perfekt für Platz-Einsparung im Stream-Layout
 
 - **Echtzeit-Updates** über WebSocket
 - **Umfangreiche Anpassungsmöglichkeiten**:
@@ -46,6 +54,9 @@ Die Overlays sind unter folgenden URLs verfügbar:
 /overlay/lastevent/share
 /overlay/lastevent/gifter
 /overlay/lastevent/subscriber
+/overlay/lastevent/topgift
+/overlay/lastevent/giftstreak
+/overlay/lastevent/multihud
 ```
 
 ## 🎨 Verwendung
@@ -101,11 +112,39 @@ Klicken Sie auf **"Settings"** für jeden Overlay-Typ, um:
 - Hide on Null User
 - Preload Images
 
-### 4. Testen
+#### Multi-HUD Rotation (nur für Multi-HUD Overlay)
+- **Rotation Interval** - Zeit in Sekunden zwischen Event-Wechseln (1-60 Sekunden)
+- **Ausgewählte Events** - Wähle welche Event-Typen im Rotation angezeigt werden sollen:
+  - 👤 Follower
+  - ❤️ Like
+  - 💬 Chatter
+  - 🔗 Share
+  - 🎁 Gifter
+  - ⭐ Subscriber
+  - 💎 Top Gift
+  - 🔥 Gift Streak
+
+### 4. Multi-HUD Rotation Verwenden
+
+Das **Multi-HUD Rotation** Overlay ist eine besondere Funktion, die mehrere Event-Typen in einem einzigen Overlay kombiniert:
+
+1. Öffne die Einstellungen für "Multi-HUD Rotation"
+2. Wähle die Events aus, die rotiert werden sollen (mindestens eines)
+3. Stelle das Rotations-Intervall ein (z.B. 5 Sekunden)
+4. Kopiere die Overlay-URL und füge sie in OBS ein
+5. Das Overlay wechselt automatisch zwischen den ausgewählten Events
+
+**Vorteile:**
+- Spart Platz im Stream-Layout
+- Zeigt mehrere Event-Typen in einer einzelnen Quelle
+- Vollständig anpassbar (welche Events, wie schnell)
+- Nutzt alle Standard-Einstellungen (Animationen, Schrift, etc.)
+
+### 5. Testen
 
 Klicken Sie auf **"Test"**, um ein Test-Event zu senden und das Overlay zu testen.
 
-### 5. Vorschau
+### 6. Vorschau
 
 Klicken Sie auf **"Preview"**, um eine Live-Vorschau des Overlays zu sehen.
 
@@ -118,7 +157,7 @@ Gibt alle Einstellungen für alle Overlay-Typen zurück.
 Gibt Einstellungen für einen bestimmten Typ zurück.
 
 **Parameter:**
-- `type`: follower, like, chatter, share, gifter, subscriber
+- `type`: follower, like, chatter, share, gifter, subscriber, topgift, giftstreak, multihud
 
 ### POST `/api/lastevent/settings/:type`
 Aktualisiert Einstellungen für einen bestimmten Typ.
@@ -127,6 +166,9 @@ Aktualisiert Einstellungen für einen bestimmten Typ.
 
 ### GET `/api/lastevent/last/:type`
 Gibt den letzten Nutzer für einen bestimmten Typ zurück.
+
+### GET `/api/lastevent/all`
+Gibt alle letzten Nutzer für alle Event-Typen zurück (verwendet für Multi-HUD Rotation).
 
 ### POST `/api/lastevent/test/:type`
 Sendet ein Test-Event für einen bestimmten Typ.
@@ -141,7 +183,11 @@ Sendet ein Test-Event für einen bestimmten Typ.
 - `lastevent.update.share` - Neuer Share
 - `lastevent.update.gifter` - Neues Gift
 - `lastevent.update.subscriber` - Neuer Subscriber
+- `lastevent.update.topgift` - Neues Top Gift
+- `lastevent.update.giftstreak` - Neue Gift Streak
+- `lastevent.multihud.update` - Update für Multi-HUD Rotation (enthält type und user)
 - `lastevent.settings.<type>` - Settings-Update
+- `lastevent.session.reset` - Session-Reset (neuer Stream)
 
 ### Event-Datenstruktur
 
