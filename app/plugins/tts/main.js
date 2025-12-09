@@ -709,7 +709,13 @@ class TTSPlugin {
             // TikTok engine removed - no longer used
 
             if ((engine === 'all' || engine === 'google') && this.engines.google) {
-                voices.google = GoogleEngine.getVoices();
+                try {
+                    // Use dynamic voice fetching if available, fallback to static
+                    voices.google = await this.engines.google.getAllVoices();
+                } catch (error) {
+                    this.logger.error('Failed to load Google voices', { error: error.message });
+                    voices.google = GoogleEngine.getVoices();
+                }
             }
 
             if ((engine === 'all' || engine === 'speechify') && this.engines.speechify) {
@@ -735,6 +741,34 @@ class TTSPlugin {
             }
 
             res.json({ success: true, voices });
+        });
+
+        // Refresh voices from Google API (force fresh fetch)
+        this.api.registerRoute('POST', '/api/tts/voices/refresh', async (req, res) => {
+            try {
+                if (!this.engines.google) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Google TTS engine not initialized'
+                    });
+                }
+
+                // Force fresh fetch from API
+                const voices = await this.engines.google.getAllVoices(true);
+                
+                return res.json({
+                    success: true,
+                    message: 'Voices refreshed from Google API',
+                    voiceCount: Object.keys(voices).length,
+                    voices
+                });
+            } catch (error) {
+                this.logger.error('Failed to refresh voices from API', { error: error.message });
+                return res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
         });
 
         // Manual TTS trigger

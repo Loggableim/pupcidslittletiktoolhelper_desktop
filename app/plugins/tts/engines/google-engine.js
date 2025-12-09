@@ -9,6 +9,7 @@ class GoogleEngine {
         this.apiKey = apiKey;
         this.logger = logger;
         this.apiUrl = 'https://texttospeech.googleapis.com/v1/text:synthesize';
+        this.voicesUrl = 'https://texttospeech.googleapis.com/v1/voices';
         
         // Performance mode optimization
         const performanceMode = config.performanceMode || 'balanced';
@@ -30,6 +31,11 @@ class GoogleEngine {
         
         this.performanceMode = performanceMode;
         this.logger.info(`Google TTS: Performance mode set to '${performanceMode}' (timeout: ${this.timeout}ms, retries: ${this.maxRetries})`);
+        
+        // Dynamic voice cache
+        this.dynamicVoices = null;
+        this.voicesCacheTimestamp = null;
+        this.voicesCacheTTL = 24 * 60 * 60 * 1000; // 24 hours
     }
 
     /**
@@ -128,8 +134,182 @@ class GoogleEngine {
             // Portuguese (BR)
             'pt-BR-Wavenet-A': { name: 'Português BR (Wavenet A)', lang: 'pt', gender: 'female', style: 'wavenet' },
             'pt-BR-Wavenet-B': { name: 'Português BR (Wavenet B)', lang: 'pt', gender: 'male', style: 'wavenet' },
+            'pt-BR-Wavenet-C': { name: 'Português BR (Wavenet C)', lang: 'pt', gender: 'female', style: 'wavenet' },
             'pt-BR-Neural2-A': { name: 'Português BR (Neural2 A)', lang: 'pt', gender: 'female', style: 'neural2' },
-            'pt-BR-Neural2-B': { name: 'Português BR (Neural2 B)', lang: 'pt', gender: 'male', style: 'neural2' }
+            'pt-BR-Neural2-B': { name: 'Português BR (Neural2 B)', lang: 'pt', gender: 'male', style: 'neural2' },
+            'pt-BR-Neural2-C': { name: 'Português BR (Neural2 C)', lang: 'pt', gender: 'female', style: 'neural2' },
+            'pt-BR-Standard-A': { name: 'Português BR (Standard A)', lang: 'pt', gender: 'female', style: 'standard' },
+            'pt-BR-Standard-B': { name: 'Português BR (Standard B)', lang: 'pt', gender: 'male', style: 'standard' },
+            'pt-BR-Standard-C': { name: 'Português BR (Standard C)', lang: 'pt', gender: 'female', style: 'standard' },
+
+            // Portuguese (PT)
+            'pt-PT-Wavenet-A': { name: 'Português PT (Wavenet A)', lang: 'pt', gender: 'female', style: 'wavenet' },
+            'pt-PT-Wavenet-B': { name: 'Português PT (Wavenet B)', lang: 'pt', gender: 'male', style: 'wavenet' },
+            'pt-PT-Wavenet-C': { name: 'Português PT (Wavenet C)', lang: 'pt', gender: 'male', style: 'wavenet' },
+            'pt-PT-Wavenet-D': { name: 'Português PT (Wavenet D)', lang: 'pt', gender: 'female', style: 'wavenet' },
+
+            // Dutch
+            'nl-NL-Wavenet-A': { name: 'Nederlands (Wavenet A)', lang: 'nl', gender: 'female', style: 'wavenet' },
+            'nl-NL-Wavenet-B': { name: 'Nederlands (Wavenet B)', lang: 'nl', gender: 'male', style: 'wavenet' },
+            'nl-NL-Wavenet-C': { name: 'Nederlands (Wavenet C)', lang: 'nl', gender: 'male', style: 'wavenet' },
+            'nl-NL-Wavenet-D': { name: 'Nederlands (Wavenet D)', lang: 'nl', gender: 'female', style: 'wavenet' },
+            'nl-NL-Wavenet-E': { name: 'Nederlands (Wavenet E)', lang: 'nl', gender: 'female', style: 'wavenet' },
+            'nl-NL-Standard-A': { name: 'Nederlands (Standard A)', lang: 'nl', gender: 'female', style: 'standard' },
+
+            // Polish
+            'pl-PL-Wavenet-A': { name: 'Polski (Wavenet A)', lang: 'pl', gender: 'female', style: 'wavenet' },
+            'pl-PL-Wavenet-B': { name: 'Polski (Wavenet B)', lang: 'pl', gender: 'male', style: 'wavenet' },
+            'pl-PL-Wavenet-C': { name: 'Polski (Wavenet C)', lang: 'pl', gender: 'male', style: 'wavenet' },
+            'pl-PL-Wavenet-D': { name: 'Polski (Wavenet D)', lang: 'pl', gender: 'female', style: 'wavenet' },
+            'pl-PL-Wavenet-E': { name: 'Polski (Wavenet E)', lang: 'pl', gender: 'female', style: 'wavenet' },
+            'pl-PL-Standard-A': { name: 'Polski (Standard A)', lang: 'pl', gender: 'female', style: 'standard' },
+
+            // Russian
+            'ru-RU-Wavenet-A': { name: 'Русский (Wavenet A)', lang: 'ru', gender: 'female', style: 'wavenet' },
+            'ru-RU-Wavenet-B': { name: 'Русский (Wavenet B)', lang: 'ru', gender: 'male', style: 'wavenet' },
+            'ru-RU-Wavenet-C': { name: 'Русский (Wavenet C)', lang: 'ru', gender: 'female', style: 'wavenet' },
+            'ru-RU-Wavenet-D': { name: 'Русский (Wavenet D)', lang: 'ru', gender: 'male', style: 'wavenet' },
+            'ru-RU-Wavenet-E': { name: 'Русский (Wavenet E)', lang: 'ru', gender: 'female', style: 'wavenet' },
+            'ru-RU-Standard-A': { name: 'Русский (Standard A)', lang: 'ru', gender: 'female', style: 'standard' },
+
+            // Chinese (Mandarin)
+            'cmn-CN-Wavenet-A': { name: '中文 (Wavenet A)', lang: 'zh', gender: 'female', style: 'wavenet' },
+            'cmn-CN-Wavenet-B': { name: '中文 (Wavenet B)', lang: 'zh', gender: 'male', style: 'wavenet' },
+            'cmn-CN-Wavenet-C': { name: '中文 (Wavenet C)', lang: 'zh', gender: 'male', style: 'wavenet' },
+            'cmn-CN-Wavenet-D': { name: '中文 (Wavenet D)', lang: 'zh', gender: 'female', style: 'wavenet' },
+            'cmn-CN-Standard-A': { name: '中文 (Standard A)', lang: 'zh', gender: 'female', style: 'standard' },
+
+            // Hindi
+            'hi-IN-Wavenet-A': { name: 'हिन्दी (Wavenet A)', lang: 'hi', gender: 'female', style: 'wavenet' },
+            'hi-IN-Wavenet-B': { name: 'हिन्दी (Wavenet B)', lang: 'hi', gender: 'male', style: 'wavenet' },
+            'hi-IN-Wavenet-C': { name: 'हिन्दी (Wavenet C)', lang: 'hi', gender: 'male', style: 'wavenet' },
+            'hi-IN-Wavenet-D': { name: 'हिन्दी (Wavenet D)', lang: 'hi', gender: 'female', style: 'wavenet' },
+            'hi-IN-Neural2-A': { name: 'हिन्दी (Neural2 A)', lang: 'hi', gender: 'female', style: 'neural2' },
+            'hi-IN-Neural2-B': { name: 'हिन्दी (Neural2 B)', lang: 'hi', gender: 'male', style: 'neural2' },
+            'hi-IN-Neural2-C': { name: 'हिन्दी (Neural2 C)', lang: 'hi', gender: 'male', style: 'neural2' },
+            'hi-IN-Neural2-D': { name: 'हिन्दी (Neural2 D)', lang: 'hi', gender: 'female', style: 'neural2' },
+
+            // Arabic
+            'ar-XA-Wavenet-A': { name: 'العربية (Wavenet A)', lang: 'ar', gender: 'female', style: 'wavenet' },
+            'ar-XA-Wavenet-B': { name: 'العربية (Wavenet B)', lang: 'ar', gender: 'male', style: 'wavenet' },
+            'ar-XA-Wavenet-C': { name: 'العربية (Wavenet C)', lang: 'ar', gender: 'male', style: 'wavenet' },
+            'ar-XA-Wavenet-D': { name: 'العربية (Wavenet D)', lang: 'ar', gender: 'female', style: 'wavenet' },
+            'ar-XA-Standard-A': { name: 'العربية (Standard A)', lang: 'ar', gender: 'female', style: 'standard' },
+
+            // Turkish
+            'tr-TR-Wavenet-A': { name: 'Türkçe (Wavenet A)', lang: 'tr', gender: 'female', style: 'wavenet' },
+            'tr-TR-Wavenet-B': { name: 'Türkçe (Wavenet B)', lang: 'tr', gender: 'male', style: 'wavenet' },
+            'tr-TR-Wavenet-C': { name: 'Türkçe (Wavenet C)', lang: 'tr', gender: 'female', style: 'wavenet' },
+            'tr-TR-Wavenet-D': { name: 'Türkçe (Wavenet D)', lang: 'tr', gender: 'female', style: 'wavenet' },
+            'tr-TR-Wavenet-E': { name: 'Türkçe (Wavenet E)', lang: 'tr', gender: 'male', style: 'wavenet' },
+            'tr-TR-Standard-A': { name: 'Türkçe (Standard A)', lang: 'tr', gender: 'female', style: 'standard' },
+
+            // Indonesian
+            'id-ID-Wavenet-A': { name: 'Bahasa Indonesia (Wavenet A)', lang: 'id', gender: 'female', style: 'wavenet' },
+            'id-ID-Wavenet-B': { name: 'Bahasa Indonesia (Wavenet B)', lang: 'id', gender: 'male', style: 'wavenet' },
+            'id-ID-Wavenet-C': { name: 'Bahasa Indonesia (Wavenet C)', lang: 'id', gender: 'male', style: 'wavenet' },
+            'id-ID-Wavenet-D': { name: 'Bahasa Indonesia (Wavenet D)', lang: 'id', gender: 'female', style: 'wavenet' },
+
+            // Thai
+            'th-TH-Neural2-C': { name: 'ภาษาไทย (Neural2 C)', lang: 'th', gender: 'female', style: 'neural2' },
+            'th-TH-Standard-A': { name: 'ภาษาไทย (Standard A)', lang: 'th', gender: 'female', style: 'standard' },
+
+            // Vietnamese
+            'vi-VN-Wavenet-A': { name: 'Tiếng Việt (Wavenet A)', lang: 'vi', gender: 'female', style: 'wavenet' },
+            'vi-VN-Wavenet-B': { name: 'Tiếng Việt (Wavenet B)', lang: 'vi', gender: 'male', style: 'wavenet' },
+            'vi-VN-Wavenet-C': { name: 'Tiếng Việt (Wavenet C)', lang: 'vi', gender: 'female', style: 'wavenet' },
+            'vi-VN-Wavenet-D': { name: 'Tiếng Việt (Wavenet D)', lang: 'vi', gender: 'male', style: 'wavenet' },
+            'vi-VN-Neural2-A': { name: 'Tiếng Việt (Neural2 A)', lang: 'vi', gender: 'female', style: 'neural2' },
+            'vi-VN-Neural2-D': { name: 'Tiếng Việt (Neural2 D)', lang: 'vi', gender: 'male', style: 'neural2' },
+
+            // English (India)
+            'en-IN-Wavenet-A': { name: 'English IN (Wavenet A)', lang: 'en', gender: 'female', style: 'wavenet' },
+            'en-IN-Wavenet-B': { name: 'English IN (Wavenet B)', lang: 'en', gender: 'male', style: 'wavenet' },
+            'en-IN-Wavenet-C': { name: 'English IN (Wavenet C)', lang: 'en', gender: 'male', style: 'wavenet' },
+            'en-IN-Wavenet-D': { name: 'English IN (Wavenet D)', lang: 'en', gender: 'female', style: 'wavenet' },
+            'en-IN-Neural2-A': { name: 'English IN (Neural2 A)', lang: 'en', gender: 'female', style: 'neural2' },
+            'en-IN-Neural2-B': { name: 'English IN (Neural2 B)', lang: 'en', gender: 'male', style: 'neural2' },
+            'en-IN-Neural2-C': { name: 'English IN (Neural2 C)', lang: 'en', gender: 'male', style: 'neural2' },
+            'en-IN-Neural2-D': { name: 'English IN (Neural2 D)', lang: 'en', gender: 'female', style: 'neural2' },
+
+            // Spanish (US)
+            'es-US-Wavenet-A': { name: 'Español US (Wavenet A)', lang: 'es', gender: 'female', style: 'wavenet' },
+            'es-US-Wavenet-B': { name: 'Español US (Wavenet B)', lang: 'es', gender: 'male', style: 'wavenet' },
+            'es-US-Wavenet-C': { name: 'Español US (Wavenet C)', lang: 'es', gender: 'male', style: 'wavenet' },
+            'es-US-Neural2-A': { name: 'Español US (Neural2 A)', lang: 'es', gender: 'female', style: 'neural2' },
+            'es-US-Neural2-B': { name: 'Español US (Neural2 B)', lang: 'es', gender: 'male', style: 'neural2' },
+            'es-US-Neural2-C': { name: 'Español US (Neural2 C)', lang: 'es', gender: 'male', style: 'neural2' },
+            'es-US-Studio-B': { name: 'Español US (Studio B)', lang: 'es', gender: 'male', style: 'studio' },
+            'es-US-News-D': { name: 'Español US (News D)', lang: 'es', gender: 'male', style: 'news' },
+            'es-US-News-E': { name: 'Español US (News E)', lang: 'es', gender: 'male', style: 'news' },
+            'es-US-News-F': { name: 'Español US (News F)', lang: 'es', gender: 'female', style: 'news' },
+            'es-US-News-G': { name: 'Español US (News G)', lang: 'es', gender: 'female', style: 'news' },
+
+            // Spanish (ES) - Additional voices
+            'es-ES-Wavenet-C': { name: 'Español ES (Wavenet C)', lang: 'es', gender: 'female', style: 'wavenet' },
+            'es-ES-Wavenet-D': { name: 'Español ES (Wavenet D)', lang: 'es', gender: 'female', style: 'wavenet' },
+            'es-ES-Neural2-B': { name: 'Español ES (Neural2 B)', lang: 'es', gender: 'male', style: 'neural2' },
+            'es-ES-Neural2-C': { name: 'Español ES (Neural2 C)', lang: 'es', gender: 'female', style: 'neural2' },
+            'es-ES-Neural2-D': { name: 'Español ES (Neural2 D)', lang: 'es', gender: 'female', style: 'neural2' },
+            'es-ES-Neural2-E': { name: 'Español ES (Neural2 E)', lang: 'es', gender: 'female', style: 'neural2' },
+            'es-ES-Neural2-F': { name: 'Español ES (Neural2 F)', lang: 'es', gender: 'male', style: 'neural2' },
+            'es-ES-Polyglot-1': { name: 'Español ES (Polyglot 1)', lang: 'es', gender: 'male', style: 'polyglot' },
+
+            // French - Additional voices
+            'fr-FR-Wavenet-E': { name: 'Français (Wavenet E)', lang: 'fr', gender: 'female', style: 'wavenet' },
+            'fr-FR-Neural2-B': { name: 'Français (Neural2 B)', lang: 'fr', gender: 'male', style: 'neural2' },
+            'fr-FR-Neural2-C': { name: 'Français (Neural2 C)', lang: 'fr', gender: 'female', style: 'neural2' },
+            'fr-FR-Neural2-D': { name: 'Français (Neural2 D)', lang: 'fr', gender: 'male', style: 'neural2' },
+            'fr-FR-Neural2-E': { name: 'Français (Neural2 E)', lang: 'fr', gender: 'female', style: 'neural2' },
+            'fr-FR-Studio-A': { name: 'Français (Studio A)', lang: 'fr', gender: 'female', style: 'studio' },
+            'fr-FR-Studio-D': { name: 'Français (Studio D)', lang: 'fr', gender: 'male', style: 'studio' },
+            'fr-FR-Polyglot-1': { name: 'Français (Polyglot 1)', lang: 'fr', gender: 'male', style: 'polyglot' },
+
+            // German - Additional voices
+            'de-DE-Neural2-C': { name: 'Deutsch (Neural2 C)', lang: 'de', gender: 'female', style: 'neural2' },
+            'de-DE-Neural2-D': { name: 'Deutsch (Neural2 D)', lang: 'de', gender: 'male', style: 'neural2' },
+            'de-DE-Neural2-F': { name: 'Deutsch (Neural2 F)', lang: 'de', gender: 'female', style: 'neural2' },
+            'de-DE-Studio-B': { name: 'Deutsch (Studio B)', lang: 'de', gender: 'male', style: 'studio' },
+            'de-DE-Studio-C': { name: 'Deutsch (Studio C)', lang: 'de', gender: 'female', style: 'studio' },
+            'de-DE-Polyglot-1': { name: 'Deutsch (Polyglot 1)', lang: 'de', gender: 'male', style: 'polyglot' },
+
+            // English (GB) - Additional voices
+            'en-GB-Neural2-C': { name: 'English GB (Neural2 C)', lang: 'en', gender: 'female', style: 'neural2' },
+            'en-GB-Neural2-D': { name: 'English GB (Neural2 D)', lang: 'en', gender: 'male', style: 'neural2' },
+            'en-GB-Neural2-F': { name: 'English GB (Neural2 F)', lang: 'en', gender: 'female', style: 'neural2' },
+            'en-GB-Studio-B': { name: 'English GB (Studio B)', lang: 'en', gender: 'male', style: 'studio' },
+            'en-GB-Studio-C': { name: 'English GB (Studio C)', lang: 'en', gender: 'female', style: 'studio' },
+            'en-GB-News-G': { name: 'English GB (News G)', lang: 'en', gender: 'female', style: 'news' },
+            'en-GB-News-H': { name: 'English GB (News H)', lang: 'en', gender: 'female', style: 'news' },
+            'en-GB-News-I': { name: 'English GB (News I)', lang: 'en', gender: 'female', style: 'news' },
+            'en-GB-News-J': { name: 'English GB (News J)', lang: 'en', gender: 'male', style: 'news' },
+            'en-GB-News-K': { name: 'English GB (News K)', lang: 'en', gender: 'male', style: 'news' },
+            'en-GB-News-L': { name: 'English GB (News L)', lang: 'en', gender: 'male', style: 'news' },
+            'en-GB-News-M': { name: 'English GB (News M)', lang: 'en', gender: 'male', style: 'news' },
+
+            // English (US) - Additional voices
+            'en-US-Studio-M': { name: 'English US (Studio M)', lang: 'en', gender: 'male', style: 'studio' },
+            'en-US-Studio-O': { name: 'English US (Studio O)', lang: 'en', gender: 'female', style: 'studio' },
+            'en-US-Studio-Q': { name: 'English US (Studio Q)', lang: 'en', gender: 'neutral', style: 'studio' },
+            'en-US-News-K': { name: 'English US (News K)', lang: 'en', gender: 'female', style: 'news' },
+            'en-US-News-L': { name: 'English US (News L)', lang: 'en', gender: 'female', style: 'news' },
+            'en-US-News-N': { name: 'English US (News N)', lang: 'en', gender: 'male', style: 'news' },
+
+            // English (AU) - Additional voices
+            'en-AU-Neural2-C': { name: 'English AU (Neural2 C)', lang: 'en', gender: 'female', style: 'neural2' },
+            'en-AU-Neural2-D': { name: 'English AU (Neural2 D)', lang: 'en', gender: 'male', style: 'neural2' },
+
+            // Italian - Additional voices
+            'it-IT-Neural2-A': { name: 'Italiano (Neural2 A)', lang: 'it', gender: 'female', style: 'neural2' },
+            'it-IT-Neural2-C': { name: 'Italiano (Neural2 C)', lang: 'it', gender: 'male', style: 'neural2' },
+
+            // Japanese - Additional voices
+            'ja-JP-Neural2-D': { name: '日本語 (Neural2 D)', lang: 'ja', gender: 'male', style: 'neural2' },
+
+            // Korean - Additional voices
+            'ko-KR-Neural2-A': { name: '한국어 (Neural2 A)', lang: 'ko', gender: 'female', style: 'neural2' },
+            'ko-KR-Neural2-B': { name: '한국어 (Neural2 B)', lang: 'ko', gender: 'female', style: 'neural2' },
+            'ko-KR-Neural2-C': { name: '한국어 (Neural2 C)', lang: 'ko', gender: 'male', style: 'neural2' }
         };
     }
 
@@ -145,10 +325,125 @@ class GoogleEngine {
             'pt': 'pt-BR-Wavenet-A',
             'it': 'it-IT-Wavenet-A',
             'ja': 'ja-JP-Wavenet-A',
-            'ko': 'ko-KR-Wavenet-A'
+            'ko': 'ko-KR-Wavenet-A',
+            'nl': 'nl-NL-Wavenet-A',
+            'pl': 'pl-PL-Wavenet-A',
+            'ru': 'ru-RU-Wavenet-A',
+            'zh': 'cmn-CN-Wavenet-A',
+            'hi': 'hi-IN-Wavenet-A',
+            'ar': 'ar-XA-Wavenet-A',
+            'tr': 'tr-TR-Wavenet-A',
+            'id': 'id-ID-Wavenet-A',
+            'th': 'th-TH-Neural2-C',
+            'vi': 'vi-VN-Wavenet-A'
         };
 
         return languageDefaults[langCode] || 'en-US-Wavenet-C';
+    }
+
+    /**
+     * Fetch all available voices from Google TTS API
+     * This provides the most up-to-date list including new voice types
+     * (Neural2, Journey, Studio, Polyglot, etc.)
+     * @returns {Promise<Object>} Voice list in same format as getVoices()
+     */
+    async fetchVoicesFromAPI() {
+        // Check cache first
+        if (this.dynamicVoices && this.voicesCacheTimestamp) {
+            const cacheAge = Date.now() - this.voicesCacheTimestamp;
+            if (cacheAge < this.voicesCacheTTL) {
+                this.logger.info(`Google TTS: Using cached voices (age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
+                return this.dynamicVoices;
+            }
+        }
+
+        try {
+            const response = await axios.get(
+                `${this.voicesUrl}?key=${this.apiKey}`,
+                {
+                    headers: { 'Content-Type': 'application/json' },
+                    timeout: this.timeout
+                }
+            );
+
+            if (response.data && response.data.voices) {
+                const voices = {};
+                
+                // Transform Google API format to our internal format
+                for (const voice of response.data.voices) {
+                    const voiceId = voice.name;
+                    const languageCode = voice.languageCodes[0];
+                    
+                    // Extract language prefix (e.g., 'de' from 'de-DE')
+                    const lang = languageCode.split('-')[0];
+                    
+                    // Extract voice style from name (wavenet, neural2, studio, etc.)
+                    let style = 'standard';
+                    const nameLower = voiceId.toLowerCase();
+                    if (nameLower.includes('wavenet')) style = 'wavenet';
+                    else if (nameLower.includes('neural2')) style = 'neural2';
+                    else if (nameLower.includes('studio')) style = 'studio';
+                    else if (nameLower.includes('polyglot')) style = 'polyglot';
+                    else if (nameLower.includes('news')) style = 'news';
+                    else if (nameLower.includes('journey')) style = 'journey';
+                    
+                    // Map gender
+                    const gender = voice.ssmlGender ? voice.ssmlGender.toLowerCase() : 'neutral';
+                    
+                    // Create human-readable name
+                    const genderLabel = gender === 'male' ? 'Male' : gender === 'female' ? 'Female' : 'Neutral';
+                    const styleName = style.charAt(0).toUpperCase() + style.slice(1);
+                    const name = `${languageCode} (${styleName} - ${genderLabel})`;
+                    
+                    voices[voiceId] = {
+                        name,
+                        lang,
+                        gender,
+                        style,
+                        languageCode,
+                        sampleRate: voice.naturalSampleRateHertz || 24000
+                    };
+                }
+                
+                // Cache the results
+                this.dynamicVoices = voices;
+                this.voicesCacheTimestamp = Date.now();
+                
+                this.logger.info(`Google TTS: Fetched ${Object.keys(voices).length} voices from API`);
+                return voices;
+            }
+            
+            throw new Error('Invalid response format from Google TTS voices API');
+            
+        } catch (error) {
+            this.logger.error(`Google TTS: Failed to fetch voices from API: ${error.message}`);
+            // Fallback to static list
+            return null;
+        }
+    }
+
+    /**
+     * Get all available voices (combines static fallback with dynamic API data)
+     * @param {boolean} forceFresh - Force fetch from API instead of using cache
+     * @returns {Promise<Object>} Voice list
+     */
+    async getAllVoices(forceFresh = false) {
+        // Try to fetch from API if we have an API key
+        if (this.apiKey && (forceFresh || !this.dynamicVoices)) {
+            const dynamicVoices = await this.fetchVoicesFromAPI();
+            if (dynamicVoices) {
+                return dynamicVoices;
+            }
+        }
+        
+        // Use cached dynamic voices if available
+        if (this.dynamicVoices) {
+            return this.dynamicVoices;
+        }
+        
+        // Fallback to static list
+        this.logger.info('Google TTS: Using static voice list (fallback)');
+        return GoogleEngine.getVoices();
     }
 
     /**
