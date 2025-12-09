@@ -443,6 +443,7 @@ function renderStructured() {
 
     const block = document.createElement('div');
     block.className = 'event-block';
+    block.dataset.eventType = type; // Add data attribute for CSS targeting
 
     const header = document.createElement('div');
     header.className = `block-header ${EVENT_TYPES[type].colorClass}`;
