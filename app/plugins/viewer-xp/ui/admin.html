@@ -2920,10 +2920,10 @@
           loadViewerHistory();
           break;
         case 'viewUserDetails':
-          viewUserDetails(username);
+          viewUserDetails(username || arg);
           break;
         case 'updateAction':
-          updateAction(actionType);
+          updateAction(actionType || arg);
           break;
         default:
           console.warn('Unknown action:', action);
