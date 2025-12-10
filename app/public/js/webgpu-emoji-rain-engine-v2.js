@@ -288,10 +288,11 @@ class WebGPUEmojiRainEngine {
    * Load texture atlas from emoji/images
    */
   async loadTextureAtlas() {
-    // TODO: Implement texture atlas loading
-    // For now, use simple emoji rendering
+    const emojiList = this.config.emoji_set || [];
+    const customImages = this.config.use_custom_images ? this.config.image_urls : [];
+    
     if (this.core) {
-      await this.core.loadTextureAtlas(this.config.emoji_set);
+      await this.core.loadTextureAtlas(emojiList, customImages);
     }
   }
 
@@ -309,6 +310,9 @@ class WebGPUEmojiRainEngine {
       finalEmoji = this.userEmojiMap[username];
     }
 
+    // Get texture index for the emoji
+    const texIdx = this.core ? this.core.getTextureIndex(finalEmoji) : 0;
+
     // Send spawn command to worker
     if (this.worker) {
       this.worker.postMessage({
@@ -318,6 +322,7 @@ class WebGPUEmojiRainEngine {
           x: x || Math.random(),
           y: y || 0,
           emoji: finalEmoji,
+          texIdx: texIdx,
           burst: burst || false
         }
       });

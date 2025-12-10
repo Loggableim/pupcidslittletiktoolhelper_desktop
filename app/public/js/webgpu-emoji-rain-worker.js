@@ -118,7 +118,7 @@ class PhysicsWorker {
    * Spawn new particles
    */
   spawn(spawnData) {
-    const { count, x, y, emoji, burst } = spawnData;
+    const { count, x, y, emoji, texIdx, burst } = spawnData;
     const particlesToSpawn = Math.min(count, this.maxParticles - this.activeParticles);
     
     if (particlesToSpawn <= 0) return;
@@ -127,7 +127,7 @@ class PhysicsWorker {
     let spawned = 0;
     for (let i = 0; i < this.maxParticles && spawned < particlesToSpawn; i++) {
       if (!this.particles.active[i]) {
-        this.spawnParticle(i, x, y, emoji, burst);
+        this.spawnParticle(i, x, y, emoji, texIdx || 0, burst);
         spawned++;
       }
     }
@@ -140,7 +140,7 @@ class PhysicsWorker {
   /**
    * Spawn a single particle
    */
-  spawnParticle(index, x, y, emoji, burst) {
+  spawnParticle(index, x, y, emoji, texIdx, burst) {
     // Position
     const spawnX = x * this.canvasWidth;
     const spawnY = y * this.canvasHeight;
@@ -171,7 +171,7 @@ class PhysicsWorker {
     this.particles.scale[index] = this.rng.range(40, 80);
     this.particles.life[index] = 0;
     this.particles.maxLife[index] = this.rng.range(5000, 8000);
-    this.particles.texIdx[index] = 0; // TODO: Map emoji to texture index
+    this.particles.texIdx[index] = texIdx; // Use provided texture index
     this.particles.alpha[index] = 1.0;
     this.particles.active[index] = 1;
   }

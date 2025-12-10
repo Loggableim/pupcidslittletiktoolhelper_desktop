@@ -649,10 +649,35 @@ class WebGPUEmojiRainCore {
   /**
    * Load texture atlas from emoji images
    */
-  async loadTextureAtlas(imageSources) {
-    // TODO: Implement texture atlas generation
-    // For now, create a simple white texture
-    this.textureAtlas = this.createDummyTexture();
+  async loadTextureAtlas(emojiList, customImages = []) {
+    try {
+      // Create texture atlas manager
+      const atlasManager = new TextureAtlasManager(this.device);
+      
+      // Create atlas from emoji list and custom images
+      this.textureAtlas = await atlasManager.createAtlas(emojiList, customImages);
+      
+      // Store atlas manager for later use (adding emojis dynamically)
+      this.atlasManager = atlasManager;
+      
+      console.log('✅ Texture atlas loaded successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to load texture atlas:', error);
+      // Use dummy texture as fallback
+      this.textureAtlas = this.createDummyTexture();
+      return false;
+    }
+  }
+
+  /**
+   * Get texture index for emoji
+   */
+  getTextureIndex(emoji) {
+    if (this.atlasManager) {
+      return this.atlasManager.getTextureIndex(emoji);
+    }
+    return 0;
   }
 
   /**
@@ -720,6 +745,12 @@ class WebGPUEmojiRainCore {
     // Clear caches
     this.bindGroupCache.clear();
     this.bindGroupLayoutCache.clear();
+
+    // Destroy atlas manager
+    if (this.atlasManager) {
+      this.atlasManager.destroy();
+      this.atlasManager = null;
+    }
 
     // Destroy buffers
     if (this.uniformBuffer) this.uniformBuffer.destroy();
