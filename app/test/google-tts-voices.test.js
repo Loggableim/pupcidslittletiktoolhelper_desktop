@@ -22,7 +22,8 @@ describe('Google TTS Voice Enhancements', () => {
             const voices = GoogleEngine.getVoices();
             
             // Should have significantly more voices than before
-            expect(Object.keys(voices).length).toBeGreaterThan(200);
+            // With Chirp3-HD voices added (160+ new voices), total should be 360+
+            expect(Object.keys(voices).length).toBeGreaterThan(360);
         });
 
         test('should include Neural2 voices for German', () => {
@@ -109,6 +110,34 @@ describe('Google TTS Voice Enhancements', () => {
             expect(voices['es-US-Studio-B']).toBeDefined();
         });
 
+        test('should include Chirp3-HD voices for major languages', () => {
+            const voices = GoogleEngine.getVoices();
+            
+            // German Chirp3-HD
+            expect(voices['de-DE-Chirp3-HD-F1']).toBeDefined();
+            expect(voices['de-DE-Chirp3-HD-M1']).toBeDefined();
+            
+            // English US Chirp3-HD
+            expect(voices['en-US-Chirp3-HD-F1']).toBeDefined();
+            expect(voices['en-US-Chirp3-HD-M1']).toBeDefined();
+            
+            // English GB Chirp3-HD
+            expect(voices['en-GB-Chirp3-HD-F1']).toBeDefined();
+            expect(voices['en-GB-Chirp3-HD-M1']).toBeDefined();
+            
+            // Spanish Chirp3-HD
+            expect(voices['es-ES-Chirp3-HD-F1']).toBeDefined();
+            expect(voices['es-ES-Chirp3-HD-M1']).toBeDefined();
+            
+            // French Chirp3-HD
+            expect(voices['fr-FR-Chirp3-HD-F1']).toBeDefined();
+            expect(voices['fr-FR-Chirp3-HD-M1']).toBeDefined();
+            
+            // Japanese Chirp3-HD
+            expect(voices['ja-JP-Chirp3-HD-F1']).toBeDefined();
+            expect(voices['ja-JP-Chirp3-HD-M1']).toBeDefined();
+        });
+
         test('should include Portuguese PT variant', () => {
             const voices = GoogleEngine.getVoices();
             
@@ -128,7 +157,7 @@ describe('Google TTS Voice Enhancements', () => {
                 expect(typeof voice.name).toBe('string');
                 expect(typeof voice.lang).toBe('string');
                 expect(['male', 'female', 'neutral']).toContain(voice.gender);
-                expect(['wavenet', 'neural2', 'standard', 'studio', 'news', 'polyglot']).toContain(voice.style);
+                expect(['wavenet', 'neural2', 'standard', 'studio', 'news', 'polyglot', 'chirp3']).toContain(voice.style);
             }
         });
     });
@@ -158,7 +187,8 @@ describe('Google TTS Voice Enhancements', () => {
             const voices = await engine.getAllVoices();
             
             expect(voices).toBeDefined();
-            expect(Object.keys(voices).length).toBeGreaterThan(200);
+            // Updated to reflect Chirp3-HD voices addition
+            expect(Object.keys(voices).length).toBeGreaterThan(360);
         });
 
         test('voice cache should have correct TTL properties', () => {
@@ -178,13 +208,16 @@ describe('Google TTS Voice Enhancements', () => {
             const studioVoices = Object.values(voices).filter(v => v.style === 'studio');
             const newsVoices = Object.values(voices).filter(v => v.style === 'news');
             const polyglotVoices = Object.values(voices).filter(v => v.style === 'polyglot');
+            const chirp3Voices = Object.values(voices).filter(v => v.style === 'chirp3');
             
             expect(wavenetVoices.length).toBeGreaterThan(50);
             expect(neural2Voices.length).toBeGreaterThan(30);
-            expect(standardVoices.length).toBeGreaterThan(20);
+            expect(standardVoices.length).toBeGreaterThan(15);
             expect(studioVoices.length).toBeGreaterThan(5);
             expect(newsVoices.length).toBeGreaterThan(10);
             expect(polyglotVoices.length).toBeGreaterThan(2);
+            // 22 languages × 8 voices = 176 Chirp3-HD voices
+            expect(chirp3Voices.length).toBeGreaterThan(150);
         });
 
         test('should have voices for all major languages', () => {

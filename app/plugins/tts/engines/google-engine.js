@@ -309,7 +309,228 @@ class GoogleEngine {
             // Korean - Additional voices
             'ko-KR-Neural2-A': { name: '한국어 (Neural2 A)', lang: 'ko', gender: 'female', style: 'neural2' },
             'ko-KR-Neural2-B': { name: '한국어 (Neural2 B)', lang: 'ko', gender: 'female', style: 'neural2' },
-            'ko-KR-Neural2-C': { name: '한국어 (Neural2 C)', lang: 'ko', gender: 'male', style: 'neural2' }
+            'ko-KR-Neural2-C': { name: '한국어 (Neural2 C)', lang: 'ko', gender: 'male', style: 'neural2' },
+
+            // Chirp3-HD Voices - Premium, high-definition voices with emotional expressiveness
+            // German (de-DE)
+            'de-DE-Chirp3-HD-F1': { name: 'Deutsch (Chirp3 HD F1)', lang: 'de', gender: 'female', style: 'chirp3' },
+            'de-DE-Chirp3-HD-F2': { name: 'Deutsch (Chirp3 HD F2)', lang: 'de', gender: 'female', style: 'chirp3' },
+            'de-DE-Chirp3-HD-F3': { name: 'Deutsch (Chirp3 HD F3)', lang: 'de', gender: 'female', style: 'chirp3' },
+            'de-DE-Chirp3-HD-F4': { name: 'Deutsch (Chirp3 HD F4)', lang: 'de', gender: 'female', style: 'chirp3' },
+            'de-DE-Chirp3-HD-M1': { name: 'Deutsch (Chirp3 HD M1)', lang: 'de', gender: 'male', style: 'chirp3' },
+            'de-DE-Chirp3-HD-M2': { name: 'Deutsch (Chirp3 HD M2)', lang: 'de', gender: 'male', style: 'chirp3' },
+            'de-DE-Chirp3-HD-M3': { name: 'Deutsch (Chirp3 HD M3)', lang: 'de', gender: 'male', style: 'chirp3' },
+            'de-DE-Chirp3-HD-M4': { name: 'Deutsch (Chirp3 HD M4)', lang: 'de', gender: 'male', style: 'chirp3' },
+
+            // English (US)
+            'en-US-Chirp3-HD-F1': { name: 'English US (Chirp3 HD F1)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-US-Chirp3-HD-F2': { name: 'English US (Chirp3 HD F2)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-US-Chirp3-HD-F3': { name: 'English US (Chirp3 HD F3)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-US-Chirp3-HD-F4': { name: 'English US (Chirp3 HD F4)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-US-Chirp3-HD-M1': { name: 'English US (Chirp3 HD M1)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-US-Chirp3-HD-M2': { name: 'English US (Chirp3 HD M2)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-US-Chirp3-HD-M3': { name: 'English US (Chirp3 HD M3)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-US-Chirp3-HD-M4': { name: 'English US (Chirp3 HD M4)', lang: 'en', gender: 'male', style: 'chirp3' },
+
+            // English (GB)
+            'en-GB-Chirp3-HD-F1': { name: 'English GB (Chirp3 HD F1)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-GB-Chirp3-HD-F2': { name: 'English GB (Chirp3 HD F2)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-GB-Chirp3-HD-F3': { name: 'English GB (Chirp3 HD F3)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-GB-Chirp3-HD-F4': { name: 'English GB (Chirp3 HD F4)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-GB-Chirp3-HD-M1': { name: 'English GB (Chirp3 HD M1)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-GB-Chirp3-HD-M2': { name: 'English GB (Chirp3 HD M2)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-GB-Chirp3-HD-M3': { name: 'English GB (Chirp3 HD M3)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-GB-Chirp3-HD-M4': { name: 'English GB (Chirp3 HD M4)', lang: 'en', gender: 'male', style: 'chirp3' },
+
+            // English (AU)
+            'en-AU-Chirp3-HD-F1': { name: 'English AU (Chirp3 HD F1)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-AU-Chirp3-HD-F2': { name: 'English AU (Chirp3 HD F2)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-AU-Chirp3-HD-F3': { name: 'English AU (Chirp3 HD F3)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-AU-Chirp3-HD-F4': { name: 'English AU (Chirp3 HD F4)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-AU-Chirp3-HD-M1': { name: 'English AU (Chirp3 HD M1)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-AU-Chirp3-HD-M2': { name: 'English AU (Chirp3 HD M2)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-AU-Chirp3-HD-M3': { name: 'English AU (Chirp3 HD M3)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-AU-Chirp3-HD-M4': { name: 'English AU (Chirp3 HD M4)', lang: 'en', gender: 'male', style: 'chirp3' },
+
+            // Spanish (ES)
+            'es-ES-Chirp3-HD-F1': { name: 'Español ES (Chirp3 HD F1)', lang: 'es', gender: 'female', style: 'chirp3' },
+            'es-ES-Chirp3-HD-F2': { name: 'Español ES (Chirp3 HD F2)', lang: 'es', gender: 'female', style: 'chirp3' },
+            'es-ES-Chirp3-HD-F3': { name: 'Español ES (Chirp3 HD F3)', lang: 'es', gender: 'female', style: 'chirp3' },
+            'es-ES-Chirp3-HD-F4': { name: 'Español ES (Chirp3 HD F4)', lang: 'es', gender: 'female', style: 'chirp3' },
+            'es-ES-Chirp3-HD-M1': { name: 'Español ES (Chirp3 HD M1)', lang: 'es', gender: 'male', style: 'chirp3' },
+            'es-ES-Chirp3-HD-M2': { name: 'Español ES (Chirp3 HD M2)', lang: 'es', gender: 'male', style: 'chirp3' },
+            'es-ES-Chirp3-HD-M3': { name: 'Español ES (Chirp3 HD M3)', lang: 'es', gender: 'male', style: 'chirp3' },
+            'es-ES-Chirp3-HD-M4': { name: 'Español ES (Chirp3 HD M4)', lang: 'es', gender: 'male', style: 'chirp3' },
+
+            // French (FR)
+            'fr-FR-Chirp3-HD-F1': { name: 'Français (Chirp3 HD F1)', lang: 'fr', gender: 'female', style: 'chirp3' },
+            'fr-FR-Chirp3-HD-F2': { name: 'Français (Chirp3 HD F2)', lang: 'fr', gender: 'female', style: 'chirp3' },
+            'fr-FR-Chirp3-HD-F3': { name: 'Français (Chirp3 HD F3)', lang: 'fr', gender: 'female', style: 'chirp3' },
+            'fr-FR-Chirp3-HD-F4': { name: 'Français (Chirp3 HD F4)', lang: 'fr', gender: 'female', style: 'chirp3' },
+            'fr-FR-Chirp3-HD-M1': { name: 'Français (Chirp3 HD M1)', lang: 'fr', gender: 'male', style: 'chirp3' },
+            'fr-FR-Chirp3-HD-M2': { name: 'Français (Chirp3 HD M2)', lang: 'fr', gender: 'male', style: 'chirp3' },
+            'fr-FR-Chirp3-HD-M3': { name: 'Français (Chirp3 HD M3)', lang: 'fr', gender: 'male', style: 'chirp3' },
+            'fr-FR-Chirp3-HD-M4': { name: 'Français (Chirp3 HD M4)', lang: 'fr', gender: 'male', style: 'chirp3' },
+
+            // Italian (IT)
+            'it-IT-Chirp3-HD-F1': { name: 'Italiano (Chirp3 HD F1)', lang: 'it', gender: 'female', style: 'chirp3' },
+            'it-IT-Chirp3-HD-F2': { name: 'Italiano (Chirp3 HD F2)', lang: 'it', gender: 'female', style: 'chirp3' },
+            'it-IT-Chirp3-HD-F3': { name: 'Italiano (Chirp3 HD F3)', lang: 'it', gender: 'female', style: 'chirp3' },
+            'it-IT-Chirp3-HD-F4': { name: 'Italiano (Chirp3 HD F4)', lang: 'it', gender: 'female', style: 'chirp3' },
+            'it-IT-Chirp3-HD-M1': { name: 'Italiano (Chirp3 HD M1)', lang: 'it', gender: 'male', style: 'chirp3' },
+            'it-IT-Chirp3-HD-M2': { name: 'Italiano (Chirp3 HD M2)', lang: 'it', gender: 'male', style: 'chirp3' },
+            'it-IT-Chirp3-HD-M3': { name: 'Italiano (Chirp3 HD M3)', lang: 'it', gender: 'male', style: 'chirp3' },
+            'it-IT-Chirp3-HD-M4': { name: 'Italiano (Chirp3 HD M4)', lang: 'it', gender: 'male', style: 'chirp3' },
+
+            // Japanese (JP)
+            'ja-JP-Chirp3-HD-F1': { name: '日本語 (Chirp3 HD F1)', lang: 'ja', gender: 'female', style: 'chirp3' },
+            'ja-JP-Chirp3-HD-F2': { name: '日本語 (Chirp3 HD F2)', lang: 'ja', gender: 'female', style: 'chirp3' },
+            'ja-JP-Chirp3-HD-F3': { name: '日本語 (Chirp3 HD F3)', lang: 'ja', gender: 'female', style: 'chirp3' },
+            'ja-JP-Chirp3-HD-F4': { name: '日本語 (Chirp3 HD F4)', lang: 'ja', gender: 'female', style: 'chirp3' },
+            'ja-JP-Chirp3-HD-M1': { name: '日本語 (Chirp3 HD M1)', lang: 'ja', gender: 'male', style: 'chirp3' },
+            'ja-JP-Chirp3-HD-M2': { name: '日本語 (Chirp3 HD M2)', lang: 'ja', gender: 'male', style: 'chirp3' },
+            'ja-JP-Chirp3-HD-M3': { name: '日本語 (Chirp3 HD M3)', lang: 'ja', gender: 'male', style: 'chirp3' },
+            'ja-JP-Chirp3-HD-M4': { name: '日本語 (Chirp3 HD M4)', lang: 'ja', gender: 'male', style: 'chirp3' },
+
+            // Korean (KR)
+            'ko-KR-Chirp3-HD-F1': { name: '한국어 (Chirp3 HD F1)', lang: 'ko', gender: 'female', style: 'chirp3' },
+            'ko-KR-Chirp3-HD-F2': { name: '한국어 (Chirp3 HD F2)', lang: 'ko', gender: 'female', style: 'chirp3' },
+            'ko-KR-Chirp3-HD-F3': { name: '한국어 (Chirp3 HD F3)', lang: 'ko', gender: 'female', style: 'chirp3' },
+            'ko-KR-Chirp3-HD-F4': { name: '한국어 (Chirp3 HD F4)', lang: 'ko', gender: 'female', style: 'chirp3' },
+            'ko-KR-Chirp3-HD-M1': { name: '한국어 (Chirp3 HD M1)', lang: 'ko', gender: 'male', style: 'chirp3' },
+            'ko-KR-Chirp3-HD-M2': { name: '한국어 (Chirp3 HD M2)', lang: 'ko', gender: 'male', style: 'chirp3' },
+            'ko-KR-Chirp3-HD-M3': { name: '한국어 (Chirp3 HD M3)', lang: 'ko', gender: 'male', style: 'chirp3' },
+            'ko-KR-Chirp3-HD-M4': { name: '한국어 (Chirp3 HD M4)', lang: 'ko', gender: 'male', style: 'chirp3' },
+
+            // Portuguese (BR)
+            'pt-BR-Chirp3-HD-F1': { name: 'Português BR (Chirp3 HD F1)', lang: 'pt', gender: 'female', style: 'chirp3' },
+            'pt-BR-Chirp3-HD-F2': { name: 'Português BR (Chirp3 HD F2)', lang: 'pt', gender: 'female', style: 'chirp3' },
+            'pt-BR-Chirp3-HD-F3': { name: 'Português BR (Chirp3 HD F3)', lang: 'pt', gender: 'female', style: 'chirp3' },
+            'pt-BR-Chirp3-HD-F4': { name: 'Português BR (Chirp3 HD F4)', lang: 'pt', gender: 'female', style: 'chirp3' },
+            'pt-BR-Chirp3-HD-M1': { name: 'Português BR (Chirp3 HD M1)', lang: 'pt', gender: 'male', style: 'chirp3' },
+            'pt-BR-Chirp3-HD-M2': { name: 'Português BR (Chirp3 HD M2)', lang: 'pt', gender: 'male', style: 'chirp3' },
+            'pt-BR-Chirp3-HD-M3': { name: 'Português BR (Chirp3 HD M3)', lang: 'pt', gender: 'male', style: 'chirp3' },
+            'pt-BR-Chirp3-HD-M4': { name: 'Português BR (Chirp3 HD M4)', lang: 'pt', gender: 'male', style: 'chirp3' },
+
+            // Dutch (NL)
+            'nl-NL-Chirp3-HD-F1': { name: 'Nederlands (Chirp3 HD F1)', lang: 'nl', gender: 'female', style: 'chirp3' },
+            'nl-NL-Chirp3-HD-F2': { name: 'Nederlands (Chirp3 HD F2)', lang: 'nl', gender: 'female', style: 'chirp3' },
+            'nl-NL-Chirp3-HD-F3': { name: 'Nederlands (Chirp3 HD F3)', lang: 'nl', gender: 'female', style: 'chirp3' },
+            'nl-NL-Chirp3-HD-F4': { name: 'Nederlands (Chirp3 HD F4)', lang: 'nl', gender: 'female', style: 'chirp3' },
+            'nl-NL-Chirp3-HD-M1': { name: 'Nederlands (Chirp3 HD M1)', lang: 'nl', gender: 'male', style: 'chirp3' },
+            'nl-NL-Chirp3-HD-M2': { name: 'Nederlands (Chirp3 HD M2)', lang: 'nl', gender: 'male', style: 'chirp3' },
+            'nl-NL-Chirp3-HD-M3': { name: 'Nederlands (Chirp3 HD M3)', lang: 'nl', gender: 'male', style: 'chirp3' },
+            'nl-NL-Chirp3-HD-M4': { name: 'Nederlands (Chirp3 HD M4)', lang: 'nl', gender: 'male', style: 'chirp3' },
+
+            // Polish (PL)
+            'pl-PL-Chirp3-HD-F1': { name: 'Polski (Chirp3 HD F1)', lang: 'pl', gender: 'female', style: 'chirp3' },
+            'pl-PL-Chirp3-HD-F2': { name: 'Polski (Chirp3 HD F2)', lang: 'pl', gender: 'female', style: 'chirp3' },
+            'pl-PL-Chirp3-HD-F3': { name: 'Polski (Chirp3 HD F3)', lang: 'pl', gender: 'female', style: 'chirp3' },
+            'pl-PL-Chirp3-HD-F4': { name: 'Polski (Chirp3 HD F4)', lang: 'pl', gender: 'female', style: 'chirp3' },
+            'pl-PL-Chirp3-HD-M1': { name: 'Polski (Chirp3 HD M1)', lang: 'pl', gender: 'male', style: 'chirp3' },
+            'pl-PL-Chirp3-HD-M2': { name: 'Polski (Chirp3 HD M2)', lang: 'pl', gender: 'male', style: 'chirp3' },
+            'pl-PL-Chirp3-HD-M3': { name: 'Polski (Chirp3 HD M3)', lang: 'pl', gender: 'male', style: 'chirp3' },
+            'pl-PL-Chirp3-HD-M4': { name: 'Polski (Chirp3 HD M4)', lang: 'pl', gender: 'male', style: 'chirp3' },
+
+            // Russian (RU)
+            'ru-RU-Chirp3-HD-F1': { name: 'Русский (Chirp3 HD F1)', lang: 'ru', gender: 'female', style: 'chirp3' },
+            'ru-RU-Chirp3-HD-F2': { name: 'Русский (Chirp3 HD F2)', lang: 'ru', gender: 'female', style: 'chirp3' },
+            'ru-RU-Chirp3-HD-F3': { name: 'Русский (Chirp3 HD F3)', lang: 'ru', gender: 'female', style: 'chirp3' },
+            'ru-RU-Chirp3-HD-F4': { name: 'Русский (Chirp3 HD F4)', lang: 'ru', gender: 'female', style: 'chirp3' },
+            'ru-RU-Chirp3-HD-M1': { name: 'Русский (Chirp3 HD M1)', lang: 'ru', gender: 'male', style: 'chirp3' },
+            'ru-RU-Chirp3-HD-M2': { name: 'Русский (Chirp3 HD M2)', lang: 'ru', gender: 'male', style: 'chirp3' },
+            'ru-RU-Chirp3-HD-M3': { name: 'Русский (Chirp3 HD M3)', lang: 'ru', gender: 'male', style: 'chirp3' },
+            'ru-RU-Chirp3-HD-M4': { name: 'Русский (Chirp3 HD M4)', lang: 'ru', gender: 'male', style: 'chirp3' },
+
+            // Chinese (Mandarin, CN)
+            'cmn-CN-Chirp3-HD-F1': { name: '中文 (Chirp3 HD F1)', lang: 'zh', gender: 'female', style: 'chirp3' },
+            'cmn-CN-Chirp3-HD-F2': { name: '中文 (Chirp3 HD F2)', lang: 'zh', gender: 'female', style: 'chirp3' },
+            'cmn-CN-Chirp3-HD-F3': { name: '中文 (Chirp3 HD F3)', lang: 'zh', gender: 'female', style: 'chirp3' },
+            'cmn-CN-Chirp3-HD-F4': { name: '中文 (Chirp3 HD F4)', lang: 'zh', gender: 'female', style: 'chirp3' },
+            'cmn-CN-Chirp3-HD-M1': { name: '中文 (Chirp3 HD M1)', lang: 'zh', gender: 'male', style: 'chirp3' },
+            'cmn-CN-Chirp3-HD-M2': { name: '中文 (Chirp3 HD M2)', lang: 'zh', gender: 'male', style: 'chirp3' },
+            'cmn-CN-Chirp3-HD-M3': { name: '中文 (Chirp3 HD M3)', lang: 'zh', gender: 'male', style: 'chirp3' },
+            'cmn-CN-Chirp3-HD-M4': { name: '中文 (Chirp3 HD M4)', lang: 'zh', gender: 'male', style: 'chirp3' },
+
+            // Hindi (IN)
+            'hi-IN-Chirp3-HD-F1': { name: 'हिन्दी (Chirp3 HD F1)', lang: 'hi', gender: 'female', style: 'chirp3' },
+            'hi-IN-Chirp3-HD-F2': { name: 'हिन्दी (Chirp3 HD F2)', lang: 'hi', gender: 'female', style: 'chirp3' },
+            'hi-IN-Chirp3-HD-F3': { name: 'हिन्दी (Chirp3 HD F3)', lang: 'hi', gender: 'female', style: 'chirp3' },
+            'hi-IN-Chirp3-HD-F4': { name: 'हिन्दी (Chirp3 HD F4)', lang: 'hi', gender: 'female', style: 'chirp3' },
+            'hi-IN-Chirp3-HD-M1': { name: 'हिन्दी (Chirp3 HD M1)', lang: 'hi', gender: 'male', style: 'chirp3' },
+            'hi-IN-Chirp3-HD-M2': { name: 'हिन्दी (Chirp3 HD M2)', lang: 'hi', gender: 'male', style: 'chirp3' },
+            'hi-IN-Chirp3-HD-M3': { name: 'हिन्दी (Chirp3 HD M3)', lang: 'hi', gender: 'male', style: 'chirp3' },
+            'hi-IN-Chirp3-HD-M4': { name: 'हिन्दी (Chirp3 HD M4)', lang: 'hi', gender: 'male', style: 'chirp3' },
+
+            // Arabic (XA - multi-region)
+            'ar-XA-Chirp3-HD-F1': { name: 'العربية (Chirp3 HD F1)', lang: 'ar', gender: 'female', style: 'chirp3' },
+            'ar-XA-Chirp3-HD-F2': { name: 'العربية (Chirp3 HD F2)', lang: 'ar', gender: 'female', style: 'chirp3' },
+            'ar-XA-Chirp3-HD-F3': { name: 'العربية (Chirp3 HD F3)', lang: 'ar', gender: 'female', style: 'chirp3' },
+            'ar-XA-Chirp3-HD-F4': { name: 'العربية (Chirp3 HD F4)', lang: 'ar', gender: 'female', style: 'chirp3' },
+            'ar-XA-Chirp3-HD-M1': { name: 'العربية (Chirp3 HD M1)', lang: 'ar', gender: 'male', style: 'chirp3' },
+            'ar-XA-Chirp3-HD-M2': { name: 'العربية (Chirp3 HD M2)', lang: 'ar', gender: 'male', style: 'chirp3' },
+            'ar-XA-Chirp3-HD-M3': { name: 'العربية (Chirp3 HD M3)', lang: 'ar', gender: 'male', style: 'chirp3' },
+            'ar-XA-Chirp3-HD-M4': { name: 'العربية (Chirp3 HD M4)', lang: 'ar', gender: 'male', style: 'chirp3' },
+
+            // Turkish (TR)
+            'tr-TR-Chirp3-HD-F1': { name: 'Türkçe (Chirp3 HD F1)', lang: 'tr', gender: 'female', style: 'chirp3' },
+            'tr-TR-Chirp3-HD-F2': { name: 'Türkçe (Chirp3 HD F2)', lang: 'tr', gender: 'female', style: 'chirp3' },
+            'tr-TR-Chirp3-HD-F3': { name: 'Türkçe (Chirp3 HD F3)', lang: 'tr', gender: 'female', style: 'chirp3' },
+            'tr-TR-Chirp3-HD-F4': { name: 'Türkçe (Chirp3 HD F4)', lang: 'tr', gender: 'female', style: 'chirp3' },
+            'tr-TR-Chirp3-HD-M1': { name: 'Türkçe (Chirp3 HD M1)', lang: 'tr', gender: 'male', style: 'chirp3' },
+            'tr-TR-Chirp3-HD-M2': { name: 'Türkçe (Chirp3 HD M2)', lang: 'tr', gender: 'male', style: 'chirp3' },
+            'tr-TR-Chirp3-HD-M3': { name: 'Türkçe (Chirp3 HD M3)', lang: 'tr', gender: 'male', style: 'chirp3' },
+            'tr-TR-Chirp3-HD-M4': { name: 'Türkçe (Chirp3 HD M4)', lang: 'tr', gender: 'male', style: 'chirp3' },
+
+            // Indonesian (ID)
+            'id-ID-Chirp3-HD-F1': { name: 'Bahasa Indonesia (Chirp3 HD F1)', lang: 'id', gender: 'female', style: 'chirp3' },
+            'id-ID-Chirp3-HD-F2': { name: 'Bahasa Indonesia (Chirp3 HD F2)', lang: 'id', gender: 'female', style: 'chirp3' },
+            'id-ID-Chirp3-HD-F3': { name: 'Bahasa Indonesia (Chirp3 HD F3)', lang: 'id', gender: 'female', style: 'chirp3' },
+            'id-ID-Chirp3-HD-F4': { name: 'Bahasa Indonesia (Chirp3 HD F4)', lang: 'id', gender: 'female', style: 'chirp3' },
+            'id-ID-Chirp3-HD-M1': { name: 'Bahasa Indonesia (Chirp3 HD M1)', lang: 'id', gender: 'male', style: 'chirp3' },
+            'id-ID-Chirp3-HD-M2': { name: 'Bahasa Indonesia (Chirp3 HD M2)', lang: 'id', gender: 'male', style: 'chirp3' },
+            'id-ID-Chirp3-HD-M3': { name: 'Bahasa Indonesia (Chirp3 HD M3)', lang: 'id', gender: 'male', style: 'chirp3' },
+            'id-ID-Chirp3-HD-M4': { name: 'Bahasa Indonesia (Chirp3 HD M4)', lang: 'id', gender: 'male', style: 'chirp3' },
+
+            // Thai (TH)
+            'th-TH-Chirp3-HD-F1': { name: 'ภาษาไทย (Chirp3 HD F1)', lang: 'th', gender: 'female', style: 'chirp3' },
+            'th-TH-Chirp3-HD-F2': { name: 'ภาษาไทย (Chirp3 HD F2)', lang: 'th', gender: 'female', style: 'chirp3' },
+            'th-TH-Chirp3-HD-F3': { name: 'ภาษาไทย (Chirp3 HD F3)', lang: 'th', gender: 'female', style: 'chirp3' },
+            'th-TH-Chirp3-HD-F4': { name: 'ภาษาไทย (Chirp3 HD F4)', lang: 'th', gender: 'female', style: 'chirp3' },
+            'th-TH-Chirp3-HD-M1': { name: 'ภาษาไทย (Chirp3 HD M1)', lang: 'th', gender: 'male', style: 'chirp3' },
+            'th-TH-Chirp3-HD-M2': { name: 'ภาษาไทย (Chirp3 HD M2)', lang: 'th', gender: 'male', style: 'chirp3' },
+            'th-TH-Chirp3-HD-M3': { name: 'ภาษาไทย (Chirp3 HD M3)', lang: 'th', gender: 'male', style: 'chirp3' },
+            'th-TH-Chirp3-HD-M4': { name: 'ภาษาไทย (Chirp3 HD M4)', lang: 'th', gender: 'male', style: 'chirp3' },
+
+            // Vietnamese (VN)
+            'vi-VN-Chirp3-HD-F1': { name: 'Tiếng Việt (Chirp3 HD F1)', lang: 'vi', gender: 'female', style: 'chirp3' },
+            'vi-VN-Chirp3-HD-F2': { name: 'Tiếng Việt (Chirp3 HD F2)', lang: 'vi', gender: 'female', style: 'chirp3' },
+            'vi-VN-Chirp3-HD-F3': { name: 'Tiếng Việt (Chirp3 HD F3)', lang: 'vi', gender: 'female', style: 'chirp3' },
+            'vi-VN-Chirp3-HD-F4': { name: 'Tiếng Việt (Chirp3 HD F4)', lang: 'vi', gender: 'female', style: 'chirp3' },
+            'vi-VN-Chirp3-HD-M1': { name: 'Tiếng Việt (Chirp3 HD M1)', lang: 'vi', gender: 'male', style: 'chirp3' },
+            'vi-VN-Chirp3-HD-M2': { name: 'Tiếng Việt (Chirp3 HD M2)', lang: 'vi', gender: 'male', style: 'chirp3' },
+            'vi-VN-Chirp3-HD-M3': { name: 'Tiếng Việt (Chirp3 HD M3)', lang: 'vi', gender: 'male', style: 'chirp3' },
+            'vi-VN-Chirp3-HD-M4': { name: 'Tiếng Việt (Chirp3 HD M4)', lang: 'vi', gender: 'male', style: 'chirp3' },
+
+            // English (India)
+            'en-IN-Chirp3-HD-F1': { name: 'English IN (Chirp3 HD F1)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-IN-Chirp3-HD-F2': { name: 'English IN (Chirp3 HD F2)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-IN-Chirp3-HD-F3': { name: 'English IN (Chirp3 HD F3)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-IN-Chirp3-HD-F4': { name: 'English IN (Chirp3 HD F4)', lang: 'en', gender: 'female', style: 'chirp3' },
+            'en-IN-Chirp3-HD-M1': { name: 'English IN (Chirp3 HD M1)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-IN-Chirp3-HD-M2': { name: 'English IN (Chirp3 HD M2)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-IN-Chirp3-HD-M3': { name: 'English IN (Chirp3 HD M3)', lang: 'en', gender: 'male', style: 'chirp3' },
+            'en-IN-Chirp3-HD-M4': { name: 'English IN (Chirp3 HD M4)', lang: 'en', gender: 'male', style: 'chirp3' },
+
+            // Spanish (US)
+            'es-US-Chirp3-HD-F1': { name: 'Español US (Chirp3 HD F1)', lang: 'es', gender: 'female', style: 'chirp3' },
+            'es-US-Chirp3-HD-F2': { name: 'Español US (Chirp3 HD F2)', lang: 'es', gender: 'female', style: 'chirp3' },
+            'es-US-Chirp3-HD-F3': { name: 'Español US (Chirp3 HD F3)', lang: 'es', gender: 'female', style: 'chirp3' },
+            'es-US-Chirp3-HD-F4': { name: 'Español US (Chirp3 HD F4)', lang: 'es', gender: 'female', style: 'chirp3' },
+            'es-US-Chirp3-HD-M1': { name: 'Español US (Chirp3 HD M1)', lang: 'es', gender: 'male', style: 'chirp3' },
+            'es-US-Chirp3-HD-M2': { name: 'Español US (Chirp3 HD M2)', lang: 'es', gender: 'male', style: 'chirp3' },
+            'es-US-Chirp3-HD-M3': { name: 'Español US (Chirp3 HD M3)', lang: 'es', gender: 'male', style: 'chirp3' },
+            'es-US-Chirp3-HD-M4': { name: 'Español US (Chirp3 HD M4)', lang: 'es', gender: 'male', style: 'chirp3' }
         };
     }
 
@@ -376,7 +597,8 @@ class GoogleEngine {
         const nameLower = voiceId.toLowerCase();
         
         // Check patterns in order of specificity
-        const patterns = ['neural2', 'wavenet', 'studio', 'polyglot', 'news', 'journey'];
+        // chirp3 must come before chirp to avoid false matches
+        const patterns = ['chirp3', 'neural2', 'wavenet', 'studio', 'polyglot', 'news', 'journey', 'chirp'];
         
         for (const pattern of patterns) {
             if (nameLower.includes(pattern)) {
@@ -513,11 +735,11 @@ class GoogleEngine {
     /**
      * Extract language code from voice ID
      * @private
-     * @param {string} voiceId - Voice identifier (e.g., 'de-DE-Wavenet-A', 'cmn-CN-Wavenet-A')
-     * @returns {string} Language code (e.g., 'de-DE', 'cmn-CN')
+     * @param {string} voiceId - Voice identifier (e.g., 'de-DE-Wavenet-A', 'cmn-CN-Wavenet-A', 'en-US-Chirp3-HD-F1')
+     * @returns {string} Language code (e.g., 'de-DE', 'cmn-CN', 'en-US')
      */
     _extractLanguageCode(voiceId) {
-        // Match language code pattern before voice type (Wavenet, Neural2, etc.)
+        // Match language code pattern before voice type (Wavenet, Neural2, Chirp3, etc.)
         const match = voiceId.match(/^([a-z]{2,3}-[A-Z]{2})/);
         if (match) {
             return match[1];
