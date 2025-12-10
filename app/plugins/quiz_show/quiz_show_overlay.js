@@ -1348,6 +1348,35 @@
     // LEADERBOARD DISPLAY
     // ============================================
 
+    // ============================================
+    // LEADERBOARD DISPLAY
+    // ============================================
+
+    // Animation configuration for leaderboard entries
+    const LEADERBOARD_ANIMATION_DELAY = 0.1; // seconds per entry
+
+    // Helper function to hide main quiz sections
+    function hideQuizSections() {
+        const questionSection = document.getElementById('questionSection');
+        const answersSection = document.getElementById('answersSection');
+        const timerSection = document.getElementById('timerSection');
+        
+        if (questionSection) questionSection.style.display = 'none';
+        if (answersSection) answersSection.style.display = 'none';
+        if (timerSection) timerSection.style.display = 'none';
+    }
+
+    // Helper function to show main quiz sections
+    function showQuizSections() {
+        const questionSection = document.getElementById('questionSection');
+        const answersSection = document.getElementById('answersSection');
+        const timerSection = document.getElementById('timerSection');
+        
+        if (questionSection) questionSection.style.display = '';
+        if (answersSection) answersSection.style.display = '';
+        if (timerSection) timerSection.style.display = '';
+    }
+
     function handleShowLeaderboard(data) {
         try {
             const { leaderboard, displayType, animationStyle } = data;
@@ -1367,13 +1396,7 @@
             }
 
             // Hide question and answer sections to make room for leaderboard
-            const questionSection = document.getElementById('questionSection');
-            const answersSection = document.getElementById('answersSection');
-            const timerSection = document.getElementById('timerSection');
-            
-            if (questionSection) questionSection.style.display = 'none';
-            if (answersSection) answersSection.style.display = 'none';
-            if (timerSection) timerSection.style.display = 'none';
+            hideQuizSections();
 
             // Set display type
             leaderboardType.textContent = displayType === 'round' ? 'Runde' : displayType === 'season' ? 'Season' : 'Runde + Season';
@@ -1381,14 +1404,11 @@
             // Clear existing entries
             leaderboardList.innerHTML = '';
 
-            // Animation configuration
-            const ANIMATION_DELAY_INCREMENT = 0.1; // seconds per entry
-
             // Create leaderboard entries with staggered animation
             leaderboard.forEach((entry, index) => {
                 const li = document.createElement('li');
                 li.className = 'leaderboard-entry';
-                li.style.animationDelay = `${index * ANIMATION_DELAY_INCREMENT}s`;
+                li.style.animationDelay = `${index * LEADERBOARD_ANIMATION_DELAY}s`;
 
                 const rank = document.createElement('div');
                 rank.className = `leaderboard-rank rank-${index + 1}`;
@@ -1430,13 +1450,7 @@
             }
             
             // Restore question and answer sections
-            const questionSection = document.getElementById('questionSection');
-            const answersSection = document.getElementById('answersSection');
-            const timerSection = document.getElementById('timerSection');
-            
-            if (questionSection) questionSection.style.display = '';
-            if (answersSection) answersSection.style.display = '';
-            if (timerSection) timerSection.style.display = '';
+            showQuizSections();
             
             console.log('Leaderboard hidden');
         } catch (error) {
