@@ -470,8 +470,19 @@ async function saveEditedGiftSound() {
     const animationType = document.getElementById('edit-gift-animation-type').value;
     const animationVolume = parseFloat(document.getElementById('edit-gift-animation-volume').value);
     
-    if (!giftId || !label || !url) {
+    if (isNaN(giftId) || !label || !url) {
         alert('Please fill in all required fields!');
+        return;
+    }
+    
+    // Validate numeric values
+    if (isNaN(volume) || volume < 0 || volume > 1) {
+        alert('Sound volume must be between 0.0 and 1.0!');
+        return;
+    }
+    
+    if (isNaN(animationVolume) || animationVolume < 0 || animationVolume > 1) {
+        alert('Animation volume must be between 0.0 and 1.0!');
         return;
     }
     

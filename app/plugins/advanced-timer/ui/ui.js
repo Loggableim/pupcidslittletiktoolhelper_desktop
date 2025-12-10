@@ -992,18 +992,39 @@ async function saveEventRule() {
     
     const eventType = document.getElementById('event-type-select').value;
     const actionType = document.getElementById('event-action-select').value;
-    const actionValue = parseInt(document.getElementById('event-value-input').value);
+    const actionValueStr = document.getElementById('event-value-input').value;
+    const actionValue = parseInt(actionValueStr, 10);
+    
+    // Validate action value
+    if (isNaN(actionValue) || actionValue < 0) {
+        showNotification('Error', 'Please enter a valid positive number for the value', 'error');
+        return;
+    }
     
     // Collect conditions based on event type
     const conditions = {};
     
     if (eventType === 'gift') {
         const giftName = document.getElementById('condition-gift-name')?.value;
-        const minCoins = parseInt(document.getElementById('condition-min-coins')?.value || 0);
+        const minCoinsStr = document.getElementById('condition-min-coins')?.value || '0';
+        const minCoins = parseInt(minCoinsStr, 10);
+        
+        if (isNaN(minCoins) || minCoins < 0) {
+            showNotification('Error', 'Minimum coins must be a valid positive number', 'error');
+            return;
+        }
+        
         if (giftName) conditions.giftName = giftName;
         if (minCoins > 0) conditions.minCoins = minCoins;
     } else if (eventType === 'like') {
-        const minLikes = parseInt(document.getElementById('condition-min-likes')?.value || 0);
+        const minLikesStr = document.getElementById('condition-min-likes')?.value || '0';
+        const minLikes = parseInt(minLikesStr, 10);
+        
+        if (isNaN(minLikes) || minLikes < 0) {
+            showNotification('Error', 'Minimum likes must be a valid positive number', 'error');
+            return;
+        }
+        
         if (minLikes > 0) conditions.minLikes = minLikes;
     } else if (eventType === 'chat') {
         const command = document.getElementById('condition-command')?.value;
