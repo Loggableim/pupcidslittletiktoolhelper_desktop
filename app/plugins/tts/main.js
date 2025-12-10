@@ -486,7 +486,7 @@ class TTSPlugin {
                     }
 
                     // Attempt validation if voices were fetched successfully
-                    if (canValidate && engineVoices && Object.keys(engineVoices).length > 0) {
+                    if (canValidate && typeof engineVoices === 'object' && engineVoices !== null && Object.keys(engineVoices).length > 0) {
                         if (!engineVoices[updates.defaultVoice]) {
                             // Voice not found - but check if this might be due to fallback voices
                             // Log warning with helpful info but DON'T block the save
