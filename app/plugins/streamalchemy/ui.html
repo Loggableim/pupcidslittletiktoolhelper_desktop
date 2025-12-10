@@ -978,6 +978,9 @@
         let config = {};
         let stats = {};
         let items = [];
+        
+        // Constants (should match backend config)
+        const FORGE_THRESHOLD = 10; // Number of crafts needed to upgrade rarity tier
 
         // Tab switching
         document.querySelectorAll('.tab').forEach(tab => {
@@ -1437,7 +1440,7 @@
                                 <div style="flex: 1;">
                                     <div style="font-weight: 600; font-size: 1.1rem;">${item.name}</div>
                                     <div class="rarity-${item.rarity.toLowerCase()}" style="font-size: 0.9rem;">${item.rarity}</div>
-                                    ${item.isCrafted && item.forgeCount ? `<div style="font-size: 0.85rem; color: var(--color-text-secondary);">Forge: ${item.forgeCount % 10}/10</div>` : ''}
+                                    ${item.isCrafted && item.forgeCount ? `<div style="font-size: 0.85rem; color: var(--color-text-secondary);">Forge: ${item.forgeCount % FORGE_THRESHOLD}/${FORGE_THRESHOLD}</div>` : ''}
                                 </div>
                             </div>
                         `).join('')}
@@ -1480,7 +1483,7 @@
                     <img src="${item.imageURL || '/assets/placeholder-item.png'}" alt="${item.name}">
                     <div class="selected-item-name">${item.name}</div>
                     <div class="selected-item-rarity rarity-${item.rarity.toLowerCase()}">${item.rarity}</div>
-                    ${item.isCrafted && item.forgeCount ? `<div style="font-size: 0.85rem; color: var(--color-text-secondary);">Forge: ${item.forgeCount % 10}/10</div>` : ''}
+                    ${item.isCrafted && item.forgeCount ? `<div style="font-size: 0.85rem; color: var(--color-text-secondary);">Forge: ${item.forgeCount % FORGE_THRESHOLD}/${FORGE_THRESHOLD}</div>` : ''}
                 </div>
             `;
             
@@ -1546,8 +1549,8 @@
                     if (data.item.wasForged) {
                         resultDiv.textContent += ` - GEFORGED!`;
                     } else if (data.item.forgeCount) {
-                        const remaining = 10 - (data.item.forgeCount % 10);
-                        resultDiv.textContent += ` - Forge: ${data.item.forgeCount % 10}/10 (${remaining} weitere für Upgrade)`;
+                        const remaining = FORGE_THRESHOLD - (data.item.forgeCount % FORGE_THRESHOLD);
+                        resultDiv.textContent += ` - Forge: ${data.item.forgeCount % FORGE_THRESHOLD}/${FORGE_THRESHOLD} (${remaining} weitere für Upgrade)`;
                     }
                     
                     // Reload items

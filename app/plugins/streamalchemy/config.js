@@ -16,9 +16,16 @@ module.exports = {
     CRAFTING_WINDOW_MS: 6000, // 6 seconds
     
     /**
+     * Forge system settings
+     * Number of times the same combination must be crafted to upgrade to next rarity tier
+     */
+    FORGE_THRESHOLD: 10, // Craft same combo 10 times to upgrade rarity
+    
+    /**
      * Rarity tier thresholds based on combined coin values
      * When two items are combined, their coin values are summed
      * and the total determines the crafted item's rarity
+     * NOTE: With the new forge system, this is deprecated. All crafted items start at Common.
      */
     RARITY_TIERS: {
         BRONZE: {

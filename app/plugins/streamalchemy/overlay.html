@@ -107,9 +107,10 @@
             
             // Show forge progress if this is a crafted item
             if (item.isCrafted && item.forgeCount !== undefined) {
-                const progress = item.forgeCount % 10;
-                const remaining = 10 - progress;
-                forgeInfo.textContent = `Forge Progress: ${progress}/10 (${remaining} more to upgrade)`;
+                const FORGE_THRESHOLD = 10; // Should match backend config
+                const progress = item.forgeCount % FORGE_THRESHOLD;
+                const remaining = FORGE_THRESHOLD - progress;
+                forgeInfo.textContent = `Forge Progress: ${progress}/${FORGE_THRESHOLD} (${remaining} more to upgrade)`;
                 forgeInfo.classList.remove('hidden');
             } else {
                 forgeInfo.classList.add('hidden');

@@ -158,7 +158,7 @@ class CraftingService {
 
     /**
      * Attempt to forge an existing crafted item to the next rarity tier
-     * Forging happens when the same combination is crafted 10 times
+     * Forging happens when the same combination is crafted FORGE_THRESHOLD times
      * @param {Object} item - Existing crafted item
      * @returns {Promise<Object>} Item (possibly forged to next tier)
      */
@@ -170,8 +170,8 @@ class CraftingService {
         const rarityLevels = ['Common', 'Rare', 'Legendary', 'Mythic'];
         const maxForgeLevel = rarityLevels.length - 1;
         
-        // Check if we can forge to next level (every 10 crafts)
-        if (currentForgeCount >= 10 && currentForgeLevel < maxForgeLevel) {
+        // Check if we can forge to next level (every FORGE_THRESHOLD crafts)
+        if (currentForgeCount >= config.FORGE_THRESHOLD && currentForgeLevel < maxForgeLevel) {
             const newForgeLevel = currentForgeLevel + 1;
             const newRarity = rarityLevels[newForgeLevel];
             
@@ -204,8 +204,8 @@ class CraftingService {
                 forgeCount: item.forgeCount
             });
             
-            const remaining = 10 - (currentForgeCount % 10);
-            this.logger.info(`[CRAFTING SERVICE] Forge progress: ${currentForgeCount % 10}/10 (${remaining} more for next tier)`);
+            const remaining = config.FORGE_THRESHOLD - (currentForgeCount % config.FORGE_THRESHOLD);
+            this.logger.info(`[CRAFTING SERVICE] Forge progress: ${currentForgeCount % config.FORGE_THRESHOLD}/${config.FORGE_THRESHOLD} (${remaining} more for next tier)`);
             
             item.wasForged = false;
             return item;
