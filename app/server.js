@@ -3314,9 +3314,9 @@ const PORT = process.env.PORT || 3000;
 </html>`);
         });
 
-        // Browser automatisch öffnen (mit Guard gegen Duplikate)
-        // Respektiert OPEN_BROWSER Umgebungsvariable
-        const shouldOpenBrowser = process.env.OPEN_BROWSER !== 'false' && !browserOpened;
+        // Browser opening is handled by the splashscreen launcher.exe
+        // Only open browser if explicitly requested via OPEN_BROWSER=true
+        const shouldOpenBrowser = process.env.OPEN_BROWSER === 'true' && !browserOpened;
         
         if (shouldOpenBrowser) {
             browserOpened = true; // Setze Guard sofort
@@ -3329,8 +3329,6 @@ const PORT = process.env.PORT || 3000;
                 logger.info('ℹ️  Browser konnte nicht automatisch geöffnet werden.');
                 logger.info(`   Öffne manuell: http://localhost:${PORT}/dashboard.html\n`);
             }
-        } else if (process.env.OPEN_BROWSER === 'false') {
-            logger.info('ℹ️  Browser-Auto-Open deaktiviert (OPEN_BROWSER=false)\n');
         }
     });
 })(); // Schließe async IIFE
