@@ -15,10 +15,10 @@ Follow these steps to create a working LTTH installer:
 1. Go to: https://nodejs.org/dist/v18.19.1/node-v18.19.1-win-x64.zip
 2. Download the ZIP file (~30 MB)
 3. Extract the ZIP to get the `node-v18.19.1-win-x64` folder
-4. Copy the contents to: `tools/launcher/assets/node/`
-   - Result: `tools/launcher/assets/node/node.exe` should exist
-   - Result: `tools/launcher/assets/node/npm` should exist
-   - Result: `tools/launcher/assets/node/node_modules/` should exist
+4. Copy the contents to: `build-src/assets/node/`
+   - Result: `build-src/assets/node/node.exe` should exist
+   - Result: `build-src/assets/node/npm` should exist
+   - Result: `build-src/assets/node/node_modules/` should exist
 
 **Important:** If you skip this step, the installer will still work, but users will need to install Node.js themselves.
 
@@ -28,30 +28,26 @@ Make sure these files exist:
 
 ```
 pupcidslittletiktoolhelper_desktop/
-├── launcher/
-│   └── launcher.exe                     ← Desktop launcher (should exist)
-├── tools/
-│   └── launcher/
-│       ├── installer/
-│       │   ├── ltth-installer.nsi       ← Main installer script (READY)
-│       │   ├── license.txt              ← License text (READY)
-│       │   ├── installer-header.bmp     ← Header image (READY)
-│       │   ├── installer-sidebar.bmp    ← Sidebar image (READY)
-│       │   ├── splash-screen.bmp        ← Splash screen (READY)
-│       │   ├── banner.bmp               ← Banner image (READY)
-│       │   ├── README.md                ← Documentation (READY)
-│       │   └── build-installer.bat      ← Build script (READY)
-│       ├── assets/
-│       │   └── node/                    ← Node.js portable (DOWNLOAD REQUIRED)
-│       │       ├── node.exe
-│       │       ├── npm
-│       │       └── node_modules/
-│       ├── ltthgit.exe                  ← Cloud launcher (should exist)
-│       └── icon.ico                     ← App icon (should exist)
-├── src/                                 ← Application files (should exist)
-│   └── server.js                        ← Main server file
-└── plugins/                             ← Plugin files (should exist)
-    └── ... (30+ plugins)
+├── build-src/
+│   ├── installer/
+│   │   ├── ltth-installer.nsi          ← Main installer script (READY)
+│   │   ├── license.txt                 ← License text (READY)
+│   │   ├── installer-header.bmp        ← Header image (READY)
+│   │   ├── installer-sidebar.bmp       ← Sidebar image (READY)
+│   │   ├── splash-screen.bmp           ← Splash screen (READY)
+│   │   ├── banner.bmp                  ← Banner image (READY)
+│   │   ├── README.md                   ← Documentation (READY)
+│   │   └── build-installer.bat         ← Build script (READY)
+│   ├── assets/
+│   │   └── node/                       ← Node.js portable (DOWNLOAD REQUIRED)
+│   │       ├── node.exe
+│   │       ├── npm
+│   │       └── node_modules/
+│   ├── launcher.exe                    ← Launcher (should exist)
+│   ├── ltthgit.exe                     ← Cloud launcher (should exist)
+│   └── icon.ico                        ← App icon (should exist)
+└── app/                                ← Application files (should exist)
+    └── server.js                       ← Main server file
 ```
 
 ### Step 4: Build the Installer
@@ -59,40 +55,40 @@ pupcidslittletiktoolhelper_desktop/
 #### Option A: Drag and Drop (Easiest)
 
 1. Open Windows Explorer
-2. Navigate to: `tools/launcher/installer/`
+2. Navigate to: `build-src/installer/`
 3. Locate: `ltth-installer.nsi`
 4. Drag and drop `ltth-installer.nsi` into the **MakeNSISW** window
    - MakeNSISW should have been installed with NSIS
    - Find it in Start Menu: "NSIS" → "MakeNSISW"
 5. Wait for compilation (30-60 seconds)
-6. Done! The installer will be created: `LTTH-Setup-1.2.1.exe`
+6. Done! The installer will be created: `LTTH-Setup-1.2.0.exe`
 
 #### Option B: Right-Click (Quick)
 
-1. Navigate to: `tools/launcher/installer/`
+1. Navigate to: `build-src/installer/`
 2. Right-click on: `ltth-installer.nsi`
 3. Select: "Compile NSIS Script"
 4. Wait for compilation
-5. Done! Check for: `LTTH-Setup-1.2.1.exe`
+5. Done! Check for: `LTTH-Setup-1.2.0.exe`
 
 #### Option C: Batch Script (Automated)
 
-1. Navigate to: `tools/launcher/installer/`
+1. Navigate to: `build-src/installer/`
 2. Double-click: `build-installer.bat`
 3. The script will check for NSIS and required files
 4. It will compile the installer automatically
-5. Done! Check for: `LTTH-Setup-1.2.1.exe`
+5. Done! Check for: `LTTH-Setup-1.2.0.exe`
 
 #### Option D: Command Line (Advanced)
 
 ```bash
-cd tools/launcher/installer
+cd build-src/installer
 "C:\Program Files (x86)\NSIS\makensis.exe" ltth-installer.nsi
 ```
 
 ### Step 5: Test the Installer
 
-1. Locate the created installer: `tools/launcher/installer/LTTH-Setup-1.2.1.exe`
+1. Locate the created installer: `build-src/installer/LTTH-Setup-1.2.0.exe`
 2. **Important:** Test on a clean system or VM if possible
 3. Run the installer:
    - Right-click → "Run as Administrator"
@@ -114,7 +110,7 @@ cd tools/launcher/installer
 
 ### Step 6: Distribute
 
-Once tested, you can distribute `LTTH-Setup-1.2.1.exe` to users!
+Once tested, you can distribute `LTTH-Setup-1.2.0.exe` to users!
 
 **Recommended:**
 - Upload to GitHub Releases
@@ -132,18 +128,22 @@ Once tested, you can distribute `LTTH-Setup-1.2.1.exe` to users!
 - If not, download and install from: https://nsis.sourceforge.io/Download
 - Restart your computer after installation
 
-### "File not found: ../../../launcher/launcher.exe"
+### "File not found: ../launcher.exe"
 
 **Solution:**
-- Verify `launcher.exe` exists in `/launcher/`
-- If missing, check if it exists in `tools/launcher/launcher.exe` and copy it to `/launcher/`
+- Verify `launcher.exe` exists in `build-src/`
+- If missing, build it first:
+  ```bash
+  cd build-src
+  go build -o launcher.exe launcher-gui.go
+  ```
 
-### "File not found: ../../../src"
+### "File not found: ../../app"
 
 **Solution:**
 - Verify you're in the correct directory
-- The script expects to be in `tools/launcher/installer/`
-- Check that `src/` directory exists in repository root
+- The script expects to be in `build-src/installer/`
+- Check that `app/` directory exists in repository root
 
 ### "Node.js not found" (during build)
 
@@ -152,7 +152,7 @@ Once tested, you can distribute `LTTH-Setup-1.2.1.exe` to users!
 - The installer will be built without Node.js
 - To include Node.js:
   1. Download: https://nodejs.org/dist/v18.19.1/node-v18.19.1-win-x64.zip
-  2. Extract to: `tools/launcher/assets/node/`
+  2. Extract to: `build-src/assets/node/`
 
 ### Installer is very large (>200 MB)
 
@@ -172,7 +172,7 @@ Once tested, you can distribute `LTTH-Setup-1.2.1.exe` to users!
 - Get a code signing certificate (e.g., from Sectigo, DigiCert)
 - Sign the installer:
   ```bash
-  signtool.exe sign /f certificate.pfx /p password /t http://timestamp.digicert.com LTTH-Setup-1.2.1.exe
+  signtool.exe sign /f certificate.pfx /p password /t http://timestamp.digicert.com LTTH-Setup-1.2.0.exe
   ```
 
 ---
@@ -181,7 +181,7 @@ Once tested, you can distribute `LTTH-Setup-1.2.1.exe` to users!
 
 ### Change Version Number
 
-Edit `tools/launcher/installer/ltth-installer.nsi` line 24:
+Edit `build-src/installer/ltth-installer.nsi` line 18:
 ```nsis
 !define PRODUCT_VERSION "1.3.0"  ; Change this
 ```
@@ -273,7 +273,7 @@ Before releasing the installer:
 - [ ] Launcher builds successfully
 - [ ] Images created (already done)
 - [ ] NSIS script compiles without errors
-- [ ] Installer created: `LTTH-Setup-1.2.1.exe`
+- [ ] Installer created: `LTTH-Setup-1.2.0.exe`
 - [ ] Tested installation on clean system
 - [ ] Tested all shortcuts work
 - [ ] Tested application launches
@@ -300,11 +300,12 @@ Before releasing the installer:
 1. Install NSIS
 2. Download Node.js portable (optional)
 3. Drag `ltth-installer.nsi` into MakeNSISW
-4. Get `LTTH-Setup-1.2.1.exe`
+4. Get `LTTH-Setup-1.2.0.exe`
 5. Distribute!
 
 **Questions?**
-- Read: `tools/launcher/installer/README.md` (detailed docs)
+- Read: `build-src/installer/README.md` (detailed docs)
+- Check: Migration guide at `migration-guides/01_NSIS_INSTALLER_GUIDE.md`
 - Issues: https://github.com/Loggableim/pupcidslittletiktoolhelper_desktop/issues
 
 ---

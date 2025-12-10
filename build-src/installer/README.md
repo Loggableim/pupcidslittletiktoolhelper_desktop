@@ -51,43 +51,28 @@ The NSIS installer creates a complete setup package that installs:
 
 ## 📁 Directory Structure
 
-The installer is located in the repository at `tools/launcher/installer/`.
-
 ```
-/
-├── launcher/                         ← Main launcher directory (NEW)
-│   └── launcher.exe                  ← Desktop launcher executable
-├── src/                              ← Application source code
-│   ├── server.js                     ← Main server
-│   ├── modules/                      ← Core modules
-│   ├── public/                       ← Frontend files
-│   └── ... (other app files)
-├── plugins/                          ← Plugin directory (NEW)
-│   ├── tts/                          ← TTS plugin
-│   ├── soundboard/                   ← Soundboard plugin
-│   └── ... (30+ plugins)
-├── assets/                           ← Static assets
-│   └── images/                       ← Application images
-└── tools/                            ← Build tools
-    └── launcher/                     ← Launcher build directory
-        ├── installer/                ← NSIS installer files
-        │   ├── ltth-installer.nsi    ← Main NSIS script
-        │   ├── build-installer.bat   ← Build script with signing
-        │   ├── sign-file.bat         ← Code signing helper
-        │   ├── SIGNING.md            ← Code signing docs
-        │   ├── license.txt           ← License text
-        │   ├── installer-header.bmp  ← Header image (150x57)
-        │   ├── installer-sidebar.bmp ← Sidebar image (164x314)
-        │   ├── splash-screen.bmp     ← Splash screen (500x300)
-        │   ├── banner.bmp            ← Banner image (500x100)
-        │   └── README.md             ← This file
-        ├── assets/
-        │   └── node/                 ← Node.js portable (DOWNLOAD REQUIRED)
-        │       ├── node.exe          ← Node.js executable
-        │       ├── npm               ← NPM package manager
-        │       └── node_modules/     ← Node.js core modules
-        ├── ltthgit.exe               ← Cloud launcher (existing)
-        └── icon.ico                  ← Application icon
+build-src/
+├── installer/
+│   ├── ltth-installer.nsi          ← Main NSIS script (drag this into MakeNSISW)
+│   ├── build-installer.bat         ← Automated build script with signing support
+│   ├── sign-file.bat               ← Code signing helper (called by NSIS)
+│   ├── SIGNING.md                  ← Code signing documentation
+│   ├── license.txt                 ← License text (auto-generated from LICENSE)
+│   ├── installer-header.bmp        ← Header image (150x57, auto-generated)
+│   ├── installer-sidebar.bmp       ← Sidebar image (164x314, auto-generated)
+│   ├── splash-screen.bmp           ← Splash screen (500x300, auto-generated)
+│   ├── banner.bmp                  ← Banner image (500x100, auto-generated)
+│   └── README.md                   ← This file
+├── assets/
+│   ├── node/                       ← Node.js portable runtime (DOWNLOAD REQUIRED)
+│   │   ├── node.exe                ← Node.js executable
+│   │   ├── npm                     ← NPM package manager
+│   │   └── node_modules/           ← Node.js core modules
+│   └── splash.html                 ← Existing splash (for ltthgit.exe)
+├── launcher.exe                    ← Local launcher (existing)
+├── ltthgit.exe                     ← Cloud launcher (existing)
+└── icon.ico                        ← Application icon (existing)
 ```
 
 ## 🚀 Building the Installer
@@ -97,16 +82,15 @@ The installer is located in the repository at `tools/launcher/installer/`.
 1. **Prepare Node.js** (if not already done):
    ```bash
    # Download Node.js portable from https://nodejs.org/dist/v18.19.1/
-   # Extract to tools/launcher/assets/node/
+   # Extract to build-src/assets/node/
    ```
 
 2. **Verify all files are in place**:
-   - ✅ `/launcher/launcher.exe` exists (main launcher)
-   - ✅ `tools/launcher/icon.ico` exists
-   - ✅ `/src/` directory exists with all application files
-   - ✅ `/plugins/` directory exists with all plugins
-   - ✅ `tools/launcher/installer/ltth-installer.nsi` exists
-   - ✅ `tools/launcher/assets/node/node.exe` exists (optional)
+   - ✅ `build-src/launcher.exe` exists
+   - ✅ `build-src/icon.ico` exists
+   - ✅ `app/` directory exists with all files
+   - ✅ `build-src/installer/ltth-installer.nsi` exists
+   - ✅ `build-src/assets/node/node.exe` exists (optional)
 
 3. **Build the installer**:
    - Open **MakeNSISW** (NSIS compiler GUI)
@@ -115,24 +99,24 @@ The installer is located in the repository at `tools/launcher/installer/`.
    - Wait for compilation (30-60 seconds)
 
 4. **Result**:
-   - Output: `tools/launcher/installer/LTTH-Setup-1.2.1.exe`
+   - Output: `build-src/installer/LTTH-Setup-1.2.0.exe`
    - Size: ~50-200 MB (depending on Node.js inclusion)
 
 ### Method 2: Command Line
 
 ```bash
 # Navigate to installer directory
-cd tools/launcher/installer
+cd build-src/installer
 
 # Compile using NSIS
 "C:\Program Files (x86)\NSIS\makensis.exe" ltth-installer.nsi
 
-# Output: LTTH-Setup-1.2.1.exe
+# Output: LTTH-Setup-1.2.0.exe
 ```
 
 ### Method 3: Batch Script (Automated)
 
-The `build-installer.bat` is already provided in `tools/launcher/installer/`:
+Create `build-installer.bat` in `build-src/installer/`:
 
 ```batch
 @echo off
@@ -155,7 +139,7 @@ if %ERRORLEVEL% == 0 (
     echo.
     echo ============================================
     echo SUCCESS! Installer created:
-    echo LTTH-Setup-^<version^>.exe
+    echo LTTH-Setup-1.2.0.exe
     echo ============================================
 ) else (
     echo.
@@ -218,11 +202,10 @@ When a user runs the installer, they can choose to install:
 
 ### Required:
 - **LTTH Core Application** (read-only, always installed)
-  - All files from `src/` directory (backend application)
-  - All plugins from `plugins/` directory (30+ plugins)
-  - `launcher.exe` (main desktop launcher)
+  - All files from `app/` directory
+  - `launcher.exe` (main launcher)
   - `icon.ico` (application icon)
-  - `ltthgit.exe` (cloud launcher, if available)
+  - `ltthgit.exe` (if available)
   - Uninstaller
 
 ### Optional:
@@ -340,7 +323,7 @@ The installer is prepared for VPatch integration for automatic updates:
 ### After Building:
 
 1. **Test Installation**:
-   - Run `LTTH-Setup-1.2.1.exe` as Administrator
+   - Run `LTTH-Setup-1.2.0.exe` as Administrator
    - Select all components
    - Complete installation
    - Verify shortcuts work
@@ -444,7 +427,7 @@ Pop $0
 ### Code Signing (Recommended):
 
 ```bash
-signtool.exe sign /f certificate.pfx /p password /t http://timestamp.digicert.com LTTH-Setup-1.2.1.exe
+signtool.exe sign /f certificate.pfx /p password /t http://timestamp.digicert.com LTTH-Setup-1.2.0.exe
 ```
 
 ## 📚 Additional Resources
@@ -481,5 +464,5 @@ For issues or questions:
 ---
 
 **License**: CC-BY-NC-4.0  
-**Version**: 1.2.1  
-**Last Updated**: 2025-12-10
+**Version**: 1.2.0  
+**Last Updated**: 2025-12-07

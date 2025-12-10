@@ -410,7 +410,7 @@ const leaderboard = new Leaderboard(db, io, activeProfile); // Pass streamer_id 
 logger.info(`✅ Leaderboard initialized with streamer scope: ${activeProfile}`);
 
 // Plugin-System initialisieren
-const pluginsDir = path.join(__dirname, '..', 'plugins'); // Plugins are now at root level
+const pluginsDir = path.join(__dirname, 'plugins');
 const pluginLoader = new PluginLoader(pluginsDir, app, io, db, logger, configPathManager);
 logger.info('🔌 Plugin Loader initialized');
 
@@ -2894,7 +2894,7 @@ const PORT = process.env.PORT || 3000;
         // ========== PLUGIN STATIC FILES ==========
         // Register static file serving AFTER plugins are loaded
         // This ensures plugin-registered routes take precedence over static file serving
-        app.use('/plugins', express.static(path.join(__dirname, '..', 'plugins')));
+        app.use('/plugins', express.static(path.join(__dirname, 'plugins')));
         logger.info('📂 Plugin static files served from /plugins/*');
 
         if (loadedCount > 0) {
@@ -2945,7 +2945,7 @@ const PORT = process.env.PORT || 3000;
             logger.info('ℹ️  No plugins found in /plugins directory');
             
             // Still register static file serving even with no plugins
-            app.use('/plugins', express.static(path.join(__dirname, '..', 'plugins')));
+            app.use('/plugins', express.static(path.join(__dirname, 'plugins')));
             logger.info('📂 Plugin static files served from /plugins/*');
             
             initState.setPluginsLoaded(0);
