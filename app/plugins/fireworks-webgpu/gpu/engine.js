@@ -26,8 +26,7 @@ const CONFIG = {
     gravity: 0.08,
     airResistance: 0.99,
     rocketAirResistance: 0.995, // Air resistance for rockets (slightly less than particles)
-    rocketSpeed: -12,
-    rocketAcceleration: -0.08,
+    rocketSpeed: -12, // Negative = upward motion in canvas Y-down coordinates
     backgroundColor: 'rgba(0, 0, 0, 0)',
     defaultColors: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
     comboThrottleMinInterval: 100,
@@ -584,6 +583,9 @@ class FireworksEngine {
     }
     
     updateRockets(deltaTime) {
+        // Pre-calculate physics timestep to avoid redundant multiplications
+        const dt = deltaTime * this.config.physicsScale;
+        
         // Update rocket positions
         for (let i = this.rockets.length - 1; i >= 0; i--) {
             const rocket = this.rockets[i];
@@ -591,11 +593,11 @@ class FireworksEngine {
             // Apply physics to rocket
             // In canvas Y-down coordinates: positive Y is down, negative velocity = upward motion
             // Gravity acts downward (positive direction), slowing upward rockets
-            rocket.vy += this.config.gravity * deltaTime * this.config.physicsScale;
+            rocket.vy += this.config.gravity * dt;
             rocket.vx *= this.config.rocketAirResistance; // Air resistance
             
-            rocket.x += rocket.vx * deltaTime * this.config.physicsScale;
-            rocket.y += rocket.vy * deltaTime * this.config.physicsScale;
+            rocket.x += rocket.vx * dt;
+            rocket.y += rocket.vy * dt;
             
             // Check if rocket should explode
             // Rocket explodes when velocity becomes positive (moving down) or reaches target height
@@ -664,8 +666,7 @@ class FireworksEngine {
             vx: (Math.random() - 0.5) * 2, // Slight horizontal drift
             vy: this.config.rocketSpeed, // Initial velocity (negative = upward in canvas Y-down coordinates)
             particleCount: particleCount,
-            colors: colors,
-            options: options // Store original options for explosion
+            colors: colors
         };
         
         this.rockets.push(rocket);
