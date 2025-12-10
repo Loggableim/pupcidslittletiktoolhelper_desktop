@@ -1424,7 +1424,7 @@ async function loadSettings() {
         const ttsGoogleKeyInput = document.getElementById('tts-google-api-key');
         if (ttsGoogleKeyInput && settings.tts_google_api_key) {
             // Show masked value if key exists
-            ttsGoogleKeyInput.value = '***HIDDEN***';
+            ttsGoogleKeyInput.value = '***REDACTED***';
             ttsGoogleKeyInput.placeholder = 'API key configured (hidden)';
         }
 
@@ -1583,7 +1583,7 @@ async function saveTTSAPIKeys() {
         const updateData = {};
         
         // Only include non-empty keys that aren't placeholders
-        if (googleKey && googleKey !== '***HIDDEN***') {
+        if (googleKey && googleKey !== '***REDACTED***') {
             updateData.tts_google_api_key = googleKey;
         }
         if (speechifyKey && speechifyKey !== '***REDACTED***') {
@@ -1607,7 +1607,7 @@ async function saveTTSAPIKeys() {
             alert('✅ TTS API Keys saved successfully!\n\nNote: The TTS plugin may need to reload to use the new keys.');
             
             // Update local settings cache
-            if (googleKey && googleKey !== '***HIDDEN***') settings.tts_google_api_key = googleKey;
+            if (googleKey && googleKey !== '***REDACTED***') settings.tts_google_api_key = googleKey;
             if (speechifyKey && speechifyKey !== '***REDACTED***') settings.tts_speechify_api_key = speechifyKey;
             if (elevenlabsKey && elevenlabsKey !== '***REDACTED***') settings.tts_elevenlabs_api_key = elevenlabsKey;
             if (openaiKey && openaiKey !== '***REDACTED***') settings.tts_openai_api_key = openaiKey;
