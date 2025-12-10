@@ -59,10 +59,11 @@ class OpenAIEngine {
      * Convert text to speech using OpenAI TTS
      * @param {string} text - The text to convert
      * @param {string} voiceId - The voice ID (e.g., 'tts-1-alloy' or 'tts-1-hd-alloy')
+     * @param {number} speed - Speaking rate (0.25 - 4.0)
      * @param {object} options - Additional options
      * @returns {Promise<string>} Base64-encoded audio data
      */
-    async synthesize(text, voiceId = 'tts-1-alloy', options = {}) {
+    async synthesize(text, voiceId = 'tts-1-alloy', speed = 1.0, options = {}) {
         const voices = OpenAIEngine.getVoices();
         const voiceConfig = voices[voiceId];
 
@@ -80,7 +81,7 @@ class OpenAIEngine {
                 voice: voice,
                 input: text,
                 response_format: options.format || 'mp3',
-                speed: options.speed || 1.0
+                speed: speed || 1.0
             });
 
             // Convert the response to a buffer and then to base64
