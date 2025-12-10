@@ -557,13 +557,24 @@
                 element.style.fontSize = size + 'px';
             }
 
-            // Set initial position with explicit position style to prevent top-left corner freeze
+            // Set initial position styles
             element.style.position = 'absolute';
             element.style.left = '0';
             element.style.top = '0';
-            element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+            // Hide element initially to prevent flash at (0,0)
+            element.style.visibility = 'hidden';
 
+            // Add to DOM first
             document.getElementById('canvas-container').appendChild(element);
+            
+            // Force reflow to ensure element is in DOM before applying transform
+            // offsetHeight is used because it's a reliable property that triggers reflow
+            // without side effects (read-only, always available, minimal performance cost)
+            void element.offsetHeight;
+            
+            // Now apply transform and show element
+            element.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+            element.style.visibility = 'visible';
 
             // Track emoji
             const emojiObj = {
