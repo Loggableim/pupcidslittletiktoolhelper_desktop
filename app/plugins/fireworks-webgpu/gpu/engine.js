@@ -1512,6 +1512,292 @@ class FireworksEngine {
         this.addFirework(options);
     }
 
+    async loadImage(url) {
+        if (this.imageCache.has(url)) {
+            return this.imageCache.get(url);
+        }
+
+        // Validate URL to prevent XSS
+        if (!url || typeof url !== 'string') return null;
+        const lowerUrl = url.toLowerCase();
+        const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:', 'about:'];
+        if (dangerousProtocols.some(protocol => lowerUrl.startsWith(protocol))) {
+            console.warn('[WebGPU Fireworks] Invalid image URL blocked:', url);
+            return null;
+        }
+
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                this.imageCache.set(url, img);
+                resolve(img);
+            };
+            img.onerror = () => resolve(null);
+            img.src = url;
+        });
+    }
+
+    async handleTrigger(data) {
+        const {
+            position = { x: 0.5, y: 0.5 },
+            shape = 'burst',
+            colors = this.config.defaultColors,
+            intensity = 1.0,
+            particleCount = 50,
+            giftImage = null,
+            userAvatar = null,
+            avatarParticleChance = 0.3,
+            tier = 'medium',
+            username = null,
+            coins = 0,
+            combo = 1,
+            playSound = true,
+            targetFps = null,
+            minFps = null,
+            despawnFadeDuration = null,
+            giftPopupEnabled = null,
+            giftPopupPosition = null
+        } = data;
+
+        // Update config values if provided
+        if (targetFps !== null) {
+            this.config.targetFps = targetFps;
+            CONFIG.targetFps = targetFps;
+        }
+        if (minFps !== null) {
+            this.config.minFps = minFps;
+            CONFIG.minFps = minFps;
+        }
+        if (despawnFadeDuration !== null) {
+            this.config.despawnFadeDuration = despawnFadeDuration;
+            CONFIG.despawnFadeDuration = despawnFadeDuration;
+        }
+        if (giftPopupEnabled !== null) {
+            this.config.giftPopupEnabled = giftPopupEnabled;
+            CONFIG.giftPopupEnabled = giftPopupEnabled;
+        }
+        if (giftPopupPosition !== null) {
+            this.config.giftPopupPosition = giftPopupPosition;
+            CONFIG.giftPopupPosition = giftPopupPosition;
+        }
+
+        // Combo throttling
+        const now = performance.now();
+        const timeSinceLastTrigger = now - this.lastComboTriggerTime;
+        const minInterval = CONFIG.comboThrottleMinInterval;
+        
+        if (this.lastComboTriggerTime > 0 && timeSinceLastTrigger < minInterval) {
+            console.log('[WebGPU Fireworks] Combo throttled (too fast)');
+            return;
+        }
+        
+        this.lastComboTriggerTime = now;
+        
+        // High combo optimization
+        const skipRockets = combo >= CONFIG.comboSkipRocketsThreshold;
+        const instantExplode = combo >= CONFIG.comboInstantExplodeThreshold;
+        
+        if (instantExplode) {
+            console.log(`[WebGPU Fireworks] Instant explosion mode (combo: ${combo})`);
+        } else if (skipRockets) {
+            console.log(`[WebGPU Fireworks] Skipping rocket animation (combo: ${combo})`);
+        }
+
+        const startX = position.x * this.width;
+        const targetY = position.y * this.height;
+
+        // Load images if provided
+        let giftImg = null;
+        let avatarImg = null;
+        if (giftImage) giftImg = await this.loadImage(giftImage);
+        if (userAvatar) avatarImg = await this.loadImage(userAvatar);
+
+        // Create firework with all options
+        this.addFirework({
+            position: position,
+            shape: shape,
+            colors: colors,
+            intensity: intensity,
+            giftImage: giftImg,
+            userAvatar: avatarImg,
+            tier: tier,
+            combo: combo,
+            skipRocket: skipRockets,
+            instantExplode: instantExplode
+        });
+
+        // Show gift popup
+        if (username && coins > 0) {
+            this.showGiftPopup(startX, this.height - 100, username, coins, combo, giftImage);
+        }
+    }
+
+    handleFinale(data) {
+        const {
+            intensity = 3.0,
+            duration = 5000,
+            burstCount = 15,
+            burstInterval = 300,
+            shapes = ['burst', 'heart', 'star', 'ring', 'spiral', 'paws'],
+            colors = this.config.defaultColors
+        } = data;
+
+        // Performance optimization
+        const optimizedBurstCount = Math.min(burstCount, 10);
+        const optimizedInterval = Math.max(burstInterval, 500);
+        const optimizedIntensity = Math.min(intensity, 2.0);
+
+        let bursts = 0;
+        const interval = setInterval(() => {
+            if (bursts >= optimizedBurstCount) {
+                clearInterval(interval);
+                return;
+            }
+
+            const position = {
+                x: 0.2 + Math.random() * 0.6,
+                y: 0.2 + Math.random() * 0.4
+            };
+
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+
+            this.handleTrigger({
+                position,
+                shape,
+                colors,
+                intensity: optimizedIntensity * (0.8 + Math.random() * 0.4),
+                particleCount: Math.round(50 * optimizedIntensity),
+                playSound: true
+            });
+
+            bursts++;
+        }, optimizedInterval);
+    }
+
+    showFollowerAnimation(data) {
+        const animationEl = document.getElementById('follower-animation');
+        const contentEl = animationEl?.querySelector('.follower-content');
+        const usernameEl = document.getElementById('follower-username');
+        const avatarEl = document.getElementById('follower-avatar');
+        
+        if (!animationEl || !contentEl || !usernameEl || !avatarEl) return;
+        
+        // Reset classes
+        animationEl.className = 'follower-animation';
+        contentEl.className = 'follower-content';
+        contentEl.style.transform = '';
+        
+        // Set position
+        const position = data.position || 'center';
+        animationEl.classList.add(`pos-${position}`);
+        
+        // Set size
+        const size = data.size || 'medium';
+        animationEl.classList.add(`size-${size}`);
+        
+        if (size === 'custom') {
+            const scale = data.scale || 1.0;
+            contentEl.style.transform = `scale(${scale})`;
+        }
+        
+        // Set style
+        const style = data.style || 'gradient-purple';
+        contentEl.classList.add(`style-${style}`);
+        
+        // Set entrance animation
+        const entrance = data.entrance || 'scale';
+        animationEl.classList.add(`entrance-${entrance}`);
+        
+        // Set username
+        usernameEl.textContent = data.username || 'Unknown';
+        
+        // Set avatar
+        if (data.profilePictureUrl) {
+            avatarEl.src = data.profilePictureUrl;
+            avatarEl.classList.add('show');
+        } else {
+            avatarEl.classList.remove('show');
+        }
+        
+        // Show animation
+        animationEl.classList.add('show');
+        
+        // Hide after duration
+        const duration = data.duration || 3000;
+        setTimeout(() => {
+            animationEl.classList.remove('show');
+            setTimeout(() => {
+                animationEl.className = 'follower-animation';
+                contentEl.className = 'follower-content';
+                contentEl.style.transform = '';
+            }, 500);
+        }, duration);
+    }
+
+    showGiftPopup(x, y, username, coins, combo, giftImage) {
+        const popupPosition = this.config.giftPopupPosition;
+        const popupEnabled = this.config.giftPopupEnabled !== false;
+        
+        if (popupPosition === 'none' || !popupEnabled) return;
+        
+        // Calculate position
+        let finalX = x;
+        let finalY = y;
+        
+        if (typeof popupPosition === 'object') {
+            finalX = popupPosition.x * this.width;
+            finalY = popupPosition.y * this.height;
+        } else if (popupPosition === 'top') {
+            finalX = this.width / 2;
+            finalY = 50;
+        } else if (popupPosition === 'middle') {
+            finalX = this.width / 2;
+            finalY = this.height / 2;
+        } else if (popupPosition === 'bottom') {
+            finalX = this.width / 2;
+            finalY = this.height - 100;
+        }
+
+        const popup = document.createElement('div');
+        popup.className = 'gift-popup';
+        popup.style.left = `${finalX}px`;
+        popup.style.top = `${finalY}px`;
+        
+        // Add gift image if available
+        if (giftImage) {
+            const img = document.createElement('img');
+            img.src = giftImage;
+            img.alt = 'Gift';
+            popup.appendChild(img);
+        }
+        
+        // Add username
+        const usernameSpan = document.createElement('span');
+        usernameSpan.textContent = username;
+        popup.appendChild(usernameSpan);
+        
+        // Add coins
+        const coinsSpan = document.createElement('span');
+        coinsSpan.textContent = `${coins} coins`;
+        popup.appendChild(coinsSpan);
+        
+        // Add combo if > 1
+        if (combo > 1) {
+            const comboSpan = document.createElement('span');
+            comboSpan.className = 'combo';
+            comboSpan.textContent = `x${combo}`;
+            popup.appendChild(comboSpan);
+        }
+        
+        document.body.appendChild(popup);
+        
+        // Remove after animation
+        setTimeout(() => {
+            popup.remove();
+        }, 2500);
+    }
+
     toggleDebug() {
         this.debugMode = !this.debugMode;
         const panel = document.getElementById('debug-panel');
