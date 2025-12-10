@@ -453,31 +453,72 @@ class TTSPlugin {
                 const updates = req.body;
 
                 // Validate defaultVoice is compatible with defaultEngine
+                // Note: Voice validation is performed when possible, but configuration save
+                // is allowed even if validation cannot be completed (e.g., API temporarily unavailable)
+                // Voice compatibility will be validated again during actual TTS synthesis
                 if (updates.defaultVoice && updates.defaultEngine) {
                     let engineVoices = {};
+                    let canValidate = false;
 
                     try {
                         if (updates.defaultEngine === 'google' && this.engines.google) {
                             engineVoices = GoogleEngine.getVoices();
+                            canValidate = true;
                         } else if (updates.defaultEngine === 'speechify' && this.engines.speechify) {
                             engineVoices = await this.engines.speechify.getVoices();
+                            canValidate = true;
                         } else if (updates.defaultEngine === 'elevenlabs' && this.engines.elevenlabs) {
                             engineVoices = await this.engines.elevenlabs.getVoices();
+                            canValidate = true;
                         } else if (updates.defaultEngine === 'openai' && this.engines.openai) {
                             engineVoices = OpenAIEngine.getVoices();
+                            canValidate = true;
                         }
                     } catch (error) {
-                        this._logDebug('config', 'Failed to fetch voices for validation', { error: error.message });
-                        return res.status(500).json({
-                            success: false,
-                            error: `Failed to fetch voices: ${error.message}`
+                        // Voice fetching failed - log warning but allow save to proceed
+                        this.logger.warn(`Failed to fetch voices for validation during config save: ${error.message}`);
+                        this._logDebug('CONFIG', 'Voice validation skipped due to fetch error', { 
+                            error: error.message,
+                            voice: updates.defaultVoice,
+                            engine: updates.defaultEngine
                         });
+                        canValidate = false;
                     }
 
-                    if (!engineVoices[updates.defaultVoice]) {
-                        return res.status(400).json({
-                            success: false,
-                            error: `Voice '${updates.defaultVoice}' is not available for engine '${updates.defaultEngine}'`
+                    // Attempt validation if voices were fetched successfully
+                    if (canValidate && typeof engineVoices === 'object' && engineVoices !== null && Object.keys(engineVoices).length > 0) {
+                        if (!engineVoices[updates.defaultVoice]) {
+                            // Voice not found - but check if this might be due to fallback voices
+                            // Log warning with helpful info but DON'T block the save
+                            // This prevents config save failures when API is temporarily unavailable
+                            this.logger.warn(
+                                `Voice '${updates.defaultVoice}' not found in current voice list for engine '${updates.defaultEngine}'. ` +
+                                `This might indicate the voice is unavailable or the API is using fallback data. ` +
+                                `Configuration will be saved anyway and voice compatibility will be checked during synthesis.`
+                            );
+                            this._logDebug('CONFIG', 'Voice not in available list - allowing save anyway', {
+                                voice: updates.defaultVoice,
+                                engine: updates.defaultEngine,
+                                voiceCount: Object.keys(engineVoices).length,
+                                sampleVoices: Object.keys(engineVoices).slice(0, 10)
+                            });
+                            // DO NOT return error - allow save to proceed
+                        } else {
+                            this._logDebug('CONFIG', 'Voice validation successful', {
+                                voice: updates.defaultVoice,
+                                engine: updates.defaultEngine
+                            });
+                        }
+                    } else {
+                        // Cannot validate (engine not available or no voices returned)
+                        this.logger.warn(
+                            `Cannot validate voice '${updates.defaultVoice}' for engine '${updates.defaultEngine}' ` +
+                            `(engine not initialized or voices unavailable). Configuration will be saved anyway.`
+                        );
+                        this._logDebug('CONFIG', 'Voice validation skipped - engine unavailable', {
+                            voice: updates.defaultVoice,
+                            engine: updates.defaultEngine,
+                            canValidate
                         });
                     }
                 }
