@@ -21,7 +21,7 @@ const PLUGIN_STATUS_CONFIG = {
         iconBg: 'rgba(239, 68, 68, 0.2)',
         iconColor: '#f87171',
         titleColor: '#f87171',
-        plugins: ['gcce-hud', 'streamalchemy', 'webgpu-emoji-rain', 'fireworks', 'advanced-timer', 'chatango']
+        plugins: ['gcce-hud', 'streamalchemy', 'webgpu-emoji-rain', 'fireworks-webgpu', 'advanced-timer', 'chatango']
     },
     'beta': {
         id: 'beta',
@@ -57,7 +57,7 @@ const PLUGIN_STATUS_CONFIG = {
         iconBg: 'rgba(59, 130, 246, 0.2)',
         iconColor: '#60a5fa',
         titleColor: '#60a5fa',
-        plugins: ['fireworks-webgpu', 'config-import', 'osc-bridge']
+        plugins: ['fireworks', 'config-import', 'osc-bridge']
     }
 };
 
