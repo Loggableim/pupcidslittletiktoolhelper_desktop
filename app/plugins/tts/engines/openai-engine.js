@@ -124,6 +124,21 @@ class OpenAIEngine {
     }
 
     /**
+     * Update the API key
+     * @param {string} apiKey - New API key
+     */
+    setApiKey(apiKey) {
+        if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+            throw new Error('API key must be a non-empty string');
+        }
+
+        this.apiKey = apiKey;
+        this.client = new OpenAI({ apiKey });
+
+        this.logger.info('OpenAI: API key updated');
+    }
+
+    /**
      * Get engine info
      */
     getInfo() {

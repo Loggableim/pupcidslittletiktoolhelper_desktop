@@ -32,6 +32,10 @@ app/data/
 app/logs/
 app/plugins/plugins_state.json
 
+# Database files
+*.db
+*.sqlite
+
 # Temporary files
 tmp/
 temp/

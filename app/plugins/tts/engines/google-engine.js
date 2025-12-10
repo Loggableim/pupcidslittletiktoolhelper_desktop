@@ -673,7 +673,12 @@ class GoogleEngine {
      * Update API key
      */
     setApiKey(apiKey) {
+        if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+            throw new Error('API key must be a non-empty string');
+        }
+        
         this.apiKey = apiKey;
+        this.logger.info('Google Cloud TTS: API key updated');
     }
 }
 
