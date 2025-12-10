@@ -147,7 +147,7 @@ runTest('Gift mapping is case sensitive', () => {
 
 // Test 6: Simulate the multi-cam plugin's extraction logic
 runTest('Multi-cam extraction logic works correctly', () => {
-    // This simulates the fixed code in main.js lines 759-767
+    // This simulates the fixed code in registerTikTokEvents gift handler
     const username = validGiftEvent.uniqueId || validGiftEvent.username;
     const giftId = validGiftEvent.giftId;
     const giftName = validGiftEvent.giftName;

@@ -760,9 +760,9 @@ class MultiCamPlugin {
         this.api.registerTikTokEvent('gift', async (data) => {
             if (!this.config.enabled) return;
 
-            // FIX: Use data.coins (already calculated as diamondCount * repeatCount)
+            // FIX: Safe field extraction to prevent undefined username when uniqueId is missing
+            // Use data.coins (already calculated as diamondCount * repeatCount)
             // instead of data.diamondCount (which is just the raw diamond value per gift)
-            // Extract username from either uniqueId or username field
             const username = data.uniqueId || data.username;
             const giftId = data.giftId;
             const giftName = data.giftName;
