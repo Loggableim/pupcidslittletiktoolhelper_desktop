@@ -1,14 +1,14 @@
 /**
- * Fireworks Superplugin - Main Entry Point
+ * Fireworks Superplugin WEBGPU - Main Entry Point
  * 
- * GPU-accelerated fireworks effects with gift-specific displays, combo systems,
- * and interactive triggers. Features WebGL/WebGPU rendering with Canvas fallback.
+ * WebGPU-accelerated fireworks effects with gift-specific displays, combo systems,
+ * and interactive triggers. Features native WebGPU rendering with compute shaders.
  * 
  * Features:
  * - Gift-triggered fireworks with GiftCatalogue integration
  * - Combo streak system (consecutive gifts trigger bigger effects)
  * - Gift escalation system (Small → Big → Massive)
- * - GPU particle engine (WebGL with Canvas fallback)
+ * - WebGPU particle engine with compute shaders
  * - Custom explosion shapes (Heart, Star, Spiral, etc.)
  * - Gift-based particles using gift images
  * - Audio effects for rockets/explosions
@@ -22,7 +22,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 
-class FireworksPlugin {
+class FireworksWebGPUPlugin {
     constructor(api) {
         this.api = api;
         // Use persistent storage in user profile directory (survives updates)
@@ -302,25 +302,25 @@ class FireworksPlugin {
      */
     registerRoutes() {
         // Serve plugin UI (settings page)
-        this.api.registerRoute('get', '/fireworks/ui', (req, res) => {
+        this.api.registerRoute('get', '/fireworks-webgpu/ui', (req, res) => {
             const uiPath = path.join(__dirname, 'ui', 'settings.html');
             res.sendFile(uiPath);
         });
 
         // Serve overlay
-        this.api.registerRoute('get', '/fireworks/overlay', (req, res) => {
+        this.api.registerRoute('get', '/fireworks-webgpu/overlay', (req, res) => {
             const overlayPath = path.join(__dirname, 'overlay.html');
             res.sendFile(overlayPath);
         });
 
         // Serve OBS-optimized overlay
-        this.api.registerRoute('get', '/fireworks/obs-overlay', (req, res) => {
+        this.api.registerRoute('get', '/fireworks-webgpu/obs-overlay', (req, res) => {
             const overlayPath = path.join(__dirname, 'overlay.html');
             res.sendFile(overlayPath);
         });
 
         // Get configuration
-        this.api.registerRoute('get', '/api/fireworks/config', (req, res) => {
+        this.api.registerRoute('get', '/api/fireworks-webgpu/config', (req, res) => {
             try {
                 res.json({ success: true, config: this.config });
             } catch (error) {
@@ -330,14 +330,14 @@ class FireworksPlugin {
         });
 
         // Update configuration
-        this.api.registerRoute('post', '/api/fireworks/config', (req, res) => {
+        this.api.registerRoute('post', '/api/fireworks-webgpu/config', (req, res) => {
             try {
                 const updates = req.body;
                 this.config = { ...this.config, ...updates };
                 this.saveConfig();
                 
                 // Notify overlays about config change
-                this.api.emit('fireworks:config-update', { config: this.config });
+                this.api.emit('fireworks-webgpu:config-update', { config: this.config });
                 
                 res.json({ success: true, message: 'Configuration updated' });
             } catch (error) {
@@ -347,7 +347,7 @@ class FireworksPlugin {
         });
 
         // Get status
-        this.api.registerRoute('get', '/api/fireworks/status', (req, res) => {
+        this.api.registerRoute('get', '/api/fireworks-webgpu/status', (req, res) => {
             try {
                 res.json({
                     success: true,
@@ -361,13 +361,13 @@ class FireworksPlugin {
         });
 
         // Toggle enabled
-        this.api.registerRoute('post', '/api/fireworks/toggle', (req, res) => {
+        this.api.registerRoute('post', '/api/fireworks-webgpu/toggle', (req, res) => {
             try {
                 const { enabled } = req.body;
                 this.config.enabled = enabled !== undefined ? enabled : !this.config.enabled;
                 this.saveConfig();
                 
-                this.api.emit('fireworks:toggle', { enabled: this.config.enabled });
+                this.api.emit('fireworks-webgpu:toggle', { enabled: this.config.enabled });
                 
                 res.json({ success: true, enabled: this.config.enabled });
             } catch (error) {
@@ -376,7 +376,7 @@ class FireworksPlugin {
         });
 
         // Trigger fireworks manually
-        this.api.registerRoute('post', '/api/fireworks/trigger', (req, res) => {
+        this.api.registerRoute('post', '/api/fireworks-webgpu/trigger', (req, res) => {
             try {
                 const { type, intensity, shape, colors, position, giftId, duration, userAvatar } = req.body;
                 
@@ -400,7 +400,7 @@ class FireworksPlugin {
         });
 
         // Trigger finale
-        this.api.registerRoute('post', '/api/fireworks/finale', (req, res) => {
+        this.api.registerRoute('post', '/api/fireworks-webgpu/finale', (req, res) => {
             try {
                 const { intensity, duration } = req.body;
                 this.triggerFinale(intensity || 3.0, duration || 5000, true); // true = bypass enabled check
@@ -411,7 +411,7 @@ class FireworksPlugin {
         });
 
         // Test follower fireworks
-        this.api.registerRoute('post', '/api/fireworks/test-follower', (req, res) => {
+        this.api.registerRoute('post', '/api/fireworks-webgpu/test-follower', (req, res) => {
             try {
                 const { username, profilePictureUrl } = req.body;
                 this.handleFollowerEvent({
@@ -426,7 +426,7 @@ class FireworksPlugin {
         });
 
         // Trigger random firework
-        this.api.registerRoute('post', '/api/fireworks/random', (req, res) => {
+        this.api.registerRoute('post', '/api/fireworks-webgpu/random', (req, res) => {
             try {
                 this.triggerRandomFirework(true); // true = bypass enabled check
                 res.json({ success: true, message: 'Random firework triggered' });
@@ -436,7 +436,7 @@ class FireworksPlugin {
         });
 
         // Get gift shape mappings
-        this.api.registerRoute('get', '/api/fireworks/gift-mappings', (req, res) => {
+        this.api.registerRoute('get', '/api/fireworks-webgpu/gift-mappings', (req, res) => {
             try {
                 res.json({
                     success: true,
@@ -448,7 +448,7 @@ class FireworksPlugin {
         });
 
         // Set gift shape mapping
-        this.api.registerRoute('post', '/api/fireworks/gift-mappings', (req, res) => {
+        this.api.registerRoute('post', '/api/fireworks-webgpu/gift-mappings', (req, res) => {
             try {
                 const { giftId, shape, colors, intensity } = req.body;
                 
@@ -470,7 +470,7 @@ class FireworksPlugin {
         });
 
         // Upload audio/video file
-        this.api.registerRoute('post', '/api/fireworks/upload', (req, res) => {
+        this.api.registerRoute('post', '/api/fireworks-webgpu/upload', (req, res) => {
             this.upload.single('file')(req, res, (err) => {
                 if (err) {
                     return res.status(500).json({ success: false, error: err.message });
@@ -480,7 +480,7 @@ class FireworksPlugin {
                     return res.status(400).json({ success: false, error: 'No file uploaded' });
                 }
                 
-                const fileUrl = `/plugins/fireworks/uploads/${req.file.filename}`;
+                const fileUrl = `/plugins/fireworks-webgpu/uploads/${req.file.filename}`;
                 this.api.log(`📤 [FIREWORKS] File uploaded: ${req.file.filename}`, 'info');
                 
                 res.json({
@@ -493,13 +493,13 @@ class FireworksPlugin {
         });
 
         // List uploaded files
-        this.api.registerRoute('get', '/api/fireworks/uploads', (req, res) => {
+        this.api.registerRoute('get', '/api/fireworks-webgpu/uploads', (req, res) => {
             try {
                 const files = fs.readdirSync(this.uploadDir)
                     .filter(f => f !== '.gitkeep')
                     .map(filename => ({
                         filename,
-                        url: `/plugins/fireworks/uploads/${filename}`,
+                        url: `/plugins/fireworks-webgpu/uploads/${filename}`,
                         size: fs.statSync(path.join(this.uploadDir, filename)).size
                     }));
                 
@@ -510,7 +510,7 @@ class FireworksPlugin {
         });
 
         // Delete uploaded file
-        this.api.registerRoute('delete', '/api/fireworks/uploads/:filename', (req, res) => {
+        this.api.registerRoute('delete', '/api/fireworks-webgpu/uploads/:filename', (req, res) => {
             try {
                 const filePath = path.join(this.uploadDir, req.params.filename);
                 
@@ -527,14 +527,14 @@ class FireworksPlugin {
 
         // Serve uploaded files
         const express = require('express');
-        this.api.getApp().use('/plugins/fireworks/uploads', express.static(this.uploadDir));
+        this.api.getApp().use('/plugins/fireworks-webgpu/uploads', express.static(this.uploadDir));
 
         // Serve audio files
         const audioDir = path.join(__dirname, 'audio');
         if (!fs.existsSync(audioDir)) {
             fs.mkdirSync(audioDir, { recursive: true });
         }
-        this.api.getApp().use('/plugins/fireworks/audio', express.static(audioDir));
+        this.api.getApp().use('/plugins/fireworks-webgpu/audio', express.static(audioDir));
     }
 
     /**
@@ -785,7 +785,7 @@ class FireworksPlugin {
             const animationDelay = this.config.followerAnimationDelay || 3000;
             
             setTimeout(() => {
-                this.api.emit('fireworks:follower-animation', {
+                this.api.emit('fireworks-webgpu:follower-animation', {
                     username: username,
                     profilePictureUrl: this.config.followerShowProfilePicture ? profilePictureUrl : null,
                     duration: this.config.followerAnimationDuration || 3000,
@@ -887,7 +887,7 @@ class FireworksPlugin {
             giftPopupPosition: this.config.giftPopupPosition || 'bottom'
         };
 
-        this.api.emit('fireworks:trigger', payload);
+        this.api.emit('fireworks-webgpu:trigger', payload);
         
         this.api.log(
             `🎆 [FIREWORKS] Triggered: ${payload.shape} @ (${payload.position.x.toFixed(2)}, ${payload.position.y.toFixed(2)}) ` +
@@ -922,7 +922,7 @@ class FireworksPlugin {
             audioVolume: this.config.audioVolume
         };
 
-        this.api.emit('fireworks:finale', payload);
+        this.api.emit('fireworks-webgpu:finale', payload);
     }
 
     /**
@@ -1035,17 +1035,17 @@ class FireworksPlugin {
      */
     logRoutes() {
         this.api.log('📍 [FIREWORKS] Routes registered:', 'info');
-        this.api.log('   - GET  /fireworks/ui', 'info');
-        this.api.log('   - GET  /fireworks/overlay', 'info');
-        this.api.log('   - GET  /api/fireworks/config', 'info');
-        this.api.log('   - POST /api/fireworks/config', 'info');
-        this.api.log('   - GET  /api/fireworks/status', 'info');
-        this.api.log('   - POST /api/fireworks/toggle', 'info');
-        this.api.log('   - POST /api/fireworks/trigger', 'info');
-        this.api.log('   - POST /api/fireworks/finale', 'info');
-        this.api.log('   - POST /api/fireworks/random', 'info');
-        this.api.log('   - GET  /api/fireworks/gift-mappings', 'info');
-        this.api.log('   - POST /api/fireworks/gift-mappings', 'info');
+        this.api.log('   - GET  /fireworks-webgpu/ui', 'info');
+        this.api.log('   - GET  /fireworks-webgpu/overlay', 'info');
+        this.api.log('   - GET  /api/fireworks-webgpu/config', 'info');
+        this.api.log('   - POST /api/fireworks-webgpu/config', 'info');
+        this.api.log('   - GET  /api/fireworks-webgpu/status', 'info');
+        this.api.log('   - POST /api/fireworks-webgpu/toggle', 'info');
+        this.api.log('   - POST /api/fireworks-webgpu/trigger', 'info');
+        this.api.log('   - POST /api/fireworks-webgpu/finale', 'info');
+        this.api.log('   - POST /api/fireworks-webgpu/random', 'info');
+        this.api.log('   - GET  /api/fireworks-webgpu/gift-mappings', 'info');
+        this.api.log('   - POST /api/fireworks-webgpu/gift-mappings', 'info');
     }
 
     /**
@@ -1104,4 +1104,4 @@ class FireworksPlugin {
     }
 }
 
-module.exports = FireworksPlugin;
+module.exports = FireworksWebGPUPlugin;

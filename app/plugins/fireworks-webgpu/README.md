@@ -1,6 +1,6 @@
-# Fireworks Superplugin
+# Fireworks Superplugin WEBGPU
 
-🎆 GPU-accelerated fireworks effects for TikTok LIVE streams with gift-specific displays, combo systems, and interactive triggers.
+🎆 WebGPU-accelerated fireworks effects for TikTok LIVE streams with gift-specific displays, combo systems, and interactive triggers.
 
 ## Features
 
@@ -8,7 +8,7 @@
 - **Gift-Triggered Fireworks**: Automatic fireworks when viewers send gifts
 - **Combo Streak System**: Consecutive gifts from the same user create bigger effects
 - **Gift Escalation**: Small → Medium → Big → Massive tiers based on coin value
-- **GPU Particle Engine**: WebGL 2.0 rendering with Canvas 2D fallback
+- **WebGPU Particle Engine**: Native WebGPU rendering with compute shaders for maximum performance
 - **Custom Explosion Shapes**: Burst, Heart, Star, Ring, Spiral
 
 ### Visual Effects
@@ -40,10 +40,10 @@ The plugin is installed by default. Enable it via the Plugin Manager.
 
 ## Configuration
 
-Access settings at: `/fireworks/ui`
+Access settings at: `/fireworks-webgpu/ui`
 
 ### Overlay URL
-Add to OBS BrowserSource: `http://localhost:3000/fireworks/overlay`
+Add to OBS BrowserSource: `http://localhost:3000/fireworks-webgpu/overlay`
 
 Recommended settings:
 - Width: 1920
@@ -51,29 +51,36 @@ Recommended settings:
 - FPS: 60
 - Custom CSS: (leave empty)
 
+## Requirements
+
+- **Browser**: Chrome/Edge 113+, Electron 25+ with WebGPU support
+- **GPU**: Modern GPU with WebGPU support
+
+If WebGPU is not available, the plugin will display an error message.
+
 ## API Endpoints
 
 ### Configuration
-- `GET /api/fireworks/config` - Get current configuration
-- `POST /api/fireworks/config` - Update configuration
+- `GET /api/fireworks-webgpu/config` - Get current configuration
+- `POST /api/fireworks-webgpu/config` - Update configuration
 
 ### Triggers
-- `POST /api/fireworks/trigger` - Trigger a single firework
-- `POST /api/fireworks/finale` - Trigger a finale show
-- `POST /api/fireworks/random` - Trigger a random firework
+- `POST /api/fireworks-webgpu/trigger` - Trigger a single firework
+- `POST /api/fireworks-webgpu/finale` - Trigger a finale show
+- `POST /api/fireworks-webgpu/random` - Trigger a random firework
 
 ### Status
-- `GET /api/fireworks/status` - Get plugin status
-- `POST /api/fireworks/toggle` - Enable/disable plugin
+- `GET /api/fireworks-webgpu/status` - Get plugin status
+- `POST /api/fireworks-webgpu/toggle` - Enable/disable plugin
 
 ### Gift Mappings
-- `GET /api/fireworks/gift-mappings` - Get gift-specific settings
-- `POST /api/fireworks/gift-mappings` - Set gift-specific settings
+- `GET /api/fireworks-webgpu/gift-mappings` - Get gift-specific settings
+- `POST /api/fireworks-webgpu/gift-mappings` - Set gift-specific settings
 
 ### File Management
-- `POST /api/fireworks/upload` - Upload audio/video file
-- `GET /api/fireworks/uploads` - List uploaded files
-- `DELETE /api/fireworks/uploads/:filename` - Delete file
+- `POST /api/fireworks-webgpu/upload` - Upload audio/video file
+- `GET /api/fireworks-webgpu/uploads` - List uploaded files
+- `DELETE /api/fireworks-webgpu/uploads/:filename` - Delete file
 
 ## Trigger Payload
 
