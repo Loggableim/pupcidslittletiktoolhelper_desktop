@@ -94,7 +94,7 @@ class BufferHandleImpl implements BufferHandle {
         `Cannot write to disposed buffer: ${this.id}`
       );
     }
-    this.queue.writeBuffer(this.resource, offset, data);
+    this.queue.writeBuffer(this.resource, offset, data as GPUAllowSharedBufferSource);
   }
 
   getMappedRange(offset?: number, size?: number): ArrayBuffer {

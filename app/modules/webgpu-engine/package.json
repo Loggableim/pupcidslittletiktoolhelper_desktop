@@ -24,8 +24,9 @@
   "author": "Pup Cid",
   "license": "CC-BY-NC-4.0",
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "@webgpu/types": "^0.1.40"
+    "@types/node": "^24.10.2",
+    "@webgpu/types": "^0.1.67",
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "winston": "^3.0.0"

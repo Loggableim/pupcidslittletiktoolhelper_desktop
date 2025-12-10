@@ -1,3 +1,5 @@
+/// <reference types="@webgpu/types" />
+
 /**
  * WebGPU Engine Types
  *

@@ -29,7 +29,7 @@ import {
   WebGPUCapabilityReport,
   FallbackMode
 } from './types';
-import { createNoOpLogger, createConsoleLogger } from './logger';
+import { createNoOpLogger } from './logger';
 import { ResourceManager } from './resourceManager';
 import { PipelineRegistry } from './pipelineRegistry';
 import { RenderGraphExecutor } from './renderGraph';
@@ -652,16 +652,29 @@ export async function checkWebGPUCapabilities(): Promise<WebGPUCapabilityReport>
       };
     }
 
-    // Get adapter info
-    const info = await adapter.requestAdapterInfo();
-    const adapterInfo: AdapterInfo = {
-      vendor: info.vendor || 'unknown',
-      architecture: info.architecture || 'unknown',
-      device: info.device || 'unknown',
-      description: info.description || 'unknown',
-      features: Array.from(adapter.features) as GPUFeatureName[],
-      limits: adapter.limits
-    };
+    // Get adapter info (if available - newer spec)
+    let adapterInfo: AdapterInfo;
+    if ('requestAdapterInfo' in adapter && typeof (adapter as any).requestAdapterInfo === 'function') {
+      const info = await (adapter as any).requestAdapterInfo();
+      adapterInfo = {
+        vendor: info.vendor || 'unknown',
+        architecture: info.architecture || 'unknown',
+        device: info.device || 'unknown',
+        description: info.description || 'unknown',
+        features: Array.from(adapter.features) as GPUFeatureName[],
+        limits: adapter.limits
+      };
+    } else {
+      // Fallback for older implementations
+      adapterInfo = {
+        vendor: 'unknown',
+        architecture: 'unknown',
+        device: 'unknown',
+        description: 'WebGPU Adapter',
+        features: Array.from(adapter.features) as GPUFeatureName[],
+        limits: adapter.limits
+      };
+    }
 
     return {
       isSupported: true,
@@ -701,16 +714,29 @@ export async function createEngine(options: EngineOptions = {}): Promise<EngineF
     );
   }
 
-  // Get adapter info
-  const adapterInfoRaw = await adapter.requestAdapterInfo();
-  const adapterInfo: AdapterInfo = {
-    vendor: adapterInfoRaw.vendor || 'unknown',
-    architecture: adapterInfoRaw.architecture || 'unknown',
-    device: adapterInfoRaw.device || 'unknown',
-    description: adapterInfoRaw.description || 'unknown',
-    features: Array.from(adapter.features) as GPUFeatureName[],
-    limits: adapter.limits
-  };
+  // Get adapter info (if available - newer spec)
+  let adapterInfo: AdapterInfo;
+  if ('requestAdapterInfo' in adapter && typeof (adapter as any).requestAdapterInfo === 'function') {
+    const adapterInfoRaw = await (adapter as any).requestAdapterInfo();
+    adapterInfo = {
+      vendor: adapterInfoRaw.vendor || 'unknown',
+      architecture: adapterInfoRaw.architecture || 'unknown',
+      device: adapterInfoRaw.device || 'unknown',
+      description: adapterInfoRaw.description || 'unknown',
+      features: Array.from(adapter.features) as GPUFeatureName[],
+      limits: adapter.limits
+    };
+  } else {
+    // Fallback for older implementations
+    adapterInfo = {
+      vendor: 'unknown',
+      architecture: 'unknown',
+      device: 'unknown',
+      description: 'WebGPU Adapter',
+      features: Array.from(adapter.features) as GPUFeatureName[],
+      limits: adapter.limits
+    };
+  }
 
   // Request device
   const device = await adapter.requestDevice({
