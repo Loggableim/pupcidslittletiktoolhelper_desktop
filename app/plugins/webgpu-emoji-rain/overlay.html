@@ -116,11 +116,23 @@
     <div id="canvas-container"></div>
     <div id="debug-info"></div>
 
-    <!-- Matter.js (local) -->
-    <script src="/js/matter.min.js"></script>
+    <!-- Socket.io -->
     <script src="/socket.io/socket.io.js"></script>
 
-    <!-- Use enhanced engine -->
-    <script src="/js/webgpu-emoji-rain-engine.js"></script>
+    <!-- WebGPU Core Engine (State-of-the-art) -->
+    <script src="/js/webgpu-emoji-rain-core.js"></script>
+    
+    <!-- Main Integration Engine -->
+    <script src="/js/webgpu-emoji-rain-engine-v2.js"></script>
+    
+    <!-- Fallback to old engine if WebGPU not supported -->
+    <script>
+      // Detect WebGPU support and fallback if needed
+      if (!navigator.gpu) {
+        console.warn('⚠️ WebGPU not supported, loading fallback engine...');
+        document.write('<script src="/js/matter.min.js"><\/script>');
+        document.write('<script src="/js/webgpu-emoji-rain-engine.js"><\/script>');
+      }
+    </script>
 </body>
 </html>
