@@ -359,6 +359,451 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
 `;
 
 // ============================================================================
+// PARTICLE CLASS - Individual particle with physics and trails
+// ============================================================================
+
+class Particle {
+    constructor(args = {}) {
+        const defaults = {
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            ax: 0,
+            ay: 0,
+            mass: 1,
+            drag: CONFIG.airResistance,
+            gravity: CONFIG.gravity,
+            size: 3,
+            hue: 360,
+            saturation: 100,
+            brightness: 100,
+            alpha: 1.0,
+            lifespan: 1.0,
+            decay: 0.01,
+            isSeed: true,
+            isSparkle: false,
+            color: '#ffffff',
+            image: null,
+            type: 'circle',
+            rotation: 0,
+            rotationSpeed: 0,
+            isDespawning: false,
+            despawnStartTime: 0,
+            // Secondary explosion properties
+            willBurst: false,
+            burstDelay: 0,
+            burstTime: 0,
+            hasBurst: false,
+            willSpiral: false,
+            spiralDelay: 0,
+            hasSpiraled: false
+        };
+        
+        Object.assign(this, defaults, args);
+        this.maxLifespan = this.lifespan;
+        this.trail = [];
+        this.age = 0;
+        
+        // Record creation time for secondary explosions
+        if (this.willBurst || this.willSpiral) {
+            this.burstTime = performance.now();
+        }
+    }
+    
+    applyForce(fx, fy) {
+        this.ax += fx / this.mass;
+        this.ay += fy / this.mass;
+    }
+    
+    applyGravity() {
+        this.ay += this.gravity;
+    }
+    
+    update() {
+        // Handle despawn fade effect
+        if (this.isDespawning) {
+            const despawnDuration = 1500; // 1.5 seconds
+            const elapsed = performance.now() - this.despawnStartTime;
+            const fadeProgress = Math.min(elapsed / despawnDuration, 1.0);
+            
+            this.alpha = Math.max(0, 1.0 - fadeProgress);
+            
+            if (fadeProgress >= 1.0) {
+                this.lifespan = 0;
+            }
+        }
+        
+        // Apply air resistance
+        this.vx *= this.drag;
+        this.vy *= this.drag;
+        
+        // Update velocity
+        this.vx += this.ax;
+        this.vy += this.ay;
+        
+        // Update position
+        this.x += this.vx;
+        this.y += this.vy;
+        
+        // Clear acceleration
+        this.ax = 0;
+        this.ay = 0;
+        
+        // Update rotation
+        this.rotation += this.rotationSpeed;
+        
+        // Update lifespan for explosion particles
+        if (!this.isSeed && !this.isDespawning) {
+            this.lifespan -= this.decay;
+            this.alpha = Math.max(0, this.lifespan / this.maxLifespan);
+            
+            // Add sparkle flicker effect
+            if (this.isSparkle && Math.random() < 0.3) {
+                this.brightness = 80 + Math.random() * 20;
+            }
+        }
+        
+        // Store trail with fading
+        const trailLength = 20;
+        if (this.trail.length > trailLength) {
+            this.trail.shift();
+        }
+        
+        // Fade trail points
+        const trailFadeSpeed = 0.02;
+        for (let i = 0; i < this.trail.length; i++) {
+            if (this.trail[i].alpha) {
+                this.trail[i].alpha *= (1 - trailFadeSpeed);
+            }
+        }
+        
+        this.trail.push({ 
+            x: this.x, 
+            y: this.y, 
+            alpha: this.alpha * 0.6,
+            size: this.size * 0.7
+        });
+        
+        this.age++;
+    }
+    
+    isDone() {
+        return this.lifespan <= 0 || this.y > window.innerHeight + 100;
+    }
+    
+    startDespawn() {
+        if (!this.isDespawning) {
+            this.isDespawning = true;
+            this.despawnStartTime = performance.now();
+        }
+    }
+}
+
+// ============================================================================
+// FIREWORK CLASS - Multi-stage firework system
+// ============================================================================
+
+class Firework {
+    constructor(args = {}) {
+        const defaults = {
+            x: Math.random() * window.innerWidth,
+            y: window.innerHeight,
+            targetY: 100 + Math.random() * 300,
+            shape: 'burst',
+            colors: CONFIG.defaultColors,
+            intensity: 1.0,
+            giftImage: null,
+            userAvatar: null,
+            avatarParticleChance: 0.3,
+            useImages: false,
+            tier: 'medium',
+            combo: 1,
+            skipRocket: false,
+            instantExplode: false
+        };
+        
+        Object.assign(this, defaults, args);
+        
+        // State management
+        this.particles = [];
+        this.secondaryExplosions = [];
+        
+        // Create rocket particle
+        if (this.instantExplode) {
+            this.rocket = null;
+            this.exploded = false;
+            this.shouldExplodeImmediately = true;
+        } else if (this.skipRocket) {
+            this.exploded = false;
+            this.rocket = new Particle({
+                x: this.x,
+                y: this.y,
+                vx: 0,
+                vy: 0,
+                size: 1,
+                hue: 0,
+                saturation: 0,
+                brightness: 0,
+                color: '#000000',
+                isSeed: true,
+                gravity: 0,
+                drag: 1,
+                type: 'circle',
+                image: null,
+                lifespan: 0.01
+            });
+        } else {
+            this.exploded = false;
+            const rocketType = this.userAvatar ? 'image' : 'circle';
+            const rocketImage = this.userAvatar;
+            const rocketSize = this.userAvatar ? 8 + this.intensity : 3 + this.intensity;
+            
+            this.rocket = new Particle({
+                x: this.x,
+                y: this.y,
+                vx: (Math.random() - 0.5) * 1.5,
+                vy: CONFIG.rocketSpeed + (Math.random() - 0.5) * 2,
+                size: rocketSize,
+                hue: Math.random() * 360,
+                saturation: 80,
+                brightness: 100,
+                color: this.colors[Math.floor(Math.random() * this.colors.length)],
+                isSeed: true,
+                gravity: 0.08, // rocketAcceleration
+                drag: 0.995,
+                type: rocketType,
+                image: rocketImage
+            });
+        }
+        
+        // Color palette for explosion
+        this.baseHue = Math.random() * 360;
+        this.hueRange = 60 + Math.random() * 60;
+        this.secondaryAudioPlayed = false;
+    }
+    
+    shouldExplode() {
+        if (this.shouldExplodeImmediately) {
+            return true;
+        }
+        if (this.skipRocket) {
+            return true;
+        }
+        if (this.rocket) {
+            return (this.rocket.vy >= 0 || this.rocket.y <= this.targetY) && !this.exploded;
+        }
+        return false;
+    }
+    
+    explode() {
+        this.exploded = true;
+        
+        // Play explosion sound if callback is set
+        if (this.onExplodeSound) {
+            this.onExplodeSound(this.intensity);
+        }
+        
+        const explosionX = this.rocket ? this.rocket.x : this.x;
+        const explosionY = this.rocket ? this.rocket.y : this.y;
+        
+        // Calculate particle count
+        const tierMultipliers = {
+            small: 0.5,
+            medium: 1.0,
+            big: 1.5,
+            massive: 2.0
+        };
+        const tierMult = tierMultipliers[this.tier] || 1.0;
+        const comboMult = 1 + (this.combo - 1) * 0.2;
+        
+        let baseParticles = 40 + Math.random() * 60;
+        if (this.combo >= 10) {
+            baseParticles *= 0.5;
+        } else if (this.combo >= 5) {
+            baseParticles *= 0.7;
+        }
+        
+        const particleCount = Math.floor(baseParticles * this.intensity * tierMult * comboMult);
+        
+        // Get velocities from shape generator
+        const generator = ShapeGenerators[this.shape] || ShapeGenerators.burst;
+        const velocities = generator(particleCount, this.intensity);
+        
+        // Create explosion particles
+        for (let i = 0; i < velocities.length; i++) {
+            const vel = velocities[i];
+            const hue = this.baseHue + (Math.random() * this.hueRange);
+            const isSparkle = Math.random() < 0.15; // 15% sparkle chance
+            
+            let particleType = vel.particleType || 'circle';
+            let particleImage = null;
+            
+            // Use gift/avatar images if available
+            if (particleType === 'circle' && !isSparkle && this.giftImage) {
+                if (Math.random() < 0.7) {
+                    particleType = 'image';
+                    particleImage = this.giftImage;
+                }
+            } else if (particleType === 'circle' && !isSparkle && this.userAvatar && Math.random() < 0.3) {
+                particleType = 'image';
+                particleImage = this.userAvatar;
+            }
+            
+            const particle = new Particle({
+                x: explosionX,
+                y: explosionY,
+                vx: vel.vx,
+                vy: vel.vy,
+                size: isSparkle ? 2 + Math.random() * 2 : (particleType === 'image' ? 4 + Math.random() * 4 : 3 + Math.random() * 4),
+                hue: hue,
+                saturation: isSparkle ? 100 : 90,
+                brightness: isSparkle ? 100 : 95,
+                lifespan: isSparkle ? 0.6 + Math.random() * 0.4 : 0.8 + Math.random() * 0.6,
+                decay: isSparkle ? 0.015 : 0.008,
+                isSeed: false,
+                isSparkle: isSparkle,
+                type: particleType,
+                image: particleImage,
+                mass: isSparkle ? 0.5 : 1,
+                drag: isSparkle ? 0.97 : 0.98,
+                gravity: isSparkle ? CONFIG.gravity * 0.8 : CONFIG.gravity,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.1,
+                willBurst: vel.willBurst || false,
+                burstDelay: 500 + Math.random() * 300,
+                willSpiral: vel.willSpiral || false,
+                spiralDelay: 600 + Math.random() * 400
+            });
+            
+            this.particles.push(particle);
+        }
+    }
+    
+    update() {
+        // Update rocket
+        if (this.rocket && !this.exploded) {
+            this.rocket.applyGravity();
+            this.rocket.update();
+            
+            if (this.shouldExplode()) {
+                this.explode();
+            }
+        }
+        
+        // Update explosion particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.applyGravity();
+            p.update();
+            
+            // Check for secondary mini-burst
+            if (p.willBurst && !p.hasBurst && performance.now() - p.burstTime >= p.burstDelay) {
+                p.hasBurst = true;
+                this.createMiniBurst(p);
+                if (this.onSecondaryExplosionSound && !this.secondaryAudioPlayed) {
+                    this.secondaryAudioPlayed = true;
+                    this.onSecondaryExplosionSound();
+                }
+            }
+            
+            // Check for secondary spiral burst
+            if (p.willSpiral && !p.hasSpiraled && performance.now() - p.burstTime >= p.spiralDelay) {
+                p.hasSpiraled = true;
+                this.createSpiralBurst(p);
+                if (this.onSecondaryExplosionSound && !this.secondaryAudioPlayed) {
+                    this.secondaryAudioPlayed = true;
+                    this.onSecondaryExplosionSound();
+                }
+            }
+            
+            if (p.isDone()) {
+                this.particles.splice(i, 1);
+            }
+        }
+        
+        // Update secondary explosions
+        for (let i = this.secondaryExplosions.length - 1; i >= 0; i--) {
+            const p = this.secondaryExplosions[i];
+            p.applyGravity();
+            p.update();
+            
+            if (p.isDone()) {
+                this.secondaryExplosions.splice(i, 1);
+            }
+        }
+    }
+    
+    createMiniBurst(sourceParticle) {
+        const count = 4 + Math.floor(Math.random() * 5);
+        
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+            const speed = 0.8 + Math.random() * 1.2;
+            
+            const particle = new Particle({
+                x: sourceParticle.x,
+                y: sourceParticle.y,
+                vx: sourceParticle.vx * 0.3 + Math.cos(angle) * speed,
+                vy: sourceParticle.vy * 0.3 + Math.sin(angle) * speed,
+                size: 1 + Math.random() * 1.5,
+                hue: sourceParticle.hue + (Math.random() - 0.5) * 20,
+                saturation: 90,
+                brightness: 95,
+                lifespan: 0.3 + Math.random() * 0.2,
+                decay: 0.025,
+                isSeed: false,
+                isSparkle: true,
+                mass: 0.2,
+                drag: 0.95,
+                gravity: CONFIG.gravity * 0.5
+            });
+            
+            this.secondaryExplosions.push(particle);
+        }
+    }
+    
+    createSpiralBurst(sourceParticle) {
+        const count = 3 + Math.floor(Math.random() * 4);
+        const spiralTurns = 1.5;
+        
+        for (let i = 0; i < count; i++) {
+            const t = (i / count) * spiralTurns * Math.PI * 2;
+            const radius = 0.5 + (i / count) * 0.8;
+            const speed = 1.0 + Math.random() * 0.8;
+            
+            const particle = new Particle({
+                x: sourceParticle.x,
+                y: sourceParticle.y,
+                vx: sourceParticle.vx * 0.2 + Math.cos(t) * radius * speed,
+                vy: sourceParticle.vy * 0.2 + Math.sin(t) * radius * speed,
+                size: 1.2 + Math.random() * 1.5,
+                hue: sourceParticle.hue + (Math.random() - 0.5) * 25,
+                saturation: 85,
+                brightness: 90,
+                lifespan: 0.35 + Math.random() * 0.25,
+                decay: 0.022,
+                isSeed: false,
+                isSparkle: true,
+                mass: 0.25,
+                drag: 0.94,
+                gravity: CONFIG.gravity * 0.4,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.15
+            });
+            
+            this.secondaryExplosions.push(particle);
+        }
+    }
+    
+    isDone() {
+        return this.exploded && 
+               this.particles.length === 0 && 
+               this.secondaryExplosions.length === 0;
+    }
+}
+
+// ============================================================================
 // AUDIO MANAGER (Same as Canvas version)
 // ============================================================================
 
@@ -454,8 +899,8 @@ class FireworksEngine {
         this.pipeline = null;
         this.computePipeline = null;
         
-        this.particles = [];
-        this.rockets = []; // Array to track active rockets
+        this.fireworks = []; // Array of Firework objects
+        this.particles = []; // GPU particle buffer data
         this.particleBuffer = null;
         this.computeUniformBuffer = null;
         this.renderUniformBuffer = null;
@@ -699,8 +1144,11 @@ class FireworksEngine {
         const deltaTime = (now - this.lastFrameTime) / 1000;
         this.lastFrameTime = now;
         
-        // Update rockets
-        this.updateRockets(deltaTime);
+        // Update all fireworks
+        this.updateFireworks();
+        
+        // Collect all particles from fireworks for GPU rendering
+        this.collectParticlesForGPU();
         
         // Update FPS
         this.frameCount++;
@@ -769,187 +1217,146 @@ class FireworksEngine {
         requestAnimationFrame(() => this.render());
     }
     
-    updateRockets(deltaTime) {
-        // Pre-calculate physics timestep to avoid redundant multiplications
-        const dt = deltaTime * this.config.physicsScale;
+    updateFireworks() {
+        // Update all fireworks
+        for (let i = this.fireworks.length - 1; i >= 0; i--) {
+            const fw = this.fireworks[i];
+            fw.update();
+            
+            // Remove completed fireworks
+            if (fw.isDone()) {
+                this.fireworks.splice(i, 1);
+            }
+        }
+    }
+    
+    collectParticlesForGPU() {
+        // Collect all particles from all fireworks and convert to GPU format
+        this.particles = [];
         
-        // Update rocket positions
-        for (let i = this.rockets.length - 1; i >= 0; i--) {
-            const rocket = this.rockets[i];
-            
-            // Apply physics to rocket
-            // In canvas Y-down coordinates: positive Y is down, negative velocity = upward motion
-            // Gravity acts downward (positive direction), slowing upward rockets
-            rocket.vy += this.config.gravity * dt;
-            
-            // Apply air resistance to both velocity components
-            rocket.vx *= this.config.rocketAirResistance;
-            rocket.vy *= this.config.rocketAirResistance;
-            
-            rocket.x += rocket.vx * dt;
-            rocket.y += rocket.vy * dt;
-            
-            // Create rocket trail particles for visualization
-            // Add multiple particles per frame for a fuller trail
-            const trailDensity = this.config.rocketTrailDensity;
-            
-            for (let j = 0; j < trailDensity; j++) {
-                // Main rocket glow particle (bright core)
-                const glowParticle = {
-                    position: [
-                        rocket.x + (Math.random() - 0.5) * 4,
-                        rocket.y + (Math.random() - 0.5) * 4
-                    ],
-                    velocity: [
-                        rocket.vx * 0.2 + (Math.random() - 0.5) * 1.5, 
-                        rocket.vy * 0.2 + (Math.random() - 0.5) * 1.5
-                    ],
-                    color: [1.0, 0.9, 0.3, 1.0], // Bright yellow core
-                    size: 4 + Math.random() * 2,
-                    life: 0.2 + Math.random() * 0.15,
-                    maxLife: 0.35,
-                    _padding: 0
-                };
-                this.particles.push(glowParticle);
-                
-                // Softer outer glow particles (orange/red)
-                const outerGlowParticle = {
-                    position: [
-                        rocket.x + (Math.random() - 0.5) * 6,
-                        rocket.y + (Math.random() - 0.5) * 6
-                    ],
-                    velocity: [
-                        rocket.vx * 0.15 + (Math.random() - 0.5) * 2, 
-                        rocket.vy * 0.15 + (Math.random() - 0.5) * 2
-                    ],
-                    color: [1.0, 0.5 + Math.random() * 0.3, 0.1, 0.8], // Orange/red outer glow
-                    size: 5 + Math.random() * 3,
-                    life: 0.25 + Math.random() * 0.2,
-                    maxLife: 0.45,
-                    _padding: 0
-                };
-                this.particles.push(outerGlowParticle);
+        for (const fw of this.fireworks) {
+            // Add rocket particle if it exists and hasn't exploded
+            if (fw.rocket && !fw.exploded) {
+                this.addParticleToGPU(fw.rocket);
             }
             
-            // Occasional sparkle particles
-            if (Math.random() < this.config.rocketSparkleChance) {
-                const sparkle = {
-                    position: [
-                        rocket.x + (Math.random() - 0.5) * 8,
-                        rocket.y + (Math.random() - 0.5) * 8
-                    ],
-                    velocity: [
-                        (Math.random() - 0.5) * 3,
-                        (Math.random() - 0.5) * 3
-                    ],
-                    color: [1.0, 1.0, 0.9, 1.0], // Bright white sparkle
-                    size: 2 + Math.random() * 1.5,
-                    life: 0.15 + Math.random() * 0.1,
-                    maxLife: 0.25,
-                    _padding: 0
-                };
-                this.particles.push(sparkle);
+            // Add all explosion particles
+            for (const p of fw.particles) {
+                this.addParticleToGPU(p);
             }
             
-            // Check if rocket should explode
-            // Rocket explodes when velocity becomes positive (moving down) or reaches target height
-            // Since Y increases downward, targetY < startY for upward motion
-            if (rocket.vy >= 0 || rocket.y <= rocket.targetY) {
-                // Rocket has reached peak or target, explode it
-                this.explodeRocket(rocket);
-                this.rockets.splice(i, 1);
+            // Add all secondary explosion particles
+            for (const p of this.secondaryExplosions) {
+                this.addParticleToGPU(p);
             }
         }
         
-        // Update particle buffer after adding rocket trails
+        // Update GPU particle buffer
         if (this.particles.length > 0) {
             this.updateParticleBuffer();
         }
     }
     
-    explodeRocket(rocket) {
-        // Create explosion particles at rocket position using shape generator
-        const particleCount = rocket.particleCount || 50;
-        const colors = rocket.colors || this.config.defaultColors;
-        const shape = rocket.shape || 'burst';
-        const intensity = rocket.intensity || 1.0;
+    addParticleToGPU(particle) {
+        // Convert Particle object to GPU particle format
+        // Use HSL to RGB conversion for color
+        const rgb = this.hslToRgb(particle.hue / 360, particle.saturation / 100, particle.brightness / 100);
         
-        // Get velocity patterns from shape generator
-        const generator = ShapeGenerators[shape] || ShapeGenerators.burst;
-        const velocities = generator(particleCount, intensity);
+        const gpuParticle = {
+            position: [particle.x, particle.y],
+            velocity: [particle.vx, particle.vy],
+            color: [rgb.r / 255, rgb.g / 255, rgb.b / 255, particle.alpha],
+            size: particle.size,
+            life: particle.lifespan,
+            maxLife: particle.maxLifespan,
+            _padding: 0
+        };
         
-        // Create particles with the generated velocities
-        for (let i = 0; i < velocities.length; i++) {
-            const vel = velocities[i];
-            
-            // Pick random color from palette
-            const colorHex = colors[Math.floor(Math.random() * colors.length)];
-            const color = this.hexToRgba(colorHex);
-            
-            // Add some variation to particle size
-            const baseSize = 2 + Math.random() * 3;
-            const sizeVariation = 1 + (Math.random() - 0.5) * 0.4;
-            
-            const particle = {
-                position: [rocket.x, rocket.y],
-                velocity: [vel.vx, vel.vy],
-                color: color,
-                size: baseSize * sizeVariation,
-                life: 1.0 + Math.random() * 0.5,
-                maxLife: 1.0 + Math.random() * 0.5,
-                _padding: 0
+        this.particles.push(gpuParticle);
+    }
+    
+    hslToRgb(h, s, l) {
+        let r, g, b;
+        
+        if (s === 0) {
+            r = g = b = l;
+        } else {
+            const hue2rgb = (p, q, t) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
             };
             
-            this.particles.push(particle);
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1/3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1/3);
         }
         
-        // Update particle buffer
-        this.updateParticleBuffer();
-        
-        // Play explosion audio
-        if (this.audioManager.enabled) {
-            this.audioManager.play('explosion-basic', 0.5);
-        }
+        return {
+            r: Math.round(r * 255),
+            g: Math.round(g * 255),
+            b: Math.round(b * 255)
+        };
     }
-
+    
     addFirework(options = {}) {
         console.log('[WebGPU Fireworks] addFirework called:', options);
         
         // Get options with defaults
         const position = options.position || { x: 0.5, y: 0.8 };
-        const particleCount = options.particleCount || 50;
-        const colors = options.colors || this.config.defaultColors;
         const shape = options.shape || 'burst';
         const intensity = options.intensity || 1.0;
+        const colors = options.colors || this.config.defaultColors;
         
         // Convert normalized position to screen coordinates
         const startX = position.x * this.width;
-        const startY = this.height; // Start at bottom (max Y in canvas coordinates)
-        let targetY = position.y * this.height; // Target height (lower Y value)
+        const startY = this.height;
+        let targetY = position.y * this.height;
         
-        // Validate that target is above start (targetY < startY in Y-down coordinates)
+        // Validate target position
         if (targetY >= startY) {
             console.warn('[WebGPU Fireworks] Invalid rocket target: targetY must be < startY. Adjusting to default.');
-            targetY = startY * this.config.defaultTargetY; // Default to configured target height
+            targetY = startY * this.config.defaultTargetY;
         }
         
-        // Create rocket object with shape and intensity information
-        const rocket = {
+        // Create new Firework object
+        const firework = new Firework({
             x: startX,
             y: startY,
             targetY: targetY,
-            vx: (Math.random() - 0.5) * 2, // Slight horizontal drift
-            vy: this.config.rocketSpeed, // Initial velocity (negative = upward in canvas Y-down coordinates)
-            particleCount: particleCount,
-            colors: colors,
             shape: shape,
-            intensity: intensity
+            colors: colors,
+            intensity: intensity,
+            giftImage: options.giftImage || null,
+            userAvatar: options.userAvatar || null,
+            tier: options.tier || 'medium',
+            combo: options.combo || 1,
+            skipRocket: options.skipRocket || false,
+            instantExplode: options.instantExplode || false
+        });
+        
+        // Set audio callbacks
+        firework.onExplodeSound = (intensity) => {
+            if (this.audioManager.enabled) {
+                this.audioManager.play('explosion-basic', 0.5 * intensity);
+            }
         };
         
-        this.rockets.push(rocket);
+        firework.onSecondaryExplosionSound = () => {
+            if (this.audioManager.enabled) {
+                this.audioManager.play('crackling', 0.3);
+            }
+        };
         
-        // Play launch audio
-        if (this.audioManager.enabled) {
+        this.fireworks.push(firework);
+        
+        // Play launch audio for rockets
+        if (!firework.skipRocket && !firework.instantExplode && this.audioManager.enabled) {
             this.audioManager.play('rocket-basic', 0.3);
         }
     }
