@@ -323,6 +323,9 @@ class PluginManager {
         const statusBadge = plugin.enabled
             ? '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; font-size: 0.7rem; font-weight: 600;"><i data-lucide="check-circle" style="width: 12px; height: 12px;"></i> Active</span>'
             : '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(107, 114, 128, 0.3); border: 1px solid rgba(107, 114, 128, 0.5); border-radius: 12px; font-size: 0.7rem; font-weight: 600;"><i data-lucide="pause-circle" style="width: 12px; height: 12px;"></i> Inactive</span>';
+        
+        // Get development status badge
+        const devStatusBadge = window.PluginStatusNotice ? window.PluginStatusNotice.getStatusBadgeHTML(plugin.id) : '';
 
         const actionButtons = plugin.enabled
             ? `
@@ -351,7 +354,12 @@ class PluginManager {
                 <td>
                     <span style="padding: 2px 8px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; font-size: 0.7rem; color: #9ca3af; font-family: monospace;">v${this.escapeHtml(plugin.version)}</span>
                 </td>
-                <td>${statusBadge}</td>
+                <td>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        ${statusBadge}
+                        ${devStatusBadge}
+                    </div>
+                </td>
                 <td>
                     ${plugin.type ? `<span style="font-size: 0.75rem; color: #9ca3af;">${this.getTypeIcon(plugin.type)} ${this.escapeHtml(plugin.type)}</span>` : '<span style="color: #6b7280;">-</span>'}
                 </td>
@@ -378,6 +386,9 @@ class PluginManager {
         const statusBadge = plugin.enabled
             ? '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 20px; font-size: 0.75rem; font-weight: 600;"><i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Aktiv</span>'
             : '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: rgba(107, 114, 128, 0.3); border: 1px solid rgba(107, 114, 128, 0.5); border-radius: 20px; font-size: 0.75rem; font-weight: 600;"><i data-lucide="pause-circle" style="width: 14px; height: 14px;"></i> Inaktiv</span>';
+
+        // Get development status badge
+        const devStatusBadge = window.PluginStatusNotice ? window.PluginStatusNotice.getStatusBadgeHTML(plugin.id) : '';
 
         const typeIcon = this.getTypeIcon(plugin.type);
         const typeBadge = plugin.type 
@@ -435,6 +446,7 @@ class PluginManager {
                                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
                                     <h3 style="font-size: 1.25rem; font-weight: 700; color: white; margin: 0;">${this.escapeHtml(plugin.name)}</h3>
                                     ${statusBadge}
+                                    ${devStatusBadge}
                                     <span style="padding: 4px 10px; background: rgba(0, 0, 0, 0.3); border-radius: 6px; font-size: 0.75rem; color: #9ca3af; font-family: monospace;">v${this.escapeHtml(plugin.version)}</span>
                                 </div>
                                 <p style="font-size: 0.9rem; color: #d1d5db; margin: 0 0 12px 0; line-height: 1.5;">${this.escapeHtml(plugin.description || (window.i18n ? window.i18n.t('plugins.no_description') : 'No description available'))}</p>

@@ -5,6 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thermal Printer - Configuration</title>
+    <link rel="stylesheet" href="/css/plugin-notices.css">
     <link rel="stylesheet" href="/css/themes.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -283,6 +284,7 @@
         .icon-test::before { content: "▶️ "; }
         .icon-back::before { content: "← "; }
     </style>
+    <script src="/js/lucide.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -689,5 +691,6 @@
         // Auto-refresh status every 5 seconds
         setInterval(loadStatus, 5000);
     </script>
+    <script src="/js/plugin-status-notice.js"></script>
 </body>
 </html>
