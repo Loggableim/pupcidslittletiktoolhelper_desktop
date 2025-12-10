@@ -146,6 +146,10 @@ class FlameOverlayPlugin {
         const express = require('express');
         const textureDir = path.join(__dirname, 'textures');
         this.api.getApp().use('/plugins/flame-overlay/textures', express.static(textureDir));
+        
+        // Serve renderer directory for flame.js
+        const rendererDir = path.join(__dirname, 'renderer');
+        this.api.getApp().use('/flame-overlay', express.static(rendererDir));
     }
 
     /**
