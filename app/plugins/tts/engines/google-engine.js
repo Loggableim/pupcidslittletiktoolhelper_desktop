@@ -536,10 +536,11 @@ class GoogleEngine {
      * @param {string} text - Text to synthesize
      * @param {string} voiceId - Google voice ID
      * @param {number} speed - Speaking rate (0.25 - 4.0)
-     * @param {number} pitch - Speaking pitch (-20.0 - 20.0)
+     * @param {object} options - Additional options (pitch, etc.)
      * @returns {Promise<string>} Base64-encoded MP3 audio
      */
-    async synthesize(text, voiceId, speed = 1.0, pitch = 0.0) {
+    async synthesize(text, voiceId, speed = 1.0, options = {}) {
+        const pitch = options.pitch || 0.0;
         if (!this.apiKey) {
             throw new Error('Google TTS API key not configured');
         }

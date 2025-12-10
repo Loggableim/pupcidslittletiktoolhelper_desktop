@@ -310,10 +310,10 @@ class ElevenLabsEngine {
      * @param {string} text - Text to synthesize (max 5000 chars for standard, 2500 for turbo)
      * @param {string} voiceId - ElevenLabs voice ID
      * @param {number} speed - Speaking rate (0.25 - 4.0) - Note: ElevenLabs uses stability/similarity_boost instead
-     * @param {string} modelId - Model ID (default: eleven_multilingual_v2)
+     * @param {object} options - Additional options (modelId, etc.)
      * @returns {Promise<string>} Base64-encoded MP3 audio
      */
-    async synthesize(text, voiceId, speed = 1.0, modelId = null) {
+    async synthesize(text, voiceId, speed = 1.0, options = {}) {
         if (!text || typeof text !== 'string') {
             throw new Error('Text is required and must be a string');
         }
@@ -323,7 +323,7 @@ class ElevenLabsEngine {
         }
 
         // Use default model if not specified
-        const model = modelId || this.defaultModel;
+        const model = options.modelId || this.defaultModel;
 
         // Track usage
         this.usageStats.totalRequests++;
