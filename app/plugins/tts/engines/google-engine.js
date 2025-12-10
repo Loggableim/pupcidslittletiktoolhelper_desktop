@@ -678,6 +678,7 @@ class GoogleEngine {
         }
         
         this.apiKey = apiKey;
+        this.logger.info('Google Cloud TTS: API key updated');
     }
 }
 
