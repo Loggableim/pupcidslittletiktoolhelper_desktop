@@ -37,6 +37,9 @@ class TTSPlugin {
         // Load configuration
         this.config = this._loadConfig();
 
+        // Parse and cache message filter prefixes for performance
+        this._cachedFilterPrefixes = this._parseFilterPrefixes(this.config.messageFilterPrefixes);
+
         // Initialize engines (TikTok engine removed - no longer used)
         // Only load engines that are enabled (as primary or fallback) to save system resources
         this.engines = {
@@ -264,6 +267,19 @@ class TTSPlugin {
             engineName === 'speechify' ? { language: this.languageDetector.detectLanguage(text)?.language } : {});
         
         return { audioData, voice: fallbackVoice };
+    }
+
+    /**
+     * Parse message filter prefixes from configuration
+     * @private
+     * @param {string} prefixesString - Comma-separated list of prefixes
+     * @returns {Array<string>} Array of prefix strings
+     */
+    _parseFilterPrefixes(prefixesString) {
+        if (!prefixesString || !prefixesString.trim()) {
+            return [];
+        }
+        return prefixesString.split(',').map(p => p.trim()).filter(p => p.length > 0);
     }
 
     /**
@@ -764,6 +780,14 @@ class TTSPlugin {
                 }
 
                 this._saveConfig();
+
+                // Update cached message filter prefixes if they changed
+                if (updates.messageFilterPrefixes !== undefined) {
+                    this._cachedFilterPrefixes = this._parseFilterPrefixes(this.config.messageFilterPrefixes);
+                    this._logDebug('CONFIG', 'Message filter prefixes cache updated', {
+                        prefixes: this._cachedFilterPrefixes
+                    });
+                }
 
                 res.json({ success: true, config: this.config });
 
@@ -1445,32 +1469,29 @@ class TTSPlugin {
             }
 
             // Step 1.5: Check message filter prefixes
-            if (this.config.messageFilterPrefixes && this.config.messageFilterPrefixes.trim()) {
-                const prefixes = this.config.messageFilterPrefixes.split(',').map(p => p.trim()).filter(p => p.length > 0);
-                if (prefixes.length > 0) {
-                    const trimmedText = text.trim();
-                    for (const prefix of prefixes) {
-                        if (trimmedText.startsWith(prefix)) {
-                            this._logDebug('SPEAK_DENIED', 'Message filtered by prefix', {
-                                username,
-                                text: trimmedText,
-                                matchedPrefix: prefix,
-                                configuredPrefixes: prefixes
-                            });
-                            this.logger.info(`TTS message filtered: ${username} - message starts with "${prefix}"`);
-                            return {
-                                success: false,
-                                error: 'message_filtered',
-                                reason: 'message_starts_with_filtered_prefix',
-                                matchedPrefix: prefix
-                            };
-                        }
+            if (this._cachedFilterPrefixes.length > 0) {
+                const trimmedText = text.trim();
+                for (const prefix of this._cachedFilterPrefixes) {
+                    if (trimmedText.startsWith(prefix)) {
+                        this._logDebug('SPEAK_DENIED', 'Message filtered by prefix', {
+                            username,
+                            text: trimmedText,
+                            matchedPrefix: prefix,
+                            configuredPrefixes: this._cachedFilterPrefixes
+                        });
+                        this.logger.info(`TTS message filtered: ${username} - message starts with "${prefix}"`);
+                        return {
+                            success: false,
+                            error: 'message_filtered',
+                            reason: 'message_starts_with_filtered_prefix',
+                            matchedPrefix: prefix
+                        };
                     }
-                    this._logDebug('SPEAK_STEP1.5', 'Message passed prefix filter', {
-                        text: trimmedText,
-                        configuredPrefixes: prefixes
-                    });
                 }
+                this._logDebug('SPEAK_STEP1.5', 'Message passed prefix filter', {
+                    text: trimmedText,
+                    configuredPrefixes: this._cachedFilterPrefixes
+                });
             }
 
             // Step 2: Filter profanity
