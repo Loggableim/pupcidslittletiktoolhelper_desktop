@@ -457,69 +457,8 @@ function populateConfig(config) {
     // Performance mode
     setValue('performanceMode', config.performanceMode || 'balanced');
 
-    // Handle API key - show placeholder if hidden
-    const apiKeyInput = document.getElementById('googleApiKey');
-    if (apiKeyInput) {
-        if (config.googleApiKey) {
-            if (config.googleApiKey === '***HIDDEN***') {
-                apiKeyInput.placeholder = 'API key configured (hidden for security)';
-                apiKeyInput.value = '';
-            } else {
-                apiKeyInput.value = config.googleApiKey;
-            }
-        } else {
-            apiKeyInput.placeholder = 'Enter API key...';
-            apiKeyInput.value = '';
-        }
-    }
-
-    // Load Speechify API key
-    const speechifyKeyInput = document.getElementById('speechifyApiKey');
-    if (speechifyKeyInput) {
-        if (config.speechifyApiKey) {
-            if (config.speechifyApiKey === '***REDACTED***') {
-                speechifyKeyInput.placeholder = 'API key configured (hidden for security)';
-                speechifyKeyInput.value = '';
-            } else {
-                speechifyKeyInput.value = config.speechifyApiKey;
-            }
-        } else {
-            speechifyKeyInput.placeholder = 'Enter API key...';
-            speechifyKeyInput.value = '';
-        }
-    }
-
-    // Load ElevenLabs API key
-    const elevenlabsKeyInput = document.getElementById('elevenlabsApiKey');
-    if (elevenlabsKeyInput) {
-        if (config.elevenlabsApiKey) {
-            if (config.elevenlabsApiKey === '***REDACTED***') {
-                elevenlabsKeyInput.placeholder = 'API key configured (hidden for security)';
-                elevenlabsKeyInput.value = '';
-            } else {
-                elevenlabsKeyInput.value = config.elevenlabsApiKey;
-            }
-        } else {
-            elevenlabsKeyInput.placeholder = 'Enter API key...';
-            elevenlabsKeyInput.value = '';
-        }
-    }
-
-    // Load OpenAI API key
-    const openaiKeyInput = document.getElementById('openaiApiKey');
-    if (openaiKeyInput) {
-        if (config.openaiApiKey) {
-            if (config.openaiApiKey === '***REDACTED***') {
-                openaiKeyInput.placeholder = 'API key configured (hidden for security)';
-                openaiKeyInput.value = '';
-            } else {
-                openaiKeyInput.value = config.openaiApiKey;
-            }
-        } else {
-            openaiKeyInput.placeholder = 'Enter API key...';
-            openaiKeyInput.value = '';
-        }
-    }
+    // API keys are now managed in the global Settings panel
+    // (removed API key loading code)
 
     // Load TikTok SessionID (deprecated but kept for backwards compatibility)
     const tiktokSessionInput = document.getElementById('tiktokSessionId');
@@ -577,29 +516,8 @@ async function saveConfig() {
             performanceMode: document.getElementById('performanceMode').value
         };
 
-        // Add API key if provided
-        const apiKey = document.getElementById('googleApiKey').value;
-        if (apiKey && apiKey !== '***HIDDEN***') {
-            config.googleApiKey = apiKey;
-        }
-
-        // Get Speechify API key
-        const speechifyApiKey = document.getElementById('speechifyApiKey')?.value?.trim();
-        if (speechifyApiKey && speechifyApiKey !== '***REDACTED***') {
-            config.speechifyApiKey = speechifyApiKey;
-        }
-
-        // Get ElevenLabs API key
-        const elevenlabsApiKey = document.getElementById('elevenlabsApiKey')?.value?.trim();
-        if (elevenlabsApiKey && elevenlabsApiKey !== '***REDACTED***') {
-            config.elevenlabsApiKey = elevenlabsApiKey;
-        }
-
-        // Get OpenAI API key
-        const openaiApiKey = document.getElementById('openaiApiKey')?.value?.trim();
-        if (openaiApiKey && openaiApiKey !== '***REDACTED***') {
-            config.openaiApiKey = openaiApiKey;
-        }
+        // API keys are now managed in global Settings panel
+        // (removed API key handling code)
 
         // Get TikTok SessionID (deprecated but kept for backwards compatibility)
         const tiktokSessionId = document.getElementById('tiktokSessionId')?.value?.trim();
@@ -1614,53 +1532,7 @@ function setupEventListeners() {
         });
     });
 
-    // Toggle Google API key visibility
-    const toggleGoogleKey = document.getElementById('toggle-google-key');
-    const googleKeyInput = document.getElementById('googleApiKey');
-    if (toggleGoogleKey && googleKeyInput) {
-        toggleGoogleKey.addEventListener('click', () => {
-            const type = googleKeyInput.type === 'password' ? 'text' : 'password';
-            googleKeyInput.type = type;
-            toggleGoogleKey.querySelector('i').classList.toggle('fa-eye');
-            toggleGoogleKey.querySelector('i').classList.toggle('fa-eye-slash');
-        });
-    }
-
-    // Toggle Speechify API key visibility
-    const toggleSpeechifyKey = document.getElementById('toggle-speechify-key');
-    const speechifyKeyInput = document.getElementById('speechifyApiKey');
-    if (toggleSpeechifyKey && speechifyKeyInput) {
-        toggleSpeechifyKey.addEventListener('click', () => {
-            const type = speechifyKeyInput.type === 'password' ? 'text' : 'password';
-            speechifyKeyInput.type = type;
-            toggleSpeechifyKey.querySelector('i').classList.toggle('fa-eye');
-            toggleSpeechifyKey.querySelector('i').classList.toggle('fa-eye-slash');
-        });
-    }
-
-    // Toggle ElevenLabs API key visibility
-    const toggleElevenlabsKey = document.getElementById('toggle-elevenlabs-key');
-    const elevenlabsKeyInput = document.getElementById('elevenlabsApiKey');
-    if (toggleElevenlabsKey && elevenlabsKeyInput) {
-        toggleElevenlabsKey.addEventListener('click', () => {
-            const type = elevenlabsKeyInput.type === 'password' ? 'text' : 'password';
-            elevenlabsKeyInput.type = type;
-            toggleElevenlabsKey.querySelector('i').classList.toggle('fa-eye');
-            toggleElevenlabsKey.querySelector('i').classList.toggle('fa-eye-slash');
-        });
-    }
-
-    // Toggle OpenAI API key visibility
-    const toggleOpenaiKey = document.getElementById('toggle-openai-key');
-    const openaiKeyInput = document.getElementById('openaiApiKey');
-    if (toggleOpenaiKey && openaiKeyInput) {
-        toggleOpenaiKey.addEventListener('click', () => {
-            const type = openaiKeyInput.type === 'password' ? 'text' : 'password';
-            openaiKeyInput.type = type;
-            toggleOpenaiKey.querySelector('i').classList.toggle('fa-eye');
-            toggleOpenaiKey.querySelector('i').classList.toggle('fa-eye-slash');
-        });
-    }
+    // API key toggle handlers removed (now managed in global Settings panel)
 
     // Toggle TikTok SessionID visibility
     const toggleTiktokSession = document.getElementById('toggle-tiktok-session');

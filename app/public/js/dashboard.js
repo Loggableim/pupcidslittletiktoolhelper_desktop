@@ -278,6 +278,39 @@ function initializeButtons() {
         saveOpenAICredentialsBtn.addEventListener('click', saveOpenAICredentials);
     }
 
+    // TTS API Keys save button
+    const saveTTSAPIKeysBtn = document.getElementById('save-tts-api-keys');
+    if (saveTTSAPIKeysBtn) {
+        saveTTSAPIKeysBtn.addEventListener('click', saveTTSAPIKeys);
+    }
+
+    // TTS API Keys toggle visibility buttons
+    const toggleButtons = [
+        { btnId: 'toggle-tts-google-key', inputId: 'tts-google-api-key' },
+        { btnId: 'toggle-tts-speechify-key', inputId: 'tts-speechify-api-key' },
+        { btnId: 'toggle-tts-elevenlabs-key', inputId: 'tts-elevenlabs-api-key' },
+        { btnId: 'toggle-tts-openai-key', inputId: 'tts-openai-api-key' }
+    ];
+
+    toggleButtons.forEach(({ btnId, inputId }) => {
+        const btn = document.getElementById(btnId);
+        const input = document.getElementById(inputId);
+        if (btn && input) {
+            btn.addEventListener('click', () => {
+                const isPassword = input.type === 'password';
+                input.type = isPassword ? 'text' : 'password';
+                const icon = btn.querySelector('i');
+                if (icon) {
+                    icon.setAttribute('data-lucide', isPassword ? 'eye-off' : 'eye');
+                    // Reinitialize lucide icons for this specific icon
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                }
+            });
+        }
+    });
+
     // Preset management buttons
     const exportBtn = document.getElementById('export-preset-btn');
     if (exportBtn) {
@@ -1387,6 +1420,32 @@ async function loadSettings() {
             openaiModelSelect.value = settings.openai_model;
         }
 
+        // Load TTS API Keys
+        const ttsGoogleKeyInput = document.getElementById('tts-google-api-key');
+        if (ttsGoogleKeyInput && settings.tts_google_api_key) {
+            // Show masked value if key exists
+            ttsGoogleKeyInput.value = '***REDACTED***';
+            ttsGoogleKeyInput.placeholder = 'API key configured (hidden)';
+        }
+
+        const ttsSpeechifyKeyInput = document.getElementById('tts-speechify-api-key');
+        if (ttsSpeechifyKeyInput && settings.tts_speechify_api_key) {
+            ttsSpeechifyKeyInput.value = '***REDACTED***';
+            ttsSpeechifyKeyInput.placeholder = 'API key configured (hidden)';
+        }
+
+        const ttsElevenlabsKeyInput = document.getElementById('tts-elevenlabs-api-key');
+        if (ttsElevenlabsKeyInput && settings.tts_elevenlabs_api_key) {
+            ttsElevenlabsKeyInput.value = '***REDACTED***';
+            ttsElevenlabsKeyInput.placeholder = 'API key configured (hidden)';
+        }
+
+        const ttsOpenaiKeyInput = document.getElementById('tts-openai-api-key');
+        if (ttsOpenaiKeyInput && settings.tts_openai_api_key) {
+            ttsOpenaiKeyInput.value = '***REDACTED***';
+            ttsOpenaiKeyInput.placeholder = 'API key configured (hidden)';
+        }
+
     } catch (error) {
         console.error('Error loading settings:', error);
     }
@@ -1497,6 +1556,83 @@ async function saveOpenAICredentials() {
     } catch (error) {
         console.error('Error saving OpenAI credentials:', error);
         alert('❌ Error saving OpenAI configuration!');
+    }
+}
+
+// Save TTS API Keys
+async function saveTTSAPIKeys() {
+    const googleKeyInput = document.getElementById('tts-google-api-key');
+    const speechifyKeyInput = document.getElementById('tts-speechify-api-key');
+    const elevenlabsKeyInput = document.getElementById('tts-elevenlabs-api-key');
+    const openaiKeyInput = document.getElementById('tts-openai-api-key');
+    
+    if (!googleKeyInput || !speechifyKeyInput || !elevenlabsKeyInput || !openaiKeyInput) return;
+
+    const googleKey = googleKeyInput.value.trim();
+    const speechifyKey = speechifyKeyInput.value.trim();
+    const elevenlabsKey = elevenlabsKeyInput.value.trim();
+    const openaiKey = openaiKeyInput.value.trim();
+    
+    // Check if there are any actual new keys to save (not placeholders or empty)
+    const hasNewKeys = (googleKey && googleKey !== '***REDACTED***') ||
+                       (speechifyKey && speechifyKey !== '***REDACTED***') ||
+                       (elevenlabsKey && elevenlabsKey !== '***REDACTED***') ||
+                       (openaiKey && openaiKey !== '***REDACTED***');
+    
+    // Check if at least one key exists (either new or placeholder indicating existing)
+    const hasAnyKeys = googleKey || speechifyKey || elevenlabsKey || openaiKey;
+    
+    if (!hasAnyKeys) {
+        alert('❌ Please enter at least one TTS API key');
+        return;
+    }
+    
+    if (!hasNewKeys) {
+        alert('ℹ️ No changes to save. All fields contain existing (masked) keys.\n\nTo update a key, replace the ***REDACTED*** value with your new API key.');
+        return;
+    }
+
+    try {
+        const updateData = {};
+        
+        // Only include non-empty keys that aren't placeholders
+        if (googleKey && googleKey !== '***REDACTED***') {
+            updateData.tts_google_api_key = googleKey;
+        }
+        if (speechifyKey && speechifyKey !== '***REDACTED***') {
+            updateData.tts_speechify_api_key = speechifyKey;
+        }
+        if (elevenlabsKey && elevenlabsKey !== '***REDACTED***') {
+            updateData.tts_elevenlabs_api_key = elevenlabsKey;
+        }
+        if (openaiKey && openaiKey !== '***REDACTED***') {
+            updateData.tts_openai_api_key = openaiKey;
+        }
+
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('✅ TTS API Keys saved successfully!\n\nNote: The TTS plugin may need to reload to use the new keys.');
+            
+            // Update local settings cache
+            if (googleKey && googleKey !== '***REDACTED***') settings.tts_google_api_key = googleKey;
+            if (speechifyKey && speechifyKey !== '***REDACTED***') settings.tts_speechify_api_key = speechifyKey;
+            if (elevenlabsKey && elevenlabsKey !== '***REDACTED***') settings.tts_elevenlabs_api_key = elevenlabsKey;
+            if (openaiKey && openaiKey !== '***REDACTED***') settings.tts_openai_api_key = openaiKey;
+            
+            // Reload the settings to show the masked keys
+            await loadSettings();
+        } else {
+            alert('❌ Error saving TTS API keys: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving TTS API keys:', error);
+        alert('❌ Error saving TTS API keys!');
     }
 }
 

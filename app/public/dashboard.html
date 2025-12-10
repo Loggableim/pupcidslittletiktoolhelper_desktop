@@ -2102,6 +2102,80 @@
                                 </button>
                             </div>
 
+                            <!-- TTS API Keys Configuration -->
+                            <div class="settings-card">
+                                <h3 class="card-title">
+                                    <i data-lucide="volume-2"></i>
+                                    TTS Engine API Keys
+                                </h3>
+                                <p class="text-sm text-gray-400 mb-4">
+                                    Configure API keys for Text-to-Speech engines. Only engines with valid API keys can be used.
+                                </p>
+
+                                <div class="space-y-4">
+                                    <!-- Google Cloud TTS -->
+                                    <div class="form-group">
+                                        <label>Google Cloud TTS API Key</label>
+                                        <div style="display: flex; gap: 8px;">
+                                            <input type="password" id="tts-google-api-key" class="form-input" placeholder="Enter Google Cloud API key...">
+                                            <button type="button" id="toggle-tts-google-key" class="btn btn-ghost" style="padding: 0.5rem 1rem;">
+                                                <i data-lucide="eye"></i>
+                                            </button>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            Get your API key from <a href="https://console.cloud.google.com" target="_blank" class="text-blue-400 hover:text-blue-300">Google Cloud Console</a>. Enable the Cloud Text-to-Speech API.
+                                        </p>
+                                    </div>
+
+                                    <!-- Speechify TTS -->
+                                    <div class="form-group">
+                                        <label>Speechify API Key</label>
+                                        <div style="display: flex; gap: 8px;">
+                                            <input type="password" id="tts-speechify-api-key" class="form-input" placeholder="Enter Speechify API key...">
+                                            <button type="button" id="toggle-tts-speechify-key" class="btn btn-ghost" style="padding: 0.5rem 1rem;">
+                                                <i data-lucide="eye"></i>
+                                            </button>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            Get from <a href="https://speechify.com/api" target="_blank" class="text-blue-400 hover:text-blue-300">speechify.com/api</a>. $10 per 1M characters. 1000+ voices.
+                                        </p>
+                                    </div>
+
+                                    <!-- ElevenLabs TTS -->
+                                    <div class="form-group">
+                                        <label>ElevenLabs API Key</label>
+                                        <div style="display: flex; gap: 8px;">
+                                            <input type="password" id="tts-elevenlabs-api-key" class="form-input" placeholder="Enter ElevenLabs API key...">
+                                            <button type="button" id="toggle-tts-elevenlabs-key" class="btn btn-ghost" style="padding: 0.5rem 1rem;">
+                                                <i data-lucide="eye"></i>
+                                            </button>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            Get from <a href="https://elevenlabs.io/docs/quickstart" target="_blank" class="text-blue-400 hover:text-blue-300">elevenlabs.io</a>. Ultra-realistic AI voices.
+                                        </p>
+                                    </div>
+
+                                    <!-- OpenAI TTS -->
+                                    <div class="form-group">
+                                        <label>OpenAI TTS API Key</label>
+                                        <div style="display: flex; gap: 8px;">
+                                            <input type="password" id="tts-openai-api-key" class="form-input" placeholder="Enter OpenAI API key...">
+                                            <button type="button" id="toggle-tts-openai-key" class="btn btn-ghost" style="padding: 0.5rem 1rem;">
+                                                <i data-lucide="eye"></i>
+                                            </button>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            Get from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-400 hover:text-blue-300">OpenAI Platform</a>. TTS-1 and TTS-1-HD models.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <button id="save-tts-api-keys" class="btn btn-primary mt-4">
+                                    <i data-lucide="save"></i>
+                                    Save TTS API Keys
+                                </button>
+                            </div>
+
                             <!-- OpenAI API Configuration -->
                             <div class="settings-card">
                                 <h3 class="card-title">
