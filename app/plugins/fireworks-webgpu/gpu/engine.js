@@ -36,6 +36,176 @@ const CONFIG = {
 };
 
 // ============================================================================
+// SHAPE GENERATORS - Create particle velocity patterns for different shapes
+// ============================================================================
+
+const ShapeGenerators = {
+    burst: (count, intensity) => {
+        const particles = [];
+        const rings = 2 + Math.floor(intensity);
+        const particlesPerRing = Math.floor(count / rings);
+        
+        for (let ring = 0; ring < rings; ring++) {
+            const ringSpeed = (50 + Math.random() * 50) * (1 + ring * 0.3) * intensity;
+            for (let i = 0; i < particlesPerRing; i++) {
+                const angle = (Math.PI * 2 * i) / particlesPerRing + (Math.random() - 0.5) * 0.2;
+                particles.push({
+                    vx: Math.cos(angle) * ringSpeed,
+                    vy: Math.sin(angle) * ringSpeed
+                });
+            }
+        }
+        return particles;
+    },
+
+    heart: (count, intensity) => {
+        const particles = [];
+        const layers = 4;
+        const particlesPerLayer = Math.floor(count / layers);
+        
+        for (let layer = 0; layer < layers; layer++) {
+            const layerScale = 0.5 + (layer * 0.15);
+            for (let i = 0; i < particlesPerLayer; i++) {
+                const t = (i / particlesPerLayer) * Math.PI * 2;
+                // Parametric heart equation
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                
+                const mag = Math.max(Math.sqrt(x*x + y*y), 1);
+                const speed = (3 + Math.random() * 1) * intensity * layerScale;
+                particles.push({
+                    vx: (x / mag) * speed * 8,
+                    vy: (y / mag) * speed * 8
+                });
+            }
+        }
+        return particles;
+    },
+
+    star: (count, intensity) => {
+        const particles = [];
+        const points = 5;
+        const particlesPerPoint = Math.floor(count / (points * 2));
+        
+        for (let point = 0; point < points; point++) {
+            const outerAngle = (Math.PI * 2 * point) / points - Math.PI / 2;
+            const innerAngle = outerAngle + (Math.PI / points);
+            
+            // Outer point (star tip)
+            for (let i = 0; i < particlesPerPoint; i++) {
+                const t = i / particlesPerPoint;
+                const spread = (Math.random() - 0.5) * 0.15;
+                const angle = outerAngle + spread;
+                const radiusMix = 0.8 + t * 0.4;
+                const speed = (50 + Math.random() * 25) * intensity * radiusMix;
+                particles.push({
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed
+                });
+            }
+            
+            // Inner valley
+            for (let i = 0; i < particlesPerPoint / 2; i++) {
+                const t = i / (particlesPerPoint / 2);
+                const spread = (Math.random() - 0.5) * 0.1;
+                const angle = innerAngle + spread;
+                const radiusMix = 0.3 + t * 0.3;
+                const speed = (37.5 + Math.random() * 20) * intensity * radiusMix;
+                particles.push({
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed
+                });
+            }
+        }
+        return particles;
+    },
+
+    spiral: (count, intensity) => {
+        const particles = [];
+        const turns = 4;
+        const arms = 3;
+        
+        for (let i = 0; i < count; i++) {
+            const t = (i / count) * turns * Math.PI * 2;
+            const armOffset = (Math.floor(i * arms / count) * Math.PI * 2) / arms;
+            const radius = (i / count) * intensity * 20;
+            const speed = 37.5 + Math.random() * 37.5;
+            particles.push({
+                vx: Math.cos(t + armOffset) * radius * speed / 20,
+                vy: Math.sin(t + armOffset) * radius * speed / 20
+            });
+        }
+        return particles;
+    },
+    
+    paws: (count, intensity) => {
+        const particles = [];
+        const centerPadParticles = Math.floor(count * 0.4);
+        const toeParticles = Math.floor((count - centerPadParticles) / 4);
+        
+        // Center pad
+        for (let i = 0; i < centerPadParticles; i++) {
+            const angle = (Math.PI * 2 * i) / centerPadParticles + Math.random() * 0.3;
+            const radius = 0.3 + Math.random() * 0.2;
+            const speed = (20 + Math.random() * 10) * intensity;
+            const offsetY = 15 * intensity;
+            particles.push({
+                vx: Math.cos(angle) * radius * speed,
+                vy: (Math.sin(angle) * radius * speed) + offsetY
+            });
+        }
+        
+        // 4 toe pads
+        const toePositions = [
+            { angle: -2.4, distance: 1.2 },
+            { angle: -1.8, distance: 1.4 },
+            { angle: -1.3, distance: 1.4 },
+            { angle: -0.7, distance: 1.2 }
+        ];
+        
+        for (let toe = 0; toe < 4; toe++) {
+            const toePos = toePositions[toe];
+            for (let i = 0; i < toeParticles; i++) {
+                const localAngle = (Math.PI * 2 * i) / toeParticles;
+                const radius = 0.15 + Math.random() * 0.1;
+                const speed = (15 + Math.random() * 7.5) * intensity;
+                
+                const basex = Math.cos(toePos.angle) * toePos.distance;
+                const basey = Math.sin(toePos.angle) * toePos.distance;
+                
+                particles.push({
+                    vx: (basex + Math.cos(localAngle) * radius) * speed,
+                    vy: (basey + Math.sin(localAngle) * radius) * speed
+                });
+            }
+        }
+        
+        return particles;
+    },
+
+    ring: (count, intensity) => {
+        const particles = [];
+        const rings = 2 + Math.floor(intensity * 0.5);
+        
+        for (let ring = 0; ring < rings; ring++) {
+            const ringParticles = Math.floor(count / rings);
+            const ringRadius = (ring + 1) / rings;
+            
+            for (let i = 0; i < ringParticles; i++) {
+                const angle = (Math.PI * 2 * i) / ringParticles;
+                const speed = (75 + Math.random() * 25) * intensity * ringRadius;
+                particles.push({
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed
+                });
+            }
+        }
+        return particles;
+    }
+};
+
+
+// ============================================================================
 // WEBGPU SHADERS
 // ============================================================================
 
@@ -610,21 +780,67 @@ class FireworksEngine {
             rocket.x += rocket.vx * dt;
             rocket.y += rocket.vy * dt;
             
-            // Add rocket trail particles to make the rocket visible
-            // Create a glowing trail particle at the rocket's current position
-            const trailParticle = {
-                position: [rocket.x, rocket.y],
-                velocity: [
-                    rocket.vx * 0.3 + (Math.random() - 0.5) * 2, 
-                    rocket.vy * 0.3 + (Math.random() - 0.5) * 2
-                ],
-                color: [1.0, 0.8, 0.2, 1.0], // Bright orange/yellow for rocket trail
-                size: 3 + Math.random() * 2,
-                life: 0.3 + Math.random() * 0.2, // Short-lived trail
-                maxLife: 0.5,
-                _padding: 0
-            };
-            this.particles.push(trailParticle);
+            // Create rocket trail particles for visualization
+            // Add multiple particles per frame for a fuller trail
+            const trailDensity = 3; // Number of trail particles per frame
+            
+            for (let j = 0; j < trailDensity; j++) {
+                // Main rocket glow particle (bright core)
+                const glowParticle = {
+                    position: [
+                        rocket.x + (Math.random() - 0.5) * 4,
+                        rocket.y + (Math.random() - 0.5) * 4
+                    ],
+                    velocity: [
+                        rocket.vx * 0.2 + (Math.random() - 0.5) * 1.5, 
+                        rocket.vy * 0.2 + (Math.random() - 0.5) * 1.5
+                    ],
+                    color: [1.0, 0.9, 0.3, 1.0], // Bright yellow core
+                    size: 4 + Math.random() * 2,
+                    life: 0.2 + Math.random() * 0.15,
+                    maxLife: 0.35,
+                    _padding: 0
+                };
+                this.particles.push(glowParticle);
+                
+                // Softer outer glow particles (orange/red)
+                const outerGlowParticle = {
+                    position: [
+                        rocket.x + (Math.random() - 0.5) * 6,
+                        rocket.y + (Math.random() - 0.5) * 6
+                    ],
+                    velocity: [
+                        rocket.vx * 0.15 + (Math.random() - 0.5) * 2, 
+                        rocket.vy * 0.15 + (Math.random() - 0.5) * 2
+                    ],
+                    color: [1.0, 0.5 + Math.random() * 0.3, 0.1, 0.8], // Orange/red outer glow
+                    size: 5 + Math.random() * 3,
+                    life: 0.25 + Math.random() * 0.2,
+                    maxLife: 0.45,
+                    _padding: 0
+                };
+                this.particles.push(outerGlowParticle);
+            }
+            
+            // Occasional sparkle particles (15% chance per frame)
+            if (Math.random() < 0.15) {
+                const sparkle = {
+                    position: [
+                        rocket.x + (Math.random() - 0.5) * 8,
+                        rocket.y + (Math.random() - 0.5) * 8
+                    ],
+                    velocity: [
+                        (Math.random() - 0.5) * 3,
+                        (Math.random() - 0.5) * 3
+                    ],
+                    color: [1.0, 1.0, 0.9, 1.0], // Bright white sparkle
+                    size: 2 + Math.random() * 1.5,
+                    life: 0.15 + Math.random() * 0.1,
+                    maxLife: 0.25,
+                    _padding: 0
+                };
+                this.particles.push(sparkle);
+            }
             
             // Check if rocket should explode
             // Rocket explodes when velocity becomes positive (moving down) or reaches target height
@@ -643,25 +859,35 @@ class FireworksEngine {
     }
     
     explodeRocket(rocket) {
-        // Create explosion particles at rocket position
+        // Create explosion particles at rocket position using shape generator
         const particleCount = rocket.particleCount || 50;
         const colors = rocket.colors || this.config.defaultColors;
+        const shape = rocket.shape || 'burst';
+        const intensity = rocket.intensity || 1.0;
         
-        for (let i = 0; i < particleCount; i++) {
-            const angle = (Math.PI * 2 * i) / particleCount;
-            const speed = 50 + Math.random() * 100;
+        // Get velocity patterns from shape generator
+        const generator = ShapeGenerators[shape] || ShapeGenerators.burst;
+        const velocities = generator(particleCount, intensity);
+        
+        // Create particles with the generated velocities
+        for (let i = 0; i < velocities.length; i++) {
+            const vel = velocities[i];
             
-            // Pick random color
+            // Pick random color from palette
             const colorHex = colors[Math.floor(Math.random() * colors.length)];
             const color = this.hexToRgba(colorHex);
             
+            // Add some variation to particle size
+            const baseSize = 2 + Math.random() * 3;
+            const sizeVariation = 1 + (Math.random() - 0.5) * 0.4;
+            
             const particle = {
                 position: [rocket.x, rocket.y],
-                velocity: [Math.cos(angle) * speed, Math.sin(angle) * speed],
+                velocity: [vel.vx, vel.vy],
                 color: color,
-                size: 2 + Math.random() * 3,
-                life: 1.0 + Math.random(),
-                maxLife: 1.0 + Math.random(),
+                size: baseSize * sizeVariation,
+                life: 1.0 + Math.random() * 0.5,
+                maxLife: 1.0 + Math.random() * 0.5,
                 _padding: 0
             };
             
@@ -684,6 +910,8 @@ class FireworksEngine {
         const position = options.position || { x: 0.5, y: 0.8 };
         const particleCount = options.particleCount || 50;
         const colors = options.colors || this.config.defaultColors;
+        const shape = options.shape || 'burst';
+        const intensity = options.intensity || 1.0;
         
         // Convert normalized position to screen coordinates
         const startX = position.x * this.width;
@@ -696,7 +924,7 @@ class FireworksEngine {
             targetY = startY * this.config.defaultTargetY; // Default to configured target height
         }
         
-        // Create rocket object
+        // Create rocket object with shape and intensity information
         const rocket = {
             x: startX,
             y: startY,
@@ -704,7 +932,9 @@ class FireworksEngine {
             vx: (Math.random() - 0.5) * 2, // Slight horizontal drift
             vy: this.config.rocketSpeed, // Initial velocity (negative = upward in canvas Y-down coordinates)
             particleCount: particleCount,
-            colors: colors
+            colors: colors,
+            shape: shape,
+            intensity: intensity
         };
         
         this.rockets.push(rocket);
