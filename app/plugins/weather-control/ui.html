@@ -648,14 +648,37 @@
                         </div>
                     </div>
 
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <h4 style="margin-bottom: 0.75rem; font-size: 1rem; color: var(--color-text-primary);">
+                            <i class="fas fa-terminal"></i> Custom Command Names
+                        </h4>
+                        <div class="grid grid-3">
+                            <div class="form-group">
+                                <label class="form-label">Weather Command</label>
+                                <input type="text" id="cmdNameWeather" class="form-input" placeholder="weather" maxlength="32">
+                                <small class="form-text">Trigger effects command</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">List Command</label>
+                                <input type="text" id="cmdNameWeatherlist" class="form-input" placeholder="weatherlist" maxlength="32">
+                                <small class="form-text">List available effects</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Stop Command</label>
+                                <input type="text" id="cmdNameWeatherstop" class="form-input" placeholder="weatherstop" maxlength="32">
+                                <small class="form-text">Stop all effects</small>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="info-box">
                         <i class="fas fa-terminal"></i>
                         <div>
-                            <strong>Available Commands:</strong>
+                            <strong>Command Usage:</strong>
                             <ul style="margin: 0.5rem 0 0 1.5rem;">
-                                <li><code>/weather &lt;effect&gt;</code> - Trigger a weather effect (e.g., /weather rain)</li>
-                                <li><code>/weatherlist</code> - List all available effects</li>
-                                <li><code>/weatherstop</code> - Stop all effects (subscribers only)</li>
+                                <li><code>/<span id="displayCmdWeather">weather</span> &lt;effect&gt;</code> - Trigger a weather effect</li>
+                                <li><code>/<span id="displayCmdList">weatherlist</span></code> - List all available effects</li>
+                                <li><code>/<span id="displayCmdStop">weatherstop</span></code> - Stop all effects (subscribers only)</li>
                             </ul>
                         </div>
                     </div>
@@ -1045,6 +1068,18 @@
                         document.getElementById('chatCommandsRequirePermission').checked = config.chatCommands.requirePermission === true;
                         document.getElementById('chatCommandsAllowIntensity').checked = config.chatCommands.allowIntensityControl === true;
                         document.getElementById('chatCommandsAllowDuration').checked = config.chatCommands.allowDurationControl === true;
+                        
+                        // Load custom command names
+                        if (config.chatCommands.commandNames) {
+                            document.getElementById('cmdNameWeather').value = config.chatCommands.commandNames.weather || 'weather';
+                            document.getElementById('cmdNameWeatherlist').value = config.chatCommands.commandNames.weatherlist || 'weatherlist';
+                            document.getElementById('cmdNameWeatherstop').value = config.chatCommands.commandNames.weatherstop || 'weatherstop';
+                            
+                            // Update display
+                            document.getElementById('displayCmdWeather').textContent = config.chatCommands.commandNames.weather || 'weather';
+                            document.getElementById('displayCmdList').textContent = config.chatCommands.commandNames.weatherlist || 'weatherlist';
+                            document.getElementById('displayCmdStop').textContent = config.chatCommands.commandNames.weatherstop || 'weatherstop';
+                        }
                     }
 
                     // Permissions
@@ -1092,7 +1127,12 @@
                         enabled: document.getElementById('chatCommandsEnabled').checked,
                         requirePermission: document.getElementById('chatCommandsRequirePermission').checked,
                         allowIntensityControl: document.getElementById('chatCommandsAllowIntensity').checked,
-                        allowDurationControl: document.getElementById('chatCommandsAllowDuration').checked
+                        allowDurationControl: document.getElementById('chatCommandsAllowDuration').checked,
+                        commandNames: {
+                            weather: document.getElementById('cmdNameWeather').value || 'weather',
+                            weatherlist: document.getElementById('cmdNameWeatherlist').value || 'weatherlist',
+                            weatherstop: document.getElementById('cmdNameWeatherstop').value || 'weatherstop'
+                        }
                     },
                     permissions: {
                         enabled: document.getElementById('permissionsEnabled').checked,
@@ -1214,6 +1254,17 @@
 
         // Copy overlay URL button
         document.getElementById('copyOverlayUrlBtn').addEventListener('click', copyOverlayUrl);
+        
+        // Update command displays when user types
+        document.getElementById('cmdNameWeather').addEventListener('input', (e) => {
+            document.getElementById('displayCmdWeather').textContent = e.target.value || 'weather';
+        });
+        document.getElementById('cmdNameWeatherlist').addEventListener('input', (e) => {
+            document.getElementById('displayCmdList').textContent = e.target.value || 'weatherlist';
+        });
+        document.getElementById('cmdNameWeatherstop').addEventListener('input', (e) => {
+            document.getElementById('displayCmdStop').textContent = e.target.value || 'weatherstop';
+        });
 
         // Test effect buttons
         document.querySelectorAll('[data-test-effect]').forEach(button => {
