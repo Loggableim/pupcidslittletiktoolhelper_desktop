@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-app/node_modules/
+src/node_modules/
 
 # Build outputs
 dist/
@@ -25,12 +25,12 @@ Thumbs.db
 coverage/
 
 # User data
-app/user_data/
-app/data/
+src/user_data/
+src/data/
 
 # Logs and runtime files
-app/logs/
-app/plugins/plugins_state.json
+src/logs/
+src/plugins/plugins_state.json
 
 # Database files
 *.db
@@ -42,6 +42,13 @@ temp/
 *.tmp
 
 # NSIS Installer Build
-build-src/assets/node/
-build-src/installer/*.exe
+tools/launcher/assets/node/
+tools/launcher/installer/*.exe
 LTTH-Setup-*.exe
+
+# Launcher builds
+launcher/*.exe
+launcher/*.app
+launcher/*.dmg
+launcher/*.deb
+launcher/*.rpm

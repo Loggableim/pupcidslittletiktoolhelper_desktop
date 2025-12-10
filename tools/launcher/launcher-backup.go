@@ -361,10 +361,10 @@ func main() {
 	
 	fmt.Println()
 	
-	appDir := filepath.Join(exeDir, "app")
-	logInfo(fmt.Sprintf("App-Verzeichnis: %s", appDir))
+	appDir := filepath.Join(exeDir, "src")
+	logInfo(fmt.Sprintf("Src-Verzeichnis: %s", appDir))
 	
-	// Check if app directory exists
+	// Check if src directory exists
 	if _, err := os.Stat(appDir); os.IsNotExist(err) {
 		logError("app Verzeichnis nicht gefunden", err)
 		fmt.Printf("Fehler: app Verzeichnis nicht gefunden in %s\n", exeDir)

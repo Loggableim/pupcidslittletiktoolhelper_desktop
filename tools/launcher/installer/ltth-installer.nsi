@@ -30,7 +30,7 @@
 
 ; Paths (relative to build-src/installer directory)
 !define BUILD_DIR ".."
-!define APP_DIR "../../app"
+!define APP_DIR "../../src"  ; Changed from app to src
 !define ASSETS_DIR "../assets"
 
 ; Installer Properties
