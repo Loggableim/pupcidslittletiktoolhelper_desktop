@@ -256,59 +256,10 @@
                     <h2>🤖 AI Fragenpakete mit OpenAI</h2>
                 </div>
                 <div class="panel-body">
-                    <!-- OpenAI Configuration Section -->
-                    <div class="panel" style="margin-bottom: 20px;">
-                        <div class="panel-header">
-                            <h3>OpenAI Konfiguration</h3>
-                        </div>
-                        <div class="panel-body">
-                            <div class="form-group">
-                                <label for="openaiApiKey">API-Schlüssel</label>
-                                <div style="display: flex; gap: 10px; align-items: center;">
-                                    <input 
-                                        type="password" 
-                                        id="openaiApiKey" 
-                                        class="form-control" 
-                                        placeholder="sk-..." 
-                                        style="flex: 1;"
-                                    >
-                                    <span id="apiKeyStatus" class="status-badge" style="display: none;"></span>
-                                </div>
-                                <small>Ihr OpenAI API-Schlüssel wird sicher gespeichert</small>
-                            </div>
-                            
-                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
-                                <div class="form-group">
-                                    <label for="openaiModel">Modell</label>
-                                    <select id="openaiModel" class="form-control">
-                                        <option value="gpt-5-mini">GPT-5 Mini (Empfohlen)</option>
-                                        <option value="gpt-5-nano">GPT-5 Nano</option>
-                                        <option value="gpt-4o-mini">GPT-4o Mini</option>
-                                        <option value="gpt-4o">GPT-4o</option>
-                                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label for="defaultPackageSize">Standard Paketgröße</label>
-                                    <input 
-                                        type="number" 
-                                        id="defaultPackageSize" 
-                                        class="form-control" 
-                                        min="5" 
-                                        max="50" 
-                                        value="10"
-                                    >
-                                </div>
-                            </div>
-
-                            <div class="form-actions" style="margin-top: 15px;">
-                                <button id="saveOpenAIConfigBtn" class="btn btn-primary">💾 Konfiguration Speichern</button>
-                                <button id="testOpenAIKeyBtn" class="btn btn-secondary" style="margin-left: 10px;">🧪 API-Schlüssel Testen</button>
-                            </div>
-                            <div id="openaiConfigMessage" class="message hidden" style="margin-top: 10px;"></div>
-                        </div>
+                    <!-- Info about OpenAI Configuration -->
+                    <div class="info-message" style="margin-bottom: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px;">
+                        <strong>ℹ️ OpenAI Konfiguration</strong><br>
+                        Der OpenAI API-Schlüssel wird jetzt zentral im <strong>Haupteinstellungspanel</strong> (Einstellungen → OpenAI API Configuration) verwaltet.
                     </div>
 
                     <!-- Generate Question Package Section -->
@@ -318,7 +269,7 @@
                         </div>
                         <div class="panel-body">
                             <div id="generateWarning" class="warning-message" style="margin-bottom: 15px; display: none;">
-                                ⚠️ Bitte konfigurieren Sie zuerst Ihren OpenAI API-Schlüssel oben.
+                                ⚠️ Bitte konfigurieren Sie zuerst Ihren OpenAI API-Schlüssel im Haupteinstellungspanel.
                             </div>
 
                             <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
@@ -719,60 +670,6 @@
                             <input type="number" id="ttsVolume" class="form-control" min="0" max="100" value="80">
                             <div class="help-text small">Steuert die Lautstärke der automatischen Sprachausgabe</div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- AI Settings -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>🤖 AI Einstellungen</h2>
-                    </div>
-                    <div class="panel-body">
-                        <div class="form-group">
-                            <label title="Ihr OpenAI API-Schlüssel für die KI-gestützte Fragengenerierung">OpenAI API-Schlüssel:</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input 
-                                    type="password" 
-                                    id="openaiApiKeySettings" 
-                                    class="form-control" 
-                                    placeholder="sk-..." 
-                                    style="flex: 1;"
-                                >
-                                <span id="apiKeyStatusSettings" class="status-badge" style="display: none;"></span>
-                            </div>
-                            <div class="help-text small">Wird sicher gespeichert und für die automatische Fragengenerierung verwendet</div>
-                        </div>
-                        
-                        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div class="form-group">
-                                <label title="Das AI-Modell für die Fragengenerierung">AI-Modell:</label>
-                                <select id="openaiModelSettings" class="form-control">
-                                    <option value="gpt-5-mini">GPT-5 Mini (Empfohlen)</option>
-                                    <option value="gpt-5-nano">GPT-5 Nano</option>
-                                    <option value="gpt-4o-mini">GPT-4o Mini</option>
-                                    <option value="gpt-4o">GPT-4o</option>
-                                    <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label title="Standard-Anzahl der Fragen bei AI-Generierung">Standard Paketgröße:</label>
-                                <input 
-                                    type="number" 
-                                    id="defaultPackageSizeSettings" 
-                                    class="form-control" 
-                                    min="5" 
-                                    max="50" 
-                                    value="10"
-                                >
-                            </div>
-                        </div>
-
-                        <div class="form-actions" style="margin-top: 15px;">
-                            <button id="testOpenAIKeySettingsBtn" class="btn btn-secondary">🧪 API-Schlüssel Testen</button>
-                        </div>
-                        <div id="openaiConfigMessageSettings" class="message hidden" style="margin-top: 10px;"></div>
                     </div>
                 </div>
 

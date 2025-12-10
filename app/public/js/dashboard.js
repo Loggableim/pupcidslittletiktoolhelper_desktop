@@ -272,6 +272,12 @@ function initializeButtons() {
         saveTikTokCredentialsBtn.addEventListener('click', saveTikTokCredentials);
     }
 
+    // OpenAI API Configuration save button
+    const saveOpenAICredentialsBtn = document.getElementById('save-openai-credentials');
+    if (saveOpenAICredentialsBtn) {
+        saveOpenAICredentialsBtn.addEventListener('click', saveOpenAICredentials);
+    }
+
     // Preset management buttons
     const exportBtn = document.getElementById('export-preset-btn');
     if (exportBtn) {
@@ -1370,6 +1376,17 @@ async function loadSettings() {
             tiktokApiKeyInput.value = settings.tiktok_euler_api_key;
         }
 
+        // Load OpenAI API Configuration
+        const openaiApiKeyInput = document.getElementById('openai-api-key');
+        if (openaiApiKeyInput && settings.openai_api_key) {
+            openaiApiKeyInput.value = settings.openai_api_key;
+        }
+
+        const openaiModelSelect = document.getElementById('openai-model');
+        if (openaiModelSelect && settings.openai_model) {
+            openaiModelSelect.value = settings.openai_model;
+        }
+
     } catch (error) {
         console.error('Error loading settings:', error);
     }
@@ -1435,6 +1452,51 @@ async function saveTikTokCredentials() {
     } catch (error) {
         console.error('Error saving TikTok credentials:', error);
         alert('❌ Error saving API key!');
+    }
+}
+
+// Save OpenAI API credentials
+async function saveOpenAICredentials() {
+    const apiKeyInput = document.getElementById('openai-api-key');
+    const modelSelect = document.getElementById('openai-model');
+    
+    if (!apiKeyInput || !modelSelect) return;
+
+    const apiKey = apiKeyInput.value.trim();
+    const model = modelSelect.value;
+    
+    if (!apiKey) {
+        alert('❌ Please enter an API key');
+        return;
+    }
+
+    // Validate key format (basic validation for OpenAI keys)
+    if (!apiKey.startsWith('sk-') || apiKey.length < 20) {
+        alert('❌ Invalid OpenAI API key format. Key should start with "sk-".');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                openai_api_key: apiKey,
+                openai_model: model
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('✅ OpenAI API Configuration saved successfully!');
+            settings.openai_api_key = apiKey;
+            settings.openai_model = model;
+        } else {
+            alert('❌ Error saving OpenAI configuration: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving OpenAI credentials:', error);
+        alert('❌ Error saving OpenAI configuration!');
     }
 }
 
