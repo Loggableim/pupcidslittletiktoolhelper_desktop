@@ -22,11 +22,12 @@ const CONFIG = {
     maxTotalParticles: 10000,
     targetFps: 60,
     minFps: 24,
-    physicsScale: 60, // Physics calculations scale factor (matches target FPS for frame-independent physics)
+    physicsScale: 60, // Converts per-frame values (at 60 FPS) to per-second values for frame-independent physics
     gravity: 0.08,
     airResistance: 0.99,
     rocketAirResistance: 0.995, // Air resistance for rockets (slightly less than particles)
-    rocketSpeed: -12, // Negative = upward motion in canvas Y-down coordinates
+    rocketSpeed: -12, // Negative = upward motion in canvas Y-down coordinates (pixels per frame at 60 FPS)
+    defaultTargetY: 0.5, // Default rocket target height as fraction of screen height
     backgroundColor: 'rgba(0, 0, 0, 0)',
     defaultColors: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
     comboThrottleMinInterval: 100,
@@ -663,8 +664,8 @@ class FireworksEngine {
         
         // Validate that target is above start (targetY < startY in Y-down coordinates)
         if (targetY >= startY) {
-            console.warn('[WebGPU Fireworks] Invalid rocket target: targetY must be < startY. Adjusting to midpoint.');
-            targetY = startY * 0.5; // Default to middle of screen
+            console.warn('[WebGPU Fireworks] Invalid rocket target: targetY must be < startY. Adjusting to default.');
+            targetY = startY * this.config.defaultTargetY; // Default to configured target height
         }
         
         // Create rocket object
