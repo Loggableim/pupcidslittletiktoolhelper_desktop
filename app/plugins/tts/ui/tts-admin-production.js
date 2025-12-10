@@ -435,6 +435,12 @@ function populateConfig(config) {
     setValue('autoLanguageDetection', config.autoLanguageDetection !== false);
     setValue('enableAutoFallback', config.enableAutoFallback !== false);
     setValue('stripEmojis', config.stripEmojis || false);
+    
+    // Message prefix filter - convert array to space-separated string
+    const prefixFilterValue = (config.messagePrefixFilter && Array.isArray(config.messagePrefixFilter)) 
+        ? config.messagePrefixFilter.join(' ') 
+        : '';
+    setValue('messagePrefixFilter', prefixFilterValue);
 
     // Fallback engine activation settings
     setValue('enableGoogleFallback', config.enableGoogleFallback !== false);
@@ -553,6 +559,11 @@ async function saveConfig() {
             autoLanguageDetection: document.getElementById('autoLanguageDetection').checked,
             enableAutoFallback: document.getElementById('enableAutoFallback').checked,
             stripEmojis: document.getElementById('stripEmojis').checked,
+            // Message prefix filter - convert space-separated string to array
+            messagePrefixFilter: document.getElementById('messagePrefixFilter').value
+                .split(/\s+/)
+                .map(p => p.trim())
+                .filter(p => p.length > 0),
             // Fallback engine activation settings
             enableGoogleFallback: document.getElementById('enableGoogleFallback')?.checked || false,
             enableSpeechifyFallback: document.getElementById('enableSpeechifyFallback')?.checked || false,
