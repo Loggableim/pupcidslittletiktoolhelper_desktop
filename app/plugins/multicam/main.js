@@ -31,6 +31,9 @@ class MultiCamPlugin {
 
         // Gift Catalog (wird von Core geladen)
         this.giftCatalog = new Map(); // giftId -> {name, coins, ...}
+        
+        // Cache for gift mapping keys (optimization for debug logging)
+        this._giftMappingKeysCache = null;
     }
 
     /**
@@ -324,6 +327,9 @@ class MultiCamPlugin {
             try {
                 this.config = { ...this.config, ...req.body };
                 this.api.setConfig('config', this.config);
+                
+                // Invalidate gift mapping keys cache when config changes
+                this._giftMappingKeysCache = null;
 
                 res.json({
                     success: true,
@@ -789,9 +795,16 @@ class MultiCamPlugin {
             this.api.registerTikTokEvent('chat', async (data) => {
                 if (!this.config.enabled) return;
 
-                const { uniqueId: username, comment } = data;
+                // Extract username from either uniqueId or username field
+                const username = data.uniqueId || data.username;
+                const comment = data.comment;
 
-                // Prüfe ob comment existiert
+                // Prüfe ob username und comment existieren
+                if (!username) {
+                    this.api.log('Multi-Cam: Chat event missing username/uniqueId', 'warn');
+                    return;
+                }
+
                 if (!comment || typeof comment !== 'string') {
                     return;
                 }
@@ -823,7 +836,11 @@ class MultiCamPlugin {
         // Prüfe Mapping - log available mappings for debugging
         const mapping = this.config.mapping.gifts[giftName];
         if (!mapping) {
-            this.api.log(`Multi-Cam: No mapping found for gift "${giftName}". Available mappings: ${Object.keys(this.config.mapping.gifts).join(', ')}`, 'debug');
+            // Cache the gift mapping keys string for performance
+            if (!this._giftMappingKeysCache) {
+                this._giftMappingKeysCache = Object.keys(this.config.mapping.gifts).join(', ');
+            }
+            this.api.log(`Multi-Cam: No mapping found for gift "${giftName}". Available mappings: ${this._giftMappingKeysCache}`, 'debug');
             return; // Kein Mapping für dieses Gift
         }
 
