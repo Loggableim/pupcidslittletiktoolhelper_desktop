@@ -420,8 +420,10 @@ class GoogleEngine {
                 this.voicesUrl,
                 {
                     headers: {
-                        'Accept': 'application/json',
-                        'X-Goog-Api-Key': this.apiKey
+                        'Accept': 'application/json'
+                    },
+                    params: {
+                        key: this.apiKey
                     },
                     timeout: this.timeout
                 }
@@ -569,8 +571,10 @@ class GoogleEngine {
                     },
                     {
                         headers: {
-                            'Content-Type': 'application/json',
-                            'X-Goog-Api-Key': this.apiKey
+                            'Content-Type': 'application/json'
+                        },
+                        params: {
+                            key: this.apiKey
                         },
                         timeout: this.timeout
                     }
