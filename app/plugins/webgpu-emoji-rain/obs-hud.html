@@ -244,20 +244,41 @@
     <!-- Socket.io -->
     <script src="/socket.io/socket.io.js"></script>
 
-    <!-- WebGPU Texture Atlas Manager -->
-    <script src="/js/webgpu-texture-atlas.js"></script>
-    
-    <!-- WebGPU Core Engine (State-of-the-art) -->
-    <script src="/js/webgpu-emoji-rain-core.js"></script>
-    
-    <!-- Main Integration Engine -->
-    <script src="/js/webgpu-emoji-rain-engine-v2.js"></script>
-    
-    <!-- Fallback to old engine if WebGPU not supported -->
+    <!-- Detect OBS and WebGPU support -->
     <script>
-      // Detect WebGPU support and fallback if needed
-      if (!navigator.gpu) {
-        console.warn('⚠️ WebGPU not supported, loading fallback engine...');
+      // OBS Browser Source detection
+      const isOBS = window.obsstudio !== undefined || 
+                    navigator.userAgent.includes('OBS') ||
+                    window.location.search.includes('obs=true');
+      
+      // WebGPU availability check
+      const hasWebGPU = 'gpu' in navigator && navigator.gpu !== null;
+      
+      console.log('🎮 Environment:', {
+        isOBS: isOBS,
+        hasWebGPU: hasWebGPU,
+        userAgent: navigator.userAgent
+      });
+      
+      // For OBS, we need to check if WebGPU is actually available
+      // Many OBS versions don't support WebGPU yet
+      if (isOBS && !hasWebGPU) {
+        console.warn('⚠️ OBS detected without WebGPU support - using fallback renderer');
+      }
+    </script>
+
+    <!-- Load appropriate engine based on WebGPU availability -->
+    <script>
+      if (hasWebGPU && !isOBS) {
+        // WebGPU available and not in OBS - use new engine
+        console.log('✅ Loading WebGPU engine (v3.0)');
+        document.write('<script src="/js/webgpu-texture-atlas.js"><\/script>');
+        document.write('<script src="/js/webgpu-emoji-rain-core.js"><\/script>');
+        document.write('<script src="/js/webgpu-emoji-rain-engine-v2.js"><\/script>');
+      } else {
+        // Fallback to Canvas/Matter.js renderer
+        console.log('📦 Loading Canvas fallback renderer (v2.0)');
+        console.log('   Reason:', !hasWebGPU ? 'WebGPU not available' : 'OBS detected (WebGPU not stable in OBS)');
         document.write('<script src="/js/matter.min.js"><\/script>');
         document.write('<script src="/js/webgpu-emoji-rain-obs-hud.js"><\/script>');
       }

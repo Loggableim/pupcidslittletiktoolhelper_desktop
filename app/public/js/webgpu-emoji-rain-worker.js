@@ -19,11 +19,27 @@
  * Much better than Math.random() for particle effects
  */
 class Xoroshiro128 {
-  constructor(seed = Date.now()) {
-    // Initialize state with seed
+  constructor(seed) {
+    // Initialize state with seed using crypto for better entropy
     this.state = new BigUint64Array(2);
-    this.state[0] = BigInt(seed);
-    this.state[1] = BigInt(seed * 2 + 1);
+    
+    if (seed !== undefined) {
+      this.state[0] = BigInt(seed);
+      this.state[1] = BigInt(seed * 2 + 1);
+    } else {
+      // Use crypto.getRandomValues for better seed entropy
+      if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+        const seedArray = new Uint32Array(2);
+        crypto.getRandomValues(seedArray);
+        this.state[0] = BigInt(seedArray[0]);
+        this.state[1] = BigInt(seedArray[1]);
+      } else {
+        // Fallback to Date.now() if crypto not available
+        const now = Date.now();
+        this.state[0] = BigInt(now);
+        this.state[1] = BigInt(now * 2 + 1);
+      }
+    }
     
     // Warm up the generator
     for (let i = 0; i < 10; i++) {
@@ -337,8 +353,10 @@ self.onmessage = function(e) {
         // Transfer arrays for zero-copy (if using SharedArrayBuffer, this would be even faster)
         self.postMessage(
           { type: 'particleData', data: particleData },
-          // Transfer ownership of ArrayBuffers (zero-copy)
-          Object.values(particleData).filter(v => v instanceof Float32Array || v instanceof Uint32Array).map(v => v.buffer)
+          // Transfer ownership of ArrayBuffers (zero-copy) - check for buffer property
+          Object.values(particleData)
+            .filter(v => v && v.buffer instanceof ArrayBuffer)
+            .map(v => v.buffer)
         );
       }
       break;

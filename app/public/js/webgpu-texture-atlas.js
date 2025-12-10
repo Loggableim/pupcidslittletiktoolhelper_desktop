@@ -246,27 +246,32 @@ class TextureAtlasManager {
       return 0;
     }
 
-    // Create temp canvas for rendering
+    // Create small canvas for rendering just this emoji
     const canvas = document.createElement('canvas');
-    canvas.width = this.atlasSize;
-    canvas.height = this.atlasSize;
+    canvas.width = this.emojiSize;
+    canvas.height = this.emojiSize;
     const ctx = canvas.getContext('2d', { alpha: true });
 
-    // Render to canvas
-    if (emojiOrUrl.startsWith('http') || emojiOrUrl.startsWith('/')) {
-      await this.renderImageToAtlas(ctx, emojiOrUrl, this.currentIndex);
-    } else {
-      await this.renderEmojiToAtlas(ctx, emojiOrUrl, this.currentIndex);
+    if (!ctx) {
+      console.error('Failed to get 2D context');
+      return 0;
     }
 
-    // Calculate region to update
+    // Calculate position in atlas
     const col = this.currentIndex % this.columns;
     const row = Math.floor(this.currentIndex / this.columns);
     const x = col * this.emojiSize;
     const y = row * this.emojiSize;
 
-    // Extract the region we just rendered
-    const imageData = ctx.getImageData(x, y, this.emojiSize, this.emojiSize);
+    // Render to small canvas
+    if (emojiOrUrl.startsWith('http') || emojiOrUrl.startsWith('/')) {
+      await this.renderImageToAtlas(ctx, emojiOrUrl, 0);
+    } else {
+      await this.renderEmojiToAtlas(ctx, emojiOrUrl, 0);
+    }
+
+    // Extract image data from small canvas
+    const imageData = ctx.getImageData(0, 0, this.emojiSize, this.emojiSize);
 
     // Upload to GPU (partial update)
     this.device.queue.writeTexture(

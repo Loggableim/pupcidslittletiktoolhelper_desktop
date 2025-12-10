@@ -366,12 +366,6 @@ class WebGPUEmojiRainCore {
           discard;
         }
         
-        // GPU dithered alpha for smoother fadeouts (optional enhancement)
-        // let dither = fract(sin(dot(input.uv, vec2<f32>(12.9898, 78.233))) * 43758.5453);
-        // if (color.a < dither) {
-        //   discard;
-        // }
-        
         // Premultiply alpha for correct blending
         color = vec4<f32>(color.rgb * color.a, color.a);
         
@@ -490,7 +484,7 @@ class WebGPUEmojiRainCore {
     }
 
     const bindGroup = this.device.createBindGroup(descriptor);
-    this.bindGroupCache.add(key, bindGroup);
+    this.bindGroupCache.set(key, bindGroup);
     return bindGroup;
   }
 
@@ -580,13 +574,19 @@ class WebGPUEmojiRainCore {
 
     // Create bind group (or use cached)
     const readBuffer = this.instanceBuffers[(this.bufferIndex + 2) % 3]; // Read from 2 frames ago
+    
+    // Cache dummy texture view
+    if (!this.textureAtlas && !this.dummyTextureView) {
+      this.dummyTextureView = this.createDummyTexture().createView();
+    }
+    
     const bindGroup = this.device.createBindGroup({
       layout: this.bindGroupLayoutCache.get('main'),
       entries: [
         { binding: 0, resource: { buffer: readBuffer } },
         { binding: 1, resource: { buffer: this.uniformBuffer } },
         { binding: 2, resource: this.sampler },
-        { binding: 3, resource: this.textureAtlas ? this.textureAtlas.createView() : this.createDummyTexture().createView() }
+        { binding: 3, resource: this.textureAtlas ? this.textureAtlas.createView() : this.dummyTextureView }
       ],
       label: 'Frame Bind Group'
     });

@@ -309,9 +309,40 @@ Die Konfiguration wird in der `emoji_rain_config` Tabelle gespeichert und ist mi
 | Edge 113+ | ✅ | Excellent | Full support |
 | Firefox 121+ | ⚠️ | Good | Experimental flag required |
 | Safari 18+ | ⚠️ | Good | Limited features |
-| OBS 29+ | ✅ | Excellent | Browser source |
+| **OBS Browser Source** | ⚠️ | Good | **Uses fallback renderer** |
 
-**Fallback:** Wenn WebGPU nicht verfügbar ist, fällt das Plugin automatisch auf den Canvas/Matter.js Renderer zurück.
+### OBS Browser Source Support
+
+**Important:** OBS Browser Source currently has **limited WebGPU support**. The plugin automatically detects OBS and uses the stable Canvas/Matter.js fallback renderer.
+
+**What this means:**
+- ✅ Plugin works perfectly in OBS
+- ✅ All features available
+- ✅ Stable and reliable
+- ⚠️ Uses v2.0 renderer (not WebGPU v3.0)
+- ⚠️ Lower particle limit (200-500 instead of 10,000)
+
+**OBS Version Requirements:**
+- **OBS 29+**: Required for best compatibility
+- **OBS 30+**: Future WebGPU support (experimental)
+
+**Settings for best OBS performance:**
+1. Enable "Hardware Acceleration" in OBS settings
+2. Use recommended resolution (1920x1080)
+3. Set particle limit to 200-500 in plugin config
+4. Disable post-processing effects if needed
+
+**Testing WebGPU outside OBS:**
+For testing the full WebGPU v3.0 engine, open the overlay URL directly in Chrome/Edge:
+```
+http://localhost:3000/webgpu-emoji-rain/overlay
+```
+
+**Fallback:** When OBS is detected or WebGPU is unavailable, the plugin automatically uses the Canvas renderer - you'll see this message in the browser console:
+```
+📦 Loading Canvas fallback renderer (v2.0)
+   Reason: OBS detected (using stable renderer)
+```
 
 ## Unterschiede zum Original
 

@@ -379,8 +379,8 @@ class WebGPUEmojiRainEngine {
     }
     this.stats.workerTime = performance.now() - workerStartTime;
 
-    // Upload to GPU (non-blocking)
-    this.core.uploadParticleData();
+    // Upload to GPU (await to ensure completion before render)
+    await this.core.uploadParticleData();
 
     // Render frame
     const renderStartTime = performance.now();
