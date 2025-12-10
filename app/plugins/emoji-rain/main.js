@@ -15,6 +15,9 @@ class EmojiRainPlugin {
         const pluginDataDir = api.getPluginDataDir();
         this.emojiRainUploadDir = path.join(pluginDataDir, 'uploads');
         this.userMappingsPath = path.join(pluginDataDir, 'users.json');
+        // Also define user_configs path for user-editable configs (survives updates)
+        const appDir = path.join(__dirname, '..', '..');
+        this.userConfigMappingsPath = path.join(appDir, 'user_configs', 'emoji-rain', 'users.json');
         this.emojiRainUpload = null;
     }
 
@@ -85,6 +88,7 @@ class EmojiRainPlugin {
     async migrateOldData() {
         const oldUploadDir = path.join(__dirname, 'uploads');
         const oldMappingsPath = path.join(__dirname, '..', '..', 'data', 'plugins', 'emojirain', 'users.json');
+        const userConfigMappingsPath = path.join(__dirname, '..', '..', 'user_configs', 'emoji-rain', 'users.json');
         
         let migrated = false;
 
@@ -115,19 +119,42 @@ class EmojiRainPlugin {
             }
         }
 
-        // Migrate user mappings
-        if (fs.existsSync(oldMappingsPath) && !fs.existsSync(this.userMappingsPath)) {
-            this.api.log('📦 [EMOJI RAIN] Migrating user mappings...', 'info');
-            
-            // Ensure directory exists
+        // Migrate user mappings - Check multiple sources in priority order
+        if (!fs.existsSync(this.userMappingsPath)) {
+            // Ensure directory exists for target
             const userMappingsDir = path.dirname(this.userMappingsPath);
             if (!fs.existsSync(userMappingsDir)) {
                 fs.mkdirSync(userMappingsDir, { recursive: true });
             }
-            
-            fs.copyFileSync(oldMappingsPath, this.userMappingsPath);
-            this.api.log(`✅ [EMOJI RAIN] Migrated user mappings to: ${this.userMappingsPath}`, 'info');
-            migrated = true;
+
+            // Priority 1: Check user_configs directory (user-editable, survives updates)
+            if (fs.existsSync(userConfigMappingsPath)) {
+                this.api.log('📦 [EMOJI RAIN] Migrating user mappings from user_configs...', 'info');
+                fs.copyFileSync(userConfigMappingsPath, this.userMappingsPath);
+                this.api.log(`✅ [EMOJI RAIN] Migrated user mappings from user_configs to: ${this.userMappingsPath}`, 'info');
+                migrated = true;
+            }
+            // Priority 2: Check old data directory (legacy location)
+            else if (fs.existsSync(oldMappingsPath)) {
+                this.api.log('📦 [EMOJI RAIN] Migrating user mappings from data directory...', 'info');
+                fs.copyFileSync(oldMappingsPath, this.userMappingsPath);
+                this.api.log(`✅ [EMOJI RAIN] Migrated user mappings from data directory to: ${this.userMappingsPath}`, 'info');
+                migrated = true;
+            }
+        } else {
+            // If persistent location exists, check if user_configs has newer data
+            if (fs.existsSync(userConfigMappingsPath)) {
+                const persistentStats = fs.statSync(this.userMappingsPath);
+                const userConfigStats = fs.statSync(userConfigMappingsPath);
+                
+                // If user_configs version is newer, update the persistent location
+                if (userConfigStats.mtime > persistentStats.mtime) {
+                    this.api.log('📦 [EMOJI RAIN] Updating user mappings from newer user_configs version...', 'info');
+                    fs.copyFileSync(userConfigMappingsPath, this.userMappingsPath);
+                    this.api.log(`✅ [EMOJI RAIN] Updated user mappings from user_configs to: ${this.userMappingsPath}`, 'info');
+                    migrated = true;
+                }
+            }
         }
 
         if (migrated) {
@@ -372,13 +399,21 @@ class EmojiRainPlugin {
                     return res.status(400).json({ success: false, error: 'mappings is required' });
                 }
 
-                // Ensure directory exists
+                // Save to persistent storage (primary location, survives updates)
                 const userMappingsDir = path.dirname(this.userMappingsPath);
                 if (!fs.existsSync(userMappingsDir)) {
                     fs.mkdirSync(userMappingsDir, { recursive: true });
                 }
-
                 fs.writeFileSync(this.userMappingsPath, JSON.stringify(mappings, null, 2));
+
+                // Also save to user_configs directory (user-editable, survives updates)
+                const userConfigMappingsDir = path.dirname(this.userConfigMappingsPath);
+                if (!fs.existsSync(userConfigMappingsDir)) {
+                    fs.mkdirSync(userConfigMappingsDir, { recursive: true });
+                }
+                fs.writeFileSync(this.userConfigMappingsPath, JSON.stringify(mappings, null, 2));
+
+                this.api.log(`💾 [EMOJI RAIN] User mappings saved to persistent storage and user_configs`, 'debug');
 
                 // Notify overlays about mapping update
                 this.api.emit('emoji-rain:user-mappings-update', { mappings });
