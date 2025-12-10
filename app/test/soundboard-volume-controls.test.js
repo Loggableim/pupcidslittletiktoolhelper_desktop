@@ -1,6 +1,7 @@
 /**
  * Test for soundboard volume controls
  * Verifies that volume sliders are properly integrated with preview functionality
+ * and that inline volume controls are present in the gift sounds table and event sounds
  */
 
 const fs = require('fs');
@@ -8,11 +9,16 @@ const path = require('path');
 
 describe('Soundboard Volume Controls', () => {
     let dashboardSoundboardJs;
+    let soundboardHtml;
     
     beforeAll(() => {
         // Read the dashboard-soundboard.js file
         const filePath = path.join(__dirname, '../public/js/dashboard-soundboard.js');
         dashboardSoundboardJs = fs.readFileSync(filePath, 'utf8');
+        
+        // Read the HTML file
+        const htmlPath = path.join(__dirname, '../plugins/soundboard/ui/index.html');
+        soundboardHtml = fs.readFileSync(htmlPath, 'utf8');
     });
     
     test('should have generateUniqueSoundId helper function', () => {
@@ -45,20 +51,45 @@ describe('Soundboard Volume Controls', () => {
         expect(dashboardSoundboardJs).not.toContain('Math.random().toString(36)');
     });
     
-    test('should have volume controls in gift sound table', () => {
+    test('should have inline volume controls in gift sound table', () => {
+        // Check for inline volume slider creation
         expect(dashboardSoundboardJs).toContain('gift-vol-');
-        expect(dashboardSoundboardJs).toContain('testContainer');
+        expect(dashboardSoundboardJs).toContain('gift-anim-vol-');
+        expect(dashboardSoundboardJs).toContain('data-volume-type="sound"');
+        expect(dashboardSoundboardJs).toContain('data-volume-type="animation"');
     });
     
-    test('should have event sound volume labels in HTML', () => {
-        const htmlPath = path.join(__dirname, '../plugins/soundboard/ui/index.html');
-        const html = fs.readFileSync(htmlPath, 'utf8');
+    test('should have updateGiftVolume function for inline volume updates', () => {
+        expect(dashboardSoundboardJs).toContain('async function updateGiftVolume(giftId, volume, volumeType)');
+        expect(dashboardSoundboardJs).toContain("volumeType === 'sound'");
+        expect(dashboardSoundboardJs).toContain("volumeType === 'animation'");
+    });
+    
+    test('should have event sound volume sliders in HTML', () => {
+        // Check for volume sliders in Event Sounds section
+        expect(soundboardHtml).toContain('soundboard-follow-volume-slider');
+        expect(soundboardHtml).toContain('soundboard-subscribe-volume-slider');
+        expect(soundboardHtml).toContain('soundboard-share-volume-slider');
+        expect(soundboardHtml).toContain('soundboard-gift-volume-slider');
+        expect(soundboardHtml).toContain('soundboard-like-volume-slider');
         
-        expect(html).toContain('Volume (0.0 - 1.0)');
-        expect(html).toContain('soundboard-follow-volume');
-        expect(html).toContain('soundboard-subscribe-volume');
-        expect(html).toContain('soundboard-share-volume');
-        expect(html).toContain('soundboard-like-volume');
-        expect(html).toContain('soundboard-gift-volume');
+        // Check for volume labels
+        expect(soundboardHtml).toContain('soundboard-follow-volume-label');
+        expect(soundboardHtml).toContain('soundboard-subscribe-volume-label');
+        expect(soundboardHtml).toContain('soundboard-share-volume-label');
+        expect(soundboardHtml).toContain('soundboard-gift-volume-label');
+        expect(soundboardHtml).toContain('soundboard-like-volume-label');
+    });
+    
+    test('should have initializeEventSoundSliders function', () => {
+        expect(dashboardSoundboardJs).toContain('function initializeEventSoundSliders()');
+        expect(dashboardSoundboardJs).toContain('setupSlider');
+        expect(dashboardSoundboardJs).toContain('initializeEventSoundSliders()');
+    });
+    
+    test('should sync event sound sliders with hidden inputs', () => {
+        // Check that sliders update the hidden input fields
+        expect(dashboardSoundboardJs).toContain('input.value = volumeValue.toFixed(1)');
+        expect(dashboardSoundboardJs).toContain('slider.value = percentage');
     });
 });
