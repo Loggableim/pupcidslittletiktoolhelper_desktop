@@ -19,6 +19,19 @@
             <p id="discoveryText" class="discovery-text">You have alchemized</p>
             <h3 id="discoveryItemName" class="discovery-item-name"></h3>
             <p id="discoveryRarity" class="discovery-rarity"></p>
+            <p id="discoveryForgeInfo" class="discovery-forge-info hidden"></p>
+        </div>
+    </div>
+
+    <!-- Forge Animation (Item Upgraded) -->
+    <div id="forgePopup" class="forge-popup hidden">
+        <div class="forge-content">
+            <div class="forge-anvil">⚒️</div>
+            <div class="forge-sparks"></div>
+            <img id="forgeImage" class="forge-image" src="" alt="Item">
+            <h2 class="forge-title">ITEM FORGED!</h2>
+            <h3 id="forgeItemName" class="forge-item-name"></h3>
+            <p id="forgeRarityChange" class="forge-rarity-change"></p>
         </div>
     </div>
 
@@ -85,11 +98,22 @@
             const image = document.getElementById('discoveryImage');
             const itemName = document.getElementById('discoveryItemName');
             const rarity = document.getElementById('discoveryRarity');
+            const forgeInfo = document.getElementById('discoveryForgeInfo');
             
             // Set content
             image.src = item.imageURL || '/assets/placeholder-item.png';
             itemName.textContent = item.name;
             rarity.textContent = item.rarity;
+            
+            // Show forge progress if this is a crafted item
+            if (item.isCrafted && item.forgeCount !== undefined) {
+                const progress = item.forgeCount % 10;
+                const remaining = 10 - progress;
+                forgeInfo.textContent = `Forge Progress: ${progress}/10 (${remaining} more to upgrade)`;
+                forgeInfo.classList.remove('hidden');
+            } else {
+                forgeInfo.classList.add('hidden');
+            }
             
             // Set rarity class
             popup.className = 'discovery-popup';
@@ -114,6 +138,74 @@
                     processQueue();
                 }, 1000);
             }, 5000);
+        }
+
+        /**
+         * Show forge animation when item is upgraded
+         */
+        function showForgeAnimation(item, oldRarity, newRarity) {
+            const popup = document.getElementById('forgePopup');
+            const image = document.getElementById('forgeImage');
+            const itemName = document.getElementById('forgeItemName');
+            const rarityChange = document.getElementById('forgeRarityChange');
+            
+            // Set content
+            image.src = item.imageURL || '/assets/placeholder-item.png';
+            itemName.textContent = item.name;
+            rarityChange.textContent = `${oldRarity} → ${newRarity}`;
+            
+            // Set rarity class
+            popup.className = 'forge-popup';
+            popup.classList.add(`rarity-${newRarity.toLowerCase()}`);
+            
+            // Show popup
+            popup.classList.remove('hidden');
+            popup.classList.add('forge-animate');
+            
+            // Generate intense particles
+            const sparks = document.querySelector('.forge-sparks');
+            generateForgeParticles(sparks, newRarity);
+            
+            // Hide after duration
+            setTimeout(() => {
+                popup.classList.remove('forge-animate');
+                popup.classList.add('animate-out');
+                
+                setTimeout(() => {
+                    popup.classList.add('hidden');
+                    popup.classList.remove('animate-out');
+                    isAnimating = false;
+                    processQueue();
+                }, 1000);
+            }, 4000);
+        }
+
+        /**
+         * Generate forge particles (more intense than discovery)
+         */
+        function generateForgeParticles(container, rarity) {
+            container.innerHTML = '';
+            
+            const rarityColors = {
+                'Common': '#CD7F32',
+                'Rare': '#C0C0C0',
+                'Legendary': '#FFD700',
+                'Mythic': '#9370DB'
+            };
+            
+            const color = rarityColors[rarity] || rarityColors['Common'];
+            const particleCount = 50; // More particles for forge effect
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'forge-particle';
+                particle.style.setProperty('--color', color);
+                particle.style.setProperty('--x', (Math.random() * 400 - 200) + 'px');
+                particle.style.setProperty('--y', (Math.random() * 400 - 200) + 'px');
+                particle.style.setProperty('--delay', Math.random() * 1 + 's');
+                particle.style.setProperty('--duration', Math.random() * 1.5 + 0.5 + 's');
+                container.appendChild(particle);
+            }
         }
 
         /**
@@ -153,10 +245,26 @@
                     container.classList.add('hidden');
                     container.classList.remove('animate-out');
                     
-                    // Show discovery popup for crafted item
-                    showDiscoveryPopup(craftedItem);
+                    // Check if item was forged (upgraded rarity)
+                    if (craftedItem.wasForged) {
+                        // Show forge animation instead of discovery
+                        const oldRarity = getRarityBeforeForge(craftedItem.rarity);
+                        showForgeAnimation(craftedItem, oldRarity, craftedItem.rarity);
+                    } else {
+                        // Show discovery popup for crafted item
+                        showDiscoveryPopup(craftedItem);
+                    }
                 }, 1000);
             }, 3000);
+        }
+
+        /**
+         * Get the previous rarity tier before forging
+         */
+        function getRarityBeforeForge(currentRarity) {
+            const rarities = ['Common', 'Rare', 'Legendary', 'Mythic'];
+            const index = rarities.indexOf(currentRarity);
+            return index > 0 ? rarities[index - 1] : 'Common';
         }
 
         /**

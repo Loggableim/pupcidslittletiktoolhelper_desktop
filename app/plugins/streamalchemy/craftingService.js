@@ -94,36 +94,11 @@ class CraftingService {
             giftId: gift.id,
             name: `Essence of ${gift.name}`,
             rarity: 'Common', // Base items are always Common
-            imageURL: null,
+            imageURL: gift.imageURL || this.getPlaceholderImage('Common'), // Use gift image instead of AI
             isCrafted: false,
             coinValue: gift.coins || 0,
             createdAt: new Date().toISOString()
         };
-
-        // Generate image via AI
-        if (this.openai) {
-            try {
-                // Use custom prompt if available, otherwise use default
-                let prompt;
-                if (this.customPrompts.baseItemTemplate) {
-                    // Replace placeholders in custom template
-                    prompt = this.customPrompts.baseItemTemplate
-                        .replace('{giftName}', gift.name)
-                        .replace('{coinValue}', gift.coins || 0);
-                } else {
-                    prompt = config.PROMPTS.BASE_ITEM(gift.name);
-                }
-                
-                const imageURL = await this.queueAIGeneration(prompt);
-                item.imageURL = imageURL;
-            } catch (error) {
-                this.logger.error(`[CRAFTING SERVICE] Failed to generate image for base item: ${error.message}`);
-                // Continue without image - item will use placeholder
-                item.imageURL = this.getPlaceholderImage('Common');
-            }
-        } else {
-            item.imageURL = this.getPlaceholderImage('Common');
-        }
 
         // Save to database
         await this.db.saveItem(item);
@@ -134,6 +109,8 @@ class CraftingService {
 
     /**
      * Generate a crafted item from two parent items
+     * Implements progressive forging: all crafted items start at Common rarity
+     * and can be forged to higher rarities by crafting the same combination 10 times
      * @param {Object} itemA - First parent item
      * @param {Object} itemB - Second parent item
      * @returns {Promise<Object>} Generated crafted item object
@@ -146,66 +123,139 @@ class CraftingService {
         if (existingCrafted) {
             this.logger.info(`[CRAFTING SERVICE] Crafted item already exists: ${existingCrafted.name}`);
             this.stats.cacheHits++;
-            return existingCrafted;
+            
+            // Check if item can be forged to next rarity
+            const forgedItem = await this.attemptForge(existingCrafted);
+            return forgedItem;
         }
 
-        // Calculate combined coin value and determine rarity
-        const totalCoins = (itemA.coinValue || 0) + (itemB.coinValue || 0);
-        const rarityTier = this.getRarityTier(totalCoins);
-
-        // Create crafted item structure
+        // Create NEW crafted item - always starts at Common rarity
         const itemId = uuidv4();
-        const craftedName = this.generateCraftedName(itemA.name, itemB.name, rarityTier.name);
+        const craftedName = this.generateCraftedName(itemA.name, itemB.name, 'Common');
+        
+        // Calculate combined coin value for display purposes
+        const totalCoins = (itemA.coinValue || 0) + (itemB.coinValue || 0);
         
         const item = {
             itemId,
             parentItems: [itemA.itemId, itemB.itemId],
             name: craftedName,
-            rarity: rarityTier.name,
-            imageURL: null,
+            rarity: 'Common', // ALL crafted items start at Common
+            imageURL: this.getCraftedPlaceholderImage(itemA, itemB, 'Common'),
             isCrafted: true,
             coinValue: totalCoins,
+            forgeCount: 1, // First time crafting this combination
+            forgeLevel: 0, // Level 0 = Common, 1 = Rare, 2 = Legendary, 3 = Mythic
             createdAt: new Date().toISOString()
         };
 
-        // Generate image via AI
-        if (this.openai) {
-            try {
-                // Use custom prompt if available, otherwise use default
-                let prompt;
-                if (this.customPrompts.craftedItemTemplate) {
-                    // Replace placeholders in custom template
-                    prompt = this.customPrompts.craftedItemTemplate
-                        .replace('{itemA}', itemA.name)
-                        .replace('{itemB}', itemB.name)
-                        .replace('{rarity}', rarityTier.name)
-                        .replace('{rarityColor}', rarityTier.color)
-                        .replace('{auraEffect}', rarityTier.auraEffect)
-                        .replace('{totalCoins}', totalCoins);
-                } else {
-                    prompt = config.PROMPTS.CRAFTED_ITEM(
-                        itemA.name,
-                        itemB.name,
-                        rarityTier.color,
-                        rarityTier.auraEffect
-                    );
-                }
-                
-                const imageURL = await this.queueAIGeneration(prompt);
-                item.imageURL = imageURL;
-            } catch (error) {
-                this.logger.error(`[CRAFTING SERVICE] Failed to generate image for crafted item: ${error.message}`);
-                item.imageURL = this.getPlaceholderImage(rarityTier.name);
-            }
-        } else {
-            item.imageURL = this.getPlaceholderImage(rarityTier.name);
-        }
-
         // Save to database
         await this.db.saveItem(item);
-        this.logger.info(`[CRAFTING SERVICE] Crafted item created: ${item.name} (${itemId}) - Rarity: ${item.rarity}`);
+        this.logger.info(`[CRAFTING SERVICE] Crafted item created: ${item.name} (${itemId}) - Forge: 1/10`);
         
         return item;
+    }
+
+    /**
+     * Attempt to forge an existing crafted item to the next rarity tier
+     * Forging happens when the same combination is crafted 10 times
+     * @param {Object} item - Existing crafted item
+     * @returns {Promise<Object>} Item (possibly forged to next tier)
+     */
+    async attemptForge(item) {
+        const currentForgeCount = (item.forgeCount || 0) + 1;
+        const currentForgeLevel = item.forgeLevel || 0;
+        
+        // Rarity progression: Common (0) -> Rare (1) -> Legendary (2) -> Mythic (3)
+        const rarityLevels = ['Common', 'Rare', 'Legendary', 'Mythic'];
+        const maxForgeLevel = rarityLevels.length - 1;
+        
+        // Check if we can forge to next level (every 10 crafts)
+        if (currentForgeCount >= 10 && currentForgeLevel < maxForgeLevel) {
+            const newForgeLevel = currentForgeLevel + 1;
+            const newRarity = rarityLevels[newForgeLevel];
+            
+            // Update item
+            item.forgeCount = 0; // Reset count for next tier
+            item.forgeLevel = newForgeLevel;
+            item.rarity = newRarity;
+            
+            // Update name to reflect new rarity
+            item.name = this.updateCraftedNameForRarity(item.name, newRarity);
+            
+            // Save updated item
+            await this.db.updateItem(item.itemId, {
+                forgeCount: item.forgeCount,
+                forgeLevel: item.forgeLevel,
+                rarity: item.rarity,
+                name: item.name
+            });
+            
+            this.logger.info(`[CRAFTING SERVICE] ⚒️ FORGED! ${item.name} upgraded to ${newRarity}!`);
+            
+            // Mark as newly forged for special animation
+            item.wasForged = true;
+            return item;
+        } else {
+            // Just increment forge count
+            item.forgeCount = currentForgeCount;
+            
+            await this.db.updateItem(item.itemId, {
+                forgeCount: item.forgeCount
+            });
+            
+            const remaining = 10 - (currentForgeCount % 10);
+            this.logger.info(`[CRAFTING SERVICE] Forge progress: ${currentForgeCount % 10}/10 (${remaining} more for next tier)`);
+            
+            item.wasForged = false;
+            return item;
+        }
+    }
+
+    /**
+     * Update crafted item name to reflect new rarity
+     * @param {string} currentName - Current item name
+     * @param {string} newRarity - New rarity tier
+     * @returns {string} Updated name
+     */
+    updateCraftedNameForRarity(currentName, newRarity) {
+        // Remove old rarity prefix if exists
+        const oldPrefixes = ['Fused', 'Combined', 'Merged', 'Enhanced', 'Refined', 'Empowered', 
+                           'Legendary', 'Exalted', 'Supreme', 'Mythic', 'Divine', 'Transcendent', 'Celestial'];
+        
+        let baseName = currentName;
+        for (const prefix of oldPrefixes) {
+            if (currentName.startsWith(prefix + ' ')) {
+                baseName = currentName.substring(prefix.length + 1);
+                break;
+            }
+        }
+        
+        // Add new rarity prefix
+        const rarityPrefixes = {
+            'Common': ['Fused', 'Combined', 'Merged'],
+            'Rare': ['Enhanced', 'Refined', 'Empowered'],
+            'Legendary': ['Legendary', 'Exalted', 'Supreme'],
+            'Mythic': ['Mythic', 'Divine', 'Transcendent', 'Celestial']
+        };
+        
+        const prefixes = rarityPrefixes[newRarity] || rarityPrefixes.Common;
+        const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+        
+        return `${prefix} ${baseName}`;
+    }
+
+    /**
+     * Get placeholder image for crafted items (combines parent images)
+     * @param {Object} itemA - First parent item
+     * @param {Object} itemB - Second parent item
+     * @param {string} rarity - Rarity tier
+     * @returns {string} Data URL for placeholder image
+     */
+    getCraftedPlaceholderImage(itemA, itemB, rarity) {
+        // For now, use the standard placeholder
+        // In future, could create a composite SVG of both parent images
+        return this.getPlaceholderImage(rarity);
     }
 
     /**

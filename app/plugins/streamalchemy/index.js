@@ -543,7 +543,8 @@ class StreamAlchemyPlugin {
                 id: data.giftId,
                 name: data.giftName,
                 coins: data.diamondCount || data.coins || 0,
-                repeat: data.repeatCount || 1
+                repeat: data.repeatCount || 1,
+                imageURL: data.giftPictureUrl || null
             };
 
             this.api.log(`[STREAMALCHEMY] Gift received: ${gift.name} x${gift.repeat} from ${userId}`, 'info');
