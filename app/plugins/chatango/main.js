@@ -219,6 +219,23 @@ class ChatangoPlugin {
             res.sendFile(path.join(this.api.getPluginDir(), 'ui.html'));
         });
 
+        // Embed HTML routes - Serve pre-rendered Chatango embed HTML for iframe loading
+        this.api.registerRoute('GET', '/chatango/embed/dashboard', async (req, res) => {
+            const config = await this.api.getConfig('config') || this.getDefaultConfig();
+            const theme = req.query.theme || config.theme || 'night';
+            const html = this.generateEmbedHTML('dashboard', theme);
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.send(html);
+        });
+
+        this.api.registerRoute('GET', '/chatango/embed/widget', async (req, res) => {
+            const config = await this.api.getConfig('config') || this.getDefaultConfig();
+            const theme = req.query.theme || config.theme || 'night';
+            const html = this.generateEmbedHTML('widget', theme);
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.send(html);
+        });
+
         // GET /api/chatango/config - Get current configuration
         this.api.registerRoute('get', '/api/chatango/config', async (req, res) => {
             const config = await this.api.getConfig('config') || this.getDefaultConfig();
@@ -404,6 +421,60 @@ class ChatangoPlugin {
             config: this.config,
             themes: Object.keys(this.themeConfigs)
         });
+    }
+
+    /**
+     * Generate complete HTML document with Chatango embed
+     * This is used by iframe-based embedding to avoid CSP issues with dynamic script injection
+     * @param {string} type - 'dashboard' or 'widget'
+     * @param {string} theme - Theme name
+     * @returns {string} Complete HTML document
+     */
+    generateEmbedHTML(type, theme) {
+        const embedConfig = this.generateEmbedCode(type, theme);
+        const scriptTag = this.generateScriptTag(type, theme);
+        
+        // Sanitize dimensions for inline style (already validated in generateEmbedCode)
+        const sanitizeSize = (val) => {
+            if (typeof val === 'number') return `${Math.max(0, Math.min(1000, val))}px`;
+            if (typeof val === 'string' && /^[\d]+(%|px)?$/.test(val)) return val;
+            return '100%';
+        };
+        
+        const width = type === 'widget' ? sanitizeSize(embedConfig.width) : '100%';
+        const height = type === 'widget' ? sanitizeSize(embedConfig.height) : '100%';
+        
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatango ${type === 'dashboard' ? 'Dashboard' : 'Widget'}</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chatango-container {
+            width: ${width};
+            height: ${height};
+        }
+    </style>
+</head>
+<body>
+    <div class="chatango-container">
+        ${scriptTag}
+    </div>
+</body>
+</html>`;
     }
 
     async destroy() {

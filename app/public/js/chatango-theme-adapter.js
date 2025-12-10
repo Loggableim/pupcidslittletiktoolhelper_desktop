@@ -292,26 +292,20 @@ class ChatangoThemeAdapter {
         // Clear any existing content (like loading message)
         container.innerHTML = '';
 
-        const embedConfig = this.generateEmbedCode('dashboard', theme);
-        const scriptId = this.generateUniqueId('cid-dashboard');
-        const jsonConfig = JSON.stringify(embedConfig.config);
+        // Use iframe-based approach to avoid CSP issues with dynamic script injection
+        // The iframe loads a server-rendered HTML page with the Chatango embed
+        const iframe = document.createElement('iframe');
+        iframe.id = this.generateUniqueId('chatango-dashboard-iframe');
+        iframe.src = `/chatango/embed/dashboard?theme=${encodeURIComponent(theme)}`;
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.border = 'none';
+        iframe.title = 'Chatango Community Chat';
+        iframe.setAttribute('allowtransparency', 'true');
         
-        // Create script tag HTML string
-        // IMPORTANT: Chatango's emb.js requires the JSON config as text content within the script tag.
-        // When using innerHTML to insert a script tag, the browser properly preserves the text content.
-        // Using createElement() and setting both textContent and src does NOT work - browsers ignore
-        // textContent when src is set on external scripts.
-        //
-        // SECURITY: This is safe because:
-        // - scriptId is generated from a safe prefix + counter (no user input)
-        // - embedConfig.width/height are either '100%' or validated numbers with 'px'
-        // - jsonConfig is created by JSON.stringify() which auto-escapes all special chars
-        // - All config values (roomHandle, theme, etc.) are validated server-side before being stored
-        const scriptTag = `<script id="${scriptId}" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="width: ${embedConfig.width}; height: ${embedConfig.height};">${jsonConfig}<\/script>`;
+        container.appendChild(iframe);
         
-        container.innerHTML = scriptTag;
-        
-        console.log('💬 Dashboard embed script added:', scriptId);
+        console.log('💬 Dashboard embed iframe loaded:', iframe.id);
     }
 
     loadWidgetEmbed(theme) {
@@ -330,26 +324,42 @@ class ChatangoThemeAdapter {
         // Clear any existing content
         container.innerHTML = '';
 
-        const embedConfig = this.generateEmbedCode('widget', theme);
-        const scriptId = this.generateUniqueId('cid-widget');
-        const jsonConfig = JSON.stringify(embedConfig.config);
+        // Use iframe-based approach to avoid CSP issues with dynamic script injection
+        // The iframe loads a server-rendered HTML page with the Chatango embed
+        const iframe = document.createElement('iframe');
+        iframe.id = this.generateUniqueId('chatango-widget-iframe');
+        iframe.src = `/chatango/embed/widget?theme=${encodeURIComponent(theme)}`;
         
-        // Create script tag HTML string
-        // IMPORTANT: Chatango's emb.js requires the JSON config as text content within the script tag.
-        // When using innerHTML to insert a script tag, the browser properly preserves the text content.
-        // Using createElement() and setting both textContent and src does NOT work - browsers ignore
-        // textContent when src is set on external scripts.
-        //
-        // SECURITY: This is safe because:
-        // - scriptId is generated from a safe prefix + counter (no user input)
-        // - embedConfig.width/height are validated numbers with 'px' suffix
-        // - jsonConfig is created by JSON.stringify() which auto-escapes all special chars
-        // - All config values (roomHandle, theme, etc.) are validated server-side before being stored
-        const scriptTag = `<script id="${scriptId}" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="width: ${embedConfig.width}; height: ${embedConfig.height};">${jsonConfig}<\/script>`;
+        // Widget has fixed dimensions from config
+        const config = this.pluginConfig || this.getDefaultConfig();
+        iframe.style.width = `${config.widgetWidth || 200}px`;
+        iframe.style.height = `${config.widgetHeight || 300}px`;
+        iframe.style.border = 'none';
+        iframe.style.position = 'fixed';
         
-        container.innerHTML = scriptTag;
+        // Position the widget based on config
+        const position = config.widgetPosition || 'br';
+        if (position === 'br') {
+            iframe.style.bottom = '10px';
+            iframe.style.right = '10px';
+        } else if (position === 'bl') {
+            iframe.style.bottom = '10px';
+            iframe.style.left = '10px';
+        } else if (position === 'tr') {
+            iframe.style.top = '10px';
+            iframe.style.right = '10px';
+        } else if (position === 'tl') {
+            iframe.style.top = '10px';
+            iframe.style.left = '10px';
+        }
         
-        console.log('💬 Widget embed script added:', scriptId);
+        iframe.style.zIndex = '9999';
+        iframe.title = 'Chatango Widget';
+        iframe.setAttribute('allowtransparency', 'true');
+        
+        container.appendChild(iframe);
+        
+        console.log('💬 Widget embed iframe loaded:', iframe.id);
     }
 
     showDisabledMessage() {
