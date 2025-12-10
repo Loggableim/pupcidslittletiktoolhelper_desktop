@@ -491,6 +491,62 @@ class StreamAlchemyPlugin {
             }
         });
 
+        // API: Manual crafting - combine two items manually
+        this.api.registerRoute('POST', '/api/streamalchemy/manual-craft', async (req, res) => {
+            try {
+                const { itemA, itemB } = req.body;
+                
+                // Validate item IDs
+                if (!validateUUID(itemA) || !validateUUID(itemB)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid item ID format'
+                    });
+                }
+                
+                // Get both items from database
+                const item1 = await this.db.getItemById(itemA);
+                const item2 = await this.db.getItemById(itemB);
+                
+                if (!item1) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'First item not found'
+                    });
+                }
+                
+                if (!item2) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Second item not found'
+                    });
+                }
+                
+                // Perform crafting
+                const craftedItem = await this.craftingService.generateCraftedItem(item1, item2);
+                
+                // Broadcast crafting events to overlay
+                this.broadcastCraftingStart('admin', item1, item2);
+                
+                setTimeout(() => {
+                    this.broadcastCraftingComplete('admin', craftedItem);
+                }, 3000);
+                
+                res.json({
+                    success: true,
+                    item: craftedItem,
+                    message: craftedItem.wasForged ? 'Item forged to higher rarity!' : 'Item crafted successfully'
+                });
+                
+            } catch (error) {
+                this.api.log(`[STREAMALCHEMY] Error in manual crafting: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
         this.api.log('[STREAMALCHEMY] Routes registered', 'debug');
     }
 
