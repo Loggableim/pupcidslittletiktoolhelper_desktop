@@ -735,11 +735,11 @@ class GoogleEngine {
     /**
      * Extract language code from voice ID
      * @private
-     * @param {string} voiceId - Voice identifier (e.g., 'de-DE-Wavenet-A', 'cmn-CN-Wavenet-A')
-     * @returns {string} Language code (e.g., 'de-DE', 'cmn-CN')
+     * @param {string} voiceId - Voice identifier (e.g., 'de-DE-Wavenet-A', 'cmn-CN-Wavenet-A', 'en-US-Chirp3-HD-F1')
+     * @returns {string} Language code (e.g., 'de-DE', 'cmn-CN', 'en-US')
      */
     _extractLanguageCode(voiceId) {
-        // Match language code pattern before voice type (Wavenet, Neural2, etc.)
+        // Match language code pattern before voice type (Wavenet, Neural2, Chirp3, etc.)
         const match = voiceId.match(/^([a-z]{2,3}-[A-Z]{2})/);
         if (match) {
             return match[1];

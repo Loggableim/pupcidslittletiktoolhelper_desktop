@@ -6,7 +6,7 @@ Enterprise-grade Text-to-Speech plugin for Pup Cids Little TikTok Helper with mu
 
 ### Core Features
 - **Multi-Engine Support**
-  - Google Cloud TTS (Optional, premium quality, 380+ voices including Chirp3-HD)
+  - Google Cloud TTS (Optional, premium quality, 380 voices including 176 Chirp3-HD voices)
   - Speechify (Optional, 200+ AI voices, voice cloning)
   - ElevenLabs (Optional, ultra-realistic voices)
   - OpenAI TTS (Optional, HD quality voices)
@@ -281,7 +281,7 @@ curl -X POST http://localhost:3000/api/tts/users/{userId}/blacklist \
 - **Plus**: Italian, Russian, Arabic, Turkish, Thai, Vietnamese, Indonesian, Dutch, Polish
 
 ### Google Cloud TTS (with API key)
-- **380+ voices** across 22+ languages with dynamic fetching from Google API
+- **380 voices** across 22 languages (204 standard voices + 176 Chirp3-HD premium voices) with dynamic fetching from Google API
 - **Voice Types:**
   - **Chirp3-HD** (176 voices): Latest premium voices with emotional expressiveness and natural intonation (requires billing)
   - **Neural2** (59 voices): Latest generation, most natural-sounding voices
