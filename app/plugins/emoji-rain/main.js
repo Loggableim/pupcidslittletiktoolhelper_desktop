@@ -16,8 +16,10 @@ class EmojiRainPlugin {
         this.emojiRainUploadDir = path.join(pluginDataDir, 'uploads');
         this.userMappingsPath = path.join(pluginDataDir, 'users.json');
         // Also define user_configs path for user-editable configs (survives updates)
-        const appDir = path.join(__dirname, '..', '..');
-        this.userConfigMappingsPath = path.join(appDir, 'user_configs', 'emoji-rain', 'users.json');
+        // Use ConfigPathManager to get persistent user_configs directory
+        const configPathManager = api.getConfigPathManager();
+        const persistentUserConfigsDir = configPathManager.getUserConfigsDir();
+        this.userConfigMappingsPath = path.join(persistentUserConfigsDir, 'emoji-rain', 'users.json');
         this.emojiRainUpload = null;
     }
 
@@ -88,6 +90,8 @@ class EmojiRainPlugin {
     async migrateOldData() {
         const oldUploadDir = path.join(__dirname, 'uploads');
         const oldMappingsPath = path.join(__dirname, '..', '..', 'data', 'plugins', 'emojirain', 'users.json');
+        // Also check old app directory's user_configs location (before fix)
+        const oldAppUserConfigsPath = path.join(__dirname, '..', '..', 'user_configs', 'emoji-rain', 'users.json');
         
         let migrated = false;
 
@@ -126,14 +130,27 @@ class EmojiRainPlugin {
                 fs.mkdirSync(userMappingsDir, { recursive: true });
             }
 
-            // Priority 1: Check user_configs directory (user-editable, survives updates)
+            // Priority 1: Check persistent user_configs directory (user-editable, survives updates)
             if (fs.existsSync(this.userConfigMappingsPath)) {
-                this.api.log('📦 [EMOJI RAIN] Migrating user mappings from user_configs...', 'info');
+                this.api.log('📦 [EMOJI RAIN] Migrating user mappings from persistent user_configs...', 'info');
                 fs.copyFileSync(this.userConfigMappingsPath, this.userMappingsPath);
                 this.api.log(`✅ [EMOJI RAIN] Migrated user mappings from user_configs to: ${this.userMappingsPath}`, 'info');
                 migrated = true;
             }
-            // Priority 2: Check old data directory (legacy location)
+            // Priority 2: Check old app directory's user_configs (before fix)
+            else if (fs.existsSync(oldAppUserConfigsPath)) {
+                this.api.log('📦 [EMOJI RAIN] Migrating user mappings from old app user_configs directory...', 'info');
+                fs.copyFileSync(oldAppUserConfigsPath, this.userMappingsPath);
+                // Also copy to new persistent user_configs location
+                const userConfigMappingsDir = path.dirname(this.userConfigMappingsPath);
+                if (!fs.existsSync(userConfigMappingsDir)) {
+                    fs.mkdirSync(userConfigMappingsDir, { recursive: true });
+                }
+                fs.copyFileSync(oldAppUserConfigsPath, this.userConfigMappingsPath);
+                this.api.log(`✅ [EMOJI RAIN] Migrated user mappings from old app user_configs to: ${this.userMappingsPath}`, 'info');
+                migrated = true;
+            }
+            // Priority 3: Check old data directory (legacy location)
             else if (fs.existsSync(oldMappingsPath)) {
                 this.api.log('📦 [EMOJI RAIN] Migrating user mappings from data directory...', 'info');
                 fs.copyFileSync(oldMappingsPath, this.userMappingsPath);
@@ -151,6 +168,25 @@ class EmojiRainPlugin {
                     this.api.log('📦 [EMOJI RAIN] Updating user mappings from newer user_configs version...', 'info');
                     fs.copyFileSync(this.userConfigMappingsPath, this.userMappingsPath);
                     this.api.log(`✅ [EMOJI RAIN] Updated user mappings from user_configs to: ${this.userMappingsPath}`, 'info');
+                    migrated = true;
+                }
+            }
+            // Also check old app directory's user_configs for migration to persistent location
+            else if (fs.existsSync(oldAppUserConfigsPath)) {
+                const persistentStats = fs.statSync(this.userMappingsPath);
+                const oldAppStats = fs.statSync(oldAppUserConfigsPath);
+                
+                // If old app version is newer, migrate it to both locations
+                if (oldAppStats.mtime > persistentStats.mtime) {
+                    this.api.log('📦 [EMOJI RAIN] Migrating newer user mappings from old app user_configs...', 'info');
+                    fs.copyFileSync(oldAppUserConfigsPath, this.userMappingsPath);
+                    // Also copy to new persistent user_configs location
+                    const userConfigMappingsDir = path.dirname(this.userConfigMappingsPath);
+                    if (!fs.existsSync(userConfigMappingsDir)) {
+                        fs.mkdirSync(userConfigMappingsDir, { recursive: true });
+                    }
+                    fs.copyFileSync(oldAppUserConfigsPath, this.userConfigMappingsPath);
+                    this.api.log(`✅ [EMOJI RAIN] Migrated user mappings from old app user_configs to persistent storage`, 'info');
                     migrated = true;
                 }
             }
