@@ -230,6 +230,12 @@
                             <label for="stripEmojis" class="text-sm" data-i18n="tts.admin_panel.config.strip_emojis">Strip emojis from TTS text</label>
                         </div>
                         <p class="text-xs text-gray-400 mt-1" data-i18n="tts.admin_panel.config.strip_emojis_desc">When enabled, emojis will be removed from messages before they are spoken, preventing the TTS engine from reading emoji names aloud.</p>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Message Prefix Filter</label>
+                            <input type="text" id="messagePrefixFilter" placeholder="e.g., ! / ." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-400 mt-1">Messages starting with these characters will be ignored. Separate multiple prefixes with spaces (e.g., "! / .")</p>
+                        </div>
                     </div>
                 </div>
 

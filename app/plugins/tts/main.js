@@ -372,18 +372,29 @@ class TTSPlugin {
             enableGoogleFallback: true, // Enable Google as fallback engine
             enableSpeechifyFallback: false, // Enable Speechify as fallback engine
             enableElevenlabsFallback: false, // Enable ElevenLabs as fallback engine
-            enableOpenAIFallback: false // Enable OpenAI as fallback engine
+            enableOpenAIFallback: false, // Enable OpenAI as fallback engine
+            // Message prefix filter - ignore messages starting with these prefixes
+            messagePrefixFilter: [] // e.g., ['!', '/', '.'] - messages starting with these will be ignored
         };
 
         // Try to load from database
         const saved = this.api.getConfig('config');
-        if (saved) {
-            return { ...defaultConfig, ...saved };
+        const config = saved ? { ...defaultConfig, ...saved } : { ...defaultConfig };
+        
+        // API Keys: Retrieve from global settings (for centralized management)
+        // Fallback to plugin config for backwards compatibility
+        const db = this.api.getDatabase();
+        config.googleApiKey = db.getSetting('tts_google_api_key') || config.googleApiKey;
+        config.speechifyApiKey = db.getSetting('tts_speechify_api_key') || config.speechifyApiKey;
+        config.elevenlabsApiKey = db.getSetting('tts_elevenlabs_api_key') || config.elevenlabsApiKey;
+        config.openaiApiKey = db.getSetting('tts_openai_api_key') || config.openaiApiKey;
+        
+        // If no saved config exists, save defaults
+        if (!saved) {
+            this.api.setConfig('config', defaultConfig);
         }
-
-        // Save defaults
-        this.api.setConfig('config', defaultConfig);
-        return defaultConfig;
+        
+        return config;
     }
 
     /**
@@ -535,6 +546,9 @@ class TTSPlugin {
                 // Update Google API key if provided (and not the placeholder)
                 if (updates.googleApiKey && updates.googleApiKey !== '***HIDDEN***') {
                     this.config.googleApiKey = updates.googleApiKey;
+                    // Save to global settings for centralized management
+                    const db = this.api.getDatabase();
+                    db.setSetting('tts_google_api_key', updates.googleApiKey);
                     if (!this.engines.google) {
                         this.engines.google = new GoogleEngine(
                             updates.googleApiKey,
@@ -550,6 +564,9 @@ class TTSPlugin {
                 // Update Speechify API key if provided (and not the placeholder)
                 if (updates.speechifyApiKey && updates.speechifyApiKey !== '***REDACTED***') {
                     this.config.speechifyApiKey = updates.speechifyApiKey;
+                    // Save to global settings for centralized management
+                    const db = this.api.getDatabase();
+                    db.setSetting('tts_speechify_api_key', updates.speechifyApiKey);
                     if (!this.engines.speechify) {
                         this.engines.speechify = new SpeechifyEngine(
                             updates.speechifyApiKey,
@@ -565,6 +582,9 @@ class TTSPlugin {
                 // Update ElevenLabs API key if provided (and not the placeholder)
                 if (updates.elevenlabsApiKey && updates.elevenlabsApiKey !== '***REDACTED***') {
                     this.config.elevenlabsApiKey = updates.elevenlabsApiKey;
+                    // Save to global settings for centralized management
+                    const db = this.api.getDatabase();
+                    db.setSetting('tts_elevenlabs_api_key', updates.elevenlabsApiKey);
                     if (!this.engines.elevenlabs) {
                         this.engines.elevenlabs = new ElevenLabsEngine(
                             updates.elevenlabsApiKey,
@@ -580,6 +600,9 @@ class TTSPlugin {
                 // Update OpenAI API key if provided (and not the placeholder)
                 if (updates.openaiApiKey && updates.openaiApiKey !== '***REDACTED***') {
                     this.config.openaiApiKey = updates.openaiApiKey;
+                    // Save to global settings for centralized management
+                    const db = this.api.getDatabase();
+                    db.setSetting('tts_openai_api_key', updates.openaiApiKey);
                     if (!this.engines.openai) {
                         this.engines.openai = new OpenAIEngine(
                             updates.openaiApiKey,
@@ -1387,6 +1410,28 @@ class TTSPlugin {
         });
 
         try {
+            // Step 0: Check message prefix filter (only for chat messages)
+            if (source === 'chat' && this.config.messagePrefixFilter && Array.isArray(this.config.messagePrefixFilter) && this.config.messagePrefixFilter.length > 0) {
+                const trimmedText = text?.trim() || '';
+                const hasFilteredPrefix = this.config.messagePrefixFilter.some(prefix => {
+                    return prefix && trimmedText.startsWith(prefix);
+                });
+                
+                if (hasFilteredPrefix) {
+                    this._logDebug('SPEAK_DENIED', 'Message starts with filtered prefix', {
+                        text: trimmedText.substring(0, 50),
+                        username,
+                        prefixFilters: this.config.messagePrefixFilter
+                    });
+                    this.logger.info(`TTS blocked for ${username}: Message starts with filtered prefix (${trimmedText[0]})`);
+                    return {
+                        success: false,
+                        error: 'prefix_filtered',
+                        reason: 'message_starts_with_filtered_prefix'
+                    };
+                }
+            }
+
             // Step 1: Check permissions
             this._logDebug('SPEAK_STEP1', 'Checking permissions', {
                 userId,
