@@ -171,8 +171,9 @@ class EmojiRainPlugin {
                     migrated = true;
                 }
             }
+            
             // Also check old app directory's user_configs for migration to persistent location
-            else if (fs.existsSync(oldAppUserConfigsPath)) {
+            if (fs.existsSync(oldAppUserConfigsPath)) {
                 const persistentStats = fs.statSync(this.userMappingsPath);
                 const oldAppStats = fs.statSync(oldAppUserConfigsPath);
                 
