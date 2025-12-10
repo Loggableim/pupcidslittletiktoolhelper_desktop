@@ -25,6 +25,7 @@ const CONFIG = {
     physicsScale: 60, // Physics calculations scale factor (matches target FPS for frame-independent physics)
     gravity: 0.08,
     airResistance: 0.99,
+    rocketAirResistance: 0.995, // Air resistance for rockets (slightly less than particles)
     rocketSpeed: -12,
     rocketAcceleration: -0.08,
     backgroundColor: 'rgba(0, 0, 0, 0)',
@@ -588,12 +589,10 @@ class FireworksEngine {
             const rocket = this.rockets[i];
             
             // Apply physics to rocket
-            // In canvas coordinates, Y increases downward
-            // rocketSpeed is negative (upward motion, decreasing Y)
-            // rocketAcceleration is negative, but we need positive acceleration (gravity pulling down)
-            // So we negate it to get proper deceleration of upward motion
-            rocket.vy -= this.config.rocketAcceleration * deltaTime * this.config.physicsScale; // Deceleration (gravity)
-            rocket.vx *= 0.995; // Air resistance
+            // In canvas Y-down coordinates: positive Y is down, negative velocity = upward motion
+            // Gravity acts downward (positive direction), slowing upward rockets
+            rocket.vy += this.config.gravity * deltaTime * this.config.physicsScale;
+            rocket.vx *= this.config.rocketAirResistance; // Air resistance
             
             rocket.x += rocket.vx * deltaTime * this.config.physicsScale;
             rocket.y += rocket.vy * deltaTime * this.config.physicsScale;
