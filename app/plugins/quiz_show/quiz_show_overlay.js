@@ -1348,10 +1348,6 @@
     // LEADERBOARD DISPLAY
     // ============================================
 
-    // ============================================
-    // LEADERBOARD DISPLAY
-    // ============================================
-
     // Animation configuration for leaderboard entries
     const LEADERBOARD_ANIMATION_DELAY = 0.1; // seconds per entry
 
