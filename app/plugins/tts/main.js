@@ -495,7 +495,11 @@ class TTSPlugin {
                 if (updates.googleApiKey && updates.googleApiKey !== '***HIDDEN***') {
                     this.config.googleApiKey = updates.googleApiKey;
                     if (!this.engines.google) {
-                        this.engines.google = new GoogleEngine(updates.googleApiKey, this.logger);
+                        this.engines.google = new GoogleEngine(
+                            updates.googleApiKey,
+                            this.logger,
+                            { performanceMode: this.config.performanceMode }
+                        );
                         this.logger.info('Google TTS engine initialized via config update');
                     } else {
                         this.engines.google.setApiKey(updates.googleApiKey);
@@ -509,7 +513,7 @@ class TTSPlugin {
                         this.engines.speechify = new SpeechifyEngine(
                             updates.speechifyApiKey,
                             this.logger,
-                            this.config
+                            { performanceMode: this.config.performanceMode }
                         );
                         this.logger.info('Speechify TTS engine initialized via config update');
                     } else {
@@ -524,7 +528,7 @@ class TTSPlugin {
                         this.engines.elevenlabs = new ElevenLabsEngine(
                             updates.elevenlabsApiKey,
                             this.logger,
-                            this.config
+                            { performanceMode: this.config.performanceMode }
                         );
                         this.logger.info('ElevenLabs TTS engine initialized via config update');
                     } else {
@@ -539,7 +543,7 @@ class TTSPlugin {
                         this.engines.openai = new OpenAIEngine(
                             updates.openaiApiKey,
                             this.logger,
-                            this.config
+                            { performanceMode: this.config.performanceMode }
                         );
                         this.logger.info('OpenAI TTS engine initialized via config update');
                     } else {
