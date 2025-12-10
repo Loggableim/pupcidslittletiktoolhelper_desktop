@@ -13,6 +13,12 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Helper function to generate unique IDs for sound controls
+let soundIdCounter = 0;
+function generateUniqueSoundId() {
+    return `sound-${Date.now()}-${++soundIdCounter}`;
+}
+
 // Audio pool for soundboard playback
 let audioPool = [];
 
@@ -838,7 +844,7 @@ async function searchMyInstants() {
             div.className = 'myinstants-result-item';
             
             // Generate unique ID for this sound's volume control
-            const soundId = `sound-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const soundId = generateUniqueSoundId();
             
             // Create volume slider container
             const volumeContainer = document.createElement('div');
@@ -1096,7 +1102,7 @@ function renderSearchResults(results, container) {
         div.className = 'myinstants-result-item';
         
         // Generate unique ID for this sound's volume control
-        const soundId = `sound-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const soundId = generateUniqueSoundId();
         
         // Create volume slider container
         const volumeContainer = document.createElement('div');
