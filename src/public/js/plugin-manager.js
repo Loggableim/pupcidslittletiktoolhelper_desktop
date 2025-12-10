@@ -27,7 +27,7 @@ const PLUGIN_STATUS_CONFIG = {
         id: 'beta',
         color: 'yellow',
         title: 'Beta',
-        message: 'Die Funktion ist vorhanden aber es muss mit bugs oder fehlern gerechnet werden. Du bist eingeladen das Plugin zu testen und Fehler und Bugs zu melden.',
+        message: 'Die Funktion ist vorhanden aber es muss mit Bugs oder Fehlern gerechnet werden. Du bist eingeladen das Plugin zu testen und Fehler und Bugs zu melden.',
         bgGradient: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(202, 138, 4, 0.05) 100%)',
         borderColor: 'rgba(234, 179, 8, 0.3)',
         iconBg: 'rgba(234, 179, 8, 0.2)',
@@ -39,7 +39,7 @@ const PLUGIN_STATUS_CONFIG = {
         id: 'alpha',
         color: 'green',
         title: 'Alpha',
-        message: 'Diese Apps sollten grundlegend funktionieren, falls du Fehler oder Bugs entdeckst bitte melde diese im github repo.',
+        message: 'Diese App sollte grundlegend funktionieren, falls du Fehler oder Bugs entdeckst bitte melde diese im GitHub Repo.',
         bgGradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(21, 128, 61, 0.05) 100%)',
         borderColor: 'rgba(34, 197, 94, 0.3)',
         iconBg: 'rgba(34, 197, 94, 0.2)',
@@ -51,7 +51,7 @@ const PLUGIN_STATUS_CONFIG = {
         id: 'final',
         color: 'blue',
         title: 'Final',
-        message: 'Diese Apps funktioniert, falls du Wünsche oder Anregungen hast damit ins github repo.',
+        message: 'Diese App funktioniert, falls du Wünsche oder Anregungen hast, teile diese im GitHub Repo.',
         bgGradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
         borderColor: 'rgba(59, 130, 246, 0.3)',
         iconBg: 'rgba(59, 130, 246, 0.2)',
@@ -629,7 +629,7 @@ class PluginManager {
                         cursor: pointer;
                         transition: all 0.2s ease;
                         color: var(--color-text-secondary, #9ca3af);
-                    " onmouseover="this.style.background='rgba(255, 255, 255, 0.2)'; this.style.transform='scale(1.1)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'; this.style.transform='scale(1)';">
+                    ">
                         <i data-lucide="x" style="width: 18px; height: 18px;"></i>
                     </button>
                 </div>
