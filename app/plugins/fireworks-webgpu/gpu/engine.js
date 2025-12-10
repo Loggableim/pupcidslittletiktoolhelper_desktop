@@ -1359,79 +1359,64 @@ class FireworksEngine {
     }
     
     applyPerformanceMode() {
+        // Store original CONFIG values if not already stored
+        if (!this.originalConfig) {
+            this.originalConfig = {
+                maxParticlesPerExplosion: CONFIG.maxParticlesPerExplosion,
+                trailLength: CONFIG.trailLength,
+                sparkleChance: CONFIG.sparkleChance,
+                secondaryExplosionChance: CONFIG.secondaryExplosionChance
+            };
+        }
+        
+        // Performance mode limits
+        const PERFORMANCE_LIMITS = {
+            minimal: { maxFireworks: 5, maxParticles: 50, trails: 5, sparkles: 0.05, secondary: 0 },
+            reduced: { maxFireworks: 15, maxParticles: 100, trails: 10, sparkles: 0.08, secondary: 0.05 },
+            normal: { maxFireworks: Infinity, maxParticles: 200, trails: 20, sparkles: 0.15, secondary: 0.1 }
+        };
+        
+        const limits = PERFORMANCE_LIMITS[this.performanceMode];
+        
         // Adjust CONFIG based on performance mode
-        switch (this.performanceMode) {
-            case 'minimal':
-                // Extreme reduction for very low FPS
-                CONFIG.maxParticlesPerExplosion = 50;
-                CONFIG.trailLength = 5;
-                CONFIG.sparkleChance = 0.05;
-                CONFIG.secondaryExplosionChance = 0;
-                this.config.glowEnabled = false;
-                this.config.trailsEnabled = false;
-                
-                // Limit active fireworks with graceful despawn
-                while (this.fireworks.length > 5) {
-                    const fw = this.fireworks[this.fireworks.length - 1];
-                    // Start despawn fade for rocket
-                    if (!fw.exploded && fw.rocket) {
-                        fw.rocket.startDespawn();
-                    }
-                    // Start despawn fade for all particles
-                    fw.particles.forEach(p => p.startDespawn());
-                    fw.secondaryExplosions.forEach(p => p.startDespawn());
-                    
-                    // Only remove if already despawning for enough time
-                    const minDespawnTime = (CONFIG.despawnFadeDuration * 1000) / 2;
-                    if (fw.rocket && fw.rocket.isDespawning && 
-                        performance.now() - fw.rocket.despawnStartTime > minDespawnTime) {
-                        this.fireworks.pop();
-                    } else {
-                        break; // Wait for despawn to complete
-                    }
-                }
-                break;
-                
-            case 'reduced':
-                // Moderate reduction for low FPS
-                CONFIG.maxParticlesPerExplosion = 100;
-                CONFIG.trailLength = 10;
-                CONFIG.sparkleChance = 0.08;
-                CONFIG.secondaryExplosionChance = 0.05;
-                this.config.glowEnabled = true;
-                this.config.trailsEnabled = true;
-                
-                // Limit active fireworks with graceful despawn
-                while (this.fireworks.length > 15) {
-                    const fw = this.fireworks[this.fireworks.length - 1];
-                    // Start despawn fade for rocket
-                    if (!fw.exploded && fw.rocket) {
-                        fw.rocket.startDespawn();
-                    }
-                    // Start despawn fade for all particles
-                    fw.particles.forEach(p => p.startDespawn());
-                    fw.secondaryExplosions.forEach(p => p.startDespawn());
-                    
-                    // Only remove if already despawning for enough time
-                    const minDespawnTime = (CONFIG.despawnFadeDuration * 1000) / 2;
-                    if (fw.rocket && fw.rocket.isDespawning && 
-                        performance.now() - fw.rocket.despawnStartTime > minDespawnTime) {
-                        this.fireworks.pop();
-                    } else {
-                        break; // Wait for despawn to complete
-                    }
-                }
-                break;
-                
-            case 'normal':
-                // Restore defaults
-                CONFIG.maxParticlesPerExplosion = 200;
-                CONFIG.trailLength = 20;
-                CONFIG.sparkleChance = 0.15;
-                CONFIG.secondaryExplosionChance = 0.1;
-                this.config.glowEnabled = true;
-                this.config.trailsEnabled = true;
-                break;
+        CONFIG.maxParticlesPerExplosion = limits.maxParticles;
+        CONFIG.trailLength = limits.trails;
+        CONFIG.sparkleChance = limits.sparkles;
+        CONFIG.secondaryExplosionChance = limits.secondary;
+        
+        // Update instance config
+        this.config.glowEnabled = this.performanceMode !== 'minimal';
+        this.config.trailsEnabled = this.performanceMode !== 'minimal';
+        
+        // Gracefully limit active fireworks if needed
+        if (limits.maxFireworks < Infinity) {
+            this.gracefullyLimitFireworks(limits.maxFireworks);
+        }
+    }
+    
+    gracefullyLimitFireworks(maxCount) {
+        // Helper to calculate minimum despawn time
+        const minDespawnTime = (CONFIG.despawnFadeDuration * 1000) / 2;
+        
+        while (this.fireworks.length > maxCount) {
+            const fw = this.fireworks[this.fireworks.length - 1];
+            
+            // Start despawn fade for rocket
+            if (!fw.exploded && fw.rocket) {
+                fw.rocket.startDespawn();
+            }
+            
+            // Start despawn fade for all particles
+            fw.particles.forEach(p => p.startDespawn());
+            fw.secondaryExplosions.forEach(p => p.startDespawn());
+            
+            // Only remove if already despawning for enough time
+            if (fw.rocket && fw.rocket.isDespawning && 
+                performance.now() - fw.rocket.despawnStartTime > minDespawnTime) {
+                this.fireworks.pop();
+            } else {
+                break; // Wait for despawn to complete
+            }
         }
     }
     
