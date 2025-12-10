@@ -31,6 +31,9 @@ class MultiCamPlugin {
 
         // Gift Catalog (wird von Core geladen)
         this.giftCatalog = new Map(); // giftId -> {name, coins, ...}
+        
+        // Cache for gift mapping keys (optimization for debug logging)
+        this._giftMappingKeysCache = null;
     }
 
     /**
@@ -324,6 +327,9 @@ class MultiCamPlugin {
             try {
                 this.config = { ...this.config, ...req.body };
                 this.api.setConfig('config', this.config);
+                
+                // Invalidate gift mapping keys cache when config changes
+                this._giftMappingKeysCache = null;
 
                 res.json({
                     success: true,
@@ -754,12 +760,26 @@ class MultiCamPlugin {
         this.api.registerTikTokEvent('gift', async (data) => {
             if (!this.config.enabled) return;
 
-            // FIX: Use data.coins (already calculated as diamondCount * repeatCount)
+            // FIX: Safe field extraction to prevent undefined username when uniqueId is missing
+            // Use data.coins (already calculated as diamondCount * repeatCount)
             // instead of data.diamondCount (which is just the raw diamond value per gift)
-            const { uniqueId: username, giftId, giftName } = data;
+            const username = data.uniqueId || data.username;
+            const giftId = data.giftId;
+            const giftName = data.giftName;
             const coins = data.coins || 0;
 
-            this.api.log(`Multi-Cam: Gift from ${username}: ${giftName} (${coins} coins)`);
+            // Validate required fields
+            if (!username) {
+                this.api.log(`Multi-Cam: Gift event missing username/uniqueId`, 'warn');
+                return;
+            }
+
+            if (!giftName) {
+                this.api.log(`Multi-Cam: Gift event missing giftName (ID: ${giftId})`, 'warn');
+                return;
+            }
+
+            this.api.log(`Multi-Cam: Gift from ${username}: ${giftName} (${coins} coins)`, 'debug');
 
             // Gift-Mapping prüfen
             await this.handleGift(username, giftName, coins);
@@ -775,9 +795,16 @@ class MultiCamPlugin {
             this.api.registerTikTokEvent('chat', async (data) => {
                 if (!this.config.enabled) return;
 
-                const { uniqueId: username, comment } = data;
+                // Extract username from either uniqueId or username field
+                const username = data.uniqueId || data.username;
+                const comment = data.comment;
 
-                // Prüfe ob comment existiert
+                // Prüfe ob username und comment existieren
+                if (!username) {
+                    this.api.log('Multi-Cam: Chat event missing username/uniqueId', 'warn');
+                    return;
+                }
+
                 if (!comment || typeof comment !== 'string') {
                     return;
                 }
@@ -798,17 +825,26 @@ class MultiCamPlugin {
      * Gift-Handler
      */
     async handleGift(username, giftName, coins) {
+        this.api.log(`Multi-Cam: Handling gift - Name: "${giftName}", Coins: ${coins}, User: ${username}`, 'debug');
+
         // Prüfe Filters
         if (this.config.filters.minCoinsForGiftSwitch > 0 && coins < this.config.filters.minCoinsForGiftSwitch) {
             this.api.log(`Multi-Cam: Gift ${giftName} ignored (${coins} < ${this.config.filters.minCoinsForGiftSwitch} coins)`);
             return;
         }
 
-        // Prüfe Mapping
+        // Prüfe Mapping - log available mappings for debugging
         const mapping = this.config.mapping.gifts[giftName];
         if (!mapping) {
+            // Cache the gift mapping keys string for performance
+            if (!this._giftMappingKeysCache) {
+                this._giftMappingKeysCache = Object.keys(this.config.mapping.gifts).join(', ');
+            }
+            this.api.log(`Multi-Cam: No mapping found for gift "${giftName}". Available mappings: ${this._giftMappingKeysCache}`, 'debug');
             return; // Kein Mapping für dieses Gift
         }
+
+        this.api.log(`Multi-Cam: Gift "${giftName}" matched mapping: ${JSON.stringify(mapping)}`, 'debug');
 
         // minCoins prüfen
         if (mapping.minCoins && coins < mapping.minCoins) {
@@ -829,12 +865,17 @@ class MultiCamPlugin {
             return;
         }
 
+        this.api.log(`Multi-Cam: Executing camera switch for gift "${giftName}" from ${username}`, 'info');
+
         // Aktion ausführen
         const result = await this.executeAction(mapping.action, mapping, username);
 
         if (result.success) {
             this.updateCooldown(username);
             this.recordSwitch();
+            this.api.log(`Multi-Cam: Successfully switched camera for gift "${giftName}"`, 'info');
+        } else {
+            this.api.log(`Multi-Cam: Failed to switch camera for gift "${giftName}": ${result.error}`, 'error');
         }
     }
 
