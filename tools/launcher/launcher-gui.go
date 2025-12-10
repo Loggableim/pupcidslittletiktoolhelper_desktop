@@ -689,7 +689,7 @@ func main() {
 	}
 
 	exeDir := filepath.Dir(exePath)
-	launcher.appDir = filepath.Join(exeDir, "app")
+	launcher.appDir = filepath.Join(exeDir, "src")
 	bgImagePath := filepath.Join(launcher.appDir, "launcherbg.jpg")
 
 	// Setup logging immediately

@@ -20,9 +20,9 @@ echo Node.js found:
 node --version
 echo.
 
-REM Check if app directory exists
-if not exist "app" (
-    echo ERROR: app directory not found!
+REM Check if src directory exists
+if not exist "src" (
+    echo ERROR: src directory not found!
     pause
     exit /b 1
 )

@@ -134,9 +134,9 @@ func main() {
 	}
 	
 	exeDir := filepath.Dir(exePath)
-	appDir := filepath.Join(exeDir, "app")
+	appDir := filepath.Join(exeDir, "src")
 	
-	// Check if app directory exists
+	// Check if src directory exists
 	if _, err := os.Stat(appDir); os.IsNotExist(err) {
 		fmt.Printf("Fehler: app Verzeichnis nicht gefunden in %s\n", exeDir)
 		pause()

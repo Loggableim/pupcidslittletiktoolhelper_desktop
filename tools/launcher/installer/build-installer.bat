@@ -91,9 +91,9 @@ if not exist "..\launcher.exe" (
     echo Please build the launcher first
 )
 
-if not exist "..\..\app\server.js" (
-    echo [ERROR] app directory not found!
-    echo Please ensure you're running this from build-src\installer\
+if not exist "..\..\src\server.js" (
+    echo [ERROR] src directory not found!
+    echo Please ensure you're running this from tools\launcher\installer\
     pause
     exit /b 1
 )
