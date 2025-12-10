@@ -254,4 +254,45 @@ describe('Flame Overlay Plugin', () => {
         resolution = plugin.getResolution();
         expect(resolution).toEqual({ width: 1000, height: 2000 });
     });
+    
+    test('renderer directory is served for flame.js access', () => {
+        const FlameOverlayPlugin = require(path.join(pluginDir, 'main.js'));
+        const mockApp = {
+            use: jest.fn()
+        };
+        const mockApi = {
+            log: jest.fn(),
+            getConfig: jest.fn(() => null),
+            setConfig: jest.fn(),
+            registerRoute: jest.fn(),
+            emit: jest.fn(),
+            getApp: jest.fn(() => mockApp)
+        };
+        
+        const plugin = new FlameOverlayPlugin(mockApi);
+        plugin.registerRoutes();
+        
+        // Verify that express.static is called for /flame-overlay path
+        // This ensures flame.js can be loaded from http://localhost:3000/flame-overlay/flame.js
+        expect(mockApp.use).toHaveBeenCalledWith(
+            '/flame-overlay',
+            expect.any(Function)
+        );
+        
+        // Verify textures directory is also served
+        expect(mockApp.use).toHaveBeenCalledWith(
+            '/plugins/flame-overlay/textures',
+            expect.any(Function)
+        );
+    });
+    
+    test('settings HTML has inline event handlers for CSP', () => {
+        const settingsPath = path.join(pluginDir, 'ui', 'settings.html');
+        const content = fs.readFileSync(settingsPath, 'utf8');
+        
+        // These inline event handlers need CSP hashes to work
+        expect(content).toContain('onclick="saveConfig()"');
+        expect(content).toContain('onclick="loadConfig()"');
+        expect(content).toContain('onclick="openOverlay()"');
+    });
 });
