@@ -2860,7 +2860,10 @@
           if (target) {
             copyToClipboard(target);
           } else if (sourceId) {
-            copyToClipboard(document.getElementById(sourceId).value);
+            const sourceElement = document.getElementById(sourceId);
+            if (sourceElement) {
+              copyToClipboard(sourceElement.value);
+            }
           } else if (arg) {
             copyToClipboard(arg);
           }

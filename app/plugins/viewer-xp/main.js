@@ -592,11 +592,15 @@ class ViewerXPPlugin extends EventEmitter {
         ],
         executor: async (action, context, services) => {
           try {
-            const username = services.templateEngine.processTemplate(action.username, context.data);
+            let username = services.templateEngine.processTemplate(action.username, context.data);
             const amount = parseInt(action.amount);
-            const reason = action.reason ? services.templateEngine.processTemplate(action.reason, context.data) : 'IFTTT automation';
+            let reason = action.reason ? services.templateEngine.processTemplate(action.reason, context.data) : 'IFTTT automation';
 
-            if (!username || isNaN(amount) || amount <= 0) {
+            // Sanitize inputs to prevent injection attacks
+            username = String(username).trim().replace(/[^\w\s\-._@]/g, '');
+            reason = String(reason).trim().substring(0, 500); // Limit reason length
+
+            if (!username || username.length === 0 || isNaN(amount) || amount <= 0) {
               return { success: false, error: 'Invalid username or amount' };
             }
 
