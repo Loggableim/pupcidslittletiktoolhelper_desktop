@@ -235,6 +235,13 @@ async function loadGiftSounds() {
             testBtn.dataset.volume = gift.volume;
             testBtn.textContent = '🔊 Test';
             
+            // Create edit button
+            const editBtn = document.createElement('button');
+            editBtn.className = 'bg-green-600 px-2 py-1 rounded text-xs hover:bg-green-700 mr-1';
+            editBtn.dataset.action = 'edit-gift';
+            editBtn.dataset.giftId = gift.giftId;
+            editBtn.textContent = '✏️ Edit';
+            
             // Create delete button
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'bg-red-600 px-2 py-1 rounded text-xs hover:bg-red-700';
@@ -255,6 +262,7 @@ async function loadGiftSounds() {
             // Append buttons to the last cell
             const actionsCell = row.querySelector('td:last-child');
             actionsCell.appendChild(testBtn);
+            actionsCell.appendChild(editBtn);
             actionsCell.appendChild(deleteBtn);
             
             tbody.appendChild(row);
@@ -340,6 +348,167 @@ async function deleteGiftSound(giftId) {
     } catch (error) {
         console.error('Error deleting gift sound:', error);
         logAudioEvent('error', `Failed to delete gift sound: ${error.message}`, null);
+    }
+}
+
+async function openEditGiftModal(giftId) {
+    try {
+        // Fetch current gift sounds
+        const response = await fetch('/api/soundboard/gifts');
+        const gifts = await response.json();
+        const gift = gifts.find(g => g.giftId === giftId);
+        
+        if (!gift) {
+            alert('Gift sound not found!');
+            return;
+        }
+        
+        // Create modal overlay
+        const modal = document.createElement('div');
+        modal.id = 'edit-gift-modal';
+        modal.className = 'modal-overlay active';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.right = '0';
+        modal.style.bottom = '0';
+        modal.style.background = 'rgba(0, 0, 0, 0.8)';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.zIndex = '10000';
+        modal.style.padding = '20px';
+        
+        modal.innerHTML = `
+            <div class="modal-content" style="background: var(--color-bg-primary); border: 2px solid var(--color-accent-primary); border-radius: 12px; max-width: 600px; width: 100%; padding: 24px; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h3 style="color: var(--color-accent-primary); font-size: 1.3rem; font-weight: 600; margin: 0;">
+                        ✏️ Edit Gift Sound: ${escapeHtml(gift.label)}
+                    </h3>
+                    <button onclick="closeEditGiftModal()" style="background: transparent; border: none; color: var(--color-text-primary); cursor: pointer; padding: 8px; border-radius: 6px; font-size: 1.5rem;">
+                        ✕
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="form-grid" style="display: grid; gap: 16px;">
+                        <div class="form-group">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--color-text-primary);">Gift ID</label>
+                            <input type="number" id="edit-gift-id" value="${gift.giftId}" readonly class="form-input" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg-secondary); color: var(--color-text-primary);">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--color-text-primary);">Label</label>
+                            <input type="text" id="edit-gift-label" value="${escapeHtml(gift.label)}" class="form-input" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg-primary); color: var(--color-text-primary);">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--color-text-primary);">MP3 URL</label>
+                            <input type="text" id="edit-gift-url" value="${escapeHtml(gift.mp3Url)}" class="form-input" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg-primary); color: var(--color-text-primary);">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--color-text-primary);">Sound Volume (0.0 - 1.0)</label>
+                            <input type="number" id="edit-gift-volume" value="${gift.volume}" min="0" max="1" step="0.1" class="form-input" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg-primary); color: var(--color-text-primary);">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--color-text-primary);">Animation URL (optional)</label>
+                            <input type="text" id="edit-gift-animation-url" value="${escapeHtml(gift.animationUrl || '')}" class="form-input" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg-primary); color: var(--color-text-primary);">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--color-text-primary);">Animation Type</label>
+                            <select id="edit-gift-animation-type" class="form-select" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg-primary); color: var(--color-text-primary);">
+                                <option value="none" ${gift.animationType === 'none' ? 'selected' : ''}>No Animation</option>
+                                <option value="image" ${gift.animationType === 'image' ? 'selected' : ''}>Image</option>
+                                <option value="video" ${gift.animationType === 'video' ? 'selected' : ''}>Video</option>
+                                <option value="gif" ${gift.animationType === 'gif' ? 'selected' : ''}>GIF</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: var(--color-text-primary);">Animation Volume (0.0 - 1.0)</label>
+                            <input type="number" id="edit-gift-animation-volume" value="${gift.animationVolume || 1.0}" min="0" max="1" step="0.1" class="form-input" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg-primary); color: var(--color-text-primary);">
+                            <small style="color: var(--color-text-secondary); font-size: 0.85rem;">Controls the volume of the animation's audio (if the animation is a video with sound)</small>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions" style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button onclick="saveEditedGiftSound()" class="btn btn-primary" style="flex: 1; padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; background: var(--color-accent-primary); color: white;">
+                            💾 Save Changes
+                        </button>
+                        <button onclick="closeEditGiftModal()" class="btn btn-secondary" style="flex: 1; padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; background: var(--color-btn-secondary-bg); color: var(--color-btn-secondary-text);">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Close on background click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeEditGiftModal();
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error opening edit modal:', error);
+        alert('Error opening edit modal!');
+    }
+}
+
+async function saveEditedGiftSound() {
+    const giftId = parseInt(document.getElementById('edit-gift-id').value);
+    const label = document.getElementById('edit-gift-label').value;
+    const url = document.getElementById('edit-gift-url').value;
+    const volume = parseFloat(document.getElementById('edit-gift-volume').value);
+    const animationUrl = document.getElementById('edit-gift-animation-url').value;
+    const animationType = document.getElementById('edit-gift-animation-type').value;
+    const animationVolume = parseFloat(document.getElementById('edit-gift-animation-volume').value);
+    
+    if (!giftId || !label || !url) {
+        alert('Please fill in all required fields!');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/soundboard/gifts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                giftId: giftId,
+                label: label,
+                mp3Url: url,
+                volume: volume,
+                animationUrl: animationUrl || null,
+                animationType: animationType || 'none',
+                animationVolume: animationVolume
+            })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            alert('✅ Gift sound updated successfully!');
+            logAudioEvent('success', `Gift sound updated: ${label}`, null);
+            closeEditGiftModal();
+            await loadGiftSounds();
+            await loadGiftCatalog();
+        }
+    } catch (error) {
+        console.error('Error updating gift sound:', error);
+        alert('Error updating gift sound!');
+        logAudioEvent('error', `Failed to update gift sound: ${error.message}`, null);
+    }
+}
+
+function closeEditGiftModal() {
+    const modal = document.getElementById('edit-gift-modal');
+    if (modal) {
+        modal.remove();
     }
 }
 
@@ -1298,6 +1467,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const name = actionBtn.dataset.name;
                 const url = actionBtn.dataset.url;
                 openGiftCatalogModal(name, url);
+            } else if (action === 'edit-gift') {
+                const giftId = parseInt(actionBtn.dataset.giftId);
+                openEditGiftModal(giftId);
             } else if (action === 'delete-gift') {
                 const giftId = parseInt(actionBtn.dataset.giftId);
                 deleteGiftSound(giftId);
