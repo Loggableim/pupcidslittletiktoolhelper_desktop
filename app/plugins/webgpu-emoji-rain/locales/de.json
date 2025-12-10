@@ -1,0 +1,50 @@
+{
+  "webgpu_emoji_rain": {
+    "title": "WebGPU Emoji-Regen Einstellungen",
+    "subtitle": "GPU-beschleunigter Emoji-Partikel-Effekt",
+    "config": {
+      "title": "Konfiguration",
+      "enabled": "WebGPU Emoji-Regen aktivieren",
+      "trigger_on_gift": "Bei Geschenk auslösen",
+      "trigger_on_follow": "Bei Follow auslösen",
+      "trigger_on_like": "Bei Like-Meilenstein auslösen",
+      "like_threshold": "Like-Schwellenwert",
+      "duration": "Regen-Dauer (Sekunden)",
+      "intensity": "Regen-Intensität",
+      "emoji_size": "Emoji-Größe",
+      "custom_emojis": "Benutzerdefinierte Emojis",
+      "save": "Einstellungen speichern",
+      "particle_scale": "Partikelgröße",
+      "gravity": "Gravitation",
+      "lifespan": "Lebensdauer (Sekunden)",
+      "rotation_speed": "Rotationsgeschwindigkeit"
+    },
+    "performance": {
+      "title": "Performance & Rendering",
+      "description": "WebGPU bietet deutlich bessere Performance als Canvas-basiertes Rendering",
+      "max_particles": "Maximale Partikel: 1000",
+      "rendering": "Instanced Rendering",
+      "fps": "Ziel-FPS: 60",
+      "benefits": "Vorteile: GPU-beschleunigt, niedrigere CPU-Last, höhere Partikelanzahl"
+    },
+    "overlay": {
+      "title": "Overlay",
+      "url": "Overlay-URL",
+      "obs_url": "OBS HUD-URL",
+      "copy": "URL kopieren",
+      "open": "Overlay öffnen",
+      "test": "Regen testen"
+    },
+    "preview": {
+      "title": "Vorschau",
+      "start": "Vorschau starten",
+      "stop": "Vorschau stoppen"
+    },
+    "webgpu": {
+      "available": "WebGPU verfügbar",
+      "not_available": "WebGPU nicht verfügbar",
+      "required": "Erfordert Chrome 113+ oder Edge 113+",
+      "checking": "WebGPU wird geprüft..."
+    }
+  }
+}

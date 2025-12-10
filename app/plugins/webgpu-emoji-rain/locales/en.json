@@ -1,0 +1,50 @@
+{
+  "webgpu_emoji_rain": {
+    "title": "WebGPU Emoji Rain Settings",
+    "subtitle": "GPU-accelerated emoji particle effect",
+    "config": {
+      "title": "Configuration",
+      "enabled": "Enable WebGPU Emoji Rain",
+      "trigger_on_gift": "Trigger on gift",
+      "trigger_on_follow": "Trigger on follow",
+      "trigger_on_like": "Trigger on like milestone",
+      "like_threshold": "Like threshold",
+      "duration": "Rain duration (seconds)",
+      "intensity": "Rain intensity",
+      "emoji_size": "Emoji size",
+      "custom_emojis": "Custom emojis",
+      "save": "Save settings",
+      "particle_scale": "Particle scale",
+      "gravity": "Gravity",
+      "lifespan": "Lifespan (seconds)",
+      "rotation_speed": "Rotation speed"
+    },
+    "performance": {
+      "title": "Performance & Rendering",
+      "description": "WebGPU provides significantly better performance than Canvas-based rendering",
+      "max_particles": "Maximum particles: 1000",
+      "rendering": "Instanced rendering",
+      "fps": "Target FPS: 60",
+      "benefits": "Benefits: GPU-accelerated, lower CPU usage, higher particle count"
+    },
+    "overlay": {
+      "title": "Overlay",
+      "url": "Overlay URL",
+      "obs_url": "OBS HUD URL",
+      "copy": "Copy URL",
+      "open": "Open overlay",
+      "test": "Test rain"
+    },
+    "preview": {
+      "title": "Preview",
+      "start": "Start preview",
+      "stop": "Stop preview"
+    },
+    "webgpu": {
+      "available": "WebGPU available",
+      "not_available": "WebGPU not available",
+      "required": "Requires Chrome 113+ or Edge 113+",
+      "checking": "Checking WebGPU..."
+    }
+  }
+}
