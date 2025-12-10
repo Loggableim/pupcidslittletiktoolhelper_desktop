@@ -6,7 +6,7 @@ Enterprise-grade Text-to-Speech plugin for Pup Cids Little TikTok Helper with mu
 
 ### Core Features
 - **Multi-Engine Support**
-  - Google Cloud TTS (Optional, premium quality, 100+ voices)
+  - Google Cloud TTS (Optional, premium quality, 380+ voices including Chirp3-HD)
   - Speechify (Optional, 200+ AI voices, voice cloning)
   - ElevenLabs (Optional, ultra-realistic voices)
   - OpenAI TTS (Optional, HD quality voices)
@@ -100,6 +100,8 @@ The plugin is automatically loaded by the plugin system. No manual installation 
    - Enable "Cloud Text-to-Speech API"
    - Enter API key in admin panel
    - Select Google as default engine
+   - **Chirp3-HD voices**: 176 premium voices with enhanced emotional expressiveness (requires billing)
+   - Supported voice styles: Standard, Wavenet, Neural2, Studio, News, Polyglot, Chirp3-HD
 
 4. **Speechify TTS (Optional)**
    - Sign up at [Speechify Console](https://console.speechify.com)
@@ -279,20 +281,28 @@ curl -X POST http://localhost:3000/api/tts/users/{userId}/blacklist \
 - **Plus**: Italian, Russian, Arabic, Turkish, Thai, Vietnamese, Indonesian, Dutch, Polish
 
 ### Google Cloud TTS (with API key)
-- **200+ voices** across 18+ languages with dynamic fetching from Google API
+- **380+ voices** across 22+ languages with dynamic fetching from Google API
 - **Voice Types:**
+  - **Chirp3-HD** (176 voices): Latest premium voices with emotional expressiveness and natural intonation (requires billing)
   - **Neural2** (59 voices): Latest generation, most natural-sounding voices
   - **Wavenet** (85+ voices): High-quality neural network-based voices
   - **Studio** (10 voices): Premium voices for professional content
   - **News** (14 voices): Optimized for news reading
   - **Polyglot** (3 voices): Multilingual capable voices
   - **Standard** (33+ voices): Basic quality voices
-- **Languages:**
-  - **Germanic**: German (6 Neural2 + Wavenet + Studio + Polyglot), Dutch, English (US, GB, AU, IN)
-  - **Romance**: French (5 Neural2 + Studio + Polyglot), Spanish (ES, US with Studio/News), Italian, Portuguese (BR, PT)
-  - **Asian**: Japanese, Korean, Chinese (Mandarin), Hindi (4 Neural2), Thai, Vietnamese, Indonesian
+- **Chirp3-HD Languages**: 8 voices per language (4 female F1-F4, 4 male M1-M4)
+  - **Germanic**: German, Dutch, English (US, GB, AU, IN)
+  - **Romance**: French, Spanish (ES, US), Italian, Portuguese (BR)
+  - **Asian**: Japanese, Korean, Chinese, Hindi, Thai, Vietnamese, Indonesian
+  - **Other**: Arabic, Turkish, Russian, Polish
+- **Other Voice Languages**:
+  - **Germanic**: German, Dutch, English (US, GB, AU, IN)
+  - **Romance**: French, Spanish (ES, US), Italian, Portuguese (BR, PT)
+  - **Asian**: Japanese, Korean, Chinese (Mandarin), Hindi, Thai, Vietnamese, Indonesian
   - **Other**: Arabic, Turkish, Russian, Polish
 - **Dynamic Updates**: Voices automatically fetched from Google API with 24-hour caching
+- **Example Chirp3-HD voices**: `en-US-Chirp3-HD-F1`, `de-DE-Chirp3-HD-M2`, `ja-JP-Chirp3-HD-F3`
+
 
 ## 🔧 Advanced Features
 
