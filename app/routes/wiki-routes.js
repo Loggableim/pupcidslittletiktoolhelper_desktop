@@ -72,6 +72,7 @@ const WIKI_STRUCTURE = {
                 { id: 'vdoninja', title: 'VDO.Ninja Multi-Guest', icon: 'users', file: 'Plugins/VDO-Ninja.md' },
                 { id: 'multicam', title: 'Multi-Cam Switcher', icon: 'video', file: 'plugins/multicam/README.md' },
                 { id: 'osc-bridge', title: 'OSC Bridge (VRChat)', icon: 'gamepad-2', file: 'plugins/osc-bridge/README.md' },
+                { id: 'hybridshock', title: 'HybridShock', icon: 'zap', file: 'plugins/hybridshock/README.md' },
                 { id: 'openshock', title: 'OpenShock', icon: 'zap', file: 'plugins/openshock/README.md' },
                 { id: 'quiz-show', title: 'Quiz Show', icon: 'help-circle', file: 'plugins/quiz_show/README.md' }
             ]

@@ -4,7 +4,7 @@
 
 Ich habe ein vollständiges NSIS Installer-Setup für LTTH erstellt mit allen geforderten Features:
 
-### 📁 Dateien in `tools/launcher/installer/`:
+### 📁 Dateien in `build-src/installer/`:
 
 1. **ltth-installer.nsi** - Hauptinstallerskript (NSIS)
    - Modern UI 2
@@ -51,8 +51,8 @@ Ich habe ein vollständiges NSIS Installer-Setup für LTTH erstellt mit allen ge
 ### Schritt 2: Node.js Portable (optional, empfohlen)
 
 1. Download: https://nodejs.org/dist/v18.19.1/node-v18.19.1-win-x64.zip
-2. Entpacke nach: `tools/launcher/assets/node/`
-   - Ergebnis: `tools/launcher/assets/node/node.exe` sollte existieren
+2. Entpacke nach: `build-src/assets/node/`
+   - Ergebnis: `build-src/assets/node/node.exe` sollte existieren
 
 **Hinweis:** Wenn du diesen Schritt überspringst, wird der Installer ohne Node.js erstellt.
 
@@ -61,21 +61,21 @@ Ich habe ein vollständiges NSIS Installer-Setup für LTTH erstellt mit allen ge
 **Einfachste Methode (Drag & Drop):**
 
 1. Öffne Windows Explorer
-2. Gehe zu: `tools/launcher/installer/`
+2. Gehe zu: `build-src/installer/`
 3. Ziehe `ltth-installer.nsi` ins **MakeNSISW** Fenster
 4. Warte 30-60 Sekunden
-5. **Fertig!** → `LTTH-Setup-1.2.1.exe` ist erstellt
+5. **Fertig!** → `LTTH-Setup-1.2.0.exe` ist erstellt
 
 **Alternative (Rechtsklick):**
 
 1. Rechtsklick auf `ltth-installer.nsi`
 2. "Compile NSIS Script"
-3. **Fertig!** → `LTTH-Setup-1.2.1.exe`
+3. **Fertig!** → `LTTH-Setup-1.2.0.exe`
 
 **Alternative (Batch-Script):**
 
 1. Doppelklick auf `build-installer.bat`
-2. **Fertig!** → `LTTH-Setup-1.2.1.exe`
+2. **Fertig!** → `LTTH-Setup-1.2.0.exe`
 
 ---
 
@@ -99,9 +99,8 @@ Wenn Benutzer den Installer ausführen:
 
 ### Installiert wird:
 
-- `app/` Verzeichnis (alle Backend-Dateien aus `/src`)
-- `plugins/` Verzeichnis (30+ Plugins)
-- `launcher.exe` (Desktop Launcher)
+- `app/` Verzeichnis (alle Backend-Dateien)
+- `launcher.exe` (Go Launcher)
 - `ltthgit.exe` (falls vorhanden)
 - `node/` Verzeichnis (falls Node.js gewählt)
 - Desktop Shortcut
@@ -223,9 +222,9 @@ Was du jetzt machen musst:
 
 Für Details siehe:
 
-- **Technische Doku:** `tools/launcher/installer/README.md`
-- **Setup-Anleitung:** `tools/launcher/installer/SETUP_INSTRUCTIONS.md`
-- **NSI-Script:** `tools/launcher/installer/ltth-installer.nsi` (gut kommentiert)
+- **Technische Doku:** `build-src/installer/README.md`
+- **Setup-Anleitung:** `build-src/installer/SETUP_INSTRUCTIONS.md`
+- **NSI-Script:** `build-src/installer/ltth-installer.nsi` (gut kommentiert)
 
 ---
 
