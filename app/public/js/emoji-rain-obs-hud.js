@@ -568,6 +568,8 @@
             document.getElementById('canvas-container').appendChild(element);
             
             // Force reflow to ensure element is in DOM before applying transform
+            // offsetHeight is used because it's a reliable property that triggers reflow
+            // without side effects (read-only, always available, minimal performance cost)
             void element.offsetHeight;
             
             // Now apply transform and show element
