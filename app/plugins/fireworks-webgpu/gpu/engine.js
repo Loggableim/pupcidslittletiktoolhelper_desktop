@@ -32,7 +32,11 @@ const CONFIG = {
     defaultColors: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
     comboThrottleMinInterval: 100,
     comboSkipRocketsThreshold: 5,
-    comboInstantExplodeThreshold: 8
+    comboInstantExplodeThreshold: 8,
+    // Buffer size constants
+    PARTICLE_STRUCT_SIZE: 48, // 12 floats × 4 bytes: position(2) + velocity(2) + color(4) + size(1) + life(1) + maxLife(1) + padding(1)
+    COMPUTE_UNIFORM_SIZE: 16, // 4 floats × 4 bytes: deltaTime, gravity, airResistance, padding
+    RENDER_UNIFORM_SIZE: 16 // 4 floats × 4 bytes: width, height, padding, padding
 };
 
 // ============================================================================
@@ -46,12 +50,12 @@ const ShapeGenerators = {
         const particlesPerRing = Math.floor(count / rings);
         
         for (let ring = 0; ring < rings; ring++) {
-            const ringSpeed = (50 + Math.random() * 50) * (1 + ring * 0.3) * intensity;
+            const ringSpeed = (2 + Math.random() * 2) * (1 + ring * 0.3) * intensity;
             for (let i = 0; i < particlesPerRing; i++) {
                 const angle = (Math.PI * 2 * i) / particlesPerRing + (Math.random() - 0.5) * 0.2;
                 particles.push({
-                    vx: Math.cos(angle) * ringSpeed,
-                    vy: Math.sin(angle) * ringSpeed
+                    vx: Math.cos(angle) * ringSpeed * 25, // Scale for WebGPU physics (pixels per frame at 60 FPS)
+                    vy: Math.sin(angle) * ringSpeed * 25
                 });
             }
         }
@@ -72,10 +76,10 @@ const ShapeGenerators = {
                 const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
                 
                 const mag = Math.max(Math.sqrt(x*x + y*y), 1);
-                const speed = (3 + Math.random() * 1) * intensity * layerScale;
+                const speed = (0.15 + Math.random() * 0.05) * intensity * layerScale;
                 particles.push({
-                    vx: (x / mag) * speed * 8,
-                    vy: (y / mag) * speed * 8
+                    vx: (x / mag) * speed * 8 * 25, // Scale for WebGPU physics
+                    vy: (y / mag) * speed * 8 * 25
                 });
             }
         }
@@ -97,10 +101,10 @@ const ShapeGenerators = {
                 const spread = (Math.random() - 0.5) * 0.15;
                 const angle = outerAngle + spread;
                 const radiusMix = 0.8 + t * 0.4;
-                const speed = (50 + Math.random() * 25) * intensity * radiusMix;
+                const speed = (2 + Math.random() * 1) * intensity * radiusMix;
                 particles.push({
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed
+                    vx: Math.cos(angle) * speed * 25, // Scale for WebGPU physics
+                    vy: Math.sin(angle) * speed * 25
                 });
             }
             
@@ -110,10 +114,10 @@ const ShapeGenerators = {
                 const spread = (Math.random() - 0.5) * 0.1;
                 const angle = innerAngle + spread;
                 const radiusMix = 0.3 + t * 0.3;
-                const speed = (37.5 + Math.random() * 20) * intensity * radiusMix;
+                const speed = (1.5 + Math.random() * 0.8) * intensity * radiusMix;
                 particles.push({
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed
+                    vx: Math.cos(angle) * speed * 25, // Scale for WebGPU physics
+                    vy: Math.sin(angle) * speed * 25
                 });
             }
         }
@@ -128,11 +132,11 @@ const ShapeGenerators = {
         for (let i = 0; i < count; i++) {
             const t = (i / count) * turns * Math.PI * 2;
             const armOffset = (Math.floor(i * arms / count) * Math.PI * 2) / arms;
-            const radius = (i / count) * intensity * 20;
-            const speed = 37.5 + Math.random() * 37.5;
+            const radius = (i / count) * intensity * 0.8;
+            const speed = 1.5 + Math.random() * 1.5;
             particles.push({
-                vx: Math.cos(t + armOffset) * radius * speed / 20,
-                vy: Math.sin(t + armOffset) * radius * speed / 20
+                vx: Math.cos(t + armOffset) * radius * speed * 25, // Scale for WebGPU physics
+                vy: Math.sin(t + armOffset) * radius * speed * 25
             });
         }
         return particles;
@@ -147,11 +151,11 @@ const ShapeGenerators = {
         for (let i = 0; i < centerPadParticles; i++) {
             const angle = (Math.PI * 2 * i) / centerPadParticles + Math.random() * 0.3;
             const radius = 0.3 + Math.random() * 0.2;
-            const speed = (20 + Math.random() * 10) * intensity;
-            const offsetY = 15 * intensity;
+            const speed = (0.8 + Math.random() * 0.4) * intensity;
+            const offsetY = 0.6; // Position offset for center pad
             particles.push({
-                vx: Math.cos(angle) * radius * speed,
-                vy: (Math.sin(angle) * radius * speed) + offsetY
+                vx: Math.cos(angle) * radius * speed * 25, // Scale for WebGPU physics
+                vy: (Math.sin(angle) * radius * speed + offsetY * intensity) * 25
             });
         }
         
@@ -168,14 +172,14 @@ const ShapeGenerators = {
             for (let i = 0; i < toeParticles; i++) {
                 const localAngle = (Math.PI * 2 * i) / toeParticles;
                 const radius = 0.15 + Math.random() * 0.1;
-                const speed = (15 + Math.random() * 7.5) * intensity;
+                const speed = (0.6 + Math.random() * 0.3) * intensity;
                 
                 const basex = Math.cos(toePos.angle) * toePos.distance;
                 const basey = Math.sin(toePos.angle) * toePos.distance;
                 
                 particles.push({
-                    vx: (basex + Math.cos(localAngle) * radius) * speed,
-                    vy: (basey + Math.sin(localAngle) * radius) * speed
+                    vx: (basex + Math.cos(localAngle) * radius) * speed * 25, // Scale for WebGPU physics
+                    vy: (basey + Math.sin(localAngle) * radius) * speed * 25
                 });
             }
         }
@@ -193,10 +197,10 @@ const ShapeGenerators = {
             
             for (let i = 0; i < ringParticles; i++) {
                 const angle = (Math.PI * 2 * i) / ringParticles;
-                const speed = (75 + Math.random() * 25) * intensity * ringRadius;
+                const speed = (3 + Math.random()) * intensity * ringRadius;
                 particles.push({
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed
+                    vx: Math.cos(angle) * speed * 25, // Scale for WebGPU physics
+                    vy: Math.sin(angle) * speed * 25
                 });
             }
         }
@@ -569,8 +573,8 @@ class FireworksEngine {
 
     createBuffers() {
         // Create particle buffer (storage buffer)
-        // Each particle: 12 floats = 48 bytes
-        const particleDataSize = this.config.maxTotalParticles * 48;
+        // Each particle: position(2) + velocity(2) + color(4) + size(1) + life(1) + maxLife(1) + padding(1) = 12 floats = 48 bytes
+        const particleDataSize = this.config.maxTotalParticles * this.config.PARTICLE_STRUCT_SIZE;
         this.particleBuffer = this.device.createBuffer({
             size: particleDataSize,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
@@ -578,13 +582,13 @@ class FireworksEngine {
         
         // Create uniform buffer for compute shader (deltaTime, gravity, airResistance, padding)
         this.computeUniformBuffer = this.device.createBuffer({
-            size: 16, // 4 floats
+            size: this.config.COMPUTE_UNIFORM_SIZE,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
         
         // Create uniform buffer for render shader (resolution.x, resolution.y, padding, padding)
         this.renderUniformBuffer = this.device.createBuffer({
-            size: 16, // 4 floats
+            size: this.config.RENDER_UNIFORM_SIZE,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
         
