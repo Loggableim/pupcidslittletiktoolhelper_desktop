@@ -707,7 +707,8 @@ class WebGPUEmojiRainPlugin {
    */
   async executeFlowTrigger(params, eventData) {
     try {
-      const response = await fetch('http://localhost:3000/api/webgpu-emoji-rain/trigger', {
+      // Use relative URL for better portability
+      const response = await fetch('/api/webgpu-emoji-rain/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
