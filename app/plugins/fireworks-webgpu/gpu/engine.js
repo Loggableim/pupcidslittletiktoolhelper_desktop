@@ -22,26 +22,53 @@ const CONFIG = {
     maxTotalParticles: 10000,
     targetFps: 60,
     minFps: 24,
-    physicsScale: 60, // Converts per-frame values (at 60 FPS) to per-second values for frame-independent physics
+    physicsScale: 60,
     gravity: 0.08,
     airResistance: 0.99,
-    rocketAirResistance: 0.995, // Air resistance for rockets (slightly less than particles)
-    rocketSpeed: -12, // Negative = upward motion in canvas Y-down coordinates (pixels per frame at 60 FPS)
-    defaultTargetY: 0.5, // Default rocket target height as fraction of screen height
+    rocketAirResistance: 0.995,
+    rocketSpeed: -12,
+    rocketAcceleration: -0.08,
+    defaultTargetY: 0.5,
     backgroundColor: 'rgba(0, 0, 0, 0)',
+    // Trail configuration
+    trailLength: 20,
+    trailFadeAlpha: 10,
+    trailFadeSpeed: 0.02,
+    // Effects configuration
+    sparkleChance: 0.15,
+    secondaryExplosionChance: 0.1,
+    // Resolution and display
+    resolution: 1.0,
+    resolutionPreset: '1080p',
+    orientation: 'landscape',
+    // Gift popup
+    giftPopupPosition: 'bottom',
+    giftPopupEnabled: true,
+    // Performance
+    despawnFadeDuration: 1.5,
+    // Color palettes
     defaultColors: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
+    colorPalettes: {
+        classic: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
+        neon: ['#ff006e', '#fb5607', '#ffbe0b', '#8338ec', '#3a86ff'],
+        pastel: ['#ffc2d1', '#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff'],
+        fire: ['#ff0000', '#ff4500', '#ff8c00', '#ffd700', '#ffff00'],
+        ice: ['#00ffff', '#00ccff', '#0099ff', '#0066ff', '#0033ff'],
+        rainbow: ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#9400d3']
+    },
+    // Combo settings
     comboThrottleMinInterval: 100,
     comboSkipRocketsThreshold: 5,
     comboInstantExplodeThreshold: 8,
     // Rocket trail configuration
-    rocketTrailDensity: 3, // Number of trail particles emitted per frame
-    rocketSparkleChance: 0.15, // Probability of sparkle particle per frame (15%)
+    rocketTrailDensity: 3,
+    rocketSparkleChance: 0.15,
     // WebGPU-specific constants
-    WEBGPU_PHYSICS_SCALE: 25, // Velocity multiplier to convert Canvas 2D physics to WebGPU scale
-    PARTICLE_FLOATS_COUNT: 12, // Number of floats per particle: position(2) + velocity(2) + color(4) + size(1) + life(1) + maxLife(1) + padding(1)
-    PARTICLE_STRUCT_SIZE: 48, // 12 floats × 4 bytes per float
-    COMPUTE_UNIFORM_SIZE: 16, // 4 floats × 4 bytes: deltaTime, gravity, airResistance, padding
-    RENDER_UNIFORM_SIZE: 16 // 4 floats × 4 bytes: width, height, padding, padding
+    WEBGPU_PHYSICS_SCALE: 25,
+    PARTICLE_FLOATS_COUNT: 12,
+    PARTICLE_STRUCT_SIZE: 48,
+    COMPUTE_UNIFORM_SIZE: 16,
+    RENDER_UNIFORM_SIZE: 16
 };
 
 // ============================================================================
@@ -357,6 +384,48 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
     return vec4<f32>(input.color.rgb, input.color.a * alpha);
 }
 `;
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+function hslToRgb(h, s, l) {
+    let r, g, b;
+    
+    if (s === 0) {
+        r = g = b = l;
+    } else {
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        };
+        
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+    
+    return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+    };
+}
+
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 255, g: 255, b: 255 };
+}
 
 // ============================================================================
 // PARTICLE CLASS - Individual particle with physics and trails
@@ -894,13 +963,20 @@ class AudioManager {
 class FireworksEngine {
     constructor(canvasId, options = {}) {
         this.canvas = document.getElementById(canvasId);
+        
+        // Multithreading & GPU support configuration
+        this.useWorker = options.useWorker !== false;
+        this.worker = null;
+        this.offscreenCanvas = null;
+        this.workerMode = false;
+        
         this.device = null;
         this.context = null;
         this.pipeline = null;
         this.computePipeline = null;
         
-        this.fireworks = []; // Array of Firework objects
-        this.particles = []; // GPU particle buffer data
+        this.fireworks = [];
+        this.particles = [];
         this.particleBuffer = null;
         this.computeUniformBuffer = null;
         this.renderUniformBuffer = null;
@@ -908,14 +984,41 @@ class FireworksEngine {
         this.computeBindGroup = null;
         
         this.audioManager = new AudioManager();
-        this.config = { ...CONFIG };
-        this.running = false;
-        this.debugMode = false;
         
+        this.lastTime = performance.now();
         this.frameCount = 0;
         this.fps = 0;
-        this.lastFrameTime = performance.now();
         this.fpsUpdateTime = performance.now();
+        this.fpsHistory = [];
+        this.performanceMode = 'normal';
+        
+        // Combo throttling
+        this.lastComboTriggerTime = 0;
+        this.comboTriggerQueue = [];
+        
+        this.config = {
+            ...CONFIG,
+            toasterMode: false,
+            audioEnabled: true,
+            audioVolume: 0.7,
+            trailsEnabled: true,
+            glowEnabled: true,
+            resolution: CONFIG.resolution,
+            resolutionPreset: CONFIG.resolutionPreset,
+            orientation: CONFIG.orientation,
+            targetFps: CONFIG.targetFps,
+            minFps: CONFIG.minFps,
+            giftPopupPosition: CONFIG.giftPopupPosition,
+            gpuEnabled: true,
+            workerEnabled: true,
+            workerCount: 'auto'
+        };
+        
+        this.running = false;
+        this.socket = null;
+        this.imageCache = new Map();
+        this.debugMode = false;
+        this.lastFrameTime = performance.now();
         
         this.width = 0;
         this.height = 0;
