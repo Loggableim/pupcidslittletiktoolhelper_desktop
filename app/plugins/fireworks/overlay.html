@@ -24,12 +24,20 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+            /* Force GPU rendering */
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
         }
 
         #fireworks-canvas {
             display: block;
             width: 100%;
             height: 100%;
+            /* Force GPU rendering for canvas */
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
         }
 
         /* Gift info popup */

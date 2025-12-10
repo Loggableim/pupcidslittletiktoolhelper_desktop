@@ -276,6 +276,21 @@ function updateUI() {
     // Performance & Resolution settings
     updateToggle('toaster-toggle', config.toasterMode);
     
+    // GPU acceleration toggle
+    updateToggle('gpu-toggle', config.gpuEnabled !== false); // Default to true
+    
+    // Multithreading toggle
+    updateToggle('worker-toggle', config.workerEnabled !== false); // Default to true
+    
+    // Worker count
+    const workerCount = document.getElementById('worker-count');
+    if (workerCount) {
+        workerCount.value = config.workerCount || 'auto';
+    }
+    
+    // Show/hide worker configuration based on toggle
+    updateWorkerConfigVisibility(config.workerEnabled !== false);
+    
     // Update resolution preset
     const resolutionPreset = document.getElementById('resolution-preset');
     if (resolutionPreset) {
@@ -333,6 +348,21 @@ function updateToggle(id, value) {
     const toggle = document.getElementById(id);
     if (toggle) {
         toggle.classList.toggle('active', value !== false);
+    }
+}
+
+function updateWorkerConfigVisibility(enabled) {
+    const workerConfig = document.getElementById('worker-config');
+    const workerDisabledMsg = document.getElementById('worker-disabled-msg');
+    
+    if (workerConfig && workerDisabledMsg) {
+        if (enabled) {
+            workerConfig.style.display = 'block';
+            workerDisabledMsg.classList.add('hidden');
+        } else {
+            workerConfig.style.display = 'none';
+            workerDisabledMsg.classList.remove('hidden');
+        }
     }
 }
 
@@ -401,7 +431,17 @@ function setupEventListeners() {
             this.classList.toggle('active');
             const configKey = this.dataset.config;
             config[configKey] = this.classList.contains('active');
+            
+            // Special handling for worker toggle
+            if (configKey === 'workerEnabled') {
+                updateWorkerConfigVisibility(this.classList.contains('active'));
+            }
         });
+    });
+    
+    // Worker count selector
+    document.getElementById('worker-count')?.addEventListener('change', function() {
+        config.workerCount = this.value;
     });
     
     // Shape selection - multiple selection support
