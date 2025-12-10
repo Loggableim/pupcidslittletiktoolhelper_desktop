@@ -444,6 +444,9 @@
                     <button class="sidebar-quick-icon" id="sidebar-quick-emoji-rain" data-action="emoji-rain" data-plugin="emoji-rain" title="Toggle Emoji Rain">
                         <i data-lucide="cloud-rain"></i>
                     </button>
+                    <button class="sidebar-quick-icon" id="sidebar-quick-webgpu-emoji-rain" data-action="webgpu-emoji-rain" data-plugin="webgpu-emoji-rain" title="Toggle WebGPU Emoji Rain">
+                        <i data-lucide="zap"></i>
+                    </button>
                     <button class="sidebar-quick-icon" id="sidebar-quick-osc-bridge" data-action="osc-bridge" data-plugin="osc-bridge" title="Toggle OSC-Bridge">
                         <i data-lucide="gamepad-2"></i>
                     </button>
@@ -504,6 +507,10 @@
                 <a href="#" class="sidebar-item" data-view="emoji-rain" data-plugin="emoji-rain">
                     <i data-lucide="cloud-rain"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.emoji_rain">Emoji Rain</span>
+                </a>
+                <a href="#" class="sidebar-item" data-view="webgpu-emoji-rain" data-plugin="webgpu-emoji-rain">
+                    <i data-lucide="zap"></i>
+                    <span class="sidebar-item-text" data-i18n="navigation.webgpu_emoji_rain">WebGPU Emoji Rain</span>
                 </a>
                 <a href="#" class="sidebar-item" data-view="fireworks" data-plugin="fireworks">
                     <i data-lucide="sparkles"></i>
@@ -755,6 +762,10 @@
                             <button class="quick-action-btn" id="quick-emoji-rain-btn" data-action="emoji-rain" data-state="on" data-plugin="emoji-rain">
                                 <i data-lucide="cloud-rain"></i>
                                 <span data-i18n="dashboard.quick_action.emoji_rain">Emoji Rain</span>
+                            </button>
+                            <button class="quick-action-btn" id="quick-webgpu-emoji-rain-btn" data-action="webgpu-emoji-rain" data-state="off" data-plugin="webgpu-emoji-rain">
+                                <i data-lucide="zap"></i>
+                                <span data-i18n="dashboard.quick_action.webgpu_emoji_rain">WebGPU Emoji Rain</span>
                             </button>
                             <button class="quick-action-btn" id="quick-osc-bridge-btn" data-action="osc-bridge" data-state="off" data-plugin="osc-bridge">
                                 <i data-lucide="gamepad-2"></i>
@@ -1459,6 +1470,25 @@
                         </div>
                         <div class="iframe-container">
                             <iframe data-src="/emoji-rain/ui" title="Emoji Rain Configuration"></iframe>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: WebGPU Emoji Rain -->
+                <div id="view-webgpu-emoji-rain" class="content-view" data-plugin="webgpu-emoji-rain">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="zap"></i>
+                                WebGPU Emoji Rain
+                            </h2>
+                            <a href="/webgpu-emoji-rain/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe data-src="/webgpu-emoji-rain/ui" title="WebGPU Emoji Rain Configuration"></iframe>
                         </div>
                     </section>
                 </div>

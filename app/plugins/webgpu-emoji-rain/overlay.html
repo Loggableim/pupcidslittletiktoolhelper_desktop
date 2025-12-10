@@ -1,561 +1,126 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebGPU Emoji Rain Overlay</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: transparent;
-    }
-    #canvas-container {
-      width: 100%;
-      height: 100%;
-      position: relative;
-    }
-    #webgpu-emoji-rain-canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-    #fallback-message {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #ff6b6b;
-      font-family: Arial, sans-serif;
-      font-size: 18px;
-      text-align: center;
-      background: rgba(0, 0, 0, 0.8);
-      padding: 20px 40px;
-      border-radius: 10px;
-      display: none;
-    }
-    #fallback-message.visible {
-      display: block;
-    }
-    #status {
-      position: fixed;
-      bottom: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0.7);
-      color: #00ff88;
-      font-family: monospace;
-      font-size: 12px;
-      padding: 5px 10px;
-      border-radius: 5px;
-      display: none;
-    }
-    #status.visible {
-      display: block;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGPU Emoji Rain Overlay - TikTok Stream Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            /* Force GPU rendering */
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            /* Force GPU rendering for canvas */
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+        }
+
+        .emoji-sprite {
+            position: absolute;
+            font-size: 48px;
+            pointer-events: none;
+            user-select: none;
+            transform-origin: center;
+            transition: opacity 0.5s ease;
+            will-change: transform, opacity;
+            /* Hardware acceleration */
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+        }
+
+        .emoji-sprite.fading {
+            opacity: 0;
+        }
+
+        /* Bubble Blop Animation - using scale only to preserve position/rotation */
+        @keyframes bubbleBlop {
+            0% {
+                scale: 1;
+            }
+            50% {
+                scale: 1.5;
+            }
+            100% {
+                scale: 1;
+            }
+        }
+
+        /* Custom image support */
+        .emoji-sprite img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+
+        /* Toaster Mode - Performance optimizations for low-end PCs */
+        body.toaster-mode .emoji-sprite {
+            /* Disable expensive transitions */
+            transition: none !important;
+            /* Disable filters */
+            filter: none !important;
+            /* Disable animations */
+            animation: none !important;
+            /* Reduce will-change to minimize GPU memory */
+            will-change: transform;
+        }
+
+        body.toaster-mode .emoji-sprite.fading {
+            /* Simple opacity change without transition */
+            opacity: 0;
+        }
+
+        /* Debug info (optional) */
+        #debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+            z-index: 1000;
+        }
+    </style>
 </head>
 <body>
-  <div id="canvas-container">
-    <canvas id="webgpu-emoji-rain-canvas"></canvas>
-    <div id="fallback-message">
-      <h3>⚠️ WebGPU Not Available</h3>
-      <p>This overlay requires WebGPU support.</p>
-      <p>Please use Chrome 113+ or Edge 113+.</p>
-    </div>
-    <div id="status">
-      FPS: <span id="fps">0</span> |
-      Particles: <span id="particles">0</span>
-    </div>
-  </div>
-
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    // ========================================================================
-    // WebGPU Emoji Rain Overlay
-    // Client-side WebGPU rendering for OBS browser source
-    // ========================================================================
-
-    const canvas = document.getElementById('webgpu-emoji-rain-canvas');
-    const fallbackMessage = document.getElementById('fallback-message');
-    const statusDisplay = document.getElementById('status');
-    const fpsSpan = document.getElementById('fps');
-    const particlesSpan = document.getElementById('particles');
-
-    // Configuration
-    let config = {
-      enabled: true,
-      maxParticles: 1000,
-      particleScale: 0.08,
-      gravity: 0.5,
-      spawnRate: 10,
-      lifespan: 5.0,
-      rotationSpeed: 2.0,
-      fadeOutStart: 0.7,
-      showDebug: false
-    };
-
-    // WebGPU state
-    let device = null;
-    let context = null;
-    let pipeline = null;
-    let uniformBuffer = null;
-    let particleBuffer = null;
-    let bindGroup = null;
-    let sampler = null;
-    let texture = null;
-
-    // Particle simulation
-    let particles = [];
-    const MAX_PARTICLES = 1000;
-    const PARTICLE_SIZE = 32;
-    let particleData = new Float32Array(MAX_PARTICLES * 8);
-
-    // Animation
-    let running = false;
-    let lastFrameTime = 0;
-    let frameCount = 0;
-    let fpsAccumulator = 0;
-    let lastFpsUpdate = 0;
-
-    // Shaders
-    const VERTEX_SHADER = `
-struct Uniforms {
-  time: f32,
-  aspect: f32,
-  particleScale: f32,
-  _padding: f32,
-};
-
-struct Particle {
-  position: vec2<f32>,
-  velocity: vec2<f32>,
-  rotation: f32,
-  scale: f32,
-  alpha: f32,
-  _padding: f32,
-};
-
-struct ParticleBuffer {
-  particles: array<Particle>,
-};
-
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-@group(0) @binding(1) var<storage, read> particleBuffer: ParticleBuffer;
-
-struct VertexOutput {
-  @builtin(position) position: vec4<f32>,
-  @location(0) uv: vec2<f32>,
-  @location(1) alpha: f32,
-};
-
-const QUAD_POSITIONS = array<vec2<f32>, 6>(
-  vec2<f32>(-0.5, -0.5),
-  vec2<f32>( 0.5, -0.5),
-  vec2<f32>( 0.5,  0.5),
-  vec2<f32>(-0.5, -0.5),
-  vec2<f32>( 0.5,  0.5),
-  vec2<f32>(-0.5,  0.5)
-);
-
-const QUAD_UVS = array<vec2<f32>, 6>(
-  vec2<f32>(0.0, 1.0),
-  vec2<f32>(1.0, 1.0),
-  vec2<f32>(1.0, 0.0),
-  vec2<f32>(0.0, 1.0),
-  vec2<f32>(1.0, 0.0),
-  vec2<f32>(0.0, 0.0)
-);
-
-@vertex
-fn main(
-  @builtin(vertex_index) vertexIndex: u32,
-  @builtin(instance_index) instanceIndex: u32
-) -> VertexOutput {
-  var output: VertexOutput;
-
-  let particle = particleBuffer.particles[instanceIndex];
-  let quadPos = QUAD_POSITIONS[vertexIndex];
-
-  let c = cos(particle.rotation);
-  let s = sin(particle.rotation);
-  let rotated = vec2<f32>(
-    quadPos.x * c - quadPos.y * s,
-    quadPos.x * s + quadPos.y * c
-  );
-
-  let scale = particle.scale * uniforms.particleScale;
-  var worldPos = rotated * scale + particle.position;
-  worldPos.x /= uniforms.aspect;
-
-  output.position = vec4<f32>(worldPos, 0.0, 1.0);
-  output.uv = QUAD_UVS[vertexIndex];
-  output.alpha = particle.alpha;
-
-  return output;
-}
-`;
-
-    const FRAGMENT_SHADER = `
-@group(0) @binding(2) var textureSampler: sampler;
-@group(0) @binding(3) var particleTexture: texture_2d<f32>;
-
-@fragment
-fn main(
-  @location(0) uv: vec2<f32>,
-  @location(1) alpha: f32
-) -> @location(0) vec4<f32> {
-  let color = textureSample(particleTexture, textureSampler, uv);
-  return vec4<f32>(color.rgb, color.a * alpha);
-}
-`;
-
-    // ========================================================================
-    // Initialization
-    // ========================================================================
-
-    async function initWebGPU() {
-      if (!navigator.gpu) {
-        showFallback();
-        return false;
-      }
-
-      try {
-        const adapter = await navigator.gpu.requestAdapter();
-        if (!adapter) {
-          showFallback();
-          return false;
-        }
-
-        device = await adapter.requestDevice();
-        context = canvas.getContext('webgpu');
-        const format = navigator.gpu.getPreferredCanvasFormat();
-
-        context.configure({
-          device: device,
-          format: format,
-          alphaMode: 'premultiplied'
-        });
-
-        await createResources(format);
-        return true;
-      } catch (error) {
-        console.error('WebGPU initialization failed:', error);
-        showFallback();
-        return false;
-      }
-    }
-
-    async function createResources(format) {
-      // Uniform buffer
-      uniformBuffer = device.createBuffer({
-        size: 16,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        label: 'uniforms'
-      });
-
-      // Particle buffer
-      particleBuffer = device.createBuffer({
-        size: MAX_PARTICLES * PARTICLE_SIZE,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-        label: 'particles'
-      });
-
-      // Sampler
-      sampler = device.createSampler({
-        magFilter: 'linear',
-        minFilter: 'linear',
-        addressModeU: 'clamp-to-edge',
-        addressModeV: 'clamp-to-edge'
-      });
-
-      // Create default texture
-      await createDefaultTexture();
-
-      // Pipeline
-      const vertexModule = device.createShaderModule({ code: VERTEX_SHADER });
-      const fragmentModule = device.createShaderModule({ code: FRAGMENT_SHADER });
-
-      pipeline = device.createRenderPipeline({
-        layout: 'auto',
-        vertex: {
-          module: vertexModule,
-          entryPoint: 'main'
-        },
-        fragment: {
-          module: fragmentModule,
-          entryPoint: 'main',
-          targets: [{
-            format: format,
-            blend: {
-              color: {
-                srcFactor: 'src-alpha',
-                dstFactor: 'one-minus-src-alpha',
-                operation: 'add'
-              },
-              alpha: {
-                srcFactor: 'one',
-                dstFactor: 'one-minus-src-alpha',
-                operation: 'add'
-              }
-            }
-          }]
-        },
-        primitive: {
-          topology: 'triangle-list',
-          cullMode: 'none'
-        }
-      });
-
-      // Bind group
-      bindGroup = device.createBindGroup({
-        layout: pipeline.getBindGroupLayout(0),
-        entries: [
-          { binding: 0, resource: { buffer: uniformBuffer } },
-          { binding: 1, resource: { buffer: particleBuffer } },
-          { binding: 2, resource: sampler },
-          { binding: 3, resource: texture.createView() }
-        ]
-      });
-    }
-
-    async function createDefaultTexture() {
-      // Create a simple gradient circle texture
-      const size = 64;
-      const data = new Uint8Array(size * size * 4);
-
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const dx = (x - size / 2) / (size / 2);
-          const dy = (y - size / 2) / (size / 2);
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const alpha = Math.max(0, 1 - dist);
-          const idx = (y * size + x) * 4;
-
-          // Gradient from yellow to orange
-          data[idx + 0] = 255; // R
-          data[idx + 1] = Math.floor(200 + Math.random() * 55); // G
-          data[idx + 2] = 50; // B
-          data[idx + 3] = Math.floor(alpha * 255); // A
-        }
-      }
-
-      texture = device.createTexture({
-        size: { width: size, height: size },
-        format: 'rgba8unorm',
-        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
-      });
-
-      device.queue.writeTexture(
-        { texture: texture },
-        data,
-        { bytesPerRow: size * 4 },
-        { width: size, height: size }
-      );
-    }
-
-    function showFallback() {
-      fallbackMessage.classList.add('visible');
-    }
-
-    // ========================================================================
-    // Particle System
-    // ========================================================================
-
-    function spawnParticles(count, options = {}) {
-      if (particles.length >= MAX_PARTICLES) return;
-
-      const baseX = options.x !== undefined ? options.x * 2 - 1 : 0;
-      const baseY = options.y !== undefined ? options.y * 2 - 1 : -1.2;
-      const spread = options.spread || 0.5;
-
-      for (let i = 0; i < count && particles.length < MAX_PARTICLES; i++) {
-        particles.push({
-          x: baseX + (Math.random() - 0.5) * spread,
-          y: baseY,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: -(Math.random() * 0.5 + 0.3),
-          rotation: Math.random() * Math.PI * 2,
-          rotationSpeed: (Math.random() - 0.5) * config.rotationSpeed,
-          scale: 0.8 + Math.random() * 0.4,
-          alpha: 1.0,
-          life: 0
-        });
-      }
-    }
-
-    function updateParticles(deltaTime) {
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-
-        p.vy += config.gravity * deltaTime;
-        p.x += p.vx * deltaTime;
-        p.y += p.vy * deltaTime;
-        p.rotation += p.rotationSpeed * deltaTime;
-        p.life += deltaTime;
-
-        const lifeRatio = p.life / config.lifespan;
-        if (lifeRatio > config.fadeOutStart) {
-          p.alpha = 1.0 - ((lifeRatio - config.fadeOutStart) / (1.0 - config.fadeOutStart));
-        }
-
-        if (p.life >= config.lifespan || p.y > 1.5) {
-          particles.splice(i, 1);
-        }
-      }
-    }
-
-    // ========================================================================
-    // Rendering
-    // ========================================================================
-
-    function render(timestamp) {
-      if (!running || !device || !config.enabled) {
-        requestAnimationFrame(render);
-        return;
-      }
-
-      const deltaTime = (timestamp - lastFrameTime) / 1000;
-      lastFrameTime = timestamp;
-      frameCount++;
-
-      // FPS calculation
-      fpsAccumulator += deltaTime;
-      if (timestamp - lastFpsUpdate > 1000) {
-        const fps = Math.round(frameCount / fpsAccumulator);
-        fpsSpan.textContent = fps;
-        particlesSpan.textContent = particles.length;
-        frameCount = 0;
-        fpsAccumulator = 0;
-        lastFpsUpdate = timestamp;
-      }
-
-      // Update simulation
-      updateParticles(deltaTime);
-
-      if (particles.length === 0) {
-        requestAnimationFrame(render);
-        return;
-      }
-
-      // Update GPU buffers
-      const aspect = canvas.width / canvas.height;
-      const uniformData = new Float32Array([timestamp / 1000, aspect, config.particleScale, 0]);
-      device.queue.writeBuffer(uniformBuffer, 0, uniformData);
-
-      for (let i = 0; i < particles.length && i < MAX_PARTICLES; i++) {
-        const p = particles[i];
-        const offset = i * 8;
-        particleData[offset + 0] = p.x;
-        particleData[offset + 1] = p.y;
-        particleData[offset + 2] = p.vx;
-        particleData[offset + 3] = p.vy;
-        particleData[offset + 4] = p.rotation;
-        particleData[offset + 5] = p.scale;
-        particleData[offset + 6] = p.alpha;
-        particleData[offset + 7] = 0;
-      }
-
-      device.queue.writeBuffer(particleBuffer, 0, particleData, 0, particles.length * 8);
-
-      // Render
-      const commandEncoder = device.createCommandEncoder();
-      const passEncoder = commandEncoder.beginRenderPass({
-        colorAttachments: [{
-          view: context.getCurrentTexture().createView(),
-          clearValue: { r: 0, g: 0, b: 0, a: 0 },
-          loadOp: 'clear',
-          storeOp: 'store'
-        }]
-      });
-
-      passEncoder.setPipeline(pipeline);
-      passEncoder.setBindGroup(0, bindGroup);
-      passEncoder.draw(6, particles.length);
-      passEncoder.end();
-
-      device.queue.submit([commandEncoder.finish()]);
-
-      requestAnimationFrame(render);
-    }
-
-    // ========================================================================
-    // Socket.io Connection
-    // ========================================================================
-
-    function initSocket() {
-      const socket = io();
-
-      socket.on('connect', () => {
-        console.log('Connected to server');
-      });
-
-      socket.on('webgpu-emoji-rain:spawn', (data) => {
-        const { count, x, y, spread } = data || {};
-        spawnParticles(count || 10, { x, y, spread });
-      });
-
-      socket.on('webgpu-emoji-rain:config', (data) => {
-        if (data) {
-          config = { ...config, ...data };
-          if (config.showDebug) {
-            statusDisplay.classList.add('visible');
-          } else {
-            statusDisplay.classList.remove('visible');
-          }
-        }
-      });
-
-      socket.on('webgpu-emoji-rain:toggle', (data) => {
-        if (data && data.enabled !== undefined) {
-          config.enabled = data.enabled;
-        }
-      });
-    }
-
-    // ========================================================================
-    // Resize Handler
-    // ========================================================================
-
-    function handleResize() {
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = canvas.clientWidth * dpr;
-      canvas.height = canvas.clientHeight * dpr;
-
-      if (context && device) {
-        context.configure({
-          device: device,
-          format: navigator.gpu.getPreferredCanvasFormat(),
-          alphaMode: 'premultiplied'
-        });
-      }
-    }
-
-    window.addEventListener('resize', handleResize);
-
-    // ========================================================================
-    // Start
-    // ========================================================================
-
-    async function start() {
-      handleResize();
-
-      const success = await initWebGPU();
-      if (success) {
-        running = true;
-        initSocket();
-        lastFrameTime = performance.now();
-        requestAnimationFrame(render);
-        console.log('WebGPU Emoji Rain overlay started');
-      }
-    }
-
-    start();
-  </script>
+    <div id="canvas-container"></div>
+    <div id="debug-info"></div>
+
+    <!-- Matter.js (local) -->
+    <script src="/js/matter.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <!-- Use enhanced engine -->
+    <script src="/js/webgpu-emoji-rain-engine.js"></script>
 </body>
 </html>

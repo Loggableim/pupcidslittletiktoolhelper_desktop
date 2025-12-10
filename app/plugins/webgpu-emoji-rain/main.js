@@ -1,775 +1,738 @@
 /**
  * WebGPU Emoji Rain Plugin
  *
- * GPU-accelerated emoji rain effect using WebGPU instanced rendering.
- * Demonstrates the LTTH WebGPU Engine integration.
+ * GPU-accelerated emoji rain effect using WebGPU rendering.
+ * This is a 1:1 functional port of the original emoji-rain plugin,
+ * using WebGPU for better performance instead of Matter.js/Canvas.
+ * 
+ * Features:
+ * - Custom emoji sets and user-specific mappings
+ * - Custom image upload support
+ * - Gift/Like/Follow/Share event integration with proper calculations
+ * - SuperFan burst effects
+ * - Database-backed configuration
+ * - Flow system integration
+ * - Localization support
+ * 
+ * Note: WebGPU rendering happens client-side in the overlay HTML.
+ * This plugin manages configuration, events, and file uploads.
  */
 
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 
-// ============================================================================
-// WGSL Shaders
-// ============================================================================
-
-/**
- * Vertex shader for instanced textured quads
- */
-const VERTEX_SHADER = `
-struct Uniforms {
-  time: f32,
-  aspect: f32,
-  particleScale: f32,
-  _padding: f32,
-};
-
-struct Particle {
-  position: vec2<f32>,
-  velocity: vec2<f32>,
-  rotation: f32,
-  scale: f32,
-  alpha: f32,
-  _padding: f32,
-};
-
-struct ParticleBuffer {
-  particles: array<Particle>,
-};
-
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-@group(0) @binding(1) var<storage, read> particleBuffer: ParticleBuffer;
-
-struct VertexOutput {
-  @builtin(position) position: vec4<f32>,
-  @location(0) uv: vec2<f32>,
-  @location(1) alpha: f32,
-};
-
-// Quad vertices (2 triangles)
-const QUAD_POSITIONS = array<vec2<f32>, 6>(
-  vec2<f32>(-0.5, -0.5),
-  vec2<f32>( 0.5, -0.5),
-  vec2<f32>( 0.5,  0.5),
-  vec2<f32>(-0.5, -0.5),
-  vec2<f32>( 0.5,  0.5),
-  vec2<f32>(-0.5,  0.5)
-);
-
-const QUAD_UVS = array<vec2<f32>, 6>(
-  vec2<f32>(0.0, 1.0),
-  vec2<f32>(1.0, 1.0),
-  vec2<f32>(1.0, 0.0),
-  vec2<f32>(0.0, 1.0),
-  vec2<f32>(1.0, 0.0),
-  vec2<f32>(0.0, 0.0)
-);
-
-@vertex
-fn main(
-  @builtin(vertex_index) vertexIndex: u32,
-  @builtin(instance_index) instanceIndex: u32
-) -> VertexOutput {
-  var output: VertexOutput;
-
-  let particle = particleBuffer.particles[instanceIndex];
-  let quadPos = QUAD_POSITIONS[vertexIndex];
-
-  // Apply rotation
-  let c = cos(particle.rotation);
-  let s = sin(particle.rotation);
-  let rotated = vec2<f32>(
-    quadPos.x * c - quadPos.y * s,
-    quadPos.x * s + quadPos.y * c
-  );
-
-  // Apply scale and particle position
-  let scale = particle.scale * uniforms.particleScale;
-  var worldPos = rotated * scale + particle.position;
-
-  // Apply aspect ratio correction
-  worldPos.x /= uniforms.aspect;
-
-  output.position = vec4<f32>(worldPos, 0.0, 1.0);
-  output.uv = QUAD_UVS[vertexIndex];
-  output.alpha = particle.alpha;
-
-  return output;
-}
-`;
-
-/**
- * Fragment shader for textured particles
- */
-const FRAGMENT_SHADER = `
-@group(0) @binding(2) var textureSampler: sampler;
-@group(0) @binding(3) var particleTexture: texture_2d<f32>;
-
-@fragment
-fn main(
-  @location(0) uv: vec2<f32>,
-  @location(1) alpha: f32
-) -> @location(0) vec4<f32> {
-  let color = textureSample(particleTexture, textureSampler, uv);
-  return vec4<f32>(color.rgb, color.a * alpha);
-}
-`;
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const MAX_PARTICLES = 1000;
-const PARTICLE_SIZE = 32; // bytes: 2 floats pos + 2 floats vel + rot + scale + alpha + padding = 8 floats
-const DEFAULT_CONFIG = {
-  enabled: true,
-  maxParticles: MAX_PARTICLES,
-  particleScale: 0.08,
-  gravity: 0.5,
-  spawnRate: 10,
-  lifespan: 5.0,
-  rotationSpeed: 2.0,
-  fadeOutStart: 0.7
-};
-
-// ============================================================================
-// Plugin Class
-// ============================================================================
-
-/**
- * WebGPU Emoji Rain Plugin
- */
 class WebGPUEmojiRainPlugin {
   constructor(api) {
     this.api = api;
     this.io = api.getSocketIO();
 
-    // Plugin state
-    this.enabled = false;
-    this.webgpuAvailable = false;
-    this.registration = null;
-
-    // Render resources
-    this.pipeline = null;
-    this.uniformBuffer = null;
-    this.particleBuffer = null;
-    this.bindGroup = null;
-    this.texture = null;
-    this.sampler = null;
-
-    // Particle data
-    this.particles = [];
-    this.particleData = new Float32Array(MAX_PARTICLES * 8);
-
-    // Configuration
-    this.config = { ...DEFAULT_CONFIG };
+    // Use persistent storage in user profile directory (survives updates)
+    const pluginDataDir = api.getPluginDataDir();
+    this.uploadDir = path.join(pluginDataDir, 'uploads');
+    this.userMappingsPath = path.join(pluginDataDir, 'users.json');
+    
+    // Also define user_configs path for user-editable configs (survives updates)
+    const configPathManager = api.getConfigPathManager();
+    const persistentUserConfigsDir = configPathManager.getUserConfigsDir();
+    this.userConfigMappingsPath = path.join(persistentUserConfigsDir, 'webgpu-emoji-rain', 'users.json');
+    
+    this.upload = null;
   }
 
   async init() {
-    this.api.log('🎮 [WebGPU Emoji Rain] Initializing...', 'info');
+    this.api.log('🌧️ [WebGPU Emoji Rain] Initializing Emoji Rain Plugin...', 'info');
 
-    // Load configuration
-    this.loadConfig();
+    // Ensure plugin data directory exists
+    this.api.ensurePluginDataDir();
 
-    // Check if WebGPU engine is available
-    try {
-      const webgpuEngine = this.requireWebGPUEngine();
-      if (!webgpuEngine || !webgpuEngine.isEngineAvailable()) {
-        this.api.log('⚠️ [WebGPU Emoji Rain] WebGPU not available, plugin disabled', 'warn');
-        this.webgpuAvailable = false;
-        return;
-      }
-      this.webgpuAvailable = true;
-    } catch (error) {
-      this.api.log(`⚠️ [WebGPU Emoji Rain] WebGPU engine not found: ${error.message}`, 'warn');
-      this.webgpuAvailable = false;
-      return;
+    // Migrate old data if it exists
+    await this.migrateOldData();
+
+    // Create upload directory
+    if (!fs.existsSync(this.uploadDir)) {
+      fs.mkdirSync(this.uploadDir, { recursive: true });
+      this.api.log('📁 [WebGPU Emoji Rain] Upload directory created', 'debug');
+    } else {
+      this.api.log('📁 [WebGPU Emoji Rain] Upload directory exists', 'debug');
     }
+
+    this.api.log(`📂 [WebGPU Emoji Rain] Using persistent storage: ${this.uploadDir}`, 'info');
+
+    // Setup multer for file uploads
+    this.setupMulter();
 
     // Register routes
+    this.api.log('🛣️ [WebGPU Emoji Rain] Registering routes...', 'debug');
     this.registerRoutes();
 
-    // Register socket events
-    this.registerSocketEvents();
+    // Register TikTok event handlers
+    this.api.log('🎯 [WebGPU Emoji Rain] Registering TikTok event handlers...', 'debug');
+    this.registerTikTokEventHandlers();
 
-    // Register TikTok events
-    this.registerTikTokEvents();
+    // Register flow actions
+    this.api.log('⚡ [WebGPU Emoji Rain] Registering flow actions...', 'debug');
+    this.registerFlowActions();
 
-    // Initialize WebGPU renderer if enabled
-    if (this.config.enabled) {
-      await this.initializeRenderer();
-    }
-
-    this.api.log('✅ [WebGPU Emoji Rain] Plugin initialized', 'info');
+    this.api.log('✅ [WebGPU Emoji Rain] Plugin initialized successfully', 'info');
   }
 
   /**
-   * Require the WebGPU engine module
+   * Setup multer for file uploads
    */
-  requireWebGPUEngine() {
-    try {
-      return require('../../modules/webgpu-engine/dist/index.js');
-    } catch (error) {
-      // Try alternative path
-      try {
-        return require(path.join(__dirname, '..', '..', 'modules', 'webgpu-engine', 'dist', 'index.js'));
-      } catch {
-        throw error;
+  setupMulter() {
+    const storage = multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, this.uploadDir);
+      },
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'emoji-' + uniqueSuffix + path.extname(file.originalname));
       }
-    }
+    });
+
+    this.upload = multer({
+      storage: storage,
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+      fileFilter: (req, file, cb) => {
+        const allowedTypes = /png|jpg|jpeg|gif|webp|svg/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (mimetype && extname) {
+          return cb(null, true);
+        } else {
+          cb(new Error('Only image files (PNG, JPG, GIF, WebP, SVG) are allowed!'));
+        }
+      }
+    });
   }
 
   /**
-   * Load configuration from database
+   * Migrate old data from app directory or emoji-rain plugin
    */
-  loadConfig() {
-    const savedConfig = this.api.getConfig('webgpu-emoji-rain');
-    if (savedConfig) {
-      this.config = { ...DEFAULT_CONFIG, ...savedConfig };
-    }
-    this.enabled = this.config.enabled;
-  }
+  async migrateOldData() {
+    // Check if original emoji-rain plugin uploads exist
+    const oldEmojiRainUploadDir = path.join(__dirname, '..', 'emoji-rain', 'uploads');
+    const oldDataPluginsDir = path.join(__dirname, '..', '..', 'data', 'plugins', 'emojirain', 'users.json');
+    const oldAppUserConfigsPath = path.join(__dirname, '..', '..', 'user_configs', 'emoji-rain', 'users.json');
+    
+    let migrated = false;
 
-  /**
-   * Save configuration to database
-   */
-  saveConfig() {
-    this.api.setConfig('webgpu-emoji-rain', this.config);
-  }
-
-  /**
-   * Initialize WebGPU renderer
-   */
-  async initializeRenderer() {
-    if (!this.webgpuAvailable) {
-      return;
-    }
-
-    try {
-      const { registerPluginRenderer } = this.requireWebGPUEngine();
-
-      this.registration = await registerPluginRenderer(
-        this.api,
-        {
-          wantsSurface: true,
-          preferredCanvasSelector: '#webgpu-emoji-rain-canvas'
-        },
-        {
-          onInit: async (ctx) => {
-            await this.onRendererInit(ctx);
-          },
-          onFrame: (ctx) => {
-            this.onRendererFrame(ctx);
-          },
-          onHotReload: async (ctx) => {
-            await this.onRendererHotReload(ctx);
-          },
-          onDispose: async (ctx) => {
-            await this.onRendererDispose(ctx);
-          },
-          onResize: (ctx, width, height) => {
-            this.onRendererResize(ctx, width, height);
-          },
-          onError: (ctx, error) => {
-            this.api.log(`❌ [WebGPU Emoji Rain] Render error: ${error.message}`, 'error');
+    // Migrate uploads from original emoji-rain plugin
+    if (fs.existsSync(oldEmojiRainUploadDir)) {
+      const oldFiles = fs.readdirSync(oldEmojiRainUploadDir).filter(f => f !== '.gitkeep');
+      if (oldFiles.length > 0) {
+        this.api.log(`📦 [WebGPU Emoji Rain] Migrating ${oldFiles.length} files from emoji-rain plugin...`, 'info');
+        
+        if (!fs.existsSync(this.uploadDir)) {
+          fs.mkdirSync(this.uploadDir, { recursive: true });
+        }
+        
+        for (const file of oldFiles) {
+          const oldPath = path.join(oldEmojiRainUploadDir, file);
+          const newPath = path.join(this.uploadDir, file);
+          if (!fs.existsSync(newPath)) {
+            fs.copyFileSync(oldPath, newPath);
+            migrated = true;
           }
         }
-      );
-
-      this.enabled = true;
-      this.api.log('✅ [WebGPU Emoji Rain] Renderer initialized', 'info');
-    } catch (error) {
-      this.api.log(`❌ [WebGPU Emoji Rain] Failed to initialize renderer: ${error.message}`, 'error');
-      this.enabled = false;
-    }
-  }
-
-  /**
-   * Renderer initialization callback
-   */
-  async onRendererInit(ctx) {
-    const { engine } = ctx;
-
-    // Create uniform buffer
-    this.uniformBuffer = engine.createBuffer({
-      size: 16, // 4 floats: time, aspect, particleScale, padding
-      usage: 0x0040 | 0x0008, // UNIFORM | COPY_DST
-      label: 'emoji-rain-uniforms'
-    });
-
-    // Create particle storage buffer
-    this.particleBuffer = engine.createBuffer({
-      size: MAX_PARTICLES * PARTICLE_SIZE,
-      usage: 0x0080 | 0x0008, // STORAGE | COPY_DST
-      label: 'emoji-rain-particles'
-    });
-
-    // Create sampler
-    this.sampler = engine.createSampler({
-      magFilter: 'linear',
-      minFilter: 'linear',
-      addressModeU: 'clamp-to-edge',
-      addressModeV: 'clamp-to-edge',
-      label: 'emoji-rain-sampler'
-    });
-
-    // Load default texture
-    await this.loadDefaultTexture(engine);
-
-    // Create pipeline
-    await this.createPipeline(ctx);
-
-    this.api.log('✅ [WebGPU Emoji Rain] GPU resources created', 'debug');
-  }
-
-  /**
-   * Load default emoji texture
-   */
-  async loadDefaultTexture(engine) {
-    try {
-      // Try to load from assets
-      const assetPath = path.join(__dirname, 'assets', 'emoji.png');
-      if (fs.existsSync(assetPath)) {
-        const buffer = fs.readFileSync(assetPath);
-        const blob = new Blob([buffer], { type: 'image/png' });
-        this.texture = await engine.createTextureFromBlob(blob, {
-          label: 'emoji-rain-texture'
-        });
-        return;
-      }
-    } catch (error) {
-      this.api.log(`⚠️ [WebGPU Emoji Rain] Failed to load texture: ${error.message}`, 'warn');
-    }
-
-    // Fallback: create a simple colored texture
-    this.texture = engine.createTexture({
-      width: 64,
-      height: 64,
-      format: 'rgba8unorm',
-      usage: 0x0004 | 0x0002, // TEXTURE_BINDING | COPY_DST
-      label: 'emoji-rain-fallback-texture'
-    });
-
-    this.api.log('⚠️ [WebGPU Emoji Rain] Using empty fallback texture (load emoji.png for proper visuals)', 'warn');
-  }
-
-  /**
-   * Create render pipeline
-   */
-  async createPipeline(ctx) {
-    const { engine, surface } = ctx;
-
-    const format = surface ? surface.format : engine.getPreferredFormat();
-
-    this.pipeline = await engine.createPipeline({
-      id: 'webgpu-emoji-rain-pipeline',
-      vertexShader: VERTEX_SHADER,
-      fragmentShader: FRAGMENT_SHADER,
-      vertexBufferLayouts: [], // No vertex buffers - using instance index
-      colorTargetStates: [{
-        format: format,
-        blend: {
-          color: {
-            srcFactor: 'src-alpha',
-            dstFactor: 'one-minus-src-alpha',
-            operation: 'add'
-          },
-          alpha: {
-            srcFactor: 'one',
-            dstFactor: 'one-minus-src-alpha',
-            operation: 'add'
-          }
+        
+        if (migrated) {
+          this.api.log(`✅ [WebGPU Emoji Rain] Migrated uploads from emoji-rain`, 'info');
         }
-      }],
-      label: 'webgpu-emoji-rain-pipeline'
-    });
-
-    // Create bind group
-    this.createBindGroup(engine);
-  }
-
-  /**
-   * Create bind group
-   */
-  createBindGroup(engine) {
-    if (!this.pipeline || !this.uniformBuffer || !this.particleBuffer || !this.sampler || !this.texture) {
-      return;
-    }
-
-    this.bindGroup = engine.createBindGroupFromLayout(
-      this.pipeline,
-      0,
-      [
-        { binding: 0, resource: { buffer: this.uniformBuffer.resource } },
-        { binding: 1, resource: { buffer: this.particleBuffer.resource } },
-        { binding: 2, resource: this.sampler.resource },
-        { binding: 3, resource: this.texture.createView() }
-      ]
-    );
-  }
-
-  /**
-   * Frame render callback
-   */
-  onRendererFrame(ctx) {
-    const { engine, surface, deltaTime, time } = ctx;
-
-    if (!this.enabled || !surface || !this.pipeline || !this.bindGroup) {
-      return;
-    }
-
-    // Update particles
-    this.updateParticles(deltaTime);
-
-    // Update GPU buffers
-    this.updateGPUBuffers(engine, surface, time);
-
-    // Render
-    engine.encodePass((encoder) => {
-      const passDesc = {
-        colorAttachments: [{
-          view: surface.getCurrentTexture().createView(),
-          clearValue: { r: 0, g: 0, b: 0, a: 0 },
-          loadOp: 'clear',
-          storeOp: 'store'
-        }]
-      };
-
-      const pass = encoder.beginRenderPass(passDesc);
-      pass.setPipeline(this.pipeline);
-      pass.setBindGroup(0, this.bindGroup);
-      pass.draw(6, this.particles.length); // 6 vertices per quad, N instances
-    });
-  }
-
-  /**
-   * Update particle simulation
-   */
-  updateParticles(deltaTime) {
-    const gravity = this.config.gravity;
-    const fadeOutStart = this.config.fadeOutStart;
-    const lifespan = this.config.lifespan;
-
-    // Update existing particles
-    for (let i = this.particles.length - 1; i >= 0; i--) {
-      const p = this.particles[i];
-
-      // Update velocity (gravity)
-      p.vy += gravity * deltaTime;
-
-      // Update position
-      p.x += p.vx * deltaTime;
-      p.y += p.vy * deltaTime;
-
-      // Update rotation
-      p.rotation += p.rotationSpeed * deltaTime;
-
-      // Update lifetime
-      p.life += deltaTime;
-
-      // Fade out
-      const lifeRatio = p.life / lifespan;
-      if (lifeRatio > fadeOutStart) {
-        p.alpha = 1.0 - ((lifeRatio - fadeOutStart) / (1.0 - fadeOutStart));
-      }
-
-      // Remove dead particles
-      if (p.life >= lifespan || p.y > 1.5) {
-        this.particles.splice(i, 1);
       }
     }
-  }
 
-  /**
-   * Update GPU buffers with particle data
-   */
-  updateGPUBuffers(engine, surface, time) {
-    // Update uniform buffer
-    const uniformData = new Float32Array([
-      time,
-      surface.width / surface.height,
-      this.config.particleScale,
-      0.0 // padding
-    ]);
-    this.uniformBuffer.write(uniformData);
+    // Migrate user mappings
+    if (!fs.existsSync(this.userMappingsPath)) {
+      const userMappingsDir = path.dirname(this.userMappingsPath);
+      if (!fs.existsSync(userMappingsDir)) {
+        fs.mkdirSync(userMappingsDir, { recursive: true });
+      }
 
-    // Update particle buffer
-    for (let i = 0; i < this.particles.length && i < MAX_PARTICLES; i++) {
-      const p = this.particles[i];
-      const offset = i * 8;
-      this.particleData[offset + 0] = p.x;
-      this.particleData[offset + 1] = p.y;
-      this.particleData[offset + 2] = p.vx;
-      this.particleData[offset + 3] = p.vy;
-      this.particleData[offset + 4] = p.rotation;
-      this.particleData[offset + 5] = p.scale;
-      this.particleData[offset + 6] = p.alpha;
-      this.particleData[offset + 7] = 0.0; // padding
+      // Priority 1: persistent user_configs
+      if (fs.existsSync(this.userConfigMappingsPath)) {
+        this.api.log('📦 [WebGPU Emoji Rain] Migrating user mappings from persistent user_configs...', 'info');
+        fs.copyFileSync(this.userConfigMappingsPath, this.userMappingsPath);
+        this.api.log(`✅ [WebGPU Emoji Rain] Migrated user mappings from user_configs`, 'info');
+        migrated = true;
+      }
+      // Priority 2: old app user_configs
+      else if (fs.existsSync(oldAppUserConfigsPath)) {
+        this.api.log('📦 [WebGPU Emoji Rain] Migrating user mappings from old app user_configs...', 'info');
+        fs.copyFileSync(oldAppUserConfigsPath, this.userMappingsPath);
+        const userConfigMappingsDir = path.dirname(this.userConfigMappingsPath);
+        if (!fs.existsSync(userConfigMappingsDir)) {
+          fs.mkdirSync(userConfigMappingsDir, { recursive: true });
+        }
+        fs.copyFileSync(oldAppUserConfigsPath, this.userConfigMappingsPath);
+        this.api.log(`✅ [WebGPU Emoji Rain] Migrated user mappings from old app user_configs`, 'info');
+        migrated = true;
+      }
+      // Priority 3: original emoji-rain data directory
+      else if (fs.existsSync(oldDataPluginsDir)) {
+        this.api.log('📦 [WebGPU Emoji Rain] Migrating user mappings from data directory...', 'info');
+        fs.copyFileSync(oldDataPluginsDir, this.userMappingsPath);
+        this.api.log(`✅ [WebGPU Emoji Rain] Migrated user mappings from emoji-rain plugin`, 'info');
+        migrated = true;
+      }
+    } else {
+      // If persistent location exists, check if user_configs has newer data
+      if (fs.existsSync(this.userConfigMappingsPath)) {
+        const persistentStats = fs.statSync(this.userMappingsPath);
+        const userConfigStats = fs.statSync(this.userConfigMappingsPath);
+        
+        if (userConfigStats.mtime > persistentStats.mtime) {
+          this.api.log('📦 [WebGPU Emoji Rain] Updating user mappings from newer user_configs version...', 'info');
+          fs.copyFileSync(this.userConfigMappingsPath, this.userMappingsPath);
+          this.api.log(`✅ [WebGPU Emoji Rain] Updated user mappings from user_configs`, 'info');
+          migrated = true;
+        }
+      }
     }
 
-    const dataToWrite = new Float32Array(
-      this.particleData.buffer,
-      0,
-      Math.min(this.particles.length * 8, MAX_PARTICLES * 8)
-    );
-    if (dataToWrite.length > 0) {
-      this.particleBuffer.write(dataToWrite);
-    }
-  }
-
-  /**
-   * Hot reload callback
-   */
-  async onRendererHotReload(ctx) {
-    this.api.log('🔄 [WebGPU Emoji Rain] Hot reloading...', 'info');
-
-    // Release old resources
-    this.releaseResources();
-
-    // Reinitialize
-    await this.onRendererInit(ctx);
-  }
-
-  /**
-   * Dispose callback
-   */
-  async onRendererDispose(ctx) {
-    this.releaseResources();
-    this.api.log('🧹 [WebGPU Emoji Rain] Resources disposed', 'debug');
-  }
-
-  /**
-   * Resize callback
-   */
-  onRendererResize(ctx, width, height) {
-    this.api.log(`📐 [WebGPU Emoji Rain] Resized to ${width}x${height}`, 'debug');
-  }
-
-  /**
-   * Release GPU resources
-   */
-  releaseResources() {
-    if (this.uniformBuffer) {
-      this.uniformBuffer.release();
-      this.uniformBuffer = null;
-    }
-    if (this.particleBuffer) {
-      this.particleBuffer.release();
-      this.particleBuffer = null;
-    }
-    if (this.texture) {
-      this.texture.release();
-      this.texture = null;
-    }
-    if (this.sampler) {
-      this.sampler.release();
-      this.sampler = null;
-    }
-    if (this.pipeline) {
-      this.pipeline.release();
-      this.pipeline = null;
-    }
-    this.bindGroup = null;
-  }
-
-  /**
-   * Spawn emoji particles
-   */
-  spawnParticles(count, options = {}) {
-    if (!this.enabled || this.particles.length >= MAX_PARTICLES) {
-      return;
-    }
-
-    const baseX = options.x !== undefined ? options.x * 2 - 1 : 0;
-    const baseY = options.y !== undefined ? options.y * 2 - 1 : -1.2;
-
-    for (let i = 0; i < count && this.particles.length < MAX_PARTICLES; i++) {
-      const spread = options.spread || 0.5;
-      const x = baseX + (Math.random() - 0.5) * spread;
-      const y = baseY;
-
-      this.particles.push({
-        x: x,
-        y: y,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: -(Math.random() * 0.5 + 0.3),
-        rotation: Math.random() * Math.PI * 2,
-        rotationSpeed: (Math.random() - 0.5) * this.config.rotationSpeed,
-        scale: 0.8 + Math.random() * 0.4,
-        alpha: 1.0,
-        life: 0
-      });
+    if (migrated) {
+      this.api.log('💡 [WebGPU Emoji Rain] Old files are kept for safety', 'info');
     }
   }
-
-  // ============================================================================
-  // Routes
-  // ============================================================================
 
   registerRoutes() {
-    // Serve UI
+    // Serve plugin UI (configuration page)
     this.api.registerRoute('get', '/webgpu-emoji-rain/ui', (req, res) => {
       const uiPath = path.join(__dirname, 'ui.html');
-      if (fs.existsSync(uiPath)) {
-        res.sendFile(uiPath);
-      } else {
-        res.status(404).json({ error: 'UI not found' });
-      }
+      res.sendFile(uiPath);
     });
 
-    // Serve overlay
+    // Serve plugin overlay
     this.api.registerRoute('get', '/webgpu-emoji-rain/overlay', (req, res) => {
       const overlayPath = path.join(__dirname, 'overlay.html');
-      if (fs.existsSync(overlayPath)) {
-        res.sendFile(overlayPath);
+      res.sendFile(overlayPath);
+    });
+
+    // Serve OBS HUD overlay (high-quality, fixed resolution)
+    this.api.registerRoute('get', '/webgpu-emoji-rain/obs-hud', (req, res) => {
+      const obsHudPath = path.join(__dirname, 'obs-hud.html');
+      if (fs.existsSync(obsHudPath)) {
+        res.sendFile(obsHudPath);
       } else {
-        res.status(404).json({ error: 'Overlay not found' });
+        // Fallback to regular overlay
+        res.sendFile(path.join(__dirname, 'overlay.html'));
       }
     });
 
-    // Get status
-    this.api.registerRoute('get', '/api/webgpu-emoji-rain/status', (req, res) => {
-      res.json({
-        success: true,
-        enabled: this.enabled,
-        webgpuAvailable: this.webgpuAvailable,
-        particleCount: this.particles.length,
-        maxParticles: MAX_PARTICLES
-      });
+    // Serve uploaded emoji images
+    this.api.registerRoute('get', '/webgpu-emoji-rain/uploads/:filename', (req, res) => {
+      const filename = req.params.filename;
+      const filePath = path.join(this.uploadDir, filename);
+
+      if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
+      } else {
+        res.status(404).json({ success: false, error: 'File not found' });
+      }
     });
 
-    // Get config
+    // Get emoji rain config (from database)
     this.api.registerRoute('get', '/api/webgpu-emoji-rain/config', (req, res) => {
-      res.json({
-        success: true,
-        config: this.config
-      });
-    });
-
-    // Update config
-    this.api.registerRoute('post', '/api/webgpu-emoji-rain/config', (req, res) => {
       try {
-        const newConfig = req.body.config || req.body;
-        this.config = { ...this.config, ...newConfig };
-        this.saveConfig();
-        res.json({ success: true, config: this.config });
+        this.api.log('📥 [WebGPU Emoji Rain] GET /api/webgpu-emoji-rain/config', 'debug');
+        const db = this.api.getDatabase();
+        const config = db.getEmojiRainConfig();
+        this.api.log(`📥 [WebGPU Emoji Rain] Config retrieved from DB`, 'debug');
+        res.json({ success: true, config });
       } catch (error) {
+        this.api.log(`❌ [WebGPU Emoji Rain] Error getting config: ${error.message}`, 'error');
         res.status(500).json({ success: false, error: error.message });
       }
     });
 
-    // Toggle
-    this.api.registerRoute('post', '/api/webgpu-emoji-rain/toggle', async (req, res) => {
-      try {
-        const { enabled } = req.body;
-        const newState = enabled !== undefined ? enabled : !this.enabled;
+    // Update emoji rain config
+    this.api.registerRoute('post', '/api/webgpu-emoji-rain/config', (req, res) => {
+      const { config, enabled } = req.body;
 
-        if (newState && !this.enabled) {
-          await this.initializeRenderer();
-        } else if (!newState && this.enabled) {
-          this.enabled = false;
-          if (this.registration) {
-            this.registration.unregister();
-            this.registration = null;
-          }
+      if (!config) {
+        return res.status(400).json({ success: false, error: 'config is required' });
+      }
+
+      try {
+        const db = this.api.getDatabase();
+        db.updateEmojiRainConfig(config, enabled !== undefined ? enabled : null);
+        this.api.log('🌧️ WebGPU Emoji rain configuration updated', 'info');
+
+        // Notify overlays about config change
+        this.api.emit('webgpu-emoji-rain:config-update', { config, enabled });
+
+        res.json({ success: true, message: 'Emoji rain configuration updated' });
+      } catch (error) {
+        this.api.log(`Error updating emoji rain config: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Get emoji rain status
+    this.api.registerRoute('get', '/api/webgpu-emoji-rain/status', (req, res) => {
+      try {
+        const db = this.api.getDatabase();
+        const config = db.getEmojiRainConfig();
+        res.json({ success: true, enabled: config.enabled });
+      } catch (error) {
+        this.api.log(`Error getting emoji rain status: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Toggle emoji rain
+    this.api.registerRoute('post', '/api/webgpu-emoji-rain/toggle', (req, res) => {
+      const { enabled } = req.body;
+
+      if (enabled === undefined) {
+        return res.status(400).json({ success: false, error: 'enabled is required' });
+      }
+
+      try {
+        const db = this.api.getDatabase();
+        db.toggleEmojiRain(enabled);
+        this.api.log(`🌧️ WebGPU Emoji rain ${enabled ? 'enabled' : 'disabled'}`, 'info');
+
+        // Notify overlays about toggle
+        this.api.emit('webgpu-emoji-rain:toggle', { enabled });
+
+        res.json({ success: true, message: `Emoji rain ${enabled ? 'enabled' : 'disabled'}` });
+      } catch (error) {
+        this.api.log(`Error toggling emoji rain: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Test emoji rain
+    this.api.registerRoute('post', '/api/webgpu-emoji-rain/test', (req, res) => {
+      const { count, emoji, x, y } = req.body;
+
+      try {
+        const db = this.api.getDatabase();
+        const config = db.getEmojiRainConfig();
+
+        if (!config.enabled) {
+          return res.status(400).json({ success: false, error: 'Emoji rain is disabled' });
         }
 
-        this.config.enabled = this.enabled;
-        this.saveConfig();
+        // Create test spawn data
+        const testData = {
+          count: parseInt(count) || 1,
+          emoji: emoji || config.emoji_set[Math.floor(Math.random() * config.emoji_set.length)],
+          x: parseFloat(x) || Math.random(),
+          y: parseFloat(y) || 0,
+          username: 'Test User',
+          reason: 'test'
+        };
 
-        res.json({ success: true, enabled: this.enabled });
+        this.api.log(`🧪 Testing WebGPU emoji rain: ${testData.count}x ${testData.emoji}`, 'info');
+
+        // Emit to overlay
+        this.api.emit('webgpu-emoji-rain:spawn', testData);
+
+        res.json({ success: true, message: 'Test emojis spawned', data: testData });
       } catch (error) {
+        this.api.log(`Error testing emoji rain: ${error.message}`, 'error');
         res.status(500).json({ success: false, error: error.message });
       }
     });
 
-    // Test spawn
-    this.api.registerRoute('post', '/api/webgpu-emoji-rain/test', (req, res) => {
+    // Upload custom emoji rain image
+    this.api.registerRoute('post', '/api/webgpu-emoji-rain/upload', (req, res) => {
+      this.upload.single('image')(req, res, (err) => {
+        if (err) {
+          this.api.log(`Error uploading emoji rain image: ${err.message}`, 'error');
+          return res.status(500).json({ success: false, error: err.message });
+        }
+
+        try {
+          if (!req.file) {
+            return res.status(400).json({ success: false, error: 'No file uploaded' });
+          }
+
+          const fileUrl = `/webgpu-emoji-rain/uploads/${req.file.filename}`;
+          this.api.log(`📤 Emoji rain image uploaded: ${req.file.filename}`, 'info');
+
+          res.json({
+            success: true,
+            message: 'Image uploaded successfully',
+            url: fileUrl,
+            filename: req.file.filename,
+            size: req.file.size
+          });
+        } catch (error) {
+          this.api.log(`Error uploading emoji rain image: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      });
+    });
+
+    // Get list of uploaded emoji rain images
+    this.api.registerRoute('get', '/api/webgpu-emoji-rain/images', (req, res) => {
       try {
-        const { count, x, y } = req.body;
-        this.spawnParticles(count || 20, { x, y });
-        res.json({ success: true, particleCount: this.particles.length });
+        const files = fs.readdirSync(this.uploadDir)
+          .filter(f => f !== '.gitkeep')
+          .map(filename => ({
+            filename,
+            url: `/webgpu-emoji-rain/uploads/${filename}`,
+            size: fs.statSync(path.join(this.uploadDir, filename)).size,
+            created: fs.statSync(path.join(this.uploadDir, filename)).birthtime
+          }));
+
+        res.json({ success: true, images: files });
       } catch (error) {
+        this.api.log(`Error listing emoji rain images: ${error.message}`, 'error');
         res.status(500).json({ success: false, error: error.message });
       }
     });
 
-    this.api.log('✅ [WebGPU Emoji Rain] Routes registered', 'debug');
-  }
+    // Delete uploaded emoji rain image
+    this.api.registerRoute('delete', '/api/webgpu-emoji-rain/images/:filename', (req, res) => {
+      try {
+        const filename = req.params.filename;
+        const filePath = path.join(this.uploadDir, filename);
 
-  // ============================================================================
-  // Socket Events
-  // ============================================================================
+        if (!fs.existsSync(filePath)) {
+          return res.status(404).json({ success: false, error: 'File not found' });
+        }
 
-  registerSocketEvents() {
-    this.api.registerSocket('webgpu-emoji-rain:spawn', (socket, data) => {
-      const { count, x, y, spread } = data || {};
-      this.spawnParticles(count || 10, { x, y, spread });
-    });
+        fs.unlinkSync(filePath);
+        this.api.log(`🗑️ Deleted emoji rain image: ${filename}`, 'info');
 
-    this.api.registerSocket('webgpu-emoji-rain:toggle', (socket, data) => {
-      const { enabled } = data || {};
-      if (enabled !== undefined) {
-        this.enabled = enabled;
+        res.json({ success: true, message: 'Image deleted successfully' });
+      } catch (error) {
+        this.api.log(`Error deleting emoji rain image: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
       }
     });
 
-    this.api.registerSocket('webgpu-emoji-rain:config', (socket, data) => {
-      if (data) {
-        this.config = { ...this.config, ...data };
-        this.saveConfig();
+    // Get user emoji mappings
+    this.api.registerRoute('get', '/api/webgpu-emoji-rain/user-mappings', (req, res) => {
+      try {
+        if (fs.existsSync(this.userMappingsPath)) {
+          const mappings = JSON.parse(fs.readFileSync(this.userMappingsPath, 'utf8'));
+          res.json({ success: true, mappings });
+        } else {
+          res.json({ success: true, mappings: {} });
+        }
+      } catch (error) {
+        this.api.log(`Error getting user emoji mappings: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
       }
     });
 
-    this.api.log('✅ [WebGPU Emoji Rain] Socket events registered', 'debug');
+    // Update user emoji mappings
+    this.api.registerRoute('post', '/api/webgpu-emoji-rain/user-mappings', (req, res) => {
+      try {
+        const { mappings } = req.body;
+        if (!mappings) {
+          return res.status(400).json({ success: false, error: 'mappings is required' });
+        }
+
+        // Save to persistent storage (primary location, survives updates)
+        const userMappingsDir = path.dirname(this.userMappingsPath);
+        if (!fs.existsSync(userMappingsDir)) {
+          fs.mkdirSync(userMappingsDir, { recursive: true });
+        }
+        fs.writeFileSync(this.userMappingsPath, JSON.stringify(mappings, null, 2));
+
+        // Also save to user_configs directory (user-editable, survives updates)
+        const userConfigMappingsDir = path.dirname(this.userConfigMappingsPath);
+        if (!fs.existsSync(userConfigMappingsDir)) {
+          fs.mkdirSync(userConfigMappingsDir, { recursive: true });
+        }
+        fs.writeFileSync(this.userConfigMappingsPath, JSON.stringify(mappings, null, 2));
+
+        this.api.log(`💾 [WebGPU Emoji Rain] User mappings saved`, 'debug');
+
+        // Notify overlays about mapping update
+        this.api.emit('webgpu-emoji-rain:user-mappings-update', { mappings });
+
+        res.json({ success: true, message: 'User emoji mappings updated' });
+      } catch (error) {
+        this.api.log(`Error updating user emoji mappings: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Trigger emoji rain via API (for flows)
+    this.api.registerRoute('post', '/api/webgpu-emoji-rain/trigger', (req, res) => {
+      try {
+        const { emoji, count, duration, intensity, x, y, username, burst } = req.body;
+
+        const db = this.api.getDatabase();
+        const config = db.getEmojiRainConfig();
+
+        if (!config.enabled) {
+          return res.status(400).json({ success: false, error: 'Emoji rain is disabled' });
+        }
+
+        // Create spawn data
+        const spawnData = {
+          count: parseInt(count) || 10,
+          emoji: emoji || config.emoji_set[Math.floor(Math.random() * config.emoji_set.length)],
+          x: parseFloat(x) !== undefined ? parseFloat(x) : Math.random(),
+          y: parseFloat(y) !== undefined ? parseFloat(y) : 0,
+          username: username || null,
+          burst: burst || false,
+          color: null // Will be set by user mapping or color mode
+        };
+
+        // Apply intensity multiplier if provided
+        if (intensity) {
+          spawnData.count = Math.floor(spawnData.count * parseFloat(intensity));
+        }
+
+        this.api.log(`🎯 Triggering WebGPU emoji rain via API: ${spawnData.count}x ${spawnData.emoji}`, 'info');
+
+        // Emit to overlay
+        this.api.emit('webgpu-emoji-rain:spawn', spawnData);
+
+        // Handle duration (spawn multiple batches over time)
+        if (duration && duration > 0) {
+          const batches = Math.floor(duration / 500); // Spawn every 500ms
+          let batchCount = 0;
+
+          const interval = setInterval(() => {
+            batchCount++;
+            if (batchCount >= batches) {
+              clearInterval(interval);
+              return;
+            }
+
+            this.api.emit('webgpu-emoji-rain:spawn', {
+              ...spawnData,
+              x: Math.random() // Randomize position for each batch
+            });
+          }, 500);
+        }
+
+        res.json({ success: true, message: 'Emoji rain triggered', data: spawnData });
+      } catch (error) {
+        this.api.log(`Error triggering emoji rain: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Serve uploaded files
+    const express = require('express');
+    this.api.getApp().use('/plugins/webgpu-emoji-rain/uploads', express.static(this.uploadDir));
+
+    this.api.log('✅ [WebGPU Emoji Rain] All routes registered successfully', 'info');
   }
 
-  // ============================================================================
-  // TikTok Events
-  // ============================================================================
-
-  registerTikTokEvents() {
-    // Gift event
+  registerTikTokEventHandlers() {
+    // Gift Event
     this.api.registerTikTokEvent('gift', (data) => {
-      if (!this.enabled) return;
-      const coins = data.coins || 1;
-      const count = Math.min(Math.floor(coins / 10) + 5, 50);
-      this.spawnParticles(count);
+      this.spawnEmojiRain('gift', data);
     });
 
-    // Like event
+    // Follow Event
+    this.api.registerTikTokEvent('follow', (data) => {
+      this.spawnEmojiRain('follow', data, 5, '💙');
+    });
+
+    // Subscribe Event
+    this.api.registerTikTokEvent('subscribe', (data) => {
+      this.spawnEmojiRain('subscribe', data, 8, '⭐');
+    });
+
+    // Share Event
+    this.api.registerTikTokEvent('share', (data) => {
+      this.spawnEmojiRain('share', data, 5, '🔄');
+    });
+
+    // Like Event
     this.api.registerTikTokEvent('like', (data) => {
-      if (!this.enabled) return;
-      const count = Math.min(data.likeCount || 1, 10);
-      this.spawnParticles(count);
+      this.spawnEmojiRain('like', data);
     });
 
-    // Follow event
-    this.api.registerTikTokEvent('follow', () => {
-      if (!this.enabled) return;
-      this.spawnParticles(15);
-    });
-
-    // Share event
-    this.api.registerTikTokEvent('share', () => {
-      if (!this.enabled) return;
-      this.spawnParticles(10);
-    });
-
-    this.api.log('✅ [WebGPU Emoji Rain] TikTok events registered', 'debug');
+    this.api.log('✅ WebGPU Emoji Rain TikTok event handlers registered', 'info');
   }
 
-  // ============================================================================
-  // Cleanup
-  // ============================================================================
+  /**
+   * Spawn emojis for emoji rain effect (matches original emoji-rain logic)
+   * @param {string} reason - Event type (gift, like, follow, etc.)
+   * @param {object} data - Event data
+   * @param {number} count - Number of emojis to spawn
+   * @param {string} emoji - Optional specific emoji
+   */
+  spawnEmojiRain(reason, data, count = null, emoji = null) {
+    try {
+      const db = this.api.getDatabase();
+      const config = db.getEmojiRainConfig();
+
+      if (!config.enabled) {
+        return;
+      }
+
+      // Log event data for debugging
+      this.api.log(`🎯 [WebGPU Emoji Rain EVENT] Reason: ${reason}, Username: ${data.uniqueId || data.username}`, 'debug');
+
+      // Calculate count based on reason if not provided (matching original logic)
+      if (!count) {
+        if (reason === 'gift' && data.coins) {
+          count = config.gift_base_emojis + Math.floor(data.coins * config.gift_coin_multiplier);
+          count = Math.min(config.gift_max_emojis, count);
+        } else if (reason === 'like' && data.likeCount) {
+          count = Math.floor(data.likeCount / config.like_count_divisor);
+          count = Math.max(config.like_min_emojis, Math.min(config.like_max_emojis, count));
+        } else {
+          count = 3; // Default for follow, share, subscribe
+        }
+      }
+
+      // Select random emoji from config if not specified
+      if (!emoji && config.emoji_set && config.emoji_set.length > 0) {
+        emoji = config.emoji_set[Math.floor(Math.random() * config.emoji_set.length)];
+      }
+
+      // Random horizontal position
+      const x = Math.random();
+      const y = 0;
+
+      // Check for SuperFan level and trigger burst if enabled
+      const isSuperFan = this.checkSuperFanLevel(data);
+      const isBurst = isSuperFan && config.superfan_burst_enabled;
+
+      // Emit to overlay
+      const username = data.uniqueId || data.username || 'Unknown';
+      
+      this.api.emit('webgpu-emoji-rain:spawn', {
+        count: count,
+        emoji: emoji,
+        x: x,
+        y: y,
+        username: username,
+        reason: reason,
+        burst: isBurst
+      });
+
+      this.api.log(`🌧️ WebGPU Emoji rain spawned: ${count}x ${emoji} for ${reason} by ${username}${isBurst ? ' [SUPERFAN BURST]' : ''}`, 'debug');
+    } catch (error) {
+      this.api.log(`Error spawning emoji rain: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Check if user has SuperFan level
+   * @param {object} data - Event data
+   * @returns {boolean|number} - SuperFan level (1-3) or false
+   */
+  checkSuperFanLevel(data) {
+    // Check various SuperFan indicators
+    if (data.isSuperFan || data.superFan) {
+      return data.superFanLevel || 1;
+    }
+    
+    // Check badges for SuperFan status
+    if (data.badges && Array.isArray(data.badges)) {
+      const superFanBadge = data.badges.find(b => 
+        b.type === 'superfan' || b.name?.toLowerCase().includes('superfan')
+      );
+      if (superFanBadge) {
+        return superFanBadge.level || 1;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Register flow actions for automation
+   */
+  registerFlowActions() {
+    if (!this.api.registerFlowAction) {
+      this.api.log('⚠️ Flow system not available, skipping flow action registration', 'warn');
+      return;
+    }
+
+    // Register "Trigger WebGPU Emoji Rain" action
+    this.api.registerFlowAction('webgpu_emoji_rain_trigger', {
+      name: 'Trigger WebGPU Emoji Rain',
+      description: 'Spawn GPU-accelerated emoji rain with custom parameters',
+      icon: '🌧️',
+      category: 'effects',
+      parameters: {
+        emoji: {
+          type: 'text',
+          label: 'Emoji/Text',
+          description: 'Emoji or text to spawn (leave empty for random)',
+          default: ''
+        },
+        count: {
+          type: 'number',
+          label: 'Count',
+          description: 'Number of emojis to spawn',
+          default: 10,
+          min: 1,
+          max: 100
+        },
+        duration: {
+          type: 'number',
+          label: 'Duration (ms)',
+          description: 'Duration of the rain effect (0 = single burst)',
+          default: 0,
+          min: 0,
+          max: 10000
+        },
+        intensity: {
+          type: 'number',
+          label: 'Intensity',
+          description: 'Multiplier for emoji count',
+          default: 1.0,
+          min: 0.1,
+          max: 5.0,
+          step: 0.1
+        },
+        burst: {
+          type: 'boolean',
+          label: 'Burst Mode',
+          description: 'Enable SuperFan-style burst',
+          default: false
+        }
+      },
+      execute: async (params, eventData) => {
+        await this.executeFlowTrigger(params, eventData);
+      }
+    });
+
+    this.api.log('✅ Flow actions registered for WebGPU Emoji Rain', 'info');
+  }
+
+  /**
+   * Execute emoji rain trigger from flow
+   */
+  async executeFlowTrigger(params, eventData) {
+    try {
+      // Use relative URL for better portability
+      const response = await fetch('/api/webgpu-emoji-rain/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emoji: params.emoji || null,
+          count: params.count || 10,
+          duration: params.duration || 0,
+          intensity: params.intensity || 1.0,
+          username: eventData.username || eventData.uniqueId || null,
+          burst: params.burst || false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      this.api.log('✅ WebGPU Emoji rain triggered via flow', 'debug');
+    } catch (error) {
+      this.api.log(`❌ Error executing emoji rain flow: ${error.message}`, 'error');
+    }
+  }
 
   async destroy() {
-    if (this.registration) {
-      this.registration.unregister();
-      this.registration = null;
-    }
-    this.releaseResources();
-    this.particles = [];
-    this.api.log('🌧️ [WebGPU Emoji Rain] Plugin destroyed', 'info');
+    this.api.log('🌧️ WebGPU Emoji Rain Plugin destroyed', 'info');
   }
 }
 
