@@ -38,9 +38,15 @@ describe('Emoji Rain User Config Migration', () => {
   });
 
   describe('Migration Logic', () => {
-    test('should define userConfigMappingsPath in migrateOldData', () => {
-      expect(mainJs).toContain('const userConfigMappingsPath = path.join(__dirname, \'..\'');
-      expect(mainJs).toContain('user_configs\', \'emoji-rain\', \'users.json\')');
+    test('should use instance property userConfigMappingsPath from constructor', () => {
+      // Should NOT define it again in migrateOldData
+      const migrateMethod = mainJs.match(/async migrateOldData\(\)[\s\S]*?Old files are kept for safety/);
+      expect(migrateMethod).toBeTruthy();
+      expect(migrateMethod[0]).not.toContain('const userConfigMappingsPath =');
+      
+      // Should use this.userConfigMappingsPath in the migration method
+      expect(mainJs).toContain('if (fs.existsSync(this.userConfigMappingsPath))');
+      expect(mainJs).toContain('fs.copyFileSync(this.userConfigMappingsPath, this.userMappingsPath)');
     });
 
     test('should prioritize user_configs over old data directory', () => {
@@ -63,14 +69,14 @@ describe('Emoji Rain User Config Migration', () => {
     test('should check if user_configs exists first', () => {
       const migrationSection = mainJs.match(/\/\/ Priority 1:[\s\S]*?else if/);
       expect(migrationSection).toBeTruthy();
-      expect(migrationSection[0]).toContain('if (fs.existsSync(userConfigMappingsPath))');
+      expect(migrationSection[0]).toContain('if (fs.existsSync(this.userConfigMappingsPath))');
     });
 
     test('should migrate from user_configs when found', () => {
-      const userConfigMigration = mainJs.match(/if \(fs\.existsSync\(userConfigMappingsPath\)\)\s*{[\s\S]*?migrated = true;[\s\S]*?}/);
+      const userConfigMigration = mainJs.match(/if \(fs\.existsSync\(this\.userConfigMappingsPath\)\)\s*{[\s\S]*?migrated = true;[\s\S]*?}/);
       expect(userConfigMigration).toBeTruthy();
       expect(userConfigMigration[0]).toContain('Migrating user mappings from user_configs');
-      expect(userConfigMigration[0]).toContain('fs.copyFileSync(userConfigMappingsPath, this.userMappingsPath)');
+      expect(userConfigMigration[0]).toContain('fs.copyFileSync(this.userConfigMappingsPath, this.userMappingsPath)');
     });
 
     test('should migrate from old data directory as fallback', () => {
