@@ -33,7 +33,7 @@ const PLUGIN_STATUS_CONFIG = {
         iconBg: 'rgba(234, 179, 8, 0.2)',
         iconColor: '#fbbf24',
         titleColor: '#fbbf24',
-        plugins: ['minecraft-connect', 'thermal-printer', 'quiz_show', 'viewer-xp', 'leaderboard', 'openshock', 'multicam', 'gift-milestone', 'vdoninja', 'gcce', 'ifttt-flows']
+        plugins: ['minecraft-connect', 'thermal-printer', 'quiz-show', 'viewer-xp', 'leaderboard', 'openshock', 'multicam', 'gift-milestone', 'vdoninja', 'gcce']
     },
     'alpha': {
         id: 'alpha',
