@@ -1,7 +1,7 @@
 ; ============================================================================
 ; PupCid's Little TikTool Helper (LTTH) - NSIS Installer Script
 ; ============================================================================
-; Version: 1.2.0
+; Version: 1.2.1
 ; Description: Professional TikTok LIVE Streaming Tool Installer
 ; License: CC-BY-NC-4.0
 ; ============================================================================
@@ -21,16 +21,18 @@
 ; Application Information
 !define PRODUCT_NAME "PupCid's Little TikTool Helper"
 !define PRODUCT_NAME_SHORT "LTTH"
-!define PRODUCT_VERSION "1.2.0"
+!define PRODUCT_VERSION "1.2.1"
 !define PRODUCT_PUBLISHER "PupCid / Loggableim"
 !define PRODUCT_WEB_SITE "https://ltth.app"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\launcher.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME_SHORT}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 
-; Paths (relative to build-src/installer directory)
-!define BUILD_DIR ".."
-!define APP_DIR "../../src"  ; Changed from app to src
+; Paths (relative to tools/launcher/installer directory)
+!define LAUNCHER_DIR "../../../launcher"
+!define TOOLS_LAUNCHER_DIR ".."
+!define APP_DIR "../../../src"
+!define PLUGINS_DIR "../../../plugins"
 !define ASSETS_DIR "../assets"
 
 ; Installer Properties
@@ -79,8 +81,8 @@ BrandingText "${PRODUCT_NAME} ${PRODUCT_VERSION} © ${PRODUCT_PUBLISHER}"
 
 ; Modern UI Settings
 !define MUI_ABORTWARNING
-!define MUI_ICON "${BUILD_DIR}\icon.ico"
-!define MUI_UNICON "${BUILD_DIR}\icon.ico"
+!define MUI_ICON "${TOOLS_LAUNCHER_DIR}\icon.ico"
+!define MUI_UNICON "${TOOLS_LAUNCHER_DIR}\icon.ico"
 
 ; Header and Sidebar Images
 !define MUI_HEADERIMAGE
@@ -192,13 +194,13 @@ Section "!LTTH Core Application" SEC_CORE
   ; Show progress banner
   Banner::show /NOUNLOAD "Installing Core Files" "Installing launcher and executables..."
   
-  ; Install launcher executable
-  File "${BUILD_DIR}\launcher.exe"
-  File "${BUILD_DIR}\icon.ico"
+  ; Install launcher executable from /launcher directory
+  File "${LAUNCHER_DIR}\launcher.exe"
+  File "${TOOLS_LAUNCHER_DIR}\icon.ico"
   
-  ; Install ltthgit.exe (optional cloud launcher)
-  IfFileExists "${BUILD_DIR}\ltthgit.exe" 0 +2
-    File "${BUILD_DIR}\ltthgit.exe"
+  ; Install ltthgit.exe (optional cloud launcher) from tools/launcher
+  IfFileExists "${TOOLS_LAUNCHER_DIR}\ltthgit.exe" 0 +2
+    File "${TOOLS_LAUNCHER_DIR}\ltthgit.exe"
   
   Banner::destroy
   
@@ -212,6 +214,7 @@ Section "!LTTH Core Application" SEC_CORE
   ; Copy subdirectories individually, excluding runtime-generated directories:
   ; - logs: Contains Winston audit files (.*.json) that cause NSIS errors
   ; - node_modules: Runtime dependencies installed by npm
+  ; - plugins: Now installed separately from /plugins directory
   ; Using /nonfatal to skip files that can't be opened (e.g., locked files, permission issues)
   ; IMPORTANT: If compilation fails with "failed opening file" errors, extract the repo to a SHORT path
   ;            Windows MAX_PATH limit (260 chars) causes issues with long download paths
@@ -220,11 +223,9 @@ Section "!LTTH Core Application" SEC_CORE
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\docs"
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\locales"
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\modules"
-  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\plugins"
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\public"
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\routes"
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\scripts"
-  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\test"
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\tts"
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\user_configs"
   File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${APP_DIR}\user_data"
@@ -233,6 +234,13 @@ Section "!LTTH Core Application" SEC_CORE
   ; Create runtime directories that were excluded from packaging
   ; These directories are needed for the application to run properly
   CreateDirectory "$INSTDIR\app\logs"
+  
+  Banner::destroy
+  
+  ; Install plugins from root /plugins directory
+  Banner::show /NOUNLOAD "Installing Plugins" "Copying plugin files..."
+  SetOutPath "$INSTDIR\plugins"
+  File /nonfatal /r /x "*.md~" /x ".git*" /x "*.tmp" /x "*.bak" "${PLUGINS_DIR}\*.*"
   
   Banner::destroy
   
@@ -327,6 +335,9 @@ Section "Uninstall"
   
   ; Remove app directory
   RMDir /r "$INSTDIR\app"
+  
+  ; Remove plugins directory
+  RMDir /r "$INSTDIR\plugins"
   
   ; Remove node directory
   RMDir /r "$INSTDIR\node"
