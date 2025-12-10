@@ -36,6 +36,9 @@ class TTSPlugin {
 
         // Load configuration
         this.config = this._loadConfig();
+        
+        // Sanitize message prefix filter on load
+        this.config.messagePrefixFilter = this._sanitizePrefixFilter(this.config.messagePrefixFilter);
 
         // Initialize engines (TikTok engine removed - no longer used)
         // Only load engines that are enabled (as primary or fallback) to save system resources
@@ -183,6 +186,19 @@ class TTSPlugin {
         this.logger.info(`TTS Plugin initialized successfully`);
         this.logger.info(`TTS: Available engines: ${availableEngines.length > 0 ? availableEngines.join(', ') : 'None configured'}`);
         this.logger.info(`TTS: Default engine: ${this.config.defaultEngine}, Auto-fallback: ${this.config.enableAutoFallback ? 'enabled' : 'disabled'}`);
+    }
+
+    /**
+     * Sanitize and validate message prefix filter array
+     * @private
+     * @param {Array} filterArray - Array of prefix strings to filter
+     * @returns {Array} Sanitized array of valid, non-empty prefix strings
+     */
+    _sanitizePrefixFilter(filterArray) {
+        if (!Array.isArray(filterArray)) return [];
+        return filterArray
+            .filter(p => p && typeof p === 'string' && p.trim().length > 0)
+            .map(p => p.trim());
     }
 
     /**
@@ -1411,12 +1427,13 @@ class TTSPlugin {
 
         try {
             // Step 0: Check message prefix filter (only for chat messages)
-            if (source === 'chat' && this.config.messagePrefixFilter && Array.isArray(this.config.messagePrefixFilter) && this.config.messagePrefixFilter.length > 0) {
+            // Note: messagePrefixFilter is pre-sanitized in constructor
+            if (source === 'chat' && this.config.messagePrefixFilter.length > 0) {
                 const trimmedText = text?.trim() || '';
                 if (trimmedText.length > 0) {
-                    const hasFilteredPrefix = this.config.messagePrefixFilter.some(prefix => {
-                        return prefix && trimmedText.startsWith(prefix);
-                    });
+                    const hasFilteredPrefix = this.config.messagePrefixFilter.some(prefix => 
+                        trimmedText.startsWith(prefix)
+                    );
                     
                     if (hasFilteredPrefix) {
                         this._logDebug('SPEAK_DENIED', 'Message starts with filtered prefix', {
