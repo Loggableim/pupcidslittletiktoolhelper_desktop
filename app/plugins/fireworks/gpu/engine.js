@@ -1290,7 +1290,10 @@ class FireworksEngine {
             orientation: CONFIG.orientation,
             targetFps: CONFIG.targetFps,
             minFps: CONFIG.minFps,
-            giftPopupPosition: CONFIG.giftPopupPosition
+            giftPopupPosition: CONFIG.giftPopupPosition,
+            gpuEnabled: true,  // GPU acceleration enabled by default
+            workerEnabled: true,  // Multithreading enabled by default
+            workerCount: 'auto'  // Auto-select worker count
         };
         
         this.running = false;
@@ -1307,29 +1310,45 @@ class FireworksEngine {
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
-        // Now try to initialize worker AFTER canvas is configured
-        if (this.useWorker && typeof OffscreenCanvas !== 'undefined' && typeof Worker !== 'undefined') {
+        // Check if multithreading is enabled in config
+        const workerEnabled = this.config.workerEnabled !== false;
+        const gpuEnabled = this.config.gpuEnabled !== false;
+
+        // Now try to initialize worker AFTER canvas is configured (if enabled)
+        if (workerEnabled && this.useWorker && typeof OffscreenCanvas !== 'undefined' && typeof Worker !== 'undefined') {
             try {
                 this.offscreenCanvas = this.canvas.transferControlToOffscreen();
                 this.worker = new Worker('/plugins/fireworks/gpu/fireworks-worker.js');
                 this.workerMode = true;
-                console.log('[Fireworks Engine] ✅ Multithreading enabled: OffscreenCanvas + Web Worker');
+                console.log('[Fireworks Engine] ✅ Multithreading enabled: OffscreenCanvas + Web Worker (Worker Count: ' + (this.config.workerCount || 'auto') + ')');
             } catch (error) {
                 console.warn('[Fireworks Engine] ⚠️ Worker initialization failed, falling back to main thread:', error);
                 this.workerMode = false;
                 this.offscreenCanvas = null;
                 this.worker = null;
             }
+        } else {
+            if (!workerEnabled) {
+                console.log('[Fireworks Engine] Multithreading disabled by user configuration');
+            }
         }
         
         // Initialize context for main thread mode if worker mode failed or disabled
         if (!this.workerMode) {
-            this.ctx = this.canvas.getContext('2d', {
+            const contextOptions = {
                 alpha: true,
-                desynchronized: true,  // Enable GPU acceleration for better performance
                 willReadFrequently: false
-            });
-            console.log('[Fireworks Engine] ✅ GPU acceleration enabled (main thread mode)');
+            };
+            
+            // Only enable desynchronized if GPU is enabled
+            if (gpuEnabled) {
+                contextOptions.desynchronized = true;
+                console.log('[Fireworks Engine] ✅ GPU acceleration enabled (main thread mode)');
+            } else {
+                console.log('[Fireworks Engine] GPU acceleration disabled by user configuration (CPU-only mode)');
+            }
+            
+            this.ctx = this.canvas.getContext('2d', contextOptions);
         }
 
         // Initialize audio
