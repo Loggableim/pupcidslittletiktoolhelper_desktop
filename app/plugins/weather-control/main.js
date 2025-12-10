@@ -113,7 +113,12 @@ class WeatherControlPlugin {
                     enabled: true,
                     requirePermission: true, // Use permission system for chat commands
                     allowIntensityControl: false, // Allow users to specify intensity in command
-                    allowDurationControl: false // Allow users to specify duration in command
+                    allowDurationControl: false, // Allow users to specify duration in command
+                    commandNames: {
+                        weather: 'weather',
+                        weatherlist: 'weatherlist',
+                        weatherstop: 'weatherstop'
+                    }
                 },
                 permissions: {
                     enabled: true,
@@ -145,6 +150,12 @@ class WeatherControlPlugin {
             // Ensure all default fields exist
             this.config = { ...defaultConfig, ...this.config };
             this.config.chatCommands = { ...defaultConfig.chatCommands, ...this.config.chatCommands };
+            
+            // Ensure commandNames exists with defaults
+            if (!this.config.chatCommands.commandNames) {
+                this.config.chatCommands.commandNames = defaultConfig.chatCommands.commandNames;
+            }
+            
             this.config.permissions = { ...defaultConfig.permissions, ...this.config.permissions };
             this.config.effects = { ...defaultConfig.effects, ...this.config.effects };
 
@@ -205,12 +216,27 @@ class WeatherControlPlugin {
             try {
                 const newConfig = req.body;
                 
+                // Track if command names changed
+                let commandNamesChanged = false;
+                
                 // Validate configuration
                 if (newConfig.permissions) {
                     this.config.permissions = { ...this.config.permissions, ...newConfig.permissions };
                 }
                 if (newConfig.effects) {
                     this.config.effects = { ...this.config.effects, ...newConfig.effects };
+                }
+                if (newConfig.chatCommands) {
+                    // Check if command names changed
+                    if (newConfig.chatCommands.commandNames) {
+                        const oldNames = this.config.chatCommands.commandNames;
+                        const newNames = newConfig.chatCommands.commandNames;
+                        commandNamesChanged = 
+                            oldNames.weather !== newNames.weather ||
+                            oldNames.weatherlist !== newNames.weatherlist ||
+                            oldNames.weatherstop !== newNames.weatherstop;
+                    }
+                    this.config.chatCommands = { ...this.config.chatCommands, ...newConfig.chatCommands };
                 }
                 if (typeof newConfig.enabled !== 'undefined') {
                     this.config.enabled = newConfig.enabled;
@@ -221,6 +247,12 @@ class WeatherControlPlugin {
                 }
 
                 await this.api.setConfig('weather_config', this.config);
+                
+                // Re-register commands if names changed
+                if (commandNamesChanged) {
+                    this.api.log('💬 [WEATHER CONTROL] Command names changed, re-registering...', 'info');
+                    this.registerGCCECommands();
+                }
                 
                 this.api.log('✅ [WEATHER CONTROL] Configuration updated', 'info');
                 res.json({ success: true, config: this.config });
@@ -464,12 +496,19 @@ class WeatherControlPlugin {
                 return;
             }
             
-            // Define weather commands
+            // Get custom command names from config
+            const cmdNames = this.config.chatCommands.commandNames || {
+                weather: 'weather',
+                weatherlist: 'weatherlist',
+                weatherstop: 'weatherstop'
+            };
+            
+            // Define weather commands with custom names
             const commands = [
                 {
-                    name: 'weather',
+                    name: cmdNames.weather,
                     description: 'Trigger weather effects on the stream',
-                    syntax: '/weather <effect> [intensity] [duration]',
+                    syntax: `/${cmdNames.weather} <effect> [intensity] [duration]`,
                     permission: 'all', // Permission check handled by weather plugin
                     enabled: true,
                     minArgs: 1,
@@ -478,9 +517,9 @@ class WeatherControlPlugin {
                     handler: async (args, context) => await this.handleWeatherCommand(args, context)
                 },
                 {
-                    name: 'weatherlist',
+                    name: cmdNames.weatherlist,
                     description: 'List all available weather effects',
-                    syntax: '/weatherlist',
+                    syntax: `/${cmdNames.weatherlist}`,
                     permission: 'all',
                     enabled: true,
                     minArgs: 0,
@@ -489,9 +528,9 @@ class WeatherControlPlugin {
                     handler: async (args, context) => await this.handleWeatherListCommand(args, context)
                 },
                 {
-                    name: 'weatherstop',
+                    name: cmdNames.weatherstop,
                     description: 'Stop all active weather effects',
-                    syntax: '/weatherstop',
+                    syntax: `/${cmdNames.weatherstop}`,
                     permission: 'subscriber', // Only subscribers and above can stop
                     enabled: true,
                     minArgs: 0,
@@ -500,6 +539,13 @@ class WeatherControlPlugin {
                     handler: async (args, context) => await this.handleWeatherStopCommand(args, context)
                 }
             ];
+
+            // Unregister old commands first (in case names changed)
+            try {
+                gcce.unregisterCommandsForPlugin('weather-control');
+            } catch (e) {
+                // Ignore errors if commands don't exist yet
+            }
 
             // Register commands with GCCE
             const result = gcce.registerCommandsForPlugin('weather-control', commands);
