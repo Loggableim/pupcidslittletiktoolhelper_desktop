@@ -22,10 +22,12 @@ const CONFIG = {
     maxTotalParticles: 10000,
     targetFps: 60,
     minFps: 24,
+    physicsScale: 60, // Converts per-frame values (at 60 FPS) to per-second values for frame-independent physics
     gravity: 0.08,
     airResistance: 0.99,
-    rocketSpeed: -12,
-    rocketAcceleration: -0.08,
+    rocketAirResistance: 0.995, // Air resistance for rockets (slightly less than particles)
+    rocketSpeed: -12, // Negative = upward motion in canvas Y-down coordinates (pixels per frame at 60 FPS)
+    defaultTargetY: 0.5, // Default rocket target height as fraction of screen height
     backgroundColor: 'rgba(0, 0, 0, 0)',
     defaultColors: ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#ff00ff'],
     comboThrottleMinInterval: 100,
@@ -210,8 +212,19 @@ class AudioManager {
     async preload(url, id) {
         if (!this.enabled) return;
         
+        // Ensure audio context exists before preloading
+        await this.ensureAudioContext();
+        
+        if (!this.audioContext) {
+            console.warn(`[WebGPU Fireworks] Cannot preload ${id}: No audio context`);
+            return;
+        }
+        
         try {
             const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             const arrayBuffer = await response.arrayBuffer();
             const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             this.sounds.set(id, audioBuffer);
@@ -263,6 +276,7 @@ class FireworksEngine {
         this.computePipeline = null;
         
         this.particles = [];
+        this.rockets = []; // Array to track active rockets
         this.particleBuffer = null;
         this.uniformBuffer = null;
         this.bindGroup = null;
@@ -498,6 +512,9 @@ class FireworksEngine {
         const deltaTime = (now - this.lastFrameTime) / 1000;
         this.lastFrameTime = now;
         
+        // Update rockets
+        this.updateRockets(deltaTime);
+        
         // Update FPS
         this.frameCount++;
         if (now - this.fpsUpdateTime >= 1000) {
@@ -565,20 +582,43 @@ class FireworksEngine {
         
         requestAnimationFrame(() => this.render());
     }
-
-    addFirework(options = {}) {
-        console.log('[WebGPU Fireworks] addFirework called:', options);
+    
+    updateRockets(deltaTime) {
+        // Pre-calculate physics timestep to avoid redundant multiplications
+        const dt = deltaTime * this.config.physicsScale;
         
-        // Create a simple burst of particles for testing
-        const position = options.position || { x: 0.5, y: 0.8 };
-        const particleCount = options.particleCount || 50;
-        const colors = options.colors || this.config.defaultColors;
+        // Update rocket positions
+        for (let i = this.rockets.length - 1; i >= 0; i--) {
+            const rocket = this.rockets[i];
+            
+            // Apply physics to rocket
+            // In canvas Y-down coordinates: positive Y is down, negative velocity = upward motion
+            // Gravity acts downward (positive direction), slowing upward rockets
+            rocket.vy += this.config.gravity * dt;
+            
+            // Apply air resistance to both velocity components
+            rocket.vx *= this.config.rocketAirResistance;
+            rocket.vy *= this.config.rocketAirResistance;
+            
+            rocket.x += rocket.vx * dt;
+            rocket.y += rocket.vy * dt;
+            
+            // Check if rocket should explode
+            // Rocket explodes when velocity becomes positive (moving down) or reaches target height
+            // Since Y increases downward, targetY < startY for upward motion
+            if (rocket.vy >= 0 || rocket.y <= rocket.targetY) {
+                // Rocket has reached peak or target, explode it
+                this.explodeRocket(rocket);
+                this.rockets.splice(i, 1);
+            }
+        }
+    }
+    
+    explodeRocket(rocket) {
+        // Create explosion particles at rocket position
+        const particleCount = rocket.particleCount || 50;
+        const colors = rocket.colors || this.config.defaultColors;
         
-        // Convert normalized position to screen coordinates
-        const x = position.x * this.width;
-        const y = position.y * this.height;
-        
-        // Create particles
         for (let i = 0; i < particleCount; i++) {
             const angle = (Math.PI * 2 * i) / particleCount;
             const speed = 50 + Math.random() * 100;
@@ -588,7 +628,7 @@ class FireworksEngine {
             const color = this.hexToRgba(colorHex);
             
             const particle = {
-                position: [x, y],
+                position: [rocket.x, rocket.y],
                 velocity: [Math.cos(angle) * speed, Math.sin(angle) * speed],
                 color: color,
                 size: 2 + Math.random() * 3,
@@ -603,9 +643,47 @@ class FireworksEngine {
         // Update particle buffer
         this.updateParticleBuffer();
         
-        // Play audio
+        // Play explosion audio
         if (this.audioManager.enabled) {
             this.audioManager.play('explosion-basic', 0.5);
+        }
+    }
+
+    addFirework(options = {}) {
+        console.log('[WebGPU Fireworks] addFirework called:', options);
+        
+        // Get options with defaults
+        const position = options.position || { x: 0.5, y: 0.8 };
+        const particleCount = options.particleCount || 50;
+        const colors = options.colors || this.config.defaultColors;
+        
+        // Convert normalized position to screen coordinates
+        const startX = position.x * this.width;
+        const startY = this.height; // Start at bottom (max Y in canvas coordinates)
+        let targetY = position.y * this.height; // Target height (lower Y value)
+        
+        // Validate that target is above start (targetY < startY in Y-down coordinates)
+        if (targetY >= startY) {
+            console.warn('[WebGPU Fireworks] Invalid rocket target: targetY must be < startY. Adjusting to default.');
+            targetY = startY * this.config.defaultTargetY; // Default to configured target height
+        }
+        
+        // Create rocket object
+        const rocket = {
+            x: startX,
+            y: startY,
+            targetY: targetY,
+            vx: (Math.random() - 0.5) * 2, // Slight horizontal drift
+            vy: this.config.rocketSpeed, // Initial velocity (negative = upward in canvas Y-down coordinates)
+            particleCount: particleCount,
+            colors: colors
+        };
+        
+        this.rockets.push(rocket);
+        
+        // Play launch audio
+        if (this.audioManager.enabled) {
+            this.audioManager.play('rocket-basic', 0.3);
         }
     }
     
