@@ -11,7 +11,7 @@ on:
       - 'electron/**'
     paths:
       - 'electron/**'
-      - 'app/**'
+      - 'src/**'
       - 'package.json'
       - '.github/workflows/electron-ci.yml'
   pull_request:
@@ -19,7 +19,7 @@ on:
       - main
     paths:
       - 'electron/**'
-      - 'app/**'
+      - 'src/**'
       - 'package.json'
   workflow_dispatch:
 
@@ -83,7 +83,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Install app dependencies
-        run: cd app && npm ci
+        run: cd src && npm ci
 
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
@@ -146,7 +146,7 @@ jobs:
         run: npm ci
 
       - name: Install app dependencies
-        run: cd app && npm ci
+        run: cd src && npm ci
 
       - name: Rebuild native modules
         run: npm run rebuild
@@ -205,7 +205,7 @@ jobs:
         run: npm ci
 
       - name: Install app dependencies
-        run: cd app && npm ci
+        run: cd src && npm ci
 
       - name: Rebuild native modules
         run: npm run rebuild
@@ -273,7 +273,7 @@ jobs:
         run: npm ci
 
       - name: Install app dependencies
-        run: cd app && npm ci
+        run: cd src && npm ci
 
       - name: Rebuild native modules
         run: npm run rebuild
