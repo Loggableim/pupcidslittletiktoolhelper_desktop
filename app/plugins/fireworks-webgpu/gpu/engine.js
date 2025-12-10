@@ -33,8 +33,13 @@ const CONFIG = {
     comboThrottleMinInterval: 100,
     comboSkipRocketsThreshold: 5,
     comboInstantExplodeThreshold: 8,
-    // Buffer size constants
-    PARTICLE_STRUCT_SIZE: 48, // 12 floats × 4 bytes: position(2) + velocity(2) + color(4) + size(1) + life(1) + maxLife(1) + padding(1)
+    // Rocket trail configuration
+    rocketTrailDensity: 3, // Number of trail particles emitted per frame
+    rocketSparkleChance: 0.15, // Probability of sparkle particle per frame (15%)
+    // WebGPU-specific constants
+    WEBGPU_PHYSICS_SCALE: 25, // Velocity multiplier to convert Canvas 2D physics to WebGPU scale
+    PARTICLE_FLOATS_COUNT: 12, // Number of floats per particle: position(2) + velocity(2) + color(4) + size(1) + life(1) + maxLife(1) + padding(1)
+    PARTICLE_STRUCT_SIZE: 48, // 12 floats × 4 bytes per float
     COMPUTE_UNIFORM_SIZE: 16, // 4 floats × 4 bytes: deltaTime, gravity, airResistance, padding
     RENDER_UNIFORM_SIZE: 16 // 4 floats × 4 bytes: width, height, padding, padding
 };
@@ -786,7 +791,7 @@ class FireworksEngine {
             
             // Create rocket trail particles for visualization
             // Add multiple particles per frame for a fuller trail
-            const trailDensity = 3; // Number of trail particles per frame
+            const trailDensity = this.config.rocketTrailDensity;
             
             for (let j = 0; j < trailDensity; j++) {
                 // Main rocket glow particle (bright core)
@@ -826,8 +831,8 @@ class FireworksEngine {
                 this.particles.push(outerGlowParticle);
             }
             
-            // Occasional sparkle particles (15% chance per frame)
-            if (Math.random() < 0.15) {
+            // Occasional sparkle particles
+            if (Math.random() < this.config.rocketSparkleChance) {
                 const sparkle = {
                     position: [
                         rocket.x + (Math.random() - 0.5) * 8,
@@ -964,12 +969,13 @@ class FireworksEngine {
     
     updateParticleBuffer() {
         // Create typed array for particle data
-        // Each particle: position(2) + velocity(2) + color(4) + size(1) + life(1) + maxLife(1) + padding(1) = 12 floats = 48 bytes
-        const particleData = new Float32Array(this.particles.length * 12);
+        // Each particle has PARTICLE_FLOATS_COUNT floats: position(2) + velocity(2) + color(4) + size(1) + life(1) + maxLife(1) + padding(1)
+        const floatsPerParticle = this.config.PARTICLE_FLOATS_COUNT;
+        const particleData = new Float32Array(this.particles.length * floatsPerParticle);
         
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
-            const offset = i * 12;
+            const offset = i * floatsPerParticle;
             
             particleData[offset + 0] = p.position[0];
             particleData[offset + 1] = p.position[1];
