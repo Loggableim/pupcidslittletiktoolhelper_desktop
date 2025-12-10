@@ -1,32 +1,46 @@
 # StreamAlchemy Plugin
 
-Transform TikTok gifts into virtual RPG items with AI-powered crafting mechanics.
+Transform TikTok gifts into virtual RPG items with progressive forging mechanics.
 
 ## Overview
 
-StreamAlchemy is a comprehensive plugin for "Pup Cid's Little TikTok Helper" that creates an immersive RPG-style item collection and crafting system. When viewers send TikTok gifts, those gifts are transformed into unique virtual items with AI-generated icons. When viewers send two gifts within 6 seconds, those items automatically combine into more powerful crafted items.
+StreamAlchemy is a comprehensive plugin for "Pup Cid's Little TikTok Helper" that creates an immersive RPG-style item collection and crafting system. When viewers send TikTok gifts, those gifts are transformed into unique virtual items using the gift's icon from TikTok. When viewers send two gifts within 6 seconds, those items automatically combine into crafted items.
 
 ## Features
 
 - **Gift-to-Item Transformation**: Every TikTok gift becomes a unique RPG item
-- **AI-Generated Icons**: DALL-E 3 creates custom isometric item icons
+- **Gift Icons**: Uses actual TikTok gift images for authentic representation
 - **Deterministic Generation**: Items are generated once and cached forever
 - **Real-time Crafting**: Send 2 gifts within 6 seconds to trigger crafting
-- **Rarity Tiers**: 4 tiers based on combined coin values
-  - Bronze (Common): < 100 coins
-  - Silver (Rare): 100-999 coins
-  - Gold (Legendary): 1000-4999 coins
-  - Purple (Mythic): 5000+ coins
+- **Progressive Forging System**: Craft the same combination multiple times to upgrade rarity
+  - All crafted items start at Common rarity
+  - Every 10 crafts of the same combination forges to next tier
+  - Progression: Common → Rare → Legendary → Mythic
+- **Rarity Border Frames**: Glowing animated borders inspired by flame-overlay plugin
 - **Persistent Inventory**: Track every user's item collection
 - **Real-time Overlay**: Beautiful HUD with animations
-- **Race-condition Safe**: Serialized AI requests, atomic database writes
+- **Race-condition Safe**: Serialized requests, atomic database writes
+
+## Rarity System
+
+### Progressive Forging
+Unlike traditional crafting where rarity is determined by coin value, StreamAlchemy uses a **progressive forging system**:
+
+1. **First Craft**: All crafted items start at **Common** rarity
+2. **Forge Progress**: Each time you craft the same combination, the forge count increases
+3. **Tier Upgrade**: After 10 crafts of the same combination, the item forges to the next rarity tier
+4. **Max Tier**: Mythic is the highest achievable rarity (requires 30 total crafts: 10 for Rare, 10 for Legendary, 10 for Mythic)
+
+### Visual Effects
+- **Common**: Bronze border with gentle glow
+- **Rare**: Silver border with pulsing animation
+- **Legendary**: Gold border with intense pulsing
+- **Mythic**: Purple border with constant radiant glow
 
 ## Installation
 
 1. The plugin is already installed in `plugins/streamalchemy/`
-2. Set your OpenAI API key:
-   - Add `OPENAI_API_KEY=your_key_here` to `.env` file in the app directory
-   - Or configure via the plugin settings in the dashboard
+2. No API key required (AI generation has been replaced with gift images)
 3. Restart the server
 4. Add the overlay to OBS:
    - Browser Source URL: `http://localhost:3000/streamalchemy/overlay`
@@ -151,9 +165,15 @@ POST /api/streamalchemy/config
 ## Overlay Animations
 
 ### Discovery Popup (New Item)
+### Discovery Popup (New Item)
 - Duration: 5 seconds
-- Features: Glow effect, particles, rarity-based colors
+- Features: Glow effect, particles, rarity-based border frames, forge progress indicator
 - Trigger: First time receiving an item
+
+### Forge Animation (Item Upgraded)
+- Duration: 4 seconds
+- Features: Anvil animation, intense particle effects, rarity transition display
+- Trigger: Crafting same combination 10 times
 
 ### Crafting Animation
 - Duration: 3 seconds
@@ -174,22 +194,43 @@ POST /api/streamalchemy/config
 - **Gold/Legendary**: Heavy gold glow (#FFD700)
 - **Purple/Mythic**: Arcane purple aura (#9370DB)
 
-### Calculation
+### Progressive Forging
 
-Rarity is determined by the sum of coin values of the two parent items:
+Unlike coin-based rarity, StreamAlchemy uses a **forge-based progression**:
 
 ```javascript
-totalCoins = itemA.coinValue + itemB.coinValue
+// All crafted items start at Common
+firstCraft -> Common (forgeLevel: 0, forgeCount: 1)
 
-if (totalCoins >= 5000) -> Mythic
-else if (totalCoins >= 1000) -> Legendary
-else if (totalCoins >= 100) -> Rare
-else -> Common
+// Each subsequent craft of same combination increases forgeCount
+craft 2-9 -> Common (forgeCount: 2-9)
+
+// 10th craft forges to Rare
+craft 10 -> Rare (forgeLevel: 1, forgeCount resets to 0)
+
+// Continue forging
+craft 11-19 -> Rare (forgeCount: 1-9)
+craft 20 -> Legendary (forgeLevel: 2)
+craft 30 -> Mythic (forgeLevel: 3, max tier)
+```
+
+### Database Schema
+
+Items now include forge tracking:
+```javascript
+{
+  itemId: "uuid",
+  forgeCount: 5,        // Number of times crafted at current tier
+  forgeLevel: 1,        // 0=Common, 1=Rare, 2=Legendary, 3=Mythic
+  rarity: "Rare",       // Current rarity name
+  isCrafted: true,
+  parentItems: ["uuid1", "uuid2"]
+}
 ```
 
 ## Performance
 
-- **AI Queue**: Only 1 concurrent request to avoid rate limits
+- **No AI Costs**: Uses TikTok gift images instead of DALL-E
 - **Database**: Atomic writes with LowDB (no race conditions)
 - **Overlay**: GPU-accelerated CSS animations (60 FPS)
 - **Memory**: Gift buffers auto-cleanup every 30 seconds
@@ -206,12 +247,12 @@ The command parser structure is ready in `index.js` but not yet implemented.
 
 ## Troubleshooting
 
-### No AI Generation
+### Items Show Placeholder Icons
 
-1. Check OpenAI API key is set
-2. Check API key has credits
-3. Check console for error messages
-4. Items will use placeholder images if AI fails
+1. Check that gift data includes `giftPictureUrl` field
+2. Verify TikTok connection is providing complete gift data
+3. Check browser console for image loading errors
+4. Placeholder SVG icons are used as fallback when gift images unavailable
 
 ### Items Not Appearing in Overlay
 
@@ -226,6 +267,13 @@ The command parser structure is ready in `index.js` but not yet implemented.
 2. Check `autoCrafting` is enabled in config
 3. Check rate limiting isn't blocking gifts
 4. View stats endpoint for active buffers
+
+### Forge Not Upgrading
+
+1. Verify you're crafting the exact same combination
+2. Check forge count in item details (should reach 10)
+3. Ensure item is crafted (base items cannot be forged)
+4. Check database for forgeCount and forgeLevel fields
 
 ## Development
 
