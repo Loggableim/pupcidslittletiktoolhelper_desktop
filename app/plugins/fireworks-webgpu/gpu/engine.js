@@ -594,7 +594,10 @@ class FireworksEngine {
             // In canvas Y-down coordinates: positive Y is down, negative velocity = upward motion
             // Gravity acts downward (positive direction), slowing upward rockets
             rocket.vy += this.config.gravity * dt;
-            rocket.vx *= this.config.rocketAirResistance; // Air resistance
+            
+            // Apply air resistance to both velocity components
+            rocket.vx *= this.config.rocketAirResistance;
+            rocket.vy *= this.config.rocketAirResistance;
             
             rocket.x += rocket.vx * dt;
             rocket.y += rocket.vy * dt;
@@ -656,7 +659,13 @@ class FireworksEngine {
         // Convert normalized position to screen coordinates
         const startX = position.x * this.width;
         const startY = this.height; // Start at bottom (max Y in canvas coordinates)
-        const targetY = position.y * this.height; // Target height (lower Y value)
+        let targetY = position.y * this.height; // Target height (lower Y value)
+        
+        // Validate that target is above start (targetY < startY in Y-down coordinates)
+        if (targetY >= startY) {
+            console.warn('[WebGPU Fireworks] Invalid rocket target: targetY must be < startY. Adjusting to midpoint.');
+            targetY = startY * 0.5; // Default to middle of screen
+        }
         
         // Create rocket object
         const rocket = {
