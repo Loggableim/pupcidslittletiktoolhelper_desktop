@@ -1413,22 +1413,24 @@ class TTSPlugin {
             // Step 0: Check message prefix filter (only for chat messages)
             if (source === 'chat' && this.config.messagePrefixFilter && Array.isArray(this.config.messagePrefixFilter) && this.config.messagePrefixFilter.length > 0) {
                 const trimmedText = text?.trim() || '';
-                const hasFilteredPrefix = this.config.messagePrefixFilter.some(prefix => {
-                    return prefix && trimmedText.startsWith(prefix);
-                });
-                
-                if (hasFilteredPrefix) {
-                    this._logDebug('SPEAK_DENIED', 'Message starts with filtered prefix', {
-                        text: trimmedText.substring(0, 50),
-                        username,
-                        prefixFilters: this.config.messagePrefixFilter
+                if (trimmedText.length > 0) {
+                    const hasFilteredPrefix = this.config.messagePrefixFilter.some(prefix => {
+                        return prefix && trimmedText.startsWith(prefix);
                     });
-                    this.logger.info(`TTS blocked for ${username}: Message starts with filtered prefix (${trimmedText[0]})`);
-                    return {
-                        success: false,
-                        error: 'prefix_filtered',
-                        reason: 'message_starts_with_filtered_prefix'
-                    };
+                    
+                    if (hasFilteredPrefix) {
+                        this._logDebug('SPEAK_DENIED', 'Message starts with filtered prefix', {
+                            text: trimmedText.substring(0, 50),
+                            username,
+                            prefixFilters: this.config.messagePrefixFilter
+                        });
+                        this.logger.info(`TTS blocked for ${username}: Message starts with filtered prefix (${trimmedText.charAt(0)})`);
+                        return {
+                            success: false,
+                            error: 'prefix_filtered',
+                            reason: 'message_starts_with_filtered_prefix'
+                        };
+                    }
                 }
             }
 
