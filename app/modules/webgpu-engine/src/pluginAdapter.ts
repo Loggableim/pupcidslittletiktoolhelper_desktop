@@ -14,7 +14,7 @@ import {
   SurfaceHandle,
   EngineLogger
 } from './types';
-import { createEngineLoggerFromPluginAPI, createNoOpLogger } from './logger';
+import { createEngineLoggerFromPluginAPI } from './logger';
 
 /**
  * Plugin API interface (matches LTTH PluginAPI)

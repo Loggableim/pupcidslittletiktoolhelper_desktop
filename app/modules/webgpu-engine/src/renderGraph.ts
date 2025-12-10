@@ -168,7 +168,7 @@ export class RenderGraphExecutor {
    */
   private executeNode(
     node: RenderGraphNode,
-    device: GPUDevice,
+    _device: GPUDevice,
     commandEncoder: GPUCommandEncoder,
     surface: SurfaceHandle | null,
     context: PluginRenderContext

@@ -1,0 +1,29 @@
+{
+  "id": "fireworks-webgpu",
+  "name": "Fireworks Superplugin WEBGPU",
+  "version": "1.0.0",
+  "description": "WebGPU-accelerated fireworks effects with gift-specific displays, combo systems, and interactive triggers. Features native WebGPU rendering with compute shaders for maximum performance.",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": false,
+  "permissions": [
+    "socket.io",
+    "routes",
+    "tiktok-events",
+    "database",
+    "file-upload"
+  ],
+  "dependencies": [],
+  "features": [
+    "gift-triggered-fireworks",
+    "combo-streak-system",
+    "escalation-system",
+    "webgpu-particle-engine",
+    "custom-shapes",
+    "audio-effects",
+    "goal-finales",
+    "interactive-triggers",
+    "random-generator",
+    "api-hooks"
+  ]
+}
