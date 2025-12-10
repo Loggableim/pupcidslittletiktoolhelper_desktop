@@ -542,6 +542,8 @@ class TTSPlugin {
                             this.config
                         );
                         this.logger.info('OpenAI TTS engine initialized via config update');
+                    } else {
+                        this.engines.openai.setApiKey(updates.openaiApiKey);
                     }
                 }
 
