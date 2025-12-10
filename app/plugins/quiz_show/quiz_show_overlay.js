@@ -1366,20 +1366,32 @@
                 return;
             }
 
+            // Hide question and answer sections to make room for leaderboard
+            const questionSection = document.getElementById('questionSection');
+            const answersSection = document.getElementById('answersSection');
+            const timerSection = document.getElementById('timerSection');
+            
+            if (questionSection) questionSection.style.display = 'none';
+            if (answersSection) answersSection.style.display = 'none';
+            if (timerSection) timerSection.style.display = 'none';
+
             // Set display type
             leaderboardType.textContent = displayType === 'round' ? 'Runde' : displayType === 'season' ? 'Season' : 'Runde + Season';
 
             // Clear existing entries
             leaderboardList.innerHTML = '';
 
-            // Create leaderboard entries
+            // Create leaderboard entries with staggered animation
             leaderboard.forEach((entry, index) => {
                 const li = document.createElement('li');
                 li.className = 'leaderboard-entry';
+                li.style.animationDelay = `${index * 0.1}s`;
 
                 const rank = document.createElement('div');
                 rank.className = `leaderboard-rank rank-${index + 1}`;
-                rank.textContent = `#${index + 1}`;
+                // Add medal emoji for top 3
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+                rank.textContent = medal;
 
                 const username = document.createElement('div');
                 username.className = 'leaderboard-username';
@@ -1413,6 +1425,16 @@
             if (leaderboardOverlay) {
                 leaderboardOverlay.classList.add('hidden');
             }
+            
+            // Restore question and answer sections
+            const questionSection = document.getElementById('questionSection');
+            const answersSection = document.getElementById('answersSection');
+            const timerSection = document.getElementById('timerSection');
+            
+            if (questionSection) questionSection.style.display = '';
+            if (answersSection) answersSection.style.display = '';
+            if (timerSection) timerSection.style.display = '';
+            
             console.log('Leaderboard hidden');
         } catch (error) {
             console.error('Error hiding leaderboard:', error);
