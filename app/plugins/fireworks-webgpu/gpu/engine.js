@@ -587,13 +587,19 @@ class FireworksEngine {
             const rocket = this.rockets[i];
             
             // Apply physics to rocket
-            rocket.vy += this.config.rocketAcceleration * deltaTime * 60; // Gravity/deceleration
+            // In canvas coordinates, Y increases downward
+            // rocketSpeed is negative (upward motion, decreasing Y)
+            // rocketAcceleration is negative, but we need positive acceleration (gravity pulling down)
+            // So we negate it to get proper deceleration of upward motion
+            rocket.vy -= this.config.rocketAcceleration * deltaTime * 60; // Deceleration (gravity)
             rocket.vx *= 0.995; // Air resistance
             
             rocket.x += rocket.vx * deltaTime * 60;
             rocket.y += rocket.vy * deltaTime * 60;
             
             // Check if rocket should explode
+            // Rocket explodes when velocity becomes positive (moving down) or reaches target height
+            // Since Y increases downward, targetY < startY for upward motion
             if (rocket.vy >= 0 || rocket.y <= rocket.targetY) {
                 // Rocket has reached peak or target, explode it
                 this.explodeRocket(rocket);
