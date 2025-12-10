@@ -20,6 +20,14 @@ class PluginManager {
         this.init();
     }
 
+    /**
+     * Helper to safely get translated text
+     * Checks if i18n is both available AND initialized
+     */
+    t(key, params = {}, fallback = '') {
+        return (window.i18n?.initialized) ? window.i18n.t(key, params) : fallback;
+    }
+
     init() {
         // Event-Listener registrieren
         const uploadBtn = document.getElementById('upload-plugin-btn');
@@ -165,12 +173,12 @@ class PluginManager {
                 this.updateStats();
                 this.applyFiltersAndSort();
             } else {
-                const errorMsg = window.i18n ? window.i18n.t('plugins.load_error', { error: data.error }) : 'Error loading plugins: ' + data.error;
+                const errorMsg = this.t('plugins.load_error', { error: data.error }, 'Error loading plugins: ' + data.error);
                 this.showError(errorMsg);
             }
         } catch (error) {
             console.error('Error loading plugins:', error);
-            const errorMsg = window.i18n ? window.i18n.t('plugins.load_error', { error: error.message }) : 'Error loading plugins: ' + error.message;
+            const errorMsg = this.t('plugins.load_error', { error: error.message }, 'Error loading plugins: ' + error.message);
             this.showError(errorMsg);
         }
     }
@@ -201,8 +209,8 @@ class PluginManager {
 
         if (this.filteredPlugins.length === 0) {
             const message = this.searchQuery || this.currentFilter !== 'all'
-                ? (window.i18n ? window.i18n.t('plugins.no_plugins_filter') : 'No plugins found matching the filter criteria.')
-                : (window.i18n ? window.i18n.t('plugins.no_plugins') : 'No plugins found.');
+                ? this.t('plugins.no_plugins_filter', {}, 'No plugins found matching the filter criteria.')
+                : this.t('plugins.no_plugins', {}, 'No plugins found.');
             
             container.innerHTML = `
                 <div class="text-center text-gray-400 py-12">
@@ -392,13 +400,13 @@ class PluginManager {
                 </button>
                 <button id="disable-${plugin.id}" class="plugin-action-btn" style="background: rgba(234, 179, 8, 0.15); border: 1px solid rgba(234, 179, 8, 0.3); color: #fbbf24;">
                     <i data-lucide="pause" style="width: 16px; height: 16px;"></i>
-                    <span>${window.i18n ? window.i18n.t('plugins.disable') : 'Disable'}</span>
+                    <span>${this.t('plugins.disable', {}, 'Disable')}</span>
                 </button>
             `
             : `
                 <button id="enable-${plugin.id}" class="plugin-action-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
                     <i data-lucide="play" style="width: 16px; height: 16px;"></i>
-                    <span>${window.i18n ? window.i18n.t('plugins.enable') : 'Enable'}</span>
+                    <span>${this.t('plugins.enable', {}, 'Enable')}</span>
                 </button>
             `;
 
@@ -437,7 +445,7 @@ class PluginManager {
                                     ${statusBadge}
                                     <span style="padding: 4px 10px; background: rgba(0, 0, 0, 0.3); border-radius: 6px; font-size: 0.75rem; color: #9ca3af; font-family: monospace;">v${this.escapeHtml(plugin.version)}</span>
                                 </div>
-                                <p style="font-size: 0.9rem; color: #d1d5db; margin: 0 0 12px 0; line-height: 1.5;">${this.escapeHtml(plugin.description || (window.i18n ? window.i18n.t('plugins.no_description') : 'No description available'))}</p>
+                                <p style="font-size: 0.9rem; color: #d1d5db; margin: 0 0 12px 0; line-height: 1.5;">${this.escapeHtml(plugin.description || this.t('plugins.no_description', {}, 'No description available'))}</p>
                                 
                                 <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.8rem; color: #9ca3af;">
                                     <div style="display: flex; align-items: center; gap: 6px;">
@@ -446,7 +454,7 @@ class PluginManager {
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 6px;">
                                         <i data-lucide="user" style="width: 14px; height: 14px;"></i>
-                                        <span>${this.escapeHtml(plugin.author || (window.i18n ? window.i18n.t('plugins.unknown_author') : 'Unknown'))}</span>
+                                        <span>${this.escapeHtml(plugin.author || this.t('plugins.unknown_author', {}, 'Unknown'))}</span>
                                     </div>
                                     ${plugin.type ? `<div>${typeBadge}</div>` : ''}
                                 </div>
@@ -458,7 +466,7 @@ class PluginManager {
                                 ${actionButtons}
                                 <button id="delete-${plugin.id}" class="plugin-action-btn" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171;">
                                     <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
-                                    <span>${window.i18n ? window.i18n.t('plugins.delete') : 'Delete'}</span>
+                                    <span>${this.t('plugins.delete', {}, 'Delete')}</span>
                                 </button>
                             </div>
                         </div>
@@ -493,7 +501,7 @@ class PluginManager {
             const data = await response.json();
 
             if (data.success) {
-                const successMsg = window.i18n ? window.i18n.t('notifications.plugin_enabled') : `Plugin ${pluginId} enabled`;
+                const successMsg = this.t('notifications.plugin_enabled', {}, `Plugin ${pluginId} enabled`);
                 this.showSuccess(successMsg);
                 await this.loadPlugins();
                 // UI für Dashboard aktualisieren
@@ -501,12 +509,12 @@ class PluginManager {
                     await checkPluginsAndUpdateUI();
                 }
             } else {
-                const errorMsg = window.i18n ? window.i18n.t('plugins.error_prefix', { error: data.error }) : 'Error: ' + data.error;
+                const errorMsg = this.t('plugins.error_prefix', { error: data.error }, 'Error: ' + data.error);
                 this.showError(errorMsg);
             }
         } catch (error) {
             console.error('Error enabling plugin:', error);
-            const errorMsg = window.i18n ? window.i18n.t('plugins.enable_failed', { error: error.message }) : 'Error enabling: ' + error.message;
+            const errorMsg = this.t('plugins.enable_failed', { error: error.message }, 'Error enabling: ' + error.message);
             this.showError(errorMsg);
         }
     }
@@ -522,7 +530,7 @@ class PluginManager {
             const data = await response.json();
 
             if (data.success) {
-                const successMsg = window.i18n ? window.i18n.t('notifications.plugin_disabled') : `Plugin ${pluginId} disabled`;
+                const successMsg = this.t('notifications.plugin_disabled', {}, `Plugin ${pluginId} disabled`);
                 this.showSuccess(successMsg);
                 await this.loadPlugins();
                 // UI für Dashboard aktualisieren
@@ -530,12 +538,12 @@ class PluginManager {
                     await checkPluginsAndUpdateUI();
                 }
             } else {
-                const errorMsg = window.i18n ? window.i18n.t('plugins.error_prefix', { error: data.error }) : 'Error: ' + data.error;
+                const errorMsg = this.t('plugins.error_prefix', { error: data.error }, 'Error: ' + data.error);
                 this.showError(errorMsg);
             }
         } catch (error) {
             console.error('Error disabling plugin:', error);
-            const errorMsg = window.i18n ? window.i18n.t('plugins.disable_failed', { error: error.message }) : 'Error disabling: ' + error.message;
+            const errorMsg = this.t('plugins.disable_failed', { error: error.message }, 'Error disabling: ' + error.message);
             this.showError(errorMsg);
         }
     }
@@ -551,19 +559,19 @@ class PluginManager {
             const data = await response.json();
 
             if (data.success) {
-                const successMsg = window.i18n ? window.i18n.t('notifications.plugin_reloaded') : `Plugin ${pluginId} reloaded`;
+                const successMsg = this.t('notifications.plugin_reloaded', {}, `Plugin ${pluginId} reloaded`);
                 await this.loadPlugins();
                 // UI für Dashboard aktualisieren
                 if (typeof checkPluginsAndUpdateUI === 'function') {
                     await checkPluginsAndUpdateUI();
                 }
             } else {
-                const errorMsg = window.i18n ? window.i18n.t('plugins.error_prefix', { error: data.error }) : 'Error: ' + data.error;
+                const errorMsg = this.t('plugins.error_prefix', { error: data.error }, 'Error: ' + data.error);
                 this.showError(errorMsg);
             }
         } catch (error) {
             console.error('Error reloading plugin:', error);
-            const errorMsg = window.i18n ? window.i18n.t('plugins.reload_failed', { error: error.message }) : 'Error reloading: ' + error.message;
+            const errorMsg = this.t('plugins.reload_failed', { error: error.message }, 'Error reloading: ' + error.message);
             this.showError(errorMsg);
         }
     }
@@ -572,7 +580,7 @@ class PluginManager {
      * Löscht ein Plugin
      */
     async deletePlugin(pluginId) {
-        const confirmMsg = window.i18n ? window.i18n.t('plugins.delete_confirm', { name: pluginId }) : `Really delete plugin "${pluginId}"?`;
+        const confirmMsg = this.t('plugins.delete_confirm', { name: pluginId }, `Really delete plugin "${pluginId}"?`);
         if (!confirm(confirmMsg)) {
             return;
         }
@@ -584,7 +592,7 @@ class PluginManager {
             const data = await response.json();
 
             if (data.success) {
-                const successMsg = window.i18n ? window.i18n.t('notifications.plugin_deleted') : `Plugin ${pluginId} deleted`;
+                const successMsg = this.t('notifications.plugin_deleted', {}, `Plugin ${pluginId} deleted`);
                 this.showSuccess(successMsg);
                 await this.loadPlugins();
                 // UI für Dashboard aktualisieren
@@ -592,12 +600,12 @@ class PluginManager {
                     await checkPluginsAndUpdateUI();
                 }
             } else {
-                const errorMsg = window.i18n ? window.i18n.t('plugins.error_prefix', { error: data.error }) : 'Error: ' + data.error;
+                const errorMsg = this.t('plugins.error_prefix', { error: data.error }, 'Error: ' + data.error);
                 this.showError(errorMsg);
             }
         } catch (error) {
             console.error('Error deleting plugin:', error);
-            const errorMsg = window.i18n ? window.i18n.t('plugins.error_prefix', { error: error.message }) : 'Error: ' + error.message;
+            const errorMsg = this.t('plugins.error_prefix', { error: error.message }, 'Error: ' + error.message);
             this.showError(errorMsg);
         }
     }
@@ -606,7 +614,7 @@ class PluginManager {
      * Lädt alle Plugins neu
      */
     async reloadAllPlugins() {
-        const confirmMsg = window.i18n ? window.i18n.t('plugins.reload_all_confirm') : 'Reload all plugins?';
+        const confirmMsg = this.t('plugins.reload_all_confirm', {}, 'Reload all plugins?');
         if (!confirm(confirmMsg)) {
             return;
         }
