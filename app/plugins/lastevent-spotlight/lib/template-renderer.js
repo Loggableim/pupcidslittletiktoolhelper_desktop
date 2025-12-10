@@ -626,7 +626,9 @@ class TemplateRenderer {
     const images = this.container.querySelectorAll('img[data-fallback]');
     images.forEach(img => {
       // Remove any existing error handler to prevent duplicates
-      img.removeEventListener('error', img._errorHandler);
+      if (img._errorHandler) {
+        img.removeEventListener('error', img._errorHandler);
+      }
       
       // Create and store the error handler
       img._errorHandler = function() {
