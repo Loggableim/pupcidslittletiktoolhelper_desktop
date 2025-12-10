@@ -368,6 +368,7 @@ class TTSPlugin {
             enableAutoFallback: true, // Enable automatic fallback to other engines when primary fails
             stripEmojis: false, // Strip emojis from TTS text (prevents emojis from being read aloud)
             performanceMode: 'balanced', // Performance mode: 'fast' (low-resource), 'balanced', 'quality' (high-resource)
+            messageFilterPrefixes: '', // Comma-separated list of prefixes to filter (e.g., "!,/" filters messages starting with ! or /)
             // Fallback engine activation settings - only activated engines are loaded
             enableGoogleFallback: true, // Enable Google as fallback engine
             enableSpeechifyFallback: false, // Enable Speechify as fallback engine
@@ -1416,6 +1417,35 @@ class TTSPlugin {
                     reason: permissionCheck.reason,
                     details: permissionCheck
                 };
+            }
+
+            // Step 1.5: Check message filter prefixes
+            if (this.config.messageFilterPrefixes && this.config.messageFilterPrefixes.trim()) {
+                const prefixes = this.config.messageFilterPrefixes.split(',').map(p => p.trim()).filter(p => p.length > 0);
+                if (prefixes.length > 0) {
+                    const trimmedText = text.trim();
+                    for (const prefix of prefixes) {
+                        if (trimmedText.startsWith(prefix)) {
+                            this._logDebug('SPEAK_DENIED', 'Message filtered by prefix', {
+                                username,
+                                text: trimmedText,
+                                matchedPrefix: prefix,
+                                configuredPrefixes: prefixes
+                            });
+                            this.logger.info(`TTS message filtered: ${username} - message starts with "${prefix}"`);
+                            return {
+                                success: false,
+                                error: 'message_filtered',
+                                reason: 'message_starts_with_filtered_prefix',
+                                matchedPrefix: prefix
+                            };
+                        }
+                    }
+                    this._logDebug('SPEAK_STEP1.5', 'Message passed prefix filter', {
+                        text: trimmedText,
+                        configuredPrefixes: prefixes
+                    });
+                }
             }
 
             // Step 2: Filter profanity

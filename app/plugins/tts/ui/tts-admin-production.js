@@ -435,6 +435,7 @@ function populateConfig(config) {
     setValue('autoLanguageDetection', config.autoLanguageDetection !== false);
     setValue('enableAutoFallback', config.enableAutoFallback !== false);
     setValue('stripEmojis', config.stripEmojis || false);
+    setValue('messageFilterPrefixes', config.messageFilterPrefixes || '');
 
     // Fallback engine activation settings
     setValue('enableGoogleFallback', config.enableGoogleFallback !== false);
@@ -553,6 +554,7 @@ async function saveConfig() {
             autoLanguageDetection: document.getElementById('autoLanguageDetection').checked,
             enableAutoFallback: document.getElementById('enableAutoFallback').checked,
             stripEmojis: document.getElementById('stripEmojis').checked,
+            messageFilterPrefixes: document.getElementById('messageFilterPrefixes')?.value?.trim() || '',
             // Fallback engine activation settings
             enableGoogleFallback: document.getElementById('enableGoogleFallback')?.checked || false,
             enableSpeechifyFallback: document.getElementById('enableSpeechifyFallback')?.checked || false,
