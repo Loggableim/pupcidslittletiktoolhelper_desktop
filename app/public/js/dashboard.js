@@ -1573,9 +1573,22 @@ async function saveTTSAPIKeys() {
     const elevenlabsKey = elevenlabsKeyInput.value.trim();
     const openaiKey = openaiKeyInput.value.trim();
     
-    // At least one API key must be provided
-    if (!googleKey && !speechifyKey && !elevenlabsKey && !openaiKey) {
+    // Check if there are any actual new keys to save (not placeholders or empty)
+    const hasNewKeys = (googleKey && googleKey !== '***REDACTED***') ||
+                       (speechifyKey && speechifyKey !== '***REDACTED***') ||
+                       (elevenlabsKey && elevenlabsKey !== '***REDACTED***') ||
+                       (openaiKey && openaiKey !== '***REDACTED***');
+    
+    // Check if at least one key exists (either new or placeholder indicating existing)
+    const hasAnyKeys = googleKey || speechifyKey || elevenlabsKey || openaiKey;
+    
+    if (!hasAnyKeys) {
         alert('❌ Please enter at least one TTS API key');
+        return;
+    }
+    
+    if (!hasNewKeys) {
+        alert('ℹ️ No changes to save. All fields contain existing (masked) keys.\n\nTo update a key, replace the ***REDACTED*** value with your new API key.');
         return;
     }
 
