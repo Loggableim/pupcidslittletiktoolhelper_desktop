@@ -199,7 +199,19 @@
     "sort_by": "Sort By",
     "sort_name": "Name",
     "sort_type": "Type",
-    "sort_author": "Author"
+    "sort_author": "Author",
+    "delete": "Delete",
+    "delete_confirm": "Really delete plugin \"{{name}}\"?",
+    "error_prefix": "Error: {{error}}",
+    "enable_failed": "Error enabling: {{error}}",
+    "disable_failed": "Error disabling: {{error}}",
+    "reload_failed": "Error reloading: {{error}}",
+    "reload_all_confirm": "Reload all plugins?",
+    "load_error": "Error loading plugins: {{error}}",
+    "no_plugins": "No plugins found.",
+    "no_plugins_filter": "No plugins found matching the filter criteria.",
+    "no_description": "No description available",
+    "unknown_author": "Unknown"
   },
   "leaderboard": {
     "title": "Leaderboard",
