@@ -1348,6 +1348,31 @@
     // LEADERBOARD DISPLAY
     // ============================================
 
+    // Animation configuration for leaderboard entries
+    const LEADERBOARD_ANIMATION_DELAY = 0.1; // seconds per entry
+
+    // Helper function to hide main quiz sections
+    function hideQuizSections() {
+        const questionSection = document.getElementById('questionSection');
+        const answersSection = document.getElementById('answersSection');
+        const timerSection = document.getElementById('timerSection');
+        
+        if (questionSection) questionSection.style.display = 'none';
+        if (answersSection) answersSection.style.display = 'none';
+        if (timerSection) timerSection.style.display = 'none';
+    }
+
+    // Helper function to show main quiz sections
+    function showQuizSections() {
+        const questionSection = document.getElementById('questionSection');
+        const answersSection = document.getElementById('answersSection');
+        const timerSection = document.getElementById('timerSection');
+        
+        if (questionSection) questionSection.style.display = '';
+        if (answersSection) answersSection.style.display = '';
+        if (timerSection) timerSection.style.display = '';
+    }
+
     function handleShowLeaderboard(data) {
         try {
             const { leaderboard, displayType, animationStyle } = data;
@@ -1366,20 +1391,26 @@
                 return;
             }
 
+            // Hide question and answer sections to make room for leaderboard
+            hideQuizSections();
+
             // Set display type
             leaderboardType.textContent = displayType === 'round' ? 'Runde' : displayType === 'season' ? 'Season' : 'Runde + Season';
 
             // Clear existing entries
             leaderboardList.innerHTML = '';
 
-            // Create leaderboard entries
+            // Create leaderboard entries with staggered animation
             leaderboard.forEach((entry, index) => {
                 const li = document.createElement('li');
                 li.className = 'leaderboard-entry';
+                li.style.animationDelay = `${index * LEADERBOARD_ANIMATION_DELAY}s`;
 
                 const rank = document.createElement('div');
                 rank.className = `leaderboard-rank rank-${index + 1}`;
-                rank.textContent = `#${index + 1}`;
+                // Add medal emoji for top 3
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+                rank.textContent = medal;
 
                 const username = document.createElement('div');
                 username.className = 'leaderboard-username';
@@ -1413,6 +1444,10 @@
             if (leaderboardOverlay) {
                 leaderboardOverlay.classList.add('hidden');
             }
+            
+            // Restore question and answer sections
+            showQuizSections();
+            
             console.log('Leaderboard hidden');
         } catch (error) {
             console.error('Error hiding leaderboard:', error);

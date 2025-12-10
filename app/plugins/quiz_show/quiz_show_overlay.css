@@ -93,6 +93,10 @@
     --timer-left: auto;
     --timer-variant: circular; /* circular, bar, neon, ring */
 
+    /* Leaderboard - Layout Configuration */
+    --leaderboard-header-height: 150px; /* Space for header, padding, and margins */
+    --leaderboard-entry-animation-duration: 0.5s; /* Duration for entry slide-in animation */
+
     /* Snap to Grid */
     --grid-size: 10px;
 }
@@ -1526,12 +1530,12 @@ body {
     /* Leaderboard in vertical mode */
     .leaderboard-overlay {
         position: fixed;
-        bottom: 20px;
+        top: 50%;
         left: 50%;
-        transform: translateX(-50%);
+        transform: translate(-50%, -50%);
         width: 95%;
-        max-width: 600px;
-        max-height: 300px;
+        max-width: none;
+        max-height: 85vh;
     }
 
     /* Joker info in vertical mode */
@@ -1597,10 +1601,12 @@ body {
     /* Leaderboard in horizontal mode */
     .leaderboard-overlay {
         position: fixed;
-        top: 50px;
-        right: 30px;
-        width: 400px;
-        max-height: 600px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 1200px;
+        max-height: 85vh;
     }
 
     /* Joker info in horizontal mode */
@@ -1641,13 +1647,15 @@ body {
 }
 
 .overlay-container[data-custom-layout="true"] .leaderboard-overlay {
-    top: var(--leaderboard-top, auto);
-    left: var(--leaderboard-left, auto);
-    width: var(--leaderboard-width, auto);
-    height: var(--leaderboard-height, auto);
-    max-height: none;
+    /* In custom layout mode, leaderboard should still occupy the Q&A area */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: var(--leaderboard-width, 90%);
+    max-width: var(--leaderboard-max-width, 1200px);
+    height: auto;
+    max-height: var(--leaderboard-max-height, 85vh);
     position: fixed;
-    transform: none;
 }
 
 .overlay-container[data-custom-layout="true"] .joker-info-overlay {
@@ -1668,10 +1676,18 @@ body {
     backdrop-filter: blur(var(--bg-blur));
     border-radius: var(--border-radius);
     border: var(--border-width) solid var(--border-color);
-    padding: 20px;
+    padding: 30px;
     box-shadow: var(--shadow-md);
     overflow: hidden;
     z-index: 100;
+    /* Full-screen positioning to occupy question and answer area */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 1200px;
+    max-height: 85vh;
 }
 
 .leaderboard-overlay.hidden {
@@ -1682,77 +1698,131 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
     border-bottom: 2px solid var(--border-color);
 }
 
 .leaderboard-title {
-    font-size: var(--font-size-lg);
+    font-size: 2.5rem;
     font-weight: var(--font-weight-bold);
     color: var(--text-primary);
+    background: linear-gradient(135deg, var(--color-primary-light), var(--color-secondary-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .leaderboard-type {
-    font-size: var(--font-size-sm);
+    font-size: 1.2rem;
     color: var(--text-secondary);
     text-transform: uppercase;
+    letter-spacing: 2px;
 }
 
 .leaderboard-list {
     list-style: none;
     padding: 0;
     margin: 0;
-    max-height: 500px;
+    max-height: calc(85vh - var(--leaderboard-header-height));
     overflow-y: auto;
+}
+
+.leaderboard-list::-webkit-scrollbar {
+    width: 10px;
+}
+
+.leaderboard-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.leaderboard-list::-webkit-scrollbar-thumb {
+    background: var(--color-primary);
+    border-radius: 10px;
 }
 
 .leaderboard-entry {
     display: flex;
     align-items: center;
-    padding: 10px;
-    margin-bottom: 8px;
+    padding: 18px 20px;
+    margin-bottom: 12px;
     background: rgba(255, 255, 255, 0.05);
-    border-radius: var(--border-radius-small);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
+    animation: slideInLeaderboard calc(var(--leaderboard-entry-animation-duration) / var(--animation-speed)) ease backwards;
+}
+
+.leaderboard-entry:nth-child(1) {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 193, 7, 0.1));
+    border-color: rgba(255, 215, 0, 0.4);
+}
+
+.leaderboard-entry:nth-child(2) {
+    background: linear-gradient(135deg, rgba(192, 192, 192, 0.2), rgba(169, 169, 169, 0.1));
+    border-color: rgba(192, 192, 192, 0.4);
+}
+
+.leaderboard-entry:nth-child(3) {
+    background: linear-gradient(135deg, rgba(205, 127, 50, 0.2), rgba(184, 115, 51, 0.1));
+    border-color: rgba(205, 127, 50, 0.4);
 }
 
 .leaderboard-entry:hover {
     background: rgba(255, 255, 255, 0.1);
-    transform: translateX(5px);
+    transform: translateX(8px);
+    box-shadow: 0 5px 20px rgba(59, 130, 246, 0.3);
+}
+
+@keyframes slideInLeaderboard {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 .leaderboard-rank {
-    font-size: var(--font-size-lg);
+    font-size: 2rem;
     font-weight: var(--font-weight-bold);
     color: var(--color-gold);
-    min-width: 40px;
+    min-width: 60px;
     text-align: center;
 }
 
 .leaderboard-rank.rank-1 {
     color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
 .leaderboard-rank.rank-2 {
     color: #c0c0c0;
+    text-shadow: 0 0 10px rgba(192, 192, 192, 0.5);
 }
 
 .leaderboard-rank.rank-3 {
     color: #cd7f32;
+    text-shadow: 0 0 10px rgba(205, 127, 50, 0.5);
 }
 
 .leaderboard-username {
     flex: 1;
-    font-size: var(--font-size-md);
+    font-size: 1.4rem;
+    font-weight: 600;
     color: var(--text-primary);
-    padding: 0 15px;
+    padding: 0 20px;
 }
 
 .leaderboard-points {
-    font-size: var(--font-size-md);
+    font-size: 1.6rem;
     font-weight: var(--font-weight-bold);
-    color: var(--color-primary-light);
+    color: var(--color-success);
+    min-width: 100px;
+    text-align: right;
 }
 
 /* Leaderboard animations */

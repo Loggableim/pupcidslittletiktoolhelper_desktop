@@ -31,7 +31,7 @@
             padding: 30px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
             border: 2px solid rgba(59, 130, 246, 0.3);
-            max-width: 600px;
+            max-width: 1200px;
             width: 100%;
             max-height: 90vh;
             overflow: hidden;
@@ -280,11 +280,11 @@
                 listElement.innerHTML = leaderboard.map((entry, index) => {
                     const rank = index + 1;
                     const rankClass = rank <= 3 ? `rank-${rank}` : '';
-                    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+                    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
                     
                     return `
                         <li class="leaderboard-item" style="animation-delay: ${index * 0.1}s">
-                            <div class="rank ${rankClass}">${medal || rank}</div>
+                            <div class="rank ${rankClass}">${medal}</div>
                             <div class="player-info">
                                 <div class="player-name">${escapeHtml(entry.username)}</div>
                                 ${entry.round_points !== undefined ? 
