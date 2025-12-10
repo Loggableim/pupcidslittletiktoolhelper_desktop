@@ -296,22 +296,14 @@ class ChatangoThemeAdapter {
         const scriptId = this.generateUniqueId('cid-dashboard');
         const jsonConfig = JSON.stringify(embedConfig.config);
         
-        // Create script element properly for Chatango embed
-        // IMPORTANT: Chatango's emb.js reads the script element's text content
-        // We must set textContent BEFORE setting src, and use async loading
-        const script = document.createElement('script');
-        script.id = scriptId;
-        script.setAttribute('data-cfasync', 'false');
-        script.async = true;
-        script.style.cssText = `width: ${embedConfig.width}; height: ${embedConfig.height};`;
+        // Create script tag HTML string
+        // IMPORTANT: Chatango's emb.js requires the JSON config as text content within the script tag.
+        // When using innerHTML to insert a script tag, the browser properly preserves the text content.
+        // Using createElement() and setting both textContent and src does NOT work - browsers ignore
+        // textContent when src is set on external scripts.
+        const scriptTag = `<script id="${scriptId}" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="width: ${embedConfig.width}; height: ${embedConfig.height};">${jsonConfig}<\/script>`;
         
-        // Set JSON config as textContent first, then set src
-        // This ensures Chatango can read the config when emb.js loads
-        // Using textContent instead of innerHTML for security (no HTML parsing)
-        script.textContent = jsonConfig;
-        script.src = 'https://st.chatango.com/js/gz/emb.js';
-        
-        container.appendChild(script);
+        container.innerHTML = scriptTag;
         
         console.log('💬 Dashboard embed script added:', scriptId);
     }
@@ -336,22 +328,14 @@ class ChatangoThemeAdapter {
         const scriptId = this.generateUniqueId('cid-widget');
         const jsonConfig = JSON.stringify(embedConfig.config);
         
-        // Create script element properly for Chatango embed
-        // IMPORTANT: Chatango's emb.js reads the script element's text content
-        // We must set textContent BEFORE setting src, and use async loading
-        const script = document.createElement('script');
-        script.id = scriptId;
-        script.setAttribute('data-cfasync', 'false');
-        script.async = true;
-        script.style.cssText = `width: ${embedConfig.width}; height: ${embedConfig.height};`;
+        // Create script tag HTML string
+        // IMPORTANT: Chatango's emb.js requires the JSON config as text content within the script tag.
+        // When using innerHTML to insert a script tag, the browser properly preserves the text content.
+        // Using createElement() and setting both textContent and src does NOT work - browsers ignore
+        // textContent when src is set on external scripts.
+        const scriptTag = `<script id="${scriptId}" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="width: ${embedConfig.width}; height: ${embedConfig.height};">${jsonConfig}<\/script>`;
         
-        // Set JSON config as textContent first, then set src
-        // This ensures Chatango can read the config when emb.js loads
-        // Using textContent instead of innerHTML for security (no HTML parsing)
-        script.textContent = jsonConfig;
-        script.src = 'https://st.chatango.com/js/gz/emb.js';
-        
-        container.appendChild(script);
+        container.innerHTML = scriptTag;
         
         console.log('💬 Widget embed script added:', scriptId);
     }
