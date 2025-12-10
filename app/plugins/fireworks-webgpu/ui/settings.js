@@ -616,14 +616,14 @@ function setupEventListeners() {
     
     // Overlay buttons
     document.getElementById('copy-overlay-url').addEventListener('click', () => {
-        const url = window.location.origin + '/fireworks/overlay';
+        const url = window.location.origin + '/fireworks-webgpu/overlay';
         navigator.clipboard.writeText(url).then(() => {
             showToast('Overlay URL copied to clipboard!', 'success');
         });
     });
     
     document.getElementById('open-overlay').addEventListener('click', () => {
-        window.open('/fireworks/overlay', '_blank');
+        window.open('/fireworks-webgpu/overlay', '_blank');
     });
     
     // Add color button

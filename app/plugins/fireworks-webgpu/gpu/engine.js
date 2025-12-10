@@ -210,8 +210,19 @@ class AudioManager {
     async preload(url, id) {
         if (!this.enabled) return;
         
+        // Ensure audio context exists before preloading
+        await this.ensureAudioContext();
+        
+        if (!this.audioContext) {
+            console.warn(`[WebGPU Fireworks] Cannot preload ${id}: No audio context`);
+            return;
+        }
+        
         try {
             const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             const arrayBuffer = await response.arrayBuffer();
             const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             this.sounds.set(id, audioBuffer);
@@ -263,6 +274,7 @@ class FireworksEngine {
         this.computePipeline = null;
         
         this.particles = [];
+        this.rockets = []; // Array to track active rockets
         this.particleBuffer = null;
         this.uniformBuffer = null;
         this.bindGroup = null;
@@ -498,6 +510,9 @@ class FireworksEngine {
         const deltaTime = (now - this.lastFrameTime) / 1000;
         this.lastFrameTime = now;
         
+        // Update rockets
+        this.updateRockets(deltaTime);
+        
         // Update FPS
         this.frameCount++;
         if (now - this.fpsUpdateTime >= 1000) {
@@ -565,20 +580,33 @@ class FireworksEngine {
         
         requestAnimationFrame(() => this.render());
     }
-
-    addFirework(options = {}) {
-        console.log('[WebGPU Fireworks] addFirework called:', options);
+    
+    updateRockets(deltaTime) {
+        // Update rocket positions
+        for (let i = this.rockets.length - 1; i >= 0; i--) {
+            const rocket = this.rockets[i];
+            
+            // Apply physics to rocket
+            rocket.vy += this.config.rocketAcceleration * deltaTime * 60; // Gravity/deceleration
+            rocket.vx *= 0.995; // Air resistance
+            
+            rocket.x += rocket.vx * deltaTime * 60;
+            rocket.y += rocket.vy * deltaTime * 60;
+            
+            // Check if rocket should explode
+            if (rocket.vy >= 0 || rocket.y <= rocket.targetY) {
+                // Rocket has reached peak or target, explode it
+                this.explodeRocket(rocket);
+                this.rockets.splice(i, 1);
+            }
+        }
+    }
+    
+    explodeRocket(rocket) {
+        // Create explosion particles at rocket position
+        const particleCount = rocket.particleCount || 50;
+        const colors = rocket.colors || this.config.defaultColors;
         
-        // Create a simple burst of particles for testing
-        const position = options.position || { x: 0.5, y: 0.8 };
-        const particleCount = options.particleCount || 50;
-        const colors = options.colors || this.config.defaultColors;
-        
-        // Convert normalized position to screen coordinates
-        const x = position.x * this.width;
-        const y = position.y * this.height;
-        
-        // Create particles
         for (let i = 0; i < particleCount; i++) {
             const angle = (Math.PI * 2 * i) / particleCount;
             const speed = 50 + Math.random() * 100;
@@ -588,7 +616,7 @@ class FireworksEngine {
             const color = this.hexToRgba(colorHex);
             
             const particle = {
-                position: [x, y],
+                position: [rocket.x, rocket.y],
                 velocity: [Math.cos(angle) * speed, Math.sin(angle) * speed],
                 color: color,
                 size: 2 + Math.random() * 3,
@@ -603,9 +631,42 @@ class FireworksEngine {
         // Update particle buffer
         this.updateParticleBuffer();
         
-        // Play audio
+        // Play explosion audio
         if (this.audioManager.enabled) {
             this.audioManager.play('explosion-basic', 0.5);
+        }
+    }
+
+    addFirework(options = {}) {
+        console.log('[WebGPU Fireworks] addFirework called:', options);
+        
+        // Get options with defaults
+        const position = options.position || { x: 0.5, y: 0.8 };
+        const particleCount = options.particleCount || 50;
+        const colors = options.colors || this.config.defaultColors;
+        
+        // Convert normalized position to screen coordinates
+        const startX = position.x * this.width;
+        const startY = this.height; // Start at bottom
+        const targetY = position.y * this.height; // Target height
+        
+        // Create rocket object
+        const rocket = {
+            x: startX,
+            y: startY,
+            targetY: targetY,
+            vx: (Math.random() - 0.5) * 2, // Slight horizontal drift
+            vy: this.config.rocketSpeed, // Initial upward velocity
+            particleCount: particleCount,
+            colors: colors,
+            options: options // Store original options for explosion
+        };
+        
+        this.rockets.push(rocket);
+        
+        // Play launch audio
+        if (this.audioManager.enabled) {
+            this.audioManager.play('rocket-basic', 0.3);
         }
     }
     
