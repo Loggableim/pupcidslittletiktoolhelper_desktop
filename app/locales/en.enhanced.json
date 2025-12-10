@@ -153,7 +153,16 @@
     "disable_error": "Error disabling plugin",
     "reload_error": "Error reloading plugin",
     "delete_error": "Error deleting plugin",
-    "delete_confirm": "Are you sure you want to delete this plugin?"
+    "delete_confirm": "Are you sure you want to delete this plugin?",
+    "error_prefix": "Error: {{error}}",
+    "enable_failed": "Error enabling: {{error}}",
+    "disable_failed": "Error disabling: {{error}}",
+    "reload_failed": "Error reloading: {{error}}",
+    "reload_all_confirm": "Reload all plugins?",
+    "load_error": "Error loading plugins: {{error}}",
+    "no_plugins_filter": "No plugins found matching the filter criteria.",
+    "no_description": "No description available",
+    "unknown_author": "Unknown"
   },
   "leaderboard": {
     "title": "Leaderboard",

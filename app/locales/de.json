@@ -199,7 +199,19 @@
     "sort_by": "Sortieren nach",
     "sort_name": "Name",
     "sort_type": "Typ",
-    "sort_author": "Autor"
+    "sort_author": "Autor",
+    "delete": "Löschen",
+    "delete_confirm": "Plugin \"{{name}}\" wirklich löschen?",
+    "error_prefix": "Fehler: {{error}}",
+    "enable_failed": "Fehler beim Aktivieren: {{error}}",
+    "disable_failed": "Fehler beim Deaktivieren: {{error}}",
+    "reload_failed": "Fehler beim Neuladen: {{error}}",
+    "reload_all_confirm": "Alle Plugins neu laden?",
+    "load_error": "Fehler beim Laden der Plugins: {{error}}",
+    "no_plugins": "Keine Plugins gefunden.",
+    "no_plugins_filter": "Keine Plugins gefunden, die den Filterkriterien entsprechen.",
+    "no_description": "Keine Beschreibung verfügbar",
+    "unknown_author": "Unbekannt"
   },
   "leaderboard": {
     "title": "Bestenliste",

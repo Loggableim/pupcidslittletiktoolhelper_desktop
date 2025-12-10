@@ -153,7 +153,16 @@
     "disable_error": "Fehler beim Deaktivieren des Plugins",
     "reload_error": "Fehler beim Neuladen des Plugins",
     "delete_error": "Fehler beim Löschen des Plugins",
-    "delete_confirm": "Bist du sicher, dass du dieses Plugin löschen möchtest?"
+    "delete_confirm": "Bist du sicher, dass du dieses Plugin löschen möchtest?",
+    "error_prefix": "Fehler: {{error}}",
+    "enable_failed": "Fehler beim Aktivieren: {{error}}",
+    "disable_failed": "Fehler beim Deaktivieren: {{error}}",
+    "reload_failed": "Fehler beim Neuladen: {{error}}",
+    "reload_all_confirm": "Alle Plugins neu laden?",
+    "load_error": "Fehler beim Laden der Plugins: {{error}}",
+    "no_plugins_filter": "Keine Plugins gefunden, die den Filterkriterien entsprechen.",
+    "no_description": "Keine Beschreibung verfügbar",
+    "unknown_author": "Unbekannt"
   },
   "leaderboard": {
     "title": "Bestenliste",
