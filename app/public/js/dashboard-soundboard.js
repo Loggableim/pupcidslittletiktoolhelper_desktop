@@ -116,31 +116,66 @@ async function loadSoundboardSettings() {
         if (followUrl) followUrl.value = settings.soundboard_follow_sound || '';
         
         const followVolume = document.getElementById('soundboard-follow-volume');
-        if (followVolume) followVolume.value = settings.soundboard_follow_volume || '1.0';
+        const followVolumeSlider = document.getElementById('soundboard-follow-volume-slider');
+        const followVolumeLabel = document.getElementById('soundboard-follow-volume-label');
+        if (followVolume) {
+            const volumeValue = parseFloat(settings.soundboard_follow_volume || '1.0');
+            followVolume.value = volumeValue;
+            if (followVolumeSlider) followVolumeSlider.value = Math.round(volumeValue * 100);
+            if (followVolumeLabel) followVolumeLabel.textContent = `${Math.round(volumeValue * 100)}%`;
+        }
         
         const subscribeUrl = document.getElementById('soundboard-subscribe-url');
         if (subscribeUrl) subscribeUrl.value = settings.soundboard_subscribe_sound || '';
         
         const subscribeVolume = document.getElementById('soundboard-subscribe-volume');
-        if (subscribeVolume) subscribeVolume.value = settings.soundboard_subscribe_volume || '1.0';
+        const subscribeVolumeSlider = document.getElementById('soundboard-subscribe-volume-slider');
+        const subscribeVolumeLabel = document.getElementById('soundboard-subscribe-volume-label');
+        if (subscribeVolume) {
+            const volumeValue = parseFloat(settings.soundboard_subscribe_volume || '1.0');
+            subscribeVolume.value = volumeValue;
+            if (subscribeVolumeSlider) subscribeVolumeSlider.value = Math.round(volumeValue * 100);
+            if (subscribeVolumeLabel) subscribeVolumeLabel.textContent = `${Math.round(volumeValue * 100)}%`;
+        }
         
         const shareUrl = document.getElementById('soundboard-share-url');
         if (shareUrl) shareUrl.value = settings.soundboard_share_sound || '';
         
         const shareVolume = document.getElementById('soundboard-share-volume');
-        if (shareVolume) shareVolume.value = settings.soundboard_share_volume || '1.0';
+        const shareVolumeSlider = document.getElementById('soundboard-share-volume-slider');
+        const shareVolumeLabel = document.getElementById('soundboard-share-volume-label');
+        if (shareVolume) {
+            const volumeValue = parseFloat(settings.soundboard_share_volume || '1.0');
+            shareVolume.value = volumeValue;
+            if (shareVolumeSlider) shareVolumeSlider.value = Math.round(volumeValue * 100);
+            if (shareVolumeLabel) shareVolumeLabel.textContent = `${Math.round(volumeValue * 100)}%`;
+        }
         
         const giftUrl = document.getElementById('soundboard-gift-url');
         if (giftUrl) giftUrl.value = settings.soundboard_default_gift_sound || '';
         
         const giftVolume = document.getElementById('soundboard-gift-volume');
-        if (giftVolume) giftVolume.value = settings.soundboard_gift_volume || '1.0';
+        const giftVolumeSlider = document.getElementById('soundboard-gift-volume-slider');
+        const giftVolumeLabel = document.getElementById('soundboard-gift-volume-label');
+        if (giftVolume) {
+            const volumeValue = parseFloat(settings.soundboard_gift_volume || '1.0');
+            giftVolume.value = volumeValue;
+            if (giftVolumeSlider) giftVolumeSlider.value = Math.round(volumeValue * 100);
+            if (giftVolumeLabel) giftVolumeLabel.textContent = `${Math.round(volumeValue * 100)}%`;
+        }
         
         const likeUrl = document.getElementById('soundboard-like-url');
         if (likeUrl) likeUrl.value = settings.soundboard_like_sound || '';
         
         const likeVolume = document.getElementById('soundboard-like-volume');
-        if (likeVolume) likeVolume.value = settings.soundboard_like_volume || '1.0';
+        const likeVolumeSlider = document.getElementById('soundboard-like-volume-slider');
+        const likeVolumeLabel = document.getElementById('soundboard-like-volume-label');
+        if (likeVolume) {
+            const volumeValue = parseFloat(settings.soundboard_like_volume || '1.0');
+            likeVolume.value = volumeValue;
+            if (likeVolumeSlider) likeVolumeSlider.value = Math.round(volumeValue * 100);
+            if (likeVolumeLabel) likeVolumeLabel.textContent = `${Math.round(volumeValue * 100)}%`;
+        }
         
         const likeThreshold = document.getElementById('soundboard-like-threshold');
         if (likeThreshold) likeThreshold.value = settings.soundboard_like_threshold || '0';
@@ -207,6 +242,41 @@ async function saveSoundboardSettings() {
     }
 }
 
+// Initialize event sound sliders
+function initializeEventSoundSliders() {
+    // Helper function to setup a slider
+    const setupSlider = (sliderId, inputId, labelId) => {
+        const slider = document.getElementById(sliderId);
+        const input = document.getElementById(inputId);
+        const label = document.getElementById(labelId);
+        
+        if (!slider || !input || !label) return;
+        
+        // Update label and input when slider changes
+        slider.addEventListener('input', function() {
+            const percentage = this.value;
+            const volumeValue = parseFloat(percentage) / 100.0;
+            label.textContent = `${percentage}%`;
+            input.value = volumeValue.toFixed(1);
+        });
+        
+        // Sync slider when input changes programmatically
+        input.addEventListener('change', function() {
+            const volumeValue = parseFloat(this.value);
+            const percentage = Math.round(volumeValue * 100);
+            slider.value = percentage;
+            label.textContent = `${percentage}%`;
+        });
+    };
+    
+    // Setup all event sound sliders
+    setupSlider('soundboard-follow-volume-slider', 'soundboard-follow-volume', 'soundboard-follow-volume-label');
+    setupSlider('soundboard-subscribe-volume-slider', 'soundboard-subscribe-volume', 'soundboard-subscribe-volume-label');
+    setupSlider('soundboard-share-volume-slider', 'soundboard-share-volume', 'soundboard-share-volume-label');
+    setupSlider('soundboard-gift-volume-slider', 'soundboard-gift-volume', 'soundboard-gift-volume-label');
+    setupSlider('soundboard-like-volume-slider', 'soundboard-like-volume', 'soundboard-like-volume-label');
+}
+
 // ========== GIFT SOUNDS ==========
 async function loadGiftSounds() {
     try {
@@ -233,27 +303,71 @@ async function loadGiftSounds() {
                 ? `<span class="text-green-400">${escapeHtml(gift.animationType)}</span>`
                 : '<span class="text-gray-500">none</span>';
             
-            // Generate unique ID for this gift's volume control
+            // Generate unique IDs for this gift's volume controls
             const giftVolumeId = `gift-vol-${gift.giftId}`;
+            const giftTestVolumeId = `gift-test-vol-${gift.giftId}`;
+            const giftAnimVolumeId = `gift-anim-vol-${gift.giftId}`;
+            
+            // Create sound volume slider for Volume column
+            const soundVolumeContainer = document.createElement('div');
+            soundVolumeContainer.className = 'flex items-center gap-2';
+            soundVolumeContainer.innerHTML = `
+                <input type="range" id="${giftVolumeId}" min="0" max="100" value="${Math.round(gift.volume * 100)}" 
+                    data-gift-id="${gift.giftId}"
+                    data-volume-type="sound"
+                    style="width: 80px; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                    title="Sound volume">
+                <span id="${giftVolumeId}-label" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 35px;">${Math.round(gift.volume * 100)}%</span>
+            `;
+            
+            // Create animation volume slider for Anim. Vol. column
+            const animVolumeContainer = document.createElement('div');
+            animVolumeContainer.className = 'flex items-center gap-2';
+            animVolumeContainer.innerHTML = `
+                <input type="range" id="${giftAnimVolumeId}" min="0" max="100" value="${Math.round((gift.animationVolume || 1.0) * 100)}" 
+                    data-gift-id="${gift.giftId}"
+                    data-volume-type="animation"
+                    style="width: 80px; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                    title="Animation volume">
+                <span id="${giftAnimVolumeId}-label" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 35px;">${Math.round((gift.animationVolume || 1.0) * 100)}%</span>
+            `;
             
             // Create test button with volume slider
             const testContainer = document.createElement('div');
             testContainer.className = 'flex items-center gap-2';
             testContainer.innerHTML = `
-                <button class="bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700" data-action="test-sound" data-url="${gift.mp3Url}" data-volume-input-id="${giftVolumeId}" title="Test sound">
+                <button class="bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700" data-action="test-sound" data-url="${gift.mp3Url}" data-volume-input-id="${giftTestVolumeId}" title="Test sound">
                     🔊 Test
                 </button>
-                <input type="range" id="${giftVolumeId}" min="0" max="100" value="${Math.round(gift.volume * 100)}" 
+                <input type="range" id="${giftTestVolumeId}" min="0" max="100" value="${Math.round(gift.volume * 100)}" 
                     style="width: 60px; height: 3px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
                     title="Test volume">
-                <span id="${giftVolumeId}-label" style="font-size: 0.7rem; color: var(--color-text-secondary);">${Math.round(gift.volume * 100)}%</span>
+                <span id="${giftTestVolumeId}-label" style="font-size: 0.7rem; color: var(--color-text-secondary);">${Math.round(gift.volume * 100)}%</span>
             `;
             
-            // Add volume slider change listener
-            const volumeSlider = testContainer.querySelector(`#${giftVolumeId}`);
-            const volumeLabel = testContainer.querySelector(`#${giftVolumeId}-label`);
-            volumeSlider.addEventListener('input', function() {
-                volumeLabel.textContent = `${this.value}%`;
+            // Add volume slider change listeners
+            const soundVolumeSlider = soundVolumeContainer.querySelector(`#${giftVolumeId}`);
+            const soundVolumeLabel = soundVolumeContainer.querySelector(`#${giftVolumeId}-label`);
+            soundVolumeSlider.addEventListener('input', function() {
+                soundVolumeLabel.textContent = `${this.value}%`;
+            });
+            soundVolumeSlider.addEventListener('change', function() {
+                updateGiftVolume(gift.giftId, parseFloat(this.value) / 100.0, 'sound');
+            });
+            
+            const animVolumeSlider = animVolumeContainer.querySelector(`#${giftAnimVolumeId}`);
+            const animVolumeLabel = animVolumeContainer.querySelector(`#${giftAnimVolumeId}-label`);
+            animVolumeSlider.addEventListener('input', function() {
+                animVolumeLabel.textContent = `${this.value}%`;
+            });
+            animVolumeSlider.addEventListener('change', function() {
+                updateGiftVolume(gift.giftId, parseFloat(this.value) / 100.0, 'animation');
+            });
+            
+            const testVolumeSlider = testContainer.querySelector(`#${giftTestVolumeId}`);
+            const testVolumeLabel = testContainer.querySelector(`#${giftTestVolumeId}-label`);
+            testVolumeSlider.addEventListener('input', function() {
+                testVolumeLabel.textContent = `${this.value}%`;
             });
             
             // Create edit button
@@ -274,11 +388,18 @@ async function loadGiftSounds() {
                 <td class="py-2 pr-4">${gift.giftId}</td>
                 <td class="py-2 pr-4 font-semibold">${escapeHtml(gift.label)}</td>
                 <td class="py-2 pr-4 text-sm truncate max-w-xs">${escapeHtml(gift.mp3Url)}</td>
-                <td class="py-2 pr-4">${gift.volume}</td>
+                <td class="py-2 pr-4"></td>
                 <td class="py-2 pr-4">${animationInfo}</td>
-                <td class="py-2 pr-4">${gift.animationVolume || 1.0}</td>
+                <td class="py-2 pr-4"></td>
                 <td class="py-2"></td>
             `;
+            
+            // Append volume controls to the table cells
+            const volumeCell = row.querySelectorAll('td')[3];
+            volumeCell.appendChild(soundVolumeContainer);
+            
+            const animVolumeCell = row.querySelectorAll('td')[5];
+            animVolumeCell.appendChild(animVolumeContainer);
             
             // Append controls to the last cell
             const actionsCell = row.querySelector('td:last-child');
@@ -292,6 +413,50 @@ async function loadGiftSounds() {
     } catch (error) {
         console.error('Error loading gift sounds:', error);
         logAudioEvent('error', `Failed to load gift sounds: ${error.message}`, null);
+    }
+}
+
+async function updateGiftVolume(giftId, volume, volumeType) {
+    try {
+        // Fetch current gift data
+        const response = await fetch('/api/soundboard/gifts');
+        const gifts = await response.json();
+        const gift = gifts.find(g => g.giftId === giftId);
+        
+        if (!gift) {
+            console.error(`Gift ${giftId} not found`);
+            logAudioEvent('error', `Gift ${giftId} not found for volume update`, null);
+            return;
+        }
+        
+        // Update the appropriate volume field
+        const updatedData = {
+            giftId: gift.giftId,
+            label: gift.label,
+            mp3Url: gift.mp3Url,
+            volume: volumeType === 'sound' ? volume : gift.volume,
+            animationUrl: gift.animationUrl || null,
+            animationType: gift.animationType || 'none',
+            animationVolume: volumeType === 'animation' ? volume : (gift.animationVolume || 1.0)
+        };
+        
+        // Save to database
+        const updateResponse = await fetch('/api/soundboard/gifts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+        });
+        
+        const result = await updateResponse.json();
+        if (result.success) {
+            const volumeTypeLabel = volumeType === 'sound' ? 'Sound' : 'Animation';
+            logAudioEvent('success', `${volumeTypeLabel} volume updated for "${gift.label}": ${Math.round(volume * 100)}%`, null);
+        } else {
+            logAudioEvent('error', `Failed to update ${volumeType} volume for gift ${giftId}`, null);
+        }
+    } catch (error) {
+        console.error('Error updating gift volume:', error);
+        logAudioEvent('error', `Failed to update gift volume: ${error.message}`, null);
     }
 }
 
@@ -1513,6 +1678,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadGiftCatalog();
     loadCategories(); // Load categories for advanced search
     checkAudioSystemStatus();
+    initializeEventSoundSliders(); // Initialize event sound volume sliders
     
     // Soundboard save button
     const saveSoundboardBtn = document.getElementById('save-soundboard-btn');

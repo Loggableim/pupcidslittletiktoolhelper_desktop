@@ -449,8 +449,14 @@
                         </button>
                     </div>
                     <input type="text" id="soundboard-follow-url" placeholder="Sound URL" class="form-input">
-                    <label for="soundboard-follow-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 4px; display: block;">Volume (0.0 - 1.0):</label>
-                    <input type="number" id="soundboard-follow-volume" min="0" max="1" step="0.1" value="1.0" placeholder="Volume" class="form-input">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                        <label for="soundboard-follow-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 60px;">Volume:</label>
+                        <input type="range" id="soundboard-follow-volume-slider" min="0" max="100" value="100" 
+                            style="flex: 1; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                            title="Volume slider">
+                        <span id="soundboard-follow-volume-label" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 45px;">100%</span>
+                        <input type="number" id="soundboard-follow-volume" min="0" max="1" step="0.1" value="1.0" style="display: none;">
+                    </div>
                 </div>
 
                 <div class="event-sound-item">
@@ -462,8 +468,14 @@
                         </button>
                     </div>
                     <input type="text" id="soundboard-subscribe-url" placeholder="Sound URL" class="form-input">
-                    <label for="soundboard-subscribe-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 4px; display: block;">Volume (0.0 - 1.0):</label>
-                    <input type="number" id="soundboard-subscribe-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                        <label for="soundboard-subscribe-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 60px;">Volume:</label>
+                        <input type="range" id="soundboard-subscribe-volume-slider" min="0" max="100" value="100" 
+                            style="flex: 1; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                            title="Volume slider">
+                        <span id="soundboard-subscribe-volume-label" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 45px;">100%</span>
+                        <input type="number" id="soundboard-subscribe-volume" min="0" max="1" step="0.1" value="1.0" style="display: none;">
+                    </div>
                 </div>
 
                 <div class="event-sound-item">
@@ -475,8 +487,14 @@
                         </button>
                     </div>
                     <input type="text" id="soundboard-share-url" placeholder="Sound URL" class="form-input">
-                    <label for="soundboard-share-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 4px; display: block;">Volume (0.0 - 1.0):</label>
-                    <input type="number" id="soundboard-share-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                        <label for="soundboard-share-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 60px;">Volume:</label>
+                        <input type="range" id="soundboard-share-volume-slider" min="0" max="100" value="100" 
+                            style="flex: 1; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                            title="Volume slider">
+                        <span id="soundboard-share-volume-label" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 45px;">100%</span>
+                        <input type="number" id="soundboard-share-volume" min="0" max="1" step="0.1" value="1.0" style="display: none;">
+                    </div>
                 </div>
 
                 <div class="event-sound-item">
@@ -488,8 +506,14 @@
                         </button>
                     </div>
                     <input type="text" id="soundboard-gift-url" placeholder="Sound URL" class="form-input">
-                    <label for="soundboard-gift-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 4px; display: block;">Volume (0.0 - 1.0):</label>
-                    <input type="number" id="soundboard-gift-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                        <label for="soundboard-gift-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 60px;">Volume:</label>
+                        <input type="range" id="soundboard-gift-volume-slider" min="0" max="100" value="100" 
+                            style="flex: 1; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                            title="Volume slider">
+                        <span id="soundboard-gift-volume-label" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 45px;">100%</span>
+                        <input type="number" id="soundboard-gift-volume" min="0" max="1" step="0.1" value="1.0" style="display: none;">
+                    </div>
                 </div>
 
                 <div class="event-sound-item">
@@ -501,8 +525,14 @@
                         </button>
                     </div>
                     <input type="text" id="soundboard-like-url" placeholder="Sound URL" class="form-input">
-                    <label for="soundboard-like-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 4px; display: block;">Volume (0.0 - 1.0):</label>
-                    <input type="number" id="soundboard-like-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                        <label for="soundboard-like-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 60px;">Volume:</label>
+                        <input type="range" id="soundboard-like-volume-slider" min="0" max="100" value="100" 
+                            style="flex: 1; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                            title="Volume slider">
+                        <span id="soundboard-like-volume-label" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 45px;">100%</span>
+                        <input type="number" id="soundboard-like-volume" min="0" max="1" step="0.1" value="1.0" style="display: none;">
+                    </div>
                     <div class="form-grid">
                         <input type="number" id="soundboard-like-threshold" min="0" value="0" placeholder="Threshold" class="form-input">
                         <input type="number" id="soundboard-like-window" min="1" value="10" placeholder="Window (s)" class="form-input">
