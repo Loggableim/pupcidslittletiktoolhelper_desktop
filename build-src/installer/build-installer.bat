@@ -86,33 +86,27 @@ REM Check for required files
 echo Checking required files...
 echo.
 
-if not exist "..\..\launcher\launcher.exe" (
-    echo [WARNING] launcher.exe not found in /launcher/
-    echo Please ensure the launcher is built
-    echo Expected location: launcher\launcher.exe
+if not exist "..\launcher.exe" (
+    echo [WARNING] launcher.exe not found in build-src\
+    echo Please build the launcher first
 )
 
-if not exist "..\..\..\src\server.js" (
-    echo [ERROR] src directory not found!
-    echo Please ensure you're running this from tools\launcher\installer\
+if not exist "..\..\app\server.js" (
+    echo [ERROR] app directory not found!
+    echo Please ensure you're running this from build-src\installer\
     pause
     exit /b 1
 )
 
 if not exist "..\icon.ico" (
-    echo [WARNING] icon.ico not found in tools\launcher\
-)
-
-if not exist "..\..\..\plugins" (
-    echo [WARNING] plugins directory not found
-    echo Expected location: /plugins/
+    echo [WARNING] icon.ico not found in build-src\
 )
 
 if not exist "..\assets\node\node.exe" (
     echo [INFO] Node.js portable not found (optional)
     echo The installer will be built without Node.js
     echo Download from: https://nodejs.org/dist/latest-v18.x/
-    echo Extract to: tools\launcher\assets\node\
+    echo Extract to: build-src\assets\node\
     echo.
 )
 

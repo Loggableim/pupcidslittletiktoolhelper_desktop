@@ -94,7 +94,7 @@ jobs:
         run: npm ci
 
       - name: Install app dependencies
-        run: cd src && npm ci
+        run: cd app && npm ci
 
       - name: Rebuild native modules
         run: npm run rebuild
@@ -151,7 +151,7 @@ jobs:
         run: npm ci
 
       - name: Install app dependencies
-        run: cd src && npm ci
+        run: cd app && npm ci
 
       - name: Rebuild native modules
         run: npm run rebuild
@@ -220,7 +220,7 @@ jobs:
         run: npm ci
 
       - name: Install app dependencies
-        run: cd src && npm ci
+        run: cd app && npm ci
 
       - name: Rebuild native modules
         run: npm run rebuild

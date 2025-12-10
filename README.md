@@ -3,59 +3,9 @@
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Node.js](https://img.shields.io/badge/Node.js-18.0.0+-green.svg)](https://nodejs.org/)
 [![Electron](https://img.shields.io/badge/Electron-33.0.0+-blue.svg)](https://www.electronjs.org/)
-[![Version](https://img.shields.io/badge/Version-1.2.1-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-1.2.0-blue.svg)](CHANGELOG.md)
 
 Professional TikTok-compatible LIVE streaming tool with overlays, alerts, Text-to-Speech, automation, and an extensive plugin ecosystem. Built with Node.js, Express.js, Socket.IO, and Electron.
-
----
-
-## 📁 Repository Structure
-
-The repository is organized into clean, logical directories:
-
-```
-/
-├── launcher/          # Desktop launcher executable
-├── CHANGELOG.md       # Version history and changes
-├── README.md          # This file
-├── LICENSE            # License information
-├── package.json       # Root package configuration
-├── main.js            # Electron entry point
-├── .gitignore         # Git ignore rules
-├── .github/           # GitHub workflows and CI/CD
-│
-├── src/               # Main application source code
-│   ├── server.js         # Express.js backend server
-│   ├── modules/          # Core modules (database, tiktok, tts, etc.)
-│   ├── routes/           # API routes
-│   ├── public/           # Frontend assets (HTML, CSS, JS)
-│   ├── locales/          # Internationalization files
-│   └── ...
-│
-├── plugins/           # Plugin system
-│   ├── tts/              # Text-to-Speech plugin
-│   ├── soundboard/       # Soundboard plugin
-│   ├── fireworks-webgpu/ # WebGPU fireworks overlay
-│   ├── goals/            # Goals tracking plugin
-│   └── ... (30+ plugins)
-│
-├── assets/            # Static resources
-│   └── images/           # Logos, icons, backgrounds
-│
-├── tools/             # Build and development tools
-│   ├── launcher/         # Launcher build scripts (Go)
-│   └── signing/          # Code signing scripts
-│
-├── tests/             # Test files and configuration
-│   └── *.test.js         # Jest test suites
-│
-├── docs/              # Documentation
-│   ├── screenshots/      # Application screenshots
-│   ├── migration-guides/ # Migration documentation
-│   └── archive/          # Historical documentation
-│
-└── scripts/           # Deployment and CI scripts
-```
 
 ---
 
@@ -143,8 +93,8 @@ npm run start:electron
 Nur den Backend-Server ohne Electron starten:
 
 ```bash
-# In den src-Ordner wechseln
-cd src
+# In den app-Ordner wechseln
+cd app
 
 # Dependencies installieren
 npm install

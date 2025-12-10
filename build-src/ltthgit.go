@@ -342,7 +342,7 @@ func (cl *CloudLauncher) run() error {
 	}
 	
 	// Install dependencies
-	appDir := filepath.Join(cl.baseDir, "src")
+	appDir := filepath.Join(cl.baseDir, "app")
 	if err := cl.installDependencies(appDir); err != nil {
 		cl.sendError(err.Error())
 		return err
