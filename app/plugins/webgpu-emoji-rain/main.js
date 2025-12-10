@@ -349,17 +349,7 @@ class WebGPUEmojiRainPlugin {
       label: 'emoji-rain-fallback-texture'
     });
 
-    // Create gradient fallback texture
-    await this.createFallbackTexture(engine);
-  }
-
-  /**
-   * Create a simple gradient fallback texture
-   */
-  async createFallbackTexture(engine) {
-    // This would need canvas or ImageData - skip for now
-    // The texture will just be empty/black
-    this.api.log('⚠️ [WebGPU Emoji Rain] Using fallback texture', 'debug');
+    this.api.log('⚠️ [WebGPU Emoji Rain] Using empty fallback texture (load emoji.png for proper visuals)', 'warn');
   }
 
   /**

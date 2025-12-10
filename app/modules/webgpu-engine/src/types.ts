@@ -313,6 +313,7 @@ export interface EngineOptions {
   readonly powerPreference?: GPUPowerPreference;
   readonly requiredFeatures?: GPUFeatureName[];
   readonly requiredLimits?: Record<string, number>;
+  readonly logger?: EngineLogger;
 }
 
 /**
@@ -431,6 +432,8 @@ export interface PluginRendererOptions {
   readonly preferredCanvasSelector?: string;
   readonly fixedTimeStep?: number;
   readonly maxDeltaTime?: number;
+  readonly defaultCanvasWidth?: number;
+  readonly defaultCanvasHeight?: number;
 }
 
 /**

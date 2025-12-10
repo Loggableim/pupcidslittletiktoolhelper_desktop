@@ -621,9 +621,6 @@ class WebGPUEngine implements EngineFacade {
       },
       insertDebugMarker(markerLabel: string) {
         pass.insertDebugMarker(markerLabel);
-      },
-      end() {
-        pass.end();
       }
     };
   }
@@ -740,8 +737,9 @@ export async function createEngine(options: EngineOptions = {}): Promise<EngineF
     preferredFormat
   };
 
-  // Create logger (use console logger in development)
-  const logger = createConsoleLogger();
+  // Create logger - use provided logger or no-op logger in production
+  // Console logger is only used when explicitly requested
+  const logger = options.logger || createNoOpLogger();
 
   // Create and return engine
   const engine = new WebGPUEngine(context, logger);

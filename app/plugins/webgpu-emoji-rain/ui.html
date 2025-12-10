@@ -377,11 +377,18 @@
     });
 
     // Copy URL
-    copyUrl.addEventListener('click', () => {
-      overlayUrl.select();
-      document.execCommand('copy');
-      copyUrl.textContent = '✅';
-      setTimeout(() => { copyUrl.textContent = '📋'; }, 2000);
+    copyUrl.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(overlayUrl.value);
+        copyUrl.textContent = '✅';
+        setTimeout(() => { copyUrl.textContent = '📋'; }, 2000);
+      } catch (error) {
+        // Fallback for older browsers
+        overlayUrl.select();
+        document.execCommand('copy');
+        copyUrl.textContent = '✅';
+        setTimeout(() => { copyUrl.textContent = '📋'; }, 2000);
+      }
     });
 
     // Initialize

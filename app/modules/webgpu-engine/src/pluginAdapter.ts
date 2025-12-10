@@ -118,7 +118,12 @@ export async function registerPluginRenderer(
   // Create surface if requested
   if (options.wantsSurface) {
     try {
-      const canvas = findOrCreateCanvas(pluginId, options.preferredCanvasSelector);
+      const canvas = findOrCreateCanvas(
+        pluginId,
+        options.preferredCanvasSelector,
+        options.defaultCanvasWidth,
+        options.defaultCanvasHeight
+      );
       if (canvas) {
         state.surface = globalEngine.createSurface(canvas);
         logger.info(`Created surface for plugin: ${pluginId}`);
@@ -260,17 +265,28 @@ export function isPluginRegistered(pluginId: string): boolean {
 // ============================================================================
 
 /**
+ * Default canvas dimensions for offscreen canvas
+ */
+const DEFAULT_CANVAS_WIDTH = 1920;
+const DEFAULT_CANVAS_HEIGHT = 1080;
+
+/**
  * Find or create a canvas element
  */
 function findOrCreateCanvas(
   pluginId: string,
-  selector?: string
+  selector?: string,
+  defaultWidth?: number,
+  defaultHeight?: number
 ): HTMLCanvasElement | OffscreenCanvas | null {
+  const width = defaultWidth || DEFAULT_CANVAS_WIDTH;
+  const height = defaultHeight || DEFAULT_CANVAS_HEIGHT;
+
   // Check if we're in a browser environment
   if (typeof document === 'undefined') {
     // Node.js environment - try OffscreenCanvas
     if (typeof OffscreenCanvas !== 'undefined') {
-      return new OffscreenCanvas(800, 600);
+      return new OffscreenCanvas(width, height);
     }
     return null;
   }
