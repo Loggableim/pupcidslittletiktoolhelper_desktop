@@ -2,7 +2,9 @@ const socket = io();
 
 const container = document.getElementById('milestone-container');
 const celebrationContent = document.getElementById('celebrationContent');
+const thankYou = document.getElementById('milestone-thank-you');
 const title = document.getElementById('milestone-title');
+const tierStatus = document.getElementById('milestone-tier-status');
 const gif = document.getElementById('milestone-gif');
 const video = document.getElementById('milestone-video');
 const audio = document.getElementById('milestone-audio');
@@ -31,8 +33,22 @@ async function playCelebration(data) {
         currentTimeout = null;
     }
 
-    // Update title
+    // Update title and messages
+    if (data.username) {
+        thankYou.textContent = `Danke @${data.username}! 🙏`;
+        thankYou.style.display = 'block';
+    } else {
+        thankYou.style.display = 'none';
+    }
+
     title.textContent = `🎯 ${data.milestone.toLocaleString()} Coins Milestone! 🎉`;
+
+    if (data.tier) {
+        tierStatus.textContent = `Du hast ${data.tier} erreicht! 🏆`;
+        tierStatus.style.display = 'block';
+    } else {
+        tierStatus.style.display = 'none';
+    }
 
     // Reset media visibility
     gif.style.display = 'none';

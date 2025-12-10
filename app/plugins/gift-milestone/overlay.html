@@ -73,6 +73,20 @@
             animation: celebrationExit 0.5s ease-in-out;
         }
 
+        #milestone-thank-you {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #fff;
+            text-shadow:
+                0 0 10px rgba(255, 215, 0, 0.8),
+                0 0 20px rgba(255, 215, 0, 0.6),
+                0 0 30px rgba(255, 215, 0, 0.4),
+                3px 3px 6px rgba(0, 0, 0, 0.8);
+            margin-bottom: 20px;
+            text-align: center;
+            animation: titlePulse 1s ease-in-out infinite;
+        }
+
         #milestone-title {
             font-size: 4em;
             font-weight: bold;
@@ -83,6 +97,20 @@
                 0 0 30px rgba(255, 215, 0, 0.4),
                 3px 3px 6px rgba(0, 0, 0, 0.8);
             margin-bottom: 30px;
+            text-align: center;
+            animation: titlePulse 1s ease-in-out infinite;
+        }
+
+        #milestone-tier-status {
+            font-size: 2em;
+            font-weight: bold;
+            color: #fff;
+            text-shadow:
+                0 0 10px rgba(255, 215, 0, 0.8),
+                0 0 20px rgba(255, 215, 0, 0.6),
+                0 0 30px rgba(255, 215, 0, 0.4),
+                3px 3px 6px rgba(0, 0, 0, 0.8);
+            margin-top: 20px;
             text-align: center;
             animation: titlePulse 1s ease-in-out infinite;
         }
@@ -201,11 +229,13 @@
 
     <div id="milestone-container">
         <div class="celebration-content" id="celebrationContent">
+            <div id="milestone-thank-you"></div>
             <div id="milestone-title">🎯 Milestone erreicht! 🎉</div>
             <div id="milestone-media-container">
                 <img id="milestone-gif" alt="Milestone GIF">
                 <video id="milestone-video" autoplay muted playsinline></video>
             </div>
+            <div id="milestone-tier-status"></div>
         </div>
     </div>
 
