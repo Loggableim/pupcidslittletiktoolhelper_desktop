@@ -93,6 +93,10 @@
     --timer-left: auto;
     --timer-variant: circular; /* circular, bar, neon, ring */
 
+    /* Leaderboard - Layout Configuration */
+    --leaderboard-header-height: 150px; /* Space for header, padding, and margins */
+    --leaderboard-entry-animation-duration: 0.5s; /* Duration for entry slide-in animation */
+
     /* Snap to Grid */
     --grid-size: 10px;
 }
@@ -1720,7 +1724,7 @@ body {
     list-style: none;
     padding: 0;
     margin: 0;
-    max-height: calc(85vh - 150px);
+    max-height: calc(85vh - var(--leaderboard-header-height));
     overflow-y: auto;
 }
 
@@ -1747,7 +1751,7 @@ body {
     border-radius: var(--border-radius);
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
-    animation: slideInLeaderboard calc(0.5s / var(--animation-speed)) ease backwards;
+    animation: slideInLeaderboard calc(var(--leaderboard-entry-animation-duration) / var(--animation-speed)) ease backwards;
 }
 
 .leaderboard-entry:nth-child(1) {

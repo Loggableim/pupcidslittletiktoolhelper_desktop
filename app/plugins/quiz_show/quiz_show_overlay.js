@@ -1381,11 +1381,14 @@
             // Clear existing entries
             leaderboardList.innerHTML = '';
 
+            // Animation configuration
+            const ANIMATION_DELAY_INCREMENT = 0.1; // seconds per entry
+
             // Create leaderboard entries with staggered animation
             leaderboard.forEach((entry, index) => {
                 const li = document.createElement('li');
                 li.className = 'leaderboard-entry';
-                li.style.animationDelay = `${index * 0.1}s`;
+                li.style.animationDelay = `${index * ANIMATION_DELAY_INCREMENT}s`;
 
                 const rank = document.createElement('div');
                 rank.className = `leaderboard-rank rank-${index + 1}`;
