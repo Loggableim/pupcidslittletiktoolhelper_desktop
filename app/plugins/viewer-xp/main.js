@@ -42,6 +42,16 @@ class ViewerXPPlugin extends EventEmitter {
       // Initialize database
       this.db.initialize();
 
+      // Set level up callback
+      this.db.setLevelUpCallback((levelUpData) => {
+        this.emitLevelUp(
+          levelUpData.username,
+          levelUpData.oldLevel,
+          levelUpData.newLevel,
+          levelUpData.rewards
+        );
+      });
+
       // Register API routes
       this.registerRoutes();
 
@@ -53,6 +63,9 @@ class ViewerXPPlugin extends EventEmitter {
 
       // Register GCCE commands
       this.registerGCCECommands();
+
+      // Register IFTTT triggers and actions
+      this.registerIFTTTIntegration();
 
       // Start watch time tracking
       this.startWatchTimeTracking();
@@ -498,6 +511,119 @@ class ViewerXPPlugin extends EventEmitter {
   }
 
   /**
+   * Register IFTTT triggers and actions for event system integration
+   */
+  registerIFTTTIntegration() {
+    try {
+      // Check if IFTTT engine is available
+      if (!this.api.registerIFTTTTrigger) {
+        this.api.log('💡 [viewer-xp] IFTTT engine not available, skipping event integration', 'debug');
+        return;
+      }
+
+      // Register XP Gained trigger
+      this.api.registerIFTTTTrigger('viewer-xp:xp-gained', {
+        name: 'Viewer XP Gained',
+        description: 'Triggers when a viewer gains XP',
+        category: 'viewer-xp',
+        icon: '⭐',
+        fields: [
+          { name: 'username', label: 'Username', type: 'string', description: 'The viewer username' },
+          { name: 'amount', label: 'XP Amount', type: 'number', description: 'Amount of XP gained' },
+          { name: 'actionType', label: 'Action Type', type: 'string', description: 'Type of action (chat, gift, etc.)' },
+          { name: 'totalXP', label: 'Total XP', type: 'number', description: 'Viewer total XP' },
+          { name: 'level', label: 'Level', type: 'number', description: 'Current level' }
+        ]
+      });
+
+      // Register Level Up trigger
+      this.api.registerIFTTTTrigger('viewer-xp:level-up', {
+        name: 'Viewer Level Up',
+        description: 'Triggers when a viewer levels up',
+        category: 'viewer-xp',
+        icon: '🎉',
+        fields: [
+          { name: 'username', label: 'Username', type: 'string', description: 'The viewer username' },
+          { name: 'oldLevel', label: 'Old Level', type: 'number', description: 'Previous level' },
+          { name: 'newLevel', label: 'New Level', type: 'number', description: 'New level reached' },
+          { name: 'totalXP', label: 'Total XP', type: 'number', description: 'Total XP earned' },
+          { name: 'rewards', label: 'Rewards', type: 'object', description: 'Level rewards earned' }
+        ]
+      });
+
+      // Register Daily Bonus trigger
+      this.api.registerIFTTTTrigger('viewer-xp:daily-bonus', {
+        name: 'Daily Bonus Claimed',
+        description: 'Triggers when a viewer claims their daily bonus',
+        category: 'viewer-xp',
+        icon: '🎁',
+        fields: [
+          { name: 'username', label: 'Username', type: 'string', description: 'The viewer username' },
+          { name: 'bonusAmount', label: 'Bonus Amount', type: 'number', description: 'XP bonus amount' },
+          { name: 'streakDays', label: 'Streak Days', type: 'number', description: 'Current streak in days' },
+          { name: 'totalXP', label: 'Total XP', type: 'number', description: 'Viewer total XP' }
+        ]
+      });
+
+      // Register Streak Milestone trigger
+      this.api.registerIFTTTTrigger('viewer-xp:streak-milestone', {
+        name: 'Streak Milestone Reached',
+        description: 'Triggers when a viewer reaches a streak milestone (7, 30, 100 days)',
+        category: 'viewer-xp',
+        icon: '🔥',
+        fields: [
+          { name: 'username', label: 'Username', type: 'string', description: 'The viewer username' },
+          { name: 'streakDays', label: 'Streak Days', type: 'number', description: 'Days in streak' },
+          { name: 'milestone', label: 'Milestone', type: 'number', description: 'Milestone reached' },
+          { name: 'totalXP', label: 'Total XP', type: 'number', description: 'Viewer total XP' }
+        ]
+      });
+
+      // Register IFTTT actions
+      this.api.registerIFTTTAction('viewer-xp:award-xp', {
+        name: 'Award XP to Viewer',
+        description: 'Award XP to a specific viewer',
+        category: 'viewer-xp',
+        icon: '⭐',
+        fields: [
+          { name: 'username', label: 'Username', type: 'string', required: true, description: 'Viewer username' },
+          { name: 'amount', label: 'XP Amount', type: 'number', required: true, min: 1, description: 'Amount of XP to award' },
+          { name: 'reason', label: 'Reason', type: 'string', description: 'Reason for awarding XP' }
+        ],
+        executor: async (action, context, services) => {
+          try {
+            const username = services.templateEngine.processTemplate(action.username, context.data);
+            const amount = parseInt(action.amount);
+            const reason = action.reason ? services.templateEngine.processTemplate(action.reason, context.data) : 'IFTTT automation';
+
+            if (!username || isNaN(amount) || amount <= 0) {
+              return { success: false, error: 'Invalid username or amount' };
+            }
+
+            this.db.addXP(username, amount, 'ifttt_award', { reason });
+            this.emitXPUpdate(username, amount, 'ifttt_award');
+
+            return { success: true, message: `Awarded ${amount} XP to ${username}` };
+          } catch (error) {
+            this.api.log(`Error in viewer-xp:award-xp action: ${error.message}`, 'error');
+            return { success: false, error: error.message };
+          }
+        }
+      });
+
+      this.api.log('✅ [viewer-xp] IFTTT triggers and actions registered', 'info');
+      this.api.log('   - viewer-xp:xp-gained (trigger)', 'debug');
+      this.api.log('   - viewer-xp:level-up (trigger)', 'debug');
+      this.api.log('   - viewer-xp:daily-bonus (trigger)', 'debug');
+      this.api.log('   - viewer-xp:streak-milestone (trigger)', 'debug');
+      this.api.log('   - viewer-xp:award-xp (action)', 'debug');
+
+    } catch (error) {
+      this.api.log(`❌ [viewer-xp] Error registering IFTTT integration: ${error.message}`, 'error');
+    }
+  }
+
+  /**
    * Handle /xp command
    */
   async handleXPCommand(args, context) {
@@ -894,6 +1020,15 @@ class ViewerXPPlugin extends EventEmitter {
         actionType,
         profile
       });
+
+      // Emit IFTTT event for XP gained
+      this.emitIFTTTEvent('viewer-xp:xp-gained', {
+        username,
+        amount,
+        actionType,
+        totalXP: profile.total_xp_earned,
+        level: profile.level
+      });
     } catch (error) {
       this.api.log(`Error emitting XP update: ${error.message}`, 'error');
     }
@@ -905,11 +1040,21 @@ class ViewerXPPlugin extends EventEmitter {
   emitLevelUp(username, oldLevel, newLevel, rewards) {
     try {
       const io = this.api.getSocketIO();
+      const profile = this.db.getViewerProfile(username);
       
       io.emit('viewer-xp:level-up', {
         username,
         oldLevel,
         newLevel,
+        rewards
+      });
+
+      // Emit IFTTT event for level up
+      this.emitIFTTTEvent('viewer-xp:level-up', {
+        username,
+        oldLevel,
+        newLevel,
+        totalXP: profile.total_xp_earned,
         rewards
       });
 
@@ -925,6 +1070,31 @@ class ViewerXPPlugin extends EventEmitter {
       }
     } catch (error) {
       this.api.log(`Error emitting level up: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Emit IFTTT event
+   * Helper method to safely emit events to the IFTTT engine
+   */
+  emitIFTTTEvent(eventType, eventData) {
+    try {
+      // Get IFTTT engine from the plugin loader
+      const iftttEngine = this.api.pluginLoader?.iftttEngine;
+      
+      if (!iftttEngine) {
+        this.api.log('IFTTT engine not available, skipping event emission', 'debug');
+        return;
+      }
+
+      // Emit event to IFTTT engine
+      iftttEngine.processEvent(eventType, eventData).catch(error => {
+        this.api.log(`Error processing IFTTT event ${eventType}: ${error.message}`, 'error');
+      });
+
+      this.api.log(`📡 Emitted IFTTT event: ${eventType}`, 'debug');
+    } catch (error) {
+      this.api.log(`Error emitting IFTTT event ${eventType}: ${error.message}`, 'error');
     }
   }
 
@@ -1067,7 +1237,29 @@ class ViewerXPPlugin extends EventEmitter {
     if (activityResult.firstToday && this.db.getSetting('enableDailyBonus', true)) {
       const awarded = this.db.awardDailyBonus(username);
       if (awarded) {
-        this.emitXPUpdate(username, this.db.getXPAction('daily_bonus').xp_amount, 'daily_bonus');
+        const bonusAmount = this.db.getXPAction('daily_bonus').xp_amount;
+        this.emitXPUpdate(username, bonusAmount, 'daily_bonus');
+        
+        // Emit IFTTT event for daily bonus
+        const profile = this.db.getViewerProfile(username);
+        this.emitIFTTTEvent('viewer-xp:daily-bonus', {
+          username,
+          bonusAmount,
+          streakDays: profile.streak_days || 0,
+          totalXP: profile.total_xp_earned
+        });
+
+        // Check for streak milestones (7, 30, 100 days)
+        const streakDays = profile.streak_days || 0;
+        const milestones = [7, 30, 100];
+        if (milestones.includes(streakDays)) {
+          this.emitIFTTTEvent('viewer-xp:streak-milestone', {
+            username,
+            streakDays,
+            milestone: streakDays,
+            totalXP: profile.total_xp_earned
+          });
+        }
       }
     }
 

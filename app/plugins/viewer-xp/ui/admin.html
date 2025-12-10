@@ -836,16 +836,16 @@
           </div>
           <div class="card-body">
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-              <button class="btn btn-primary" onclick="navigateTo('manual-award')">
+              <button class="btn btn-primary" data-action="navigateTo" data-arg="manual-award">
                 🎁 Award XP
               </button>
-              <button class="btn btn-success" onclick="navigateTo('obs-panel')">
+              <button class="btn btn-success" data-action="navigateTo" data-arg="obs-panel">
                 🎬 Setup OBS Overlays
               </button>
-              <button class="btn btn-secondary" onclick="navigateTo('import-export')">
+              <button class="btn btn-secondary" data-action="navigateTo" data-arg="import-export">
                 💾 Export Data
               </button>
-              <button class="btn btn-secondary" onclick="refreshData()">
+              <button class="btn btn-secondary" data-action="refreshData">
                 🔄 Refresh Stats
               </button>
             </div>
@@ -892,7 +892,7 @@
                 <option value="7">Last 7 Days</option>
                 <option value="30">Last 30 Days</option>
               </select>
-              <button class="btn btn-sm btn-secondary" onclick="refreshLeaderboard()">
+              <button class="btn btn-sm btn-secondary" data-action="refreshLeaderboard">
                 🔄 Refresh
               </button>
             </div>
@@ -957,7 +957,7 @@
           
           <div class="overlay-url-box">
             <span class="url-text" id="xpBarUrl">http://localhost:3000/overlay/viewer-xp/xp-bar</span>
-            <button class="btn btn-sm btn-primary copy-btn" onclick="copyToClipboard('xpBarUrl')">
+            <button class="btn btn-sm btn-primary copy-btn" data-action="copyToClipboard" data-arg="xpBarUrl">
               📋 Copy
             </button>
           </div>
@@ -977,10 +977,10 @@
           </div>
 
           <div style="display: flex; gap: 12px; margin-top: 16px;">
-            <button class="btn btn-sm btn-success" onclick="updateOverlayUrl('xpBar')">
+            <button class="btn btn-sm btn-success" data-action="updateOverlayUrl" data-arg="xpBar">
               ✅ Update URL
             </button>
-            <button class="btn btn-sm btn-secondary" onclick="testOverlay('xp-bar')">
+            <button class="btn btn-sm btn-secondary" data-action="testOverlay" data-arg="xp-bar">
               👁️ Test Overlay
             </button>
           </div>
@@ -997,7 +997,7 @@
           
           <div class="overlay-url-box">
             <span class="url-text" id="leaderboardOverlayUrl">http://localhost:3000/overlay/viewer-xp/leaderboard</span>
-            <button class="btn btn-sm btn-primary copy-btn" onclick="copyToClipboard('leaderboardOverlayUrl')">
+            <button class="btn btn-sm btn-primary copy-btn" data-action="copyToClipboard" data-arg="leaderboardOverlayUrl">
               📋 Copy
             </button>
           </div>
@@ -1022,10 +1022,10 @@
           </div>
 
           <div style="display: flex; gap: 12px; margin-top: 16px;">
-            <button class="btn btn-sm btn-success" onclick="updateOverlayUrl('leaderboard')">
+            <button class="btn btn-sm btn-success" data-action="updateOverlayUrl" data-arg="leaderboard">
               ✅ Update URL
             </button>
-            <button class="btn btn-sm btn-secondary" onclick="testOverlay('leaderboard')">
+            <button class="btn btn-sm btn-secondary" data-action="testOverlay" data-arg="leaderboard">
               👁️ Test Overlay
             </button>
           </div>
@@ -1042,7 +1042,7 @@
           
           <div class="overlay-url-box">
             <span class="url-text" id="levelUpUrl">http://localhost:3000/overlay/viewer-xp/level-up</span>
-            <button class="btn btn-sm btn-primary copy-btn" onclick="copyToClipboard('levelUpUrl')">
+            <button class="btn btn-sm btn-primary copy-btn" data-action="copyToClipboard" data-arg="levelUpUrl">
               📋 Copy
             </button>
           </div>
@@ -1062,10 +1062,10 @@
           </div>
 
           <div style="display: flex; gap: 12px; margin-top: 16px;">
-            <button class="btn btn-sm btn-success" onclick="updateOverlayUrl('levelUp')">
+            <button class="btn btn-sm btn-success" data-action="updateOverlayUrl" data-arg="levelUp">
               ✅ Update URL
             </button>
-            <button class="btn btn-sm btn-secondary" onclick="testOverlay('level-up')">
+            <button class="btn btn-sm btn-secondary" data-action="testOverlay" data-arg="level-up">
               👁️ Test Overlay
             </button>
           </div>
@@ -1133,10 +1133,10 @@
             </div>
 
             <div style="margin-top: 16px;">
-              <button class="btn btn-success" onclick="refreshPreview()">
+              <button class="btn btn-success" data-action="refreshPreview">
                 🔄 Refresh Preview
               </button>
-              <button class="btn btn-secondary" onclick="copyOverlayURL()">
+              <button class="btn btn-secondary" data-action="copyOverlayURL">
                 📋 Copy OBS URL
               </button>
             </div>
@@ -1146,7 +1146,7 @@
               <div style="display: flex; gap: 8px; align-items: center;">
                 <input type="text" class="form-control" id="overlayURLInput" readonly 
                   style="font-family: monospace; font-size: 0.9rem;">
-                <button class="btn btn-sm btn-secondary" onclick="copyToClipboard(document.getElementById('overlayURLInput').value)">
+                <button class="btn btn-sm btn-secondary" data-action="copyToClipboard" data-source-id="overlayURLInput">
                   📋 Copy
                 </button>
               </div>
@@ -1174,16 +1174,16 @@
           </div>
           <div class="card-body">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-              <button class="btn btn-primary" onclick="testLevelUp()">
+              <button class="btn btn-primary" data-action="testLevelUp">
                 ⬆️ Test Level Up
               </button>
-              <button class="btn btn-primary" onclick="testXPGain()">
+              <button class="btn btn-primary" data-action="testXPGain">
                 ⭐ Test XP Gain
               </button>
-              <button class="btn btn-primary" onclick="refreshLeaderboardPreview()">
+              <button class="btn btn-primary" data-action="refreshLeaderboardPreview">
                 📊 Refresh Leaderboard
               </button>
-              <button class="btn btn-primary" onclick="testUserProfile()">
+              <button class="btn btn-primary" data-action="testUserProfile">
                 👤 Test User Profile
               </button>
             </div>
@@ -1289,7 +1289,7 @@
                 <button type="submit" class="btn btn-success">
                   💾 Save Settings
                 </button>
-                <button type="button" class="btn btn-secondary" onclick="resetSettings()">
+                <button type="button" class="btn btn-secondary" data-action="resetSettings">
                   🔄 Reset to Defaults
                 </button>
               </div>
@@ -1348,7 +1348,7 @@
             </div>
 
             <div style="margin-top: 16px;">
-              <button class="btn btn-success" onclick="saveLevelTypeSettings()">
+              <button class="btn btn-success" data-action="saveLevelTypeSettings">
                 💾 Save Progression Settings
               </button>
             </div>
@@ -1386,10 +1386,10 @@
             </div>
 
             <div style="margin-top: 16px;">
-              <button class="btn btn-primary" onclick="generateLevelConfigs()">
+              <button class="btn btn-primary" data-action="generateLevelConfigs">
                 🎲 Generate Levels
               </button>
-              <button class="btn btn-secondary" onclick="previewLevelProgression()">
+              <button class="btn btn-secondary" data-action="previewLevelProgression">
                 📊 Preview Progression
               </button>
             </div>
@@ -1421,10 +1421,10 @@
           </div>
           <div class="card-body">
             <div style="margin-bottom: 16px;">
-              <button class="btn btn-primary" onclick="addLevelReward()">
+              <button class="btn btn-primary" data-action="addLevelReward">
                 ➕ Add Reward Tier
               </button>
-              <button class="btn btn-secondary" onclick="loadLevelRewards()">
+              <button class="btn btn-secondary" data-action="loadLevelRewards">
                 🔄 Refresh
               </button>
             </div>
@@ -1516,7 +1516,7 @@
                 <button type="submit" class="btn btn-success">
                   ✅ Award XP
                 </button>
-                <button type="button" class="btn btn-secondary" onclick="clearAwardForm()">
+                <button type="button" class="btn btn-secondary" data-action="clearAwardForm">
                   🔄 Clear Form
                 </button>
               </div>
@@ -1590,7 +1590,7 @@
                 </div>
               </div>
 
-              <button type="button" class="btn btn-success" id="exportDataBtn" onclick="exportData()">
+              <button type="button" class="btn btn-success" id="exportDataBtn" data-action="exportData">
                 📥 Download Export File
               </button>
               <div id="exportStatus" style="margin-top: 16px;"></div>
@@ -1622,7 +1622,7 @@
                 <small class="form-text">Choose a JSON file exported from this system</small>
               </div>
 
-              <button type="button" class="btn btn-warning" id="importDataBtn" onclick="importData()">
+              <button type="button" class="btn btn-warning" id="importDataBtn" data-action="importData">
                 📤 Import Data
               </button>
               <div id="importStatus" style="margin-top: 16px;"></div>
@@ -1640,7 +1640,7 @@
               <label class="form-label">Search Viewer</label>
               <div style="display: flex; gap: 12px;">
                 <input type="text" class="form-control" id="historyUsername" placeholder="Enter username">
-                <button class="btn btn-primary" onclick="loadViewerHistory()" style="white-space: nowrap;">
+                <button class="btn btn-primary" data-action="loadViewerHistory" style="white-space: nowrap;">
                   🔍 Load History
                 </button>
               </div>
@@ -1875,7 +1875,7 @@
                 <small class="form-text">${progress.toFixed(1)}% to next level</small>
               </td>
               <td>
-                <button class="btn btn-sm btn-secondary" onclick="viewUserDetails('${escapeHtml(viewer.username)}')">
+                <button class="btn btn-sm btn-secondary" data-action="viewUserDetails" data-arg="${escapeHtml(viewer.username)}">
                   View
                 </button>
               </td>
@@ -1993,7 +1993,7 @@
                          ${action.enabled ? 'checked' : ''}>
                 </td>
                 <td>
-                  <button class="btn btn-sm btn-primary" onclick="updateAction('${action.action_type}')">
+                  <button class="btn btn-sm btn-primary" data-action="updateAction" data-arg="${action.action_type}">
                     💾 Save
                   </button>
                 </td>
@@ -2829,6 +2829,106 @@
       `;
       document.head.appendChild(style);
     }
+
+    // Event delegation for all buttons with data-action attribute
+    // This replaces inline onclick handlers to comply with CSP
+    document.addEventListener('click', function(event) {
+      const button = event.target.closest('[data-action]');
+      if (!button) return;
+
+      const action = button.getAttribute('data-action');
+      const arg = button.getAttribute('data-arg');
+      const page = button.getAttribute('data-page');
+      const target = button.getAttribute('data-target');
+      const overlayType = button.getAttribute('data-overlay-type');
+      const actionType = button.getAttribute('data-action-type');
+      const username = button.getAttribute('data-username');
+      const sourceId = button.getAttribute('data-source-id');
+
+      // Map actions to function calls
+      switch(action) {
+        case 'navigateTo':
+          navigateTo(page || arg);
+          break;
+        case 'refreshData':
+          refreshData();
+          break;
+        case 'refreshLeaderboard':
+          refreshLeaderboard();
+          break;
+        case 'copyToClipboard':
+          if (target) {
+            copyToClipboard(target);
+          } else if (sourceId) {
+            copyToClipboard(document.getElementById(sourceId).value);
+          } else if (arg) {
+            copyToClipboard(arg);
+          }
+          break;
+        case 'updateOverlayUrl':
+          updateOverlayUrl(overlayType || arg);
+          break;
+        case 'testOverlay':
+          testOverlay(overlayType || arg);
+          break;
+        case 'refreshPreview':
+          refreshPreview();
+          break;
+        case 'copyOverlayURL':
+          copyOverlayURL();
+          break;
+        case 'testLevelUp':
+          testLevelUp();
+          break;
+        case 'testXPGain':
+          testXPGain();
+          break;
+        case 'refreshLeaderboardPreview':
+          refreshLeaderboardPreview();
+          break;
+        case 'testUserProfile':
+          testUserProfile();
+          break;
+        case 'resetSettings':
+          resetSettings();
+          break;
+        case 'saveLevelTypeSettings':
+          saveLevelTypeSettings();
+          break;
+        case 'generateLevelConfigs':
+          generateLevelConfigs();
+          break;
+        case 'previewLevelProgression':
+          previewLevelProgression();
+          break;
+        case 'addLevelReward':
+          addLevelReward();
+          break;
+        case 'loadLevelRewards':
+          loadLevelRewards();
+          break;
+        case 'clearAwardForm':
+          clearAwardForm();
+          break;
+        case 'exportData':
+          exportData();
+          break;
+        case 'importData':
+          importData();
+          break;
+        case 'loadViewerHistory':
+          loadViewerHistory();
+          break;
+        case 'viewUserDetails':
+          viewUserDetails(username);
+          break;
+        case 'updateAction':
+          updateAction(actionType);
+          break;
+        default:
+          console.warn('Unknown action:', action);
+      }
+    });
   </script>
 </body>
 </html>
