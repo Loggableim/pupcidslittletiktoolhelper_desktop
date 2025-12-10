@@ -71,13 +71,11 @@
         addListener('exportQuestionsBtn', 'click', exportQuestions);
 
         // AI Packages
-        addListener('saveOpenAIConfigBtn', 'click', saveOpenAIConfig);
-        addListener('testOpenAIKeyBtn', 'click', testOpenAIKey);
+        // Note: OpenAI config is now managed in main settings panel
         addListener('generatePackageBtn', 'click', generateQuestionPackage);
 
         // Settings
         addListener('saveSettingsBtn', 'click', saveSettings);
-        addListener('testOpenAIKeySettingsBtn', 'click', testOpenAIKeyFromSettings);
 
         // Leaderboard
         addListener('exportLeaderboardBtn', 'click', exportLeaderboard);
@@ -511,11 +509,7 @@
 
             const data = await response.json();
 
-            // Save AI config if fields exist
-            const apiKeyField = document.getElementById('openaiApiKeySettings');
-            if (apiKeyField && apiKeyField.value.trim()) {
-                await saveOpenAIConfigFromSettings();
-            }
+            // OpenAI config is now managed in main settings panel (no longer saved here)
 
             if (data.success) {
                 showMessage('Einstellungen gespeichert', 'success', 'saveMessage');
@@ -529,25 +523,8 @@
     }
 
     async function saveOpenAIConfigFromSettings() {
-        const apiKey = document.getElementById('openaiApiKeySettings').value.trim();
-        const model = document.getElementById('openaiModelSettings').value;
-        const packageSize = parseInt(document.getElementById('defaultPackageSizeSettings').value);
-
-        if (!apiKey) return;
-
-        try {
-            const response = await fetch('/api/quiz-show/ai-config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ apiKey, model, defaultPackageSize: packageSize })
-            });
-
-            const data = await response.json();
-            return data.success;
-        } catch (error) {
-            console.error('Error saving AI config:', error);
-            return false;
-        }
+        // Deprecated - OpenAI config is now in main settings
+        return true;
     }
 
     // Leaderboard
@@ -1463,6 +1440,7 @@
     // ============================================
     
     async function loadOpenAIConfig() {
+        // Note: OpenAI configuration is now managed in the main settings panel
         try {
             const response = await fetch('/api/quiz-show/openai/config');
             const data = await response.json();
@@ -1470,32 +1448,15 @@
             if (data.success && data.config) {
                 const config = data.config;
                 
-                // Update status badge
-                const statusBadge = document.getElementById('apiKeyStatus');
-                if (statusBadge) {
+                // Still show status for reference, but config is in main settings
+                const warning = document.getElementById('generateWarning');
+                if (warning) {
                     if (config.hasApiKey) {
-                        statusBadge.textContent = `✓ Konfiguriert (${config.apiKeyPreview})`;
-                        statusBadge.className = 'status-badge status-connected';
-                        statusBadge.style.display = 'inline-block';
-                        
-                        // Hide warning, show generation form
-                        const warning = document.getElementById('generateWarning');
-                        if (warning) warning.style.display = 'none';
+                        warning.style.display = 'none';
                     } else {
-                        statusBadge.textContent = '✗ Nicht konfiguriert';
-                        statusBadge.className = 'status-badge status-error';
-                        statusBadge.style.display = 'inline-block';
-                        
-                        // Show warning
-                        const warning = document.getElementById('generateWarning');
-                        if (warning) warning.style.display = 'block';
+                        warning.style.display = 'block';
                     }
                 }
-
-                // Update form fields
-                document.getElementById('openaiModel').value = config.model || 'gpt-5-mini';
-                document.getElementById('defaultPackageSize').value = config.defaultPackageSize || 10;
-                document.getElementById('packageSize').value = config.defaultPackageSize || 10;
             }
         } catch (error) {
             console.error('Error loading OpenAI config:', error);
@@ -1503,115 +1464,18 @@
     }
 
     async function saveOpenAIConfig() {
-        const apiKey = document.getElementById('openaiApiKey').value.trim();
-        const model = document.getElementById('openaiModel').value;
-        const defaultPackageSize = parseInt(document.getElementById('defaultPackageSize').value);
-
-        try {
-            const response = await fetch('/api/quiz-show/openai/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    apiKey: apiKey || undefined,
-                    model,
-                    defaultPackageSize
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                showMessage('Konfiguration erfolgreich gespeichert', 'success', 'openaiConfigMessage');
-                // Clear the password field
-                document.getElementById('openaiApiKey').value = '';
-                // Reload config to update status
-                await loadOpenAIConfig();
-            } else {
-                showMessage('Fehler: ' + data.error, 'error', 'openaiConfigMessage');
-            }
-        } catch (error) {
-            console.error('Error saving OpenAI config:', error);
-            showMessage('Fehler beim Speichern', 'error', 'openaiConfigMessage');
-        }
+        // Deprecated - OpenAI config is now in main settings
+        alert('OpenAI-Konfiguration wird jetzt im Haupteinstellungspanel verwaltet. Bitte speichern Sie Ihren API-Schlüssel dort.');
     }
 
     async function testOpenAIKey() {
-        const apiKey = document.getElementById('openaiApiKey').value.trim();
-
-        if (!apiKey) {
-            showMessage('Bitte geben Sie einen API-Schlüssel ein', 'error', 'openaiConfigMessage');
-            return;
-        }
-
-        try {
-            // Show loading state
-            const btn = document.getElementById('testOpenAIKeyBtn');
-            const originalText = btn.textContent;
-            btn.textContent = '🔄 Teste...';
-            btn.disabled = true;
-
-            // For now, we'll just try to save it which will test it
-            const response = await fetch('/api/quiz-show/openai/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ apiKey })
-            });
-
-            const data = await response.json();
-            
-            btn.textContent = originalText;
-            btn.disabled = false;
-
-            if (data.success) {
-                showMessage('✓ API-Schlüssel ist gültig!', 'success', 'openaiConfigMessage');
-                document.getElementById('openaiApiKey').value = '';
-                await loadOpenAIConfig();
-            } else {
-                showMessage('✗ ' + data.error, 'error', 'openaiConfigMessage');
-            }
-        } catch (error) {
-            console.error('Error testing API key:', error);
-            showMessage('Fehler beim Testen', 'error', 'openaiConfigMessage');
-            document.getElementById('testOpenAIKeyBtn').disabled = false;
-        }
+        // Deprecated - OpenAI config is now in main settings
+        alert('OpenAI-Konfiguration wird jetzt im Haupteinstellungspanel verwaltet. Bitte speichern Sie Ihren API-Schlüssel dort.');
     }
 
     async function testOpenAIKeyFromSettings() {
-        const apiKey = document.getElementById('openaiApiKeySettings').value.trim();
-
-        if (!apiKey) {
-            showMessage('Bitte geben Sie einen API-Schlüssel ein', 'error', 'openaiConfigMessageSettings');
-            return;
-        }
-
-        try {
-            // Show loading state
-            const btn = document.getElementById('testOpenAIKeySettingsBtn');
-            const originalText = btn.textContent;
-            btn.textContent = '🔄 Teste...';
-            btn.disabled = true;
-
-            const response = await fetch('/api/quiz-show/openai/test', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ apiKey })
-            });
-
-            const data = await response.json();
-            
-            btn.textContent = originalText;
-            btn.disabled = false;
-
-            if (data.success) {
-                showMessage('✓ API-Schlüssel ist gültig!', 'success', 'openaiConfigMessageSettings');
-            } else {
-                showMessage('✗ ' + data.error, 'error', 'openaiConfigMessageSettings');
-            }
-        } catch (error) {
-            console.error('Error testing API key:', error);
-            showMessage('Fehler beim Testen', 'error', 'openaiConfigMessageSettings');
-            document.getElementById('testOpenAIKeySettingsBtn').disabled = false;
-        }
+        // Deprecated - OpenAI config is now in main settings  
+        alert('OpenAI-Konfiguration wird jetzt im Haupteinstellungspanel verwaltet. Bitte speichern Sie Ihren API-Schlüssel dort.');
     }
 
     async function generateQuestionPackage() {
