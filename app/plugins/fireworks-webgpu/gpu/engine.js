@@ -278,7 +278,8 @@ class FireworksEngine {
         this.particles = [];
         this.rockets = []; // Array to track active rockets
         this.particleBuffer = null;
-        this.uniformBuffer = null;
+        this.computeUniformBuffer = null;
+        this.renderUniformBuffer = null;
         this.bindGroup = null;
         this.computeBindGroup = null;
         
@@ -398,14 +399,21 @@ class FireworksEngine {
 
     createBuffers() {
         // Create particle buffer (storage buffer)
-        const particleDataSize = this.config.maxTotalParticles * 32; // 32 bytes per particle
+        // Each particle: 12 floats = 48 bytes
+        const particleDataSize = this.config.maxTotalParticles * 48;
         this.particleBuffer = this.device.createBuffer({
             size: particleDataSize,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
         });
         
-        // Create uniform buffer
-        this.uniformBuffer = this.device.createBuffer({
+        // Create uniform buffer for compute shader (deltaTime, gravity, airResistance, padding)
+        this.computeUniformBuffer = this.device.createBuffer({
+            size: 16, // 4 floats
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+        
+        // Create uniform buffer for render shader (resolution.x, resolution.y, padding, padding)
+        this.renderUniformBuffer = this.device.createBuffer({
             size: 16, // 4 floats
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
@@ -415,7 +423,7 @@ class FireworksEngine {
             layout: this.computePipeline.getBindGroupLayout(0),
             entries: [
                 { binding: 0, resource: { buffer: this.particleBuffer } },
-                { binding: 1, resource: { buffer: this.uniformBuffer } }
+                { binding: 1, resource: { buffer: this.computeUniformBuffer } }
             ]
         });
         
@@ -423,7 +431,7 @@ class FireworksEngine {
             layout: this.pipeline.getBindGroupLayout(0),
             entries: [
                 { binding: 0, resource: { buffer: this.particleBuffer } },
-                { binding: 1, resource: { buffer: this.uniformBuffer } }
+                { binding: 1, resource: { buffer: this.renderUniformBuffer } }
             ]
         });
     }
@@ -529,24 +537,23 @@ class FireworksEngine {
             }
         }
         
-        // Update uniforms for compute shader
+        // Update uniforms for compute shader (deltaTime, gravity, airResistance, padding)
         const computeUniformData = new Float32Array([
             deltaTime,
             this.config.gravity,
             this.config.airResistance,
             0 // padding
         ]);
-        this.device.queue.writeBuffer(this.uniformBuffer, 0, computeUniformData);
+        this.device.queue.writeBuffer(this.computeUniformBuffer, 0, computeUniformData);
         
-        // Update uniforms for render shader (resolution)
+        // Update uniforms for render shader (resolution.x, resolution.y, padding, padding)
         const renderUniformData = new Float32Array([
             this.width,
             this.height,
             0, // padding
             0  // padding
         ]);
-        // For now we use the same uniform buffer; ideally we'd have separate buffers
-        // but this is a simplified implementation
+        this.device.queue.writeBuffer(this.renderUniformBuffer, 0, renderUniformData);
         
         // Compute pass - update particle physics
         const commandEncoder = this.device.createCommandEncoder();
@@ -603,6 +610,22 @@ class FireworksEngine {
             rocket.x += rocket.vx * dt;
             rocket.y += rocket.vy * dt;
             
+            // Add rocket trail particles to make the rocket visible
+            // Create a glowing trail particle at the rocket's current position
+            const trailParticle = {
+                position: [rocket.x, rocket.y],
+                velocity: [
+                    rocket.vx * 0.3 + (Math.random() - 0.5) * 2, 
+                    rocket.vy * 0.3 + (Math.random() - 0.5) * 2
+                ],
+                color: [1.0, 0.8, 0.2, 1.0], // Bright orange/yellow for rocket trail
+                size: 3 + Math.random() * 2,
+                life: 0.3 + Math.random() * 0.2, // Short-lived trail
+                maxLife: 0.5,
+                _padding: 0
+            };
+            this.particles.push(trailParticle);
+            
             // Check if rocket should explode
             // Rocket explodes when velocity becomes positive (moving down) or reaches target height
             // Since Y increases downward, targetY < startY for upward motion
@@ -611,6 +634,11 @@ class FireworksEngine {
                 this.explodeRocket(rocket);
                 this.rockets.splice(i, 1);
             }
+        }
+        
+        // Update particle buffer after adding rocket trails
+        if (this.particles.length > 0) {
+            this.updateParticleBuffer();
         }
     }
     
@@ -703,12 +731,11 @@ class FireworksEngine {
     updateParticleBuffer() {
         // Create typed array for particle data
         // Each particle: position(2) + velocity(2) + color(4) + size(1) + life(1) + maxLife(1) + padding(1) = 12 floats = 48 bytes
-        // But GPU alignment requires 32 bytes per particle (8 floats)
-        const particleData = new Float32Array(this.particles.length * 8);
+        const particleData = new Float32Array(this.particles.length * 12);
         
         for (let i = 0; i < this.particles.length; i++) {
             const p = this.particles[i];
-            const offset = i * 8;
+            const offset = i * 12;
             
             particleData[offset + 0] = p.position[0];
             particleData[offset + 1] = p.position[1];
@@ -718,7 +745,10 @@ class FireworksEngine {
             particleData[offset + 5] = p.color[1];
             particleData[offset + 6] = p.color[2];
             particleData[offset + 7] = p.color[3];
-            // Note: size, life, maxLife are in a separate section but we're simplifying for now
+            particleData[offset + 8] = p.size || 3.0;
+            particleData[offset + 9] = p.life;
+            particleData[offset + 10] = p.maxLife;
+            particleData[offset + 11] = p._padding || 0;
         }
         
         this.device.queue.writeBuffer(this.particleBuffer, 0, particleData);
