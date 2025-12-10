@@ -3314,7 +3314,7 @@ const PORT = process.env.PORT || 3000;
 </html>`);
         });
 
-        // Browser opening is handled by the splashscreen launcher.exe
+        // Browser opening is handled by the splashscreen launcher
         // Only open browser if explicitly requested via OPEN_BROWSER=true
         const shouldOpenBrowser = process.env.OPEN_BROWSER === 'true' && !browserOpened;
         
