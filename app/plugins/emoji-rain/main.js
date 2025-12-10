@@ -88,7 +88,6 @@ class EmojiRainPlugin {
     async migrateOldData() {
         const oldUploadDir = path.join(__dirname, 'uploads');
         const oldMappingsPath = path.join(__dirname, '..', '..', 'data', 'plugins', 'emojirain', 'users.json');
-        const userConfigMappingsPath = path.join(__dirname, '..', '..', 'user_configs', 'emoji-rain', 'users.json');
         
         let migrated = false;
 
@@ -128,9 +127,9 @@ class EmojiRainPlugin {
             }
 
             // Priority 1: Check user_configs directory (user-editable, survives updates)
-            if (fs.existsSync(userConfigMappingsPath)) {
+            if (fs.existsSync(this.userConfigMappingsPath)) {
                 this.api.log('📦 [EMOJI RAIN] Migrating user mappings from user_configs...', 'info');
-                fs.copyFileSync(userConfigMappingsPath, this.userMappingsPath);
+                fs.copyFileSync(this.userConfigMappingsPath, this.userMappingsPath);
                 this.api.log(`✅ [EMOJI RAIN] Migrated user mappings from user_configs to: ${this.userMappingsPath}`, 'info');
                 migrated = true;
             }
@@ -143,14 +142,14 @@ class EmojiRainPlugin {
             }
         } else {
             // If persistent location exists, check if user_configs has newer data
-            if (fs.existsSync(userConfigMappingsPath)) {
+            if (fs.existsSync(this.userConfigMappingsPath)) {
                 const persistentStats = fs.statSync(this.userMappingsPath);
-                const userConfigStats = fs.statSync(userConfigMappingsPath);
+                const userConfigStats = fs.statSync(this.userConfigMappingsPath);
                 
                 // If user_configs version is newer, update the persistent location
                 if (userConfigStats.mtime > persistentStats.mtime) {
                     this.api.log('📦 [EMOJI RAIN] Updating user mappings from newer user_configs version...', 'info');
-                    fs.copyFileSync(userConfigMappingsPath, this.userMappingsPath);
+                    fs.copyFileSync(this.userConfigMappingsPath, this.userMappingsPath);
                     this.api.log(`✅ [EMOJI RAIN] Updated user mappings from user_configs to: ${this.userMappingsPath}`, 'info');
                     migrated = true;
                 }
