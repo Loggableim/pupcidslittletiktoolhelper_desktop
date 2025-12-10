@@ -50,7 +50,7 @@ function connectSocket() {
             console.log('[Fireworks Settings] Connected to server');
         });
 
-        socket.on('fireworks:config-update', (data) => {
+        socket.on('fireworks-webgpu:config-update', (data) => {
             if (data.config) {
                 config = data.config;
                 updateUI();
@@ -67,7 +67,7 @@ function connectSocket() {
 
 async function loadConfig() {
     try {
-        const response = await fetch('/api/fireworks/config');
+        const response = await fetch('/api/fireworks-webgpu/config');
         const data = await response.json();
         
         if (data.success) {
@@ -82,7 +82,7 @@ async function loadConfig() {
 
 async function saveConfig() {
     try {
-        const response = await fetch('/api/fireworks/config', {
+        const response = await fetch('/api/fireworks-webgpu/config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(config)
@@ -106,7 +106,7 @@ async function triggerTest() {
         const selectedShape = document.querySelector('.shape-preview.selected');
         const shape = selectedShape ? selectedShape.dataset.shape : 'burst';
         
-        await fetch('/api/fireworks/trigger', {
+        await fetch('/api/fireworks-webgpu/trigger', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -127,7 +127,7 @@ async function triggerFinale() {
     try {
         const intensity = parseFloat(document.getElementById('finale-intensity').value);
         
-        await fetch('/api/fireworks/finale', {
+        await fetch('/api/fireworks-webgpu/finale', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -145,7 +145,7 @@ async function triggerFinale() {
 
 async function testFollowerFireworks() {
     try {
-        await fetch('/api/fireworks/test-follower', {
+        await fetch('/api/fireworks-webgpu/test-follower', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -532,7 +532,7 @@ function setupEventListeners() {
         updateResolutionInfo(this.value, config.orientation || 'landscape');
         // Notify engine to resize canvas
         if (socket) {
-            socket.emit('fireworks:config-update', { 
+            socket.emit('fireworks-webgpu:config-update', { 
                 config: { 
                     resolutionPreset: config.resolutionPreset,
                     orientation: config.orientation 
@@ -546,7 +546,7 @@ function setupEventListeners() {
         updateResolutionInfo(config.resolutionPreset || '1080p', this.value);
         // Notify engine to resize canvas
         if (socket) {
-            socket.emit('fireworks:config-update', { 
+            socket.emit('fireworks-webgpu:config-update', { 
                 config: { 
                     resolutionPreset: config.resolutionPreset,
                     orientation: config.orientation 
@@ -686,7 +686,7 @@ function updateActiveShapes() {
  */
 async function triggerTestShape(shape, intensity = 1.5) {
     try {
-        await fetch('/api/fireworks/trigger', {
+        await fetch('/api/fireworks-webgpu/trigger', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -722,7 +722,7 @@ async function triggerTestTier(tier) {
     };
     
     try {
-        await fetch('/api/fireworks/trigger', {
+        await fetch('/api/fireworks-webgpu/trigger', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -745,7 +745,7 @@ async function triggerTestTier(tier) {
  */
 async function triggerTestRandom() {
     try {
-        await fetch('/api/fireworks/random', {
+        await fetch('/api/fireworks-webgpu/random', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
@@ -771,7 +771,7 @@ async function triggerTestAvatar() {
         `);
         
         // Trigger with the test avatar
-        await fetch('/api/fireworks/trigger', {
+        await fetch('/api/fireworks-webgpu/trigger', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

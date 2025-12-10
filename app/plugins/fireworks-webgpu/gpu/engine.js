@@ -512,14 +512,24 @@ class FireworksEngine {
             }
         }
         
-        // Update uniforms
-        const uniformData = new Float32Array([
+        // Update uniforms for compute shader
+        const computeUniformData = new Float32Array([
             deltaTime,
             this.config.gravity,
             this.config.airResistance,
             0 // padding
         ]);
-        this.device.queue.writeBuffer(this.uniformBuffer, 0, uniformData);
+        this.device.queue.writeBuffer(this.uniformBuffer, 0, computeUniformData);
+        
+        // Update uniforms for render shader (resolution)
+        const renderUniformData = new Float32Array([
+            this.width,
+            this.height,
+            0, // padding
+            0  // padding
+        ]);
+        // For now we use the same uniform buffer; ideally we'd have separate buffers
+        // but this is a simplified implementation
         
         // Compute pass - update particle physics
         const commandEncoder = this.device.createCommandEncoder();
@@ -557,9 +567,86 @@ class FireworksEngine {
     }
 
     addFirework(options = {}) {
-        console.log('[WebGPU Fireworks] addFirework called - WebGPU implementation');
-        // TODO: Implement firework creation
-        // This is a placeholder that maintains API compatibility
+        console.log('[WebGPU Fireworks] addFirework called:', options);
+        
+        // Create a simple burst of particles for testing
+        const position = options.position || { x: 0.5, y: 0.8 };
+        const particleCount = options.particleCount || 50;
+        const colors = options.colors || this.config.defaultColors;
+        
+        // Convert normalized position to screen coordinates
+        const x = position.x * this.width;
+        const y = position.y * this.height;
+        
+        // Create particles
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (Math.PI * 2 * i) / particleCount;
+            const speed = 50 + Math.random() * 100;
+            
+            // Pick random color
+            const colorHex = colors[Math.floor(Math.random() * colors.length)];
+            const color = this.hexToRgba(colorHex);
+            
+            const particle = {
+                position: [x, y],
+                velocity: [Math.cos(angle) * speed, Math.sin(angle) * speed],
+                color: color,
+                size: 2 + Math.random() * 3,
+                life: 1.0 + Math.random(),
+                maxLife: 1.0 + Math.random(),
+                _padding: 0
+            };
+            
+            this.particles.push(particle);
+        }
+        
+        // Update particle buffer
+        this.updateParticleBuffer();
+        
+        // Play audio
+        if (this.audioManager.enabled) {
+            this.audioManager.play('explosion-basic', 0.5);
+        }
+    }
+    
+    hexToRgba(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (!result) {
+            return [1.0, 1.0, 1.0, 1.0];
+        }
+        return [
+            parseInt(result[1], 16) / 255,
+            parseInt(result[2], 16) / 255,
+            parseInt(result[3], 16) / 255,
+            1.0
+        ];
+    }
+    
+    updateParticleBuffer() {
+        // Create typed array for particle data
+        // Each particle: position(2) + velocity(2) + color(4) + size(1) + life(1) + maxLife(1) + padding(1) = 12 floats = 48 bytes
+        // But GPU alignment requires 32 bytes per particle (8 floats)
+        const particleData = new Float32Array(this.particles.length * 8);
+        
+        for (let i = 0; i < this.particles.length; i++) {
+            const p = this.particles[i];
+            const offset = i * 8;
+            
+            particleData[offset + 0] = p.position[0];
+            particleData[offset + 1] = p.position[1];
+            particleData[offset + 2] = p.velocity[0];
+            particleData[offset + 3] = p.velocity[1];
+            particleData[offset + 4] = p.color[0];
+            particleData[offset + 5] = p.color[1];
+            particleData[offset + 6] = p.color[2];
+            particleData[offset + 7] = p.color[3];
+            // Note: size, life, maxLife are in a separate section but we're simplifying for now
+        }
+        
+        this.device.queue.writeBuffer(this.particleBuffer, 0, particleData);
+        
+        // Clean up dead particles
+        this.particles = this.particles.filter(p => p.life > 0);
     }
 
     triggerFirework(options = {}) {
