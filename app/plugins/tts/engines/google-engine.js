@@ -417,10 +417,13 @@ class GoogleEngine {
 
         try {
             const response = await axios.get(
-                `${this.voicesUrl}?key=${this.apiKey}`,
+                this.voicesUrl,
                 {
                     headers: {
                         'Accept': 'application/json'
+                    },
+                    params: {
+                        key: this.apiKey
                     },
                     timeout: this.timeout
                 }
@@ -552,7 +555,7 @@ class GoogleEngine {
         for (let attempt = 0; attempt < this.maxRetries; attempt++) {
             try {
                 const response = await axios.post(
-                    `${this.apiUrl}?key=${this.apiKey}`,
+                    this.apiUrl,
                     {
                         input: { text: text },
                         voice: {
@@ -569,6 +572,9 @@ class GoogleEngine {
                     {
                         headers: {
                             'Content-Type': 'application/json'
+                        },
+                        params: {
+                            key: this.apiKey
                         },
                         timeout: this.timeout
                     }
