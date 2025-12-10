@@ -1320,7 +1320,7 @@ class FireworksEngine {
                 this.offscreenCanvas = this.canvas.transferControlToOffscreen();
                 this.worker = new Worker('/plugins/fireworks/gpu/fireworks-worker.js');
                 this.workerMode = true;
-                console.log('[Fireworks Engine] ✅ Multithreading enabled: OffscreenCanvas + Web Worker (Worker Count: ' + (this.config.workerCount || 'auto') + ')');
+                console.log('[Fireworks Engine] ✅ Multithreading enabled: OffscreenCanvas + Web Worker (Currently using 1 thread, count config: ' + (this.config.workerCount || 'auto') + ')');
             } catch (error) {
                 console.warn('[Fireworks Engine] ⚠️ Worker initialization failed, falling back to main thread:', error);
                 this.workerMode = false;
