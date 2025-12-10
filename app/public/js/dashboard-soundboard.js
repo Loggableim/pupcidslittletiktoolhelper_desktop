@@ -13,6 +13,12 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Helper function to generate unique IDs for sound controls
+let soundIdCounter = 0;
+function generateUniqueSoundId() {
+    return `sound-${Date.now()}-${++soundIdCounter}`;
+}
+
 // Audio pool for soundboard playback
 let audioPool = [];
 
@@ -227,13 +233,28 @@ async function loadGiftSounds() {
                 ? `<span class="text-green-400">${escapeHtml(gift.animationType)}</span>`
                 : '<span class="text-gray-500">none</span>';
             
-            // Create test button
-            const testBtn = document.createElement('button');
-            testBtn.className = 'bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700 mr-1';
-            testBtn.dataset.action = 'test-sound';
-            testBtn.dataset.url = gift.mp3Url;
-            testBtn.dataset.volume = gift.volume;
-            testBtn.textContent = '🔊 Test';
+            // Generate unique ID for this gift's volume control
+            const giftVolumeId = `gift-vol-${gift.giftId}`;
+            
+            // Create test button with volume slider
+            const testContainer = document.createElement('div');
+            testContainer.className = 'flex items-center gap-2';
+            testContainer.innerHTML = `
+                <button class="bg-blue-600 px-2 py-1 rounded text-xs hover:bg-blue-700" data-action="test-sound" data-url="${gift.mp3Url}" data-volume-input-id="${giftVolumeId}" title="Test sound">
+                    🔊 Test
+                </button>
+                <input type="range" id="${giftVolumeId}" min="0" max="100" value="${Math.round(gift.volume * 100)}" 
+                    style="width: 60px; height: 3px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                    title="Test volume">
+                <span id="${giftVolumeId}-label" style="font-size: 0.7rem; color: var(--color-text-secondary);">${Math.round(gift.volume * 100)}%</span>
+            `;
+            
+            // Add volume slider change listener
+            const volumeSlider = testContainer.querySelector(`#${giftVolumeId}`);
+            const volumeLabel = testContainer.querySelector(`#${giftVolumeId}-label`);
+            volumeSlider.addEventListener('input', function() {
+                volumeLabel.textContent = `${this.value}%`;
+            });
             
             // Create edit button
             const editBtn = document.createElement('button');
@@ -259,9 +280,9 @@ async function loadGiftSounds() {
                 <td class="py-2"></td>
             `;
             
-            // Append buttons to the last cell
+            // Append controls to the last cell
             const actionsCell = row.querySelector('td:last-child');
-            actionsCell.appendChild(testBtn);
+            actionsCell.appendChild(testContainer);
             actionsCell.appendChild(editBtn);
             actionsCell.appendChild(deleteBtn);
             
@@ -822,12 +843,27 @@ async function searchMyInstants() {
             const div = document.createElement('div');
             div.className = 'myinstants-result-item';
             
+            // Generate unique ID for this sound's volume control
+            const soundId = generateUniqueSoundId();
+            
+            // Create volume slider container
+            const volumeContainer = document.createElement('div');
+            volumeContainer.className = 'flex items-center gap-2';
+            volumeContainer.innerHTML = `
+                <label for="${soundId}-volume" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 40px;">Vol:</label>
+                <input type="range" id="${soundId}-volume" min="0" max="100" value="100" 
+                    style="width: 80px; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                    title="Preview volume">
+                <span id="${soundId}-volume-label" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 35px;">100%</span>
+            `;
+            
             // Create play button
             const playBtn = document.createElement('button');
             playBtn.className = 'bg-blue-600 px-3 py-2 rounded text-sm hover:bg-blue-700 transition flex items-center gap-2';
             playBtn.title = 'Preview this sound';
             playBtn.dataset.action = 'test-sound';
             playBtn.dataset.url = sound.url;
+            playBtn.dataset.volumeInputId = `${soundId}-volume`;
             playBtn.innerHTML = `
                 <i data-lucide="play" style="width: 14px; height: 14px;"></i>
                 <span>Play</span>
@@ -854,10 +890,18 @@ async function searchMyInstants() {
                 <div class="myinstants-result-actions"></div>
             `;
             
-            // Append buttons to actions div
+            // Append controls to actions div
             const actionsDiv = div.querySelector('.myinstants-result-actions');
+            actionsDiv.appendChild(volumeContainer);
             actionsDiv.appendChild(playBtn);
             actionsDiv.appendChild(useBtn);
+            
+            // Add volume slider change listener
+            const volumeSlider = volumeContainer.querySelector(`#${soundId}-volume`);
+            const volumeLabel = volumeContainer.querySelector(`#${soundId}-volume-label`);
+            volumeSlider.addEventListener('input', function() {
+                volumeLabel.textContent = `${this.value}%`;
+            });
             
             resultsDiv.appendChild(div);
         });
@@ -1057,12 +1101,27 @@ function renderSearchResults(results, container) {
         const div = document.createElement('div');
         div.className = 'myinstants-result-item';
         
+        // Generate unique ID for this sound's volume control
+        const soundId = generateUniqueSoundId();
+        
+        // Create volume slider container
+        const volumeContainer = document.createElement('div');
+        volumeContainer.className = 'flex items-center gap-2';
+        volumeContainer.innerHTML = `
+            <label for="${soundId}-volume" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 40px;">Vol:</label>
+            <input type="range" id="${soundId}-volume" min="0" max="100" value="100" 
+                style="width: 80px; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                title="Preview volume">
+            <span id="${soundId}-volume-label" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 35px;">100%</span>
+        `;
+        
         // Create preview button
         const previewBtn = document.createElement('button');
         previewBtn.className = 'bg-blue-600 px-3 py-2 rounded text-sm hover:bg-blue-700 transition flex items-center gap-2';
         previewBtn.title = 'Preview this sound';
         previewBtn.dataset.action = 'test-sound';
         previewBtn.dataset.url = sound.url;
+        previewBtn.dataset.volumeInputId = `${soundId}-volume`;
         previewBtn.innerHTML = `
             <i data-lucide="play" style="width: 14px; height: 14px;"></i>
             <span>Preview</span>
@@ -1089,10 +1148,18 @@ function renderSearchResults(results, container) {
             <div class="myinstants-result-actions"></div>
         `;
         
-        // Append buttons to actions div
+        // Append controls to actions div
         const actionsDiv = div.querySelector('.myinstants-result-actions');
+        actionsDiv.appendChild(volumeContainer);
         actionsDiv.appendChild(previewBtn);
         actionsDiv.appendChild(useBtn);
+        
+        // Add volume slider change listener
+        const volumeSlider = volumeContainer.querySelector(`#${soundId}-volume`);
+        const volumeLabel = volumeContainer.querySelector(`#${soundId}-volume-label`);
+        volumeSlider.addEventListener('input', function() {
+            volumeLabel.textContent = `${this.value}%`;
+        });
         
         container.appendChild(div);
     });
@@ -1468,7 +1535,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const action = actionBtn.dataset.action;
             if (action === 'test-sound') {
                 const url = actionBtn.dataset.url;
-                const volume = parseFloat(actionBtn.dataset.volume) || 1.0;
+                // Check if there's a volume input ID specified (for preview buttons with volume sliders)
+                let volume = parseFloat(actionBtn.dataset.volume) || 1.0;
+                if (actionBtn.dataset.volumeInputId) {
+                    const volumeInput = document.getElementById(actionBtn.dataset.volumeInputId);
+                    if (volumeInput) {
+                        volume = parseFloat(volumeInput.value) / 100.0; // Convert from 0-100 to 0.0-1.0
+                    }
+                }
                 testGiftSound(url, volume);
             } else if (action === 'use-sound') {
                 const name = actionBtn.dataset.name;
