@@ -278,10 +278,16 @@ function initializeEventSoundSliders() {
 }
 
 // ========== GIFT SOUNDS ==========
+// Cache for gift data to avoid redundant API calls
+let giftsCache = [];
+
 async function loadGiftSounds() {
     try {
         const response = await fetch('/api/soundboard/gifts');
         const gifts = await response.json();
+        
+        // Update cache
+        giftsCache = gifts;
         
         const tbody = document.getElementById('gift-sounds-list');
         if (!tbody) {
@@ -313,11 +319,11 @@ async function loadGiftSounds() {
             soundVolumeContainer.className = 'flex items-center gap-2';
             soundVolumeContainer.innerHTML = `
                 <input type="range" id="${giftVolumeId}" min="0" max="100" value="${Math.round(gift.volume * 100)}" 
+                    class="volume-slider volume-slider-inline"
                     data-gift-id="${gift.giftId}"
                     data-volume-type="sound"
-                    style="width: 80px; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
                     title="Sound volume">
-                <span id="${giftVolumeId}-label" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 35px;">${Math.round(gift.volume * 100)}%</span>
+                <span id="${giftVolumeId}-label" class="volume-label">${Math.round(gift.volume * 100)}%</span>
             `;
             
             // Create animation volume slider for Anim. Vol. column
@@ -325,11 +331,11 @@ async function loadGiftSounds() {
             animVolumeContainer.className = 'flex items-center gap-2';
             animVolumeContainer.innerHTML = `
                 <input type="range" id="${giftAnimVolumeId}" min="0" max="100" value="${Math.round((gift.animationVolume || 1.0) * 100)}" 
+                    class="volume-slider volume-slider-inline"
                     data-gift-id="${gift.giftId}"
                     data-volume-type="animation"
-                    style="width: 80px; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
                     title="Animation volume">
-                <span id="${giftAnimVolumeId}-label" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 35px;">${Math.round((gift.animationVolume || 1.0) * 100)}%</span>
+                <span id="${giftAnimVolumeId}-label" class="volume-label">${Math.round((gift.animationVolume || 1.0) * 100)}%</span>
             `;
             
             // Create test button with volume slider
@@ -340,9 +346,9 @@ async function loadGiftSounds() {
                     🔊 Test
                 </button>
                 <input type="range" id="${giftTestVolumeId}" min="0" max="100" value="${Math.round(gift.volume * 100)}" 
-                    style="width: 60px; height: 3px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                    class="volume-slider volume-slider-test"
                     title="Test volume">
-                <span id="${giftTestVolumeId}-label" style="font-size: 0.7rem; color: var(--color-text-secondary);">${Math.round(gift.volume * 100)}%</span>
+                <span id="${giftTestVolumeId}-label" class="volume-label volume-label-test">${Math.round(gift.volume * 100)}%</span>
             `;
             
             // Add volume slider change listeners
@@ -352,7 +358,7 @@ async function loadGiftSounds() {
                 soundVolumeLabel.textContent = `${this.value}%`;
             });
             soundVolumeSlider.addEventListener('change', function() {
-                updateGiftVolume(gift.giftId, parseFloat(this.value) / 100.0, 'sound');
+                updateGiftVolume(gift, parseFloat(this.value) / 100.0, 'sound');
             });
             
             const animVolumeSlider = animVolumeContainer.querySelector(`#${giftAnimVolumeId}`);
@@ -361,7 +367,7 @@ async function loadGiftSounds() {
                 animVolumeLabel.textContent = `${this.value}%`;
             });
             animVolumeSlider.addEventListener('change', function() {
-                updateGiftVolume(gift.giftId, parseFloat(this.value) / 100.0, 'animation');
+                updateGiftVolume(gift, parseFloat(this.value) / 100.0, 'animation');
             });
             
             const testVolumeSlider = testContainer.querySelector(`#${giftTestVolumeId}`);
@@ -416,20 +422,9 @@ async function loadGiftSounds() {
     }
 }
 
-async function updateGiftVolume(giftId, volume, volumeType) {
+async function updateGiftVolume(gift, volume, volumeType) {
     try {
-        // Fetch current gift data
-        const response = await fetch('/api/soundboard/gifts');
-        const gifts = await response.json();
-        const gift = gifts.find(g => g.giftId === giftId);
-        
-        if (!gift) {
-            console.error(`Gift ${giftId} not found`);
-            logAudioEvent('error', `Gift ${giftId} not found for volume update`, null);
-            return;
-        }
-        
-        // Update the appropriate volume field
+        // Use the gift object passed from the event listener to avoid fetching all gifts
         const updatedData = {
             giftId: gift.giftId,
             label: gift.label,
@@ -449,10 +444,17 @@ async function updateGiftVolume(giftId, volume, volumeType) {
         
         const result = await updateResponse.json();
         if (result.success) {
+            // Update the gift object in cache
+            if (volumeType === 'sound') {
+                gift.volume = volume;
+            } else {
+                gift.animationVolume = volume;
+            }
+            
             const volumeTypeLabel = volumeType === 'sound' ? 'Sound' : 'Animation';
             logAudioEvent('success', `${volumeTypeLabel} volume updated for "${gift.label}": ${Math.round(volume * 100)}%`, null);
         } else {
-            logAudioEvent('error', `Failed to update ${volumeType} volume for gift ${giftId}`, null);
+            logAudioEvent('error', `Failed to update ${volumeType} volume for gift ${gift.giftId}`, null);
         }
     } catch (error) {
         console.error('Error updating gift volume:', error);
@@ -1015,11 +1017,11 @@ async function searchMyInstants() {
             const volumeContainer = document.createElement('div');
             volumeContainer.className = 'flex items-center gap-2';
             volumeContainer.innerHTML = `
-                <label for="${soundId}-volume" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 40px;">Vol:</label>
+                <label for="${soundId}-volume" class="volume-label" style="min-width: 40px;">Vol:</label>
                 <input type="range" id="${soundId}-volume" min="0" max="100" value="100" 
-                    style="width: 80px; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                    class="volume-slider volume-slider-inline"
                     title="Preview volume">
-                <span id="${soundId}-volume-label" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 35px;">100%</span>
+                <span id="${soundId}-volume-label" class="volume-label">100%</span>
             `;
             
             // Create play button
@@ -1273,11 +1275,11 @@ function renderSearchResults(results, container) {
         const volumeContainer = document.createElement('div');
         volumeContainer.className = 'flex items-center gap-2';
         volumeContainer.innerHTML = `
-            <label for="${soundId}-volume" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 40px;">Vol:</label>
+            <label for="${soundId}-volume" class="volume-label" style="min-width: 40px;">Vol:</label>
             <input type="range" id="${soundId}-volume" min="0" max="100" value="100" 
-                style="width: 80px; height: 4px; border-radius: 2px; background: var(--color-border); cursor: pointer;"
+                class="volume-slider volume-slider-inline"
                 title="Preview volume">
-            <span id="${soundId}-volume-label" style="font-size: 0.75rem; color: var(--color-text-secondary); min-width: 35px;">100%</span>
+            <span id="${soundId}-volume-label" class="volume-label">100%</span>
         `;
         
         // Create preview button

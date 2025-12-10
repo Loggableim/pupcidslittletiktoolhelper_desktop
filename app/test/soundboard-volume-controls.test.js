@@ -60,7 +60,7 @@ describe('Soundboard Volume Controls', () => {
     });
     
     test('should have updateGiftVolume function for inline volume updates', () => {
-        expect(dashboardSoundboardJs).toContain('async function updateGiftVolume(giftId, volume, volumeType)');
+        expect(dashboardSoundboardJs).toContain('async function updateGiftVolume(gift, volume, volumeType)');
         expect(dashboardSoundboardJs).toContain("volumeType === 'sound'");
         expect(dashboardSoundboardJs).toContain("volumeType === 'animation'");
     });
