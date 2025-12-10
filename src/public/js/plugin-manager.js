@@ -9,6 +9,58 @@ async function checkPluginsAndUpdateUI() {
     }
 }
 
+// Plugin Status Configuration
+const PLUGIN_STATUS_CONFIG = {
+    'early-beta': {
+        id: 'early-beta',
+        color: 'red',
+        title: 'Early Beta',
+        message: 'Die Funktion ist nicht oder stark eingeschränkt gegeben. Du bist eingeladen das Plugin zu testen und Fehler und Bugs zu melden.',
+        bgGradient: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)',
+        borderColor: 'rgba(239, 68, 68, 0.3)',
+        iconBg: 'rgba(239, 68, 68, 0.2)',
+        iconColor: '#f87171',
+        titleColor: '#f87171',
+        plugins: ['gcce-hud', 'streamalchemy', 'webgpu-emoji-rain', 'fireworks', 'advanced-timer', 'chatango']
+    },
+    'beta': {
+        id: 'beta',
+        color: 'yellow',
+        title: 'Beta',
+        message: 'Die Funktion ist vorhanden aber es muss mit bugs oder fehlern gerechnet werden. Du bist eingeladen das Plugin zu testen und Fehler und Bugs zu melden.',
+        bgGradient: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(202, 138, 4, 0.05) 100%)',
+        borderColor: 'rgba(234, 179, 8, 0.3)',
+        iconBg: 'rgba(234, 179, 8, 0.2)',
+        iconColor: '#fbbf24',
+        titleColor: '#fbbf24',
+        plugins: ['minecraft-connect', 'thermal-printer', 'quiz_show', 'viewer-xp', 'leaderboard', 'openshock', 'multicam', 'gift-milestone', 'vdoninja', 'gcce', 'ifttt-flows']
+    },
+    'alpha': {
+        id: 'alpha',
+        color: 'green',
+        title: 'Alpha',
+        message: 'Diese Apps sollten grundlegend funktionieren, falls du Fehler oder Bugs entdeckst bitte melde diese im github repo.',
+        bgGradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(21, 128, 61, 0.05) 100%)',
+        borderColor: 'rgba(34, 197, 94, 0.3)',
+        iconBg: 'rgba(34, 197, 94, 0.2)',
+        iconColor: '#4ade80',
+        titleColor: '#4ade80',
+        plugins: ['weather-control', 'emoji-rain', 'soundboard', 'clarityhud', 'lastevent-spotlight', 'tts', 'goals']
+    },
+    'final': {
+        id: 'final',
+        color: 'blue',
+        title: 'Final',
+        message: 'Diese Apps funktioniert, falls du Wünsche oder Anregungen hast damit ins github repo.',
+        bgGradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)',
+        borderColor: 'rgba(59, 130, 246, 0.3)',
+        iconBg: 'rgba(59, 130, 246, 0.2)',
+        iconColor: '#60a5fa',
+        titleColor: '#60a5fa',
+        plugins: ['fireworks-webgpu', 'config-import', 'osc-bridge']
+    }
+};
+
 class PluginManager {
     constructor() {
         this.plugins = [];
@@ -260,6 +312,25 @@ class PluginManager {
                 deleteBtn.addEventListener('click', () => this.deletePlugin(plugin.id));
             }
         });
+
+        // Event-Listener für Plugin Notice Dismiss Buttons
+        const dismissButtons = document.querySelectorAll('.plugin-notice-dismiss-btn');
+        dismissButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const pluginId = btn.getAttribute('data-plugin-id');
+                const notice = document.querySelector(`.plugin-status-notice[data-plugin-id="${pluginId}"]`);
+                
+                if (notice) {
+                    notice.style.opacity = '0';
+                    notice.style.transform = 'translateY(-20px)';
+                    
+                    setTimeout(() => {
+                        notice.style.display = 'none';
+                        this.dismissPluginNotice(pluginId);
+                    }, 300);
+                }
+            });
+        });
     }
 
     /**
@@ -415,6 +486,9 @@ class PluginManager {
             </div>` 
             : '';
 
+        const pluginStatus = this.getPluginStatus(plugin.id);
+        const statusNotice = this.renderPluginNotice(plugin, pluginStatus);
+
         return `
             <div class="plugin-card" style="background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 1.5rem; transition: all 0.3s ease; position: relative; overflow: hidden;">
                 <!-- Subtle gradient overlay -->
@@ -462,7 +536,102 @@ class PluginManager {
                                 </button>
                             </div>
                         </div>
+                        ${statusNotice}
                     </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Get plugin status configuration
+     */
+    getPluginStatus(pluginId) {
+        for (const [key, status] of Object.entries(PLUGIN_STATUS_CONFIG)) {
+            if (status.plugins.includes(pluginId)) {
+                return status;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Check if plugin notice is dismissed
+     */
+    isPluginNoticeDismissed(pluginId) {
+        const dismissed = localStorage.getItem(`plugin-notice-dismissed-${pluginId}`);
+        return dismissed === 'true';
+    }
+
+    /**
+     * Dismiss plugin notice
+     */
+    dismissPluginNotice(pluginId) {
+        localStorage.setItem(`plugin-notice-dismissed-${pluginId}`, 'true');
+    }
+
+    /**
+     * Render plugin status notice
+     */
+    renderPluginNotice(plugin, status) {
+        if (!status || this.isPluginNoticeDismissed(plugin.id)) {
+            return '';
+        }
+
+        return `
+            <div class="plugin-status-notice" data-plugin-id="${plugin.id}" style="
+                background: ${status.bgGradient};
+                border: 1px solid ${status.borderColor};
+                border-radius: 12px;
+                padding: 1rem;
+                margin-top: 1rem;
+                animation: slideInDown 0.4s ease-out;
+                transition: opacity 0.3s ease, transform 0.3s ease;
+            ">
+                <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                    <div style="
+                        flex-shrink: 0;
+                        width: 40px;
+                        height: 40px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        background: ${status.iconBg};
+                        border-radius: 8px;
+                        color: ${status.iconColor};
+                    ">
+                        <i data-lucide="info" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <h4 style="
+                            font-size: 1rem;
+                            font-weight: 600;
+                            color: ${status.titleColor};
+                            margin: 0 0 0.5rem 0;
+                        ">Plugin Notice - ${status.title}</h4>
+                        <p style="
+                            font-size: 0.875rem;
+                            color: var(--color-text-secondary, #d1d5db);
+                            line-height: 1.5;
+                            margin: 0;
+                        ">${status.message}</p>
+                    </div>
+                    <button class="plugin-notice-dismiss-btn" data-plugin-id="${plugin.id}" style="
+                        flex-shrink: 0;
+                        background: rgba(255, 255, 255, 0.1);
+                        border: none;
+                        border-radius: 6px;
+                        width: 32px;
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                        color: var(--color-text-secondary, #9ca3af);
+                    " onmouseover="this.style.background='rgba(255, 255, 255, 0.2)'; this.style.transform='scale(1.1)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'; this.style.transform='scale(1)';">
+                        <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                    </button>
                 </div>
             </div>
         `;
