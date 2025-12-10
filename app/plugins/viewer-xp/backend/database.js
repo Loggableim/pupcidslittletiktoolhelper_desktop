@@ -21,6 +21,16 @@ class ViewerXPDatabase {
     this.batchTimer = null;
     this.batchSize = 50;
     this.batchTimeout = 2000; // 2 seconds
+    
+    // Level up callback
+    this.levelUpCallback = null;
+  }
+
+  /**
+   * Set level up callback
+   */
+  setLevelUpCallback(callback) {
+    this.levelUpCallback = callback;
   }
 
   /**
@@ -331,7 +341,10 @@ class ViewerXPDatabase {
     transaction(batch);
 
     // Check for level ups after batch
-    this.checkLevelUps(batch.map(b => b.username));
+    const levelUps = this.checkLevelUps(batch.map(b => b.username));
+    
+    // Return level ups for the plugin to handle
+    return levelUps;
   }
 
   /**
@@ -365,12 +378,23 @@ class ViewerXPDatabase {
           }
         }
         
-        levelUps.push({
+        const levelUpData = {
           username,
           oldLevel: viewer.level,
           newLevel,
           rewards
-        });
+        };
+        
+        levelUps.push(levelUpData);
+        
+        // Call level up callback if set
+        if (this.levelUpCallback) {
+          try {
+            this.levelUpCallback(levelUpData);
+          } catch (error) {
+            this.api.log(`Error in level up callback: ${error.message}`, 'error');
+          }
+        }
       }
     }
 
