@@ -5,9 +5,12 @@ All notable changes to PupCid's Little TikTool Helper will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.2.1] - 2025-12-09
+## [1.2.1] - 2025-12-09
 
 ### Fixed
+- **Version Number Correction** - Corrected erroneous version 2.2.1 to 1.2.1
+  - Previous version incorrectly labeled as 2.2.1 (typo)
+  - Proper semantic versioning sequence: 1.1.0 → 1.2.0 → 1.2.1
 - **Advanced Timer Plugin** - Fixed overlay routes and storage migration
   - Added missing overlay routes for timer display in OBS
   - Migrated timer storage to user profile for better data persistence
