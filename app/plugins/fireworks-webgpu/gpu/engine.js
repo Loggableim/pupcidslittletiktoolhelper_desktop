@@ -1253,17 +1253,55 @@ class FireworksEngine {
         // Collect all particles from fireworks for GPU rendering
         this.collectParticlesForGPU();
         
-        // Update FPS
+        // Update FPS and adaptive performance
         this.frameCount++;
         if (now - this.fpsUpdateTime >= 1000) {
             this.fps = Math.round(this.frameCount * 1000 / (now - this.fpsUpdateTime));
             this.frameCount = 0;
             this.fpsUpdateTime = now;
             
+            // Adaptive performance management
+            this.fpsHistory.push(this.fps);
+            if (this.fpsHistory.length > 5) {
+                this.fpsHistory.shift();
+            }
+            
+            // Calculate average FPS over last 5 seconds
+            const avgFps = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
+            const targetFps = this.config.targetFps;
+            const minFps = this.config.minFps;
+            
+            // Adjust performance mode based on FPS
+            if (avgFps < minFps) {
+                // Critical - enter minimal mode
+                if (this.performanceMode !== 'minimal') {
+                    this.performanceMode = 'minimal';
+                    this.applyPerformanceMode();
+                    console.log('[WebGPU Fireworks] Adaptive Performance: MINIMAL mode (FPS:', avgFps.toFixed(1), ')');
+                }
+            } else if (avgFps < targetFps * 0.8) {
+                // Performance degraded - reduced mode
+                if (this.performanceMode !== 'reduced') {
+                    this.performanceMode = 'reduced';
+                    this.applyPerformanceMode();
+                    console.log('[WebGPU Fireworks] Adaptive Performance: REDUCED mode (FPS:', avgFps.toFixed(1), ')');
+                }
+            } else if (avgFps >= targetFps * 0.95) {
+                // Performance good - normal mode
+                if (this.performanceMode !== 'normal') {
+                    this.performanceMode = 'normal';
+                    this.applyPerformanceMode();
+                    console.log('[WebGPU Fireworks] Adaptive Performance: NORMAL mode (FPS:', avgFps.toFixed(1), ')');
+                }
+            }
+            
             if (this.debugMode) {
-                document.getElementById('fps').textContent = this.fps;
-                document.getElementById('particle-count').textContent = this.particles.length;
-                document.getElementById('renderer-type').textContent = 'WebGPU';
+                const fpsEl = document.getElementById('fps');
+                const particleEl = document.getElementById('particle-count');
+                const modeEl = document.getElementById('performance-mode');
+                if (fpsEl) fpsEl.textContent = this.fps;
+                if (particleEl) particleEl.textContent = this.getTotalParticles();
+                if (modeEl) modeEl.textContent = this.performanceMode.toUpperCase();
             }
         }
         
@@ -1318,6 +1356,92 @@ class FireworksEngine {
         this.device.queue.submit([commandEncoder.finish()]);
         
         requestAnimationFrame(() => this.render());
+    }
+    
+    applyPerformanceMode() {
+        // Adjust CONFIG based on performance mode
+        switch (this.performanceMode) {
+            case 'minimal':
+                // Extreme reduction for very low FPS
+                CONFIG.maxParticlesPerExplosion = 50;
+                CONFIG.trailLength = 5;
+                CONFIG.sparkleChance = 0.05;
+                CONFIG.secondaryExplosionChance = 0;
+                this.config.glowEnabled = false;
+                this.config.trailsEnabled = false;
+                
+                // Limit active fireworks with graceful despawn
+                while (this.fireworks.length > 5) {
+                    const fw = this.fireworks[this.fireworks.length - 1];
+                    // Start despawn fade for rocket
+                    if (!fw.exploded && fw.rocket) {
+                        fw.rocket.startDespawn();
+                    }
+                    // Start despawn fade for all particles
+                    fw.particles.forEach(p => p.startDespawn());
+                    fw.secondaryExplosions.forEach(p => p.startDespawn());
+                    
+                    // Only remove if already despawning for enough time
+                    const minDespawnTime = (CONFIG.despawnFadeDuration * 1000) / 2;
+                    if (fw.rocket && fw.rocket.isDespawning && 
+                        performance.now() - fw.rocket.despawnStartTime > minDespawnTime) {
+                        this.fireworks.pop();
+                    } else {
+                        break; // Wait for despawn to complete
+                    }
+                }
+                break;
+                
+            case 'reduced':
+                // Moderate reduction for low FPS
+                CONFIG.maxParticlesPerExplosion = 100;
+                CONFIG.trailLength = 10;
+                CONFIG.sparkleChance = 0.08;
+                CONFIG.secondaryExplosionChance = 0.05;
+                this.config.glowEnabled = true;
+                this.config.trailsEnabled = true;
+                
+                // Limit active fireworks with graceful despawn
+                while (this.fireworks.length > 15) {
+                    const fw = this.fireworks[this.fireworks.length - 1];
+                    // Start despawn fade for rocket
+                    if (!fw.exploded && fw.rocket) {
+                        fw.rocket.startDespawn();
+                    }
+                    // Start despawn fade for all particles
+                    fw.particles.forEach(p => p.startDespawn());
+                    fw.secondaryExplosions.forEach(p => p.startDespawn());
+                    
+                    // Only remove if already despawning for enough time
+                    const minDespawnTime = (CONFIG.despawnFadeDuration * 1000) / 2;
+                    if (fw.rocket && fw.rocket.isDespawning && 
+                        performance.now() - fw.rocket.despawnStartTime > minDespawnTime) {
+                        this.fireworks.pop();
+                    } else {
+                        break; // Wait for despawn to complete
+                    }
+                }
+                break;
+                
+            case 'normal':
+                // Restore defaults
+                CONFIG.maxParticlesPerExplosion = 200;
+                CONFIG.trailLength = 20;
+                CONFIG.sparkleChance = 0.15;
+                CONFIG.secondaryExplosionChance = 0.1;
+                this.config.glowEnabled = true;
+                this.config.trailsEnabled = true;
+                break;
+        }
+    }
+    
+    getTotalParticles() {
+        let count = 0;
+        for (const fw of this.fireworks) {
+            count += fw.particles.length + fw.secondaryExplosions.length;
+            if (!fw.exploded) count++;
+        }
+        return count;
     }
     
     updateFireworks() {
