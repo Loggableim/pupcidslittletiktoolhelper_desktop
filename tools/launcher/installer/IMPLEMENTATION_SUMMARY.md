@@ -11,17 +11,19 @@ All requirements from the migration guide have been successfully implemented.
 ### Created Files:
 
 ```
-build-src/installer/
-├── ltth-installer.nsi           # Main NSIS installer script (367 lines)
+tools/launcher/installer/
+├── ltth-installer.nsi           # Main NSIS installer script
 ├── license.txt                  # License agreement (CC-BY-NC-4.0)
-├── installer-header.bmp         # Header image (150x57, 26KB)
-├── installer-sidebar.bmp        # Sidebar image (164x314, 151KB)
-├── splash-screen.bmp            # Splash screen (500x300, 440KB)
-├── banner.bmp                   # Banner image (500x100, 147KB)
+├── installer-header.bmp         # Header image (150x57)
+├── installer-sidebar.bmp        # Sidebar image (164x314)
+├── splash-screen.bmp            # Splash screen (500x300)
+├── banner.bmp                   # Banner image (500x100)
 ├── build-installer.bat          # Automated build script
-├── README.md                    # Technical documentation (12.7KB)
-├── SETUP_INSTRUCTIONS.md        # User setup guide (9.1KB)
-└── ANLEITUNG_DEUTSCH.md         # German instructions (7.2KB)
+├── sign-file.bat                # Code signing helper
+├── README.md                    # Technical documentation
+├── SETUP_INSTRUCTIONS.md        # User setup guide
+├── ANLEITUNG_DEUTSCH.md         # German instructions
+└── SIGNING.md                   # Code signing guide
 ```
 
 ### Features Implemented:
@@ -69,10 +71,10 @@ build-src/installer/
 ### How to Build:
 
 1. Install NSIS from https://nsis.sourceforge.io/Download
-2. Optional: Download Node.js portable to `build-src/assets/node/`
-3. Drag `build-src/installer/ltth-installer.nsi` into **MakeNSISW** window
+2. Optional: Download Node.js portable to `tools/launcher/assets/node/`
+3. Drag `tools/launcher/installer/ltth-installer.nsi` into **MakeNSISW** window
 4. Wait 30-60 seconds
-5. Get `LTTH-Setup-1.2.0.exe` ← **READY TO DISTRIBUTE**
+5. Get `LTTH-Setup-1.2.1.exe` ← **READY TO DISTRIBUTE**
 
 ---
 
@@ -94,17 +96,18 @@ From problem statement:
 
 ### For Technical Users:
 
-**README.md** (build-src/installer/README.md)
+**README.md** (tools/launcher/installer/README.md)
 - Complete technical guide
 - Build instructions (GUI, CLI, Batch)
 - Customization options
 - VPatch integration details
 - Troubleshooting
 - Advanced features
+- Code signing guide
 
 ### For End Users:
 
-**SETUP_INSTRUCTIONS.md** (build-src/installer/SETUP_INSTRUCTIONS.md)
+**SETUP_INSTRUCTIONS.md** (tools/launcher/installer/SETUP_INSTRUCTIONS.md)
 - Quick start guide
 - Step-by-step instructions
 - Troubleshooting common issues
@@ -113,11 +116,10 @@ From problem statement:
 
 ### German Version:
 
-**ANLEITUNG_DEUTSCH.md** (build-src/installer/ANLEITUNG_DEUTSCH.md)
+**ANLEITUNG_DEUTSCH.md** (tools/launcher/installer/ANLEITUNG_DEUTSCH.md)
 - Alle Schritte auf Deutsch
 - Schnellstart
 - Anpassungen
-- VPatch Integration
 - Zusammenfassung
 
 ---
@@ -127,10 +129,10 @@ From problem statement:
 ### NSIS Script Features:
 
 **Line 11-14:** Includes (MUI2, LogicLib, FileFunc, Sections)
-**Line 21-28:** Product definitions
-**Line 30-34:** Build paths (relative to build-src/installer)
-**Line 36-46:** Installer properties
-**Line 51-73:** Modern UI configuration with images
+**Line 21-28:** Product definitions (v1.2.1)
+**Line 31-36:** Build paths (relative to tools/launcher/installer)
+**Line 38-46:** Installer properties
+**Line 80-84:** Modern UI configuration with images
 **Line 78-98:** Installer pages including StartMenu
 **Line 103-113:** Uninstaller pages
 **Line 118-148:** .onInit function with splash/banner
@@ -182,11 +184,11 @@ All graphics use professional gradient backgrounds with LTTH branding:
 2. ✅ Open MakeNSISW
 3. ✅ Drag ltth-installer.nsi into window
 4. ✅ Wait for compilation
-5. ✅ Get LTTH-Setup-1.2.0.exe
+5. ✅ Get LTTH-Setup-1.2.1.exe
 
 ### Optional (Recommended):
 
-1. Download Node.js portable → `build-src/assets/node/`
+1. Download Node.js portable → `tools/launcher/assets/node/`
 2. Test installer on clean Windows system
 3. Code sign the installer (for trusted publisher)
 4. Generate SHA256 checksum
@@ -206,8 +208,8 @@ All graphics use professional gradient backgrounds with LTTH branding:
 
 When compiled, produces:
 
-**Filename:** `LTTH-Setup-1.2.0.exe`
-**Location:** `build-src/installer/`
+**Filename:** `LTTH-Setup-1.2.1.exe`
+**Location:** `tools/launcher/installer/`
 **Size:** ~150-200 MB (with Node.js) or ~20-30 MB (without)
 **Compression:** LZMA (solid)
 **Type:** Windows PE executable (64-bit)
@@ -271,9 +273,10 @@ All requirements met:
 ## 📞 Support Resources
 
 **Documentation:**
-- Technical: `build-src/installer/README.md`
-- Setup: `build-src/installer/SETUP_INSTRUCTIONS.md`
-- German: `build-src/installer/ANLEITUNG_DEUTSCH.md`
+- Technical: `tools/launcher/installer/README.md`
+- Setup: `tools/launcher/installer/SETUP_INSTRUCTIONS.md`
+- German: `tools/launcher/installer/ANLEITUNG_DEUTSCH.md`
+- Signing: `tools/launcher/installer/SIGNING.md`
 
 **External:**
 - NSIS: https://nsis.sourceforge.io/
