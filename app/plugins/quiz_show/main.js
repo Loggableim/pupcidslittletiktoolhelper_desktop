@@ -114,6 +114,9 @@ class QuizShowPlugin {
         // Timer interval
         this.timerInterval = null;
 
+        // Auto mode timeout
+        this.autoModeTimeout = null;
+
         // TTS pre-generation cache
         this.ttsCache = {
             nextQuestionId: null,
@@ -2071,6 +2074,12 @@ class QuizShowPlugin {
                     return;
                 }
 
+                // Clear auto mode timeout if it's running
+                if (this.autoModeTimeout) {
+                    clearTimeout(this.autoModeTimeout);
+                    this.autoModeTimeout = null;
+                }
+
                 await this.endRound();
                 this.resetGameState();
 
@@ -2539,7 +2548,8 @@ class QuizShowPlugin {
         // Auto mode - automatically start next round after delay
         if (this.config.autoMode) {
             const delay = (this.config.autoModeDelay || 5) * 1000;
-            setTimeout(() => {
+            this.autoModeTimeout = setTimeout(() => {
+                this.autoModeTimeout = null;
                 this.startRound().catch(err => {
                     this.api.log('Error auto-starting next round: ' + err.message, 'error');
                 });
@@ -3119,6 +3129,12 @@ class QuizShowPlugin {
     }
 
     resetGameState() {
+        // Clear auto mode timeout if active
+        if (this.autoModeTimeout) {
+            clearTimeout(this.autoModeTimeout);
+            this.autoModeTimeout = null;
+        }
+
         this.gameState = {
             isRunning: false,
             currentQuestion: null,
