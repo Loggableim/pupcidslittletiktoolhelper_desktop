@@ -412,7 +412,7 @@ class TemplateRenderer {
         margin: ${variant.compactLayout ? '5px' : '10px'};
         flex-shrink: 0;
       ">
-        <img src="${escapedProfilePicUrl}" alt="${escapedNickname}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='${fallbackSvg}';" crossorigin="anonymous">
+        <img src="${escapedProfilePicUrl}" alt="${escapedNickname}" style="width: 100%; height: 100%; object-fit: cover;" data-fallback="${fallbackSvg}" crossorigin="anonymous">
       </div>
     `;
   }
@@ -466,7 +466,7 @@ class TemplateRenderer {
           justify-content: center;
           flex-shrink: 0;
         ">
-          <img src="${escapedGiftPictureUrl}" alt="${escapedGiftName}" style="width: 90%; height: 90%; object-fit: contain;" onerror="this.onerror=null; this.src='${fallbackSvg}';" crossorigin="anonymous">
+          <img src="${escapedGiftPictureUrl}" alt="${escapedGiftName}" style="width: 90%; height: 90%; object-fit: contain;" data-fallback="${fallbackSvg}" crossorigin="anonymous">
         </div>
       `;
     } else {
@@ -613,6 +613,34 @@ class TemplateRenderer {
       const textEffects = new window.TextEffects();
       textEffects.applyComprehensiveEffects(usernameElement, this.settings);
     }
+
+    // Attach error handlers to images for fallback support
+    this.attachImageErrorHandlers();
+  }
+
+  /**
+   * Attach error event handlers to images
+   * This is CSP-compliant alternative to inline onerror handlers
+   */
+  attachImageErrorHandlers() {
+    const images = this.container.querySelectorAll('img[data-fallback]');
+    images.forEach(img => {
+      // Remove any existing error handler to prevent duplicates
+      if (img._errorHandler) {
+        img.removeEventListener('error', img._errorHandler);
+      }
+      
+      // Create and store the error handler
+      img._errorHandler = function() {
+        const fallbackSrc = this.getAttribute('data-fallback');
+        if (fallbackSrc && this.src !== fallbackSrc) {
+          this.src = fallbackSrc;
+        }
+      };
+      
+      // Attach the error handler
+      img.addEventListener('error', img._errorHandler);
+    });
   }
 
   /**
