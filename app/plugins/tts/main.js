@@ -378,13 +378,38 @@ class TTSPlugin {
 
         // Try to load from database
         const saved = this.api.getConfig('config');
-        if (saved) {
-            return { ...defaultConfig, ...saved };
+        let config = saved ? { ...defaultConfig, ...saved } : defaultConfig;
+
+        // IMPORTANT: API keys are now retrieved from global settings (not plugin config)
+        // This allows centralized API key management in the Settings page
+        const db = this.api.getDatabase();
+        
+        // Retrieve API keys from global settings (prioritize global settings over plugin config)
+        const globalGoogleKey = db.getSetting('tts_google_api_key');
+        const globalSpeechifyKey = db.getSetting('tts_speechify_api_key');
+        const globalElevenlabsKey = db.getSetting('tts_elevenlabs_api_key');
+        const globalOpenAIKey = db.getSetting('tts_openai_api_key');
+
+        // Override with global settings if available
+        if (globalGoogleKey) {
+            config.googleApiKey = globalGoogleKey;
+        }
+        if (globalSpeechifyKey) {
+            config.speechifyApiKey = globalSpeechifyKey;
+        }
+        if (globalElevenlabsKey) {
+            config.elevenlabsApiKey = globalElevenlabsKey;
+        }
+        if (globalOpenAIKey) {
+            config.openaiApiKey = globalOpenAIKey;
         }
 
-        // Save defaults
-        this.api.setConfig('config', defaultConfig);
-        return defaultConfig;
+        // If no saved config exists, save defaults (without API keys - they're in global settings)
+        if (!saved) {
+            this.api.setConfig('config', defaultConfig);
+        }
+
+        return config;
     }
 
     /**
