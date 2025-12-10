@@ -1,0 +1,24 @@
+{
+  "id": "webgpu-emoji-rain",
+  "name": "WebGPU Emoji Rain",
+  "version": "1.0.0",
+  "description": "GPU-accelerated emoji rain effect using WebGPU instanced rendering",
+  "author": "Pup Cid",
+  "entry": "main.js",
+  "enabled": false,
+  "permissions": [
+    "socket.io",
+    "routes",
+    "tiktok-events",
+    "database",
+    "webgpu"
+  ],
+  "dependencies": {
+    "webgpu-engine": "../../modules/webgpu-engine"
+  },
+  "features": {
+    "instanced-rendering": true,
+    "particle-system": true,
+    "texture-atlas": false
+  }
+}
