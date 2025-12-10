@@ -524,6 +524,9 @@ async function openTimerSettings(timerId) {
     const overlayUrl = `${window.location.origin}/advanced-timer/overlay?timer=${timerId}`;
     document.getElementById('overlay-url').textContent = overlayUrl;
 
+    // Load events
+    loadTimerEvents(timerId);
+
     // Load logs
     loadTimerLogs(timerId);
 
@@ -710,4 +713,362 @@ function showNotification(title, message, type = 'info') {
     // Simple notification - could be enhanced with a toast library
     console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
     alert(`${title}\n${message}`);
+}
+
+/**
+ * Timer Events Management
+ */
+async function loadTimerEvents(timerId) {
+    try {
+        const response = await fetch(`/api/advanced-timer/timers/${timerId}/events`);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderTimerEvents(data.events);
+        }
+    } catch (error) {
+        console.error('Error loading timer events:', error);
+    }
+}
+
+function renderTimerEvents(events) {
+    const container = document.getElementById('events-list');
+    
+    if (!events || events.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary); padding: 20px;">No event rules configured yet. Click "Add Event Rule" to get started.</p>';
+        return;
+    }
+    
+    container.innerHTML = events.map(event => {
+        const eventTypeLabel = getEventTypeLabel(event.event_type);
+        const actionTypeLabel = getActionTypeLabel(event.action_type);
+        const conditionsDesc = getConditionsDescription(event.event_type, event.conditions);
+        
+        return `
+            <div class="timer-card" style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">
+                            ${eventTypeLabel} → ${actionTypeLabel} ${event.action_value}s
+                        </div>
+                        ${conditionsDesc ? `<div style="font-size: 0.85rem; color: var(--color-text-secondary);">${conditionsDesc}</div>` : ''}
+                        <div style="margin-top: 8px;">
+                            <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" 
+                                    ${event.enabled ? 'checked' : ''} 
+                                    onchange="toggleEventEnabled(${event.id}, this.checked)">
+                                <span style="font-size: 0.9rem;">Enabled</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-sm btn-secondary" onclick="editTimerEvent(${event.id})">✏️ Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteTimerEvent(${event.id})">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getEventTypeLabel(eventType) {
+    const labels = {
+        'gift': '🎁 Gift',
+        'like': '👍 Like',
+        'follow': '⭐ Follow',
+        'share': '🔄 Share',
+        'subscribe': '🌟 Subscribe',
+        'chat': '💬 Chat'
+    };
+    return labels[eventType] || eventType;
+}
+
+function getActionTypeLabel(actionType) {
+    const labels = {
+        'add_time': 'Add',
+        'remove_time': 'Remove',
+        'set_value': 'Set to'
+    };
+    return labels[actionType] || actionType;
+}
+
+function getConditionsDescription(eventType, conditions) {
+    if (!conditions || Object.keys(conditions).length === 0) {
+        return '';
+    }
+    
+    const parts = [];
+    
+    if (eventType === 'gift') {
+        if (conditions.giftName) {
+            parts.push(`Gift: ${conditions.giftName}`);
+        }
+        if (conditions.minCoins) {
+            parts.push(`Min coins: ${conditions.minCoins}`);
+        }
+    } else if (eventType === 'like') {
+        if (conditions.minLikes) {
+            parts.push(`Min likes per event: ${conditions.minLikes}`);
+        }
+    } else if (eventType === 'chat') {
+        if (conditions.command) {
+            parts.push(`Command: ${conditions.command}`);
+        }
+        if (conditions.keyword) {
+            parts.push(`Keyword: ${conditions.keyword}`);
+        }
+    }
+    
+    return parts.length > 0 ? `Conditions: ${parts.join(', ')}` : '';
+}
+
+async function toggleEventEnabled(eventId, enabled) {
+    try {
+        const response = await fetch(`/api/advanced-timer/events`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: eventId, enabled: enabled ? 1 : 0 })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Success', enabled ? 'Event enabled' : 'Event disabled', 'success');
+        }
+    } catch (error) {
+        console.error('Error toggling event:', error);
+        showNotification('Error', 'Failed to update event', 'error');
+    }
+}
+
+async function deleteTimerEvent(eventId) {
+    if (!confirm('Are you sure you want to delete this event rule?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/advanced-timer/events/${eventId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Success', 'Event rule deleted', 'success');
+            if (currentEditingTimer) {
+                loadTimerEvents(currentEditingTimer.id);
+            }
+        }
+    } catch (error) {
+        console.error('Error deleting event:', error);
+        showNotification('Error', 'Failed to delete event rule', 'error');
+    }
+}
+
+let editingEventId = null;
+
+function addTimerEvent() {
+    editingEventId = null;
+    showEventEditorModal();
+}
+
+async function editTimerEvent(eventId) {
+    if (!currentEditingTimer) return;
+    
+    try {
+        const response = await fetch(`/api/advanced-timer/timers/${currentEditingTimer.id}/events`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const event = data.events.find(e => e.id === eventId);
+            if (event) {
+                editingEventId = eventId;
+                showEventEditorModal(event);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading event for edit:', error);
+    }
+}
+
+function showEventEditorModal(event = null) {
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.id = 'event-editor-modal';
+    
+    const isEdit = event !== null;
+    const eventType = event?.event_type || 'gift';
+    const actionType = event?.action_type || 'add_time';
+    const conditions = event?.conditions || {};
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">${isEdit ? '✏️ Edit' : '➕ Add'} Event Rule</div>
+            
+            <div class="form-group">
+                <label class="form-label">Event Type</label>
+                <select class="form-control" id="event-type-select" onchange="updateEventConditions()">
+                    <option value="gift" ${eventType === 'gift' ? 'selected' : ''}>🎁 Gift</option>
+                    <option value="like" ${eventType === 'like' ? 'selected' : ''}>👍 Like</option>
+                    <option value="follow" ${eventType === 'follow' ? 'selected' : ''}>⭐ Follow</option>
+                    <option value="share" ${eventType === 'share' ? 'selected' : ''}>🔄 Share</option>
+                    <option value="subscribe" ${eventType === 'subscribe' ? 'selected' : ''}>🌟 Subscribe</option>
+                    <option value="chat" ${eventType === 'chat' ? 'selected' : ''}>💬 Chat</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Action</label>
+                <select class="form-control" id="event-action-select">
+                    <option value="add_time" ${actionType === 'add_time' ? 'selected' : ''}>Add Time</option>
+                    <option value="remove_time" ${actionType === 'remove_time' ? 'selected' : ''}>Remove Time</option>
+                    <option value="set_value" ${actionType === 'set_value' ? 'selected' : ''}>Set Value</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Value (seconds)</label>
+                <input type="number" class="form-control" id="event-value-input" value="${event?.action_value || 10}" min="0" step="1">
+            </div>
+            
+            <div id="event-conditions-container">
+                <!-- Conditions will be inserted here based on event type -->
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-primary" onclick="saveEventRule()">${isEdit ? 'Update' : 'Add'} Event Rule</button>
+                <button class="btn btn-secondary" onclick="closeEventEditorModal()">Cancel</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    updateEventConditions(conditions);
+}
+
+function updateEventConditions(existingConditions = {}) {
+    const eventType = document.getElementById('event-type-select').value;
+    const container = document.getElementById('event-conditions-container');
+    
+    let html = '<div class="info-box" style="margin-top: 16px;"><div class="info-box-title">Conditions (Optional)</div>';
+    
+    if (eventType === 'gift') {
+        html += `
+            <div class="form-group">
+                <label class="form-label">Specific Gift Name (leave empty for all gifts)</label>
+                <input type="text" class="form-control" id="condition-gift-name" value="${existingConditions.giftName || ''}" placeholder="e.g., Rose">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Minimum Coins (0 = no minimum)</label>
+                <input type="number" class="form-control" id="condition-min-coins" value="${existingConditions.minCoins || 0}" min="0">
+            </div>
+        `;
+    } else if (eventType === 'like') {
+        html += `
+            <div class="form-group">
+                <label class="form-label">Minimum Likes per Event (0 = no minimum)</label>
+                <input type="number" class="form-control" id="condition-min-likes" value="${existingConditions.minLikes || 0}" min="0">
+            </div>
+        `;
+    } else if (eventType === 'chat') {
+        html += `
+            <div class="form-group">
+                <label class="form-label">Command (must start with this)</label>
+                <input type="text" class="form-control" id="condition-command" value="${existingConditions.command || ''}" placeholder="e.g., !timer">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Keyword (must contain this)</label>
+                <input type="text" class="form-control" id="condition-keyword" value="${existingConditions.keyword || ''}" placeholder="e.g., add time">
+            </div>
+        `;
+    } else {
+        html += '<p style="color: var(--color-text-secondary);">No additional conditions for this event type.</p>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+async function saveEventRule() {
+    if (!currentEditingTimer) return;
+    
+    const eventType = document.getElementById('event-type-select').value;
+    const actionType = document.getElementById('event-action-select').value;
+    const actionValueStr = document.getElementById('event-value-input').value;
+    const actionValue = parseInt(actionValueStr, 10);
+    
+    // Validate action value
+    if (isNaN(actionValue) || actionValue < 0) {
+        showNotification('Error', 'Please enter a valid positive number for the value', 'error');
+        return;
+    }
+    
+    // Collect conditions based on event type
+    const conditions = {};
+    
+    if (eventType === 'gift') {
+        const giftName = document.getElementById('condition-gift-name')?.value;
+        const minCoinsStr = document.getElementById('condition-min-coins')?.value || '0';
+        const minCoins = parseInt(minCoinsStr, 10);
+        
+        if (isNaN(minCoins) || minCoins < 0) {
+            showNotification('Error', 'Minimum coins must be a valid positive number', 'error');
+            return;
+        }
+        
+        if (giftName) conditions.giftName = giftName;
+        if (minCoins > 0) conditions.minCoins = minCoins;
+    } else if (eventType === 'like') {
+        const minLikesStr = document.getElementById('condition-min-likes')?.value || '0';
+        const minLikes = parseInt(minLikesStr, 10);
+        
+        if (isNaN(minLikes) || minLikes < 0) {
+            showNotification('Error', 'Minimum likes must be a valid positive number', 'error');
+            return;
+        }
+        
+        if (minLikes > 0) conditions.minLikes = minLikes;
+    } else if (eventType === 'chat') {
+        const command = document.getElementById('condition-command')?.value;
+        const keyword = document.getElementById('condition-keyword')?.value;
+        if (command) conditions.command = command;
+        if (keyword) conditions.keyword = keyword;
+    }
+    
+    const eventData = {
+        timer_id: currentEditingTimer.id,
+        event_type: eventType,
+        action_type: actionType,
+        action_value: actionValue,
+        conditions: conditions,
+        enabled: 1
+    };
+    
+    if (editingEventId) {
+        eventData.id = editingEventId;
+    }
+    
+    try {
+        const response = await fetch('/api/advanced-timer/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventData)
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Success', `Event rule ${editingEventId ? 'updated' : 'added'} successfully!`, 'success');
+            closeEventEditorModal();
+            loadTimerEvents(currentEditingTimer.id);
+        }
+    } catch (error) {
+        console.error('Error saving event rule:', error);
+        showNotification('Error', 'Failed to save event rule', 'error');
+    }
+}
+
+function closeEventEditorModal() {
+    const modal = document.getElementById('event-editor-modal');
+    if (modal) {
+        modal.remove();
+    }
+    editingEventId = null;
 }
