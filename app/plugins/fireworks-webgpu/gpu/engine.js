@@ -22,6 +22,7 @@ const CONFIG = {
     maxTotalParticles: 10000,
     targetFps: 60,
     minFps: 24,
+    physicsScale: 60, // Physics calculations scale factor (matches target FPS for frame-independent physics)
     gravity: 0.08,
     airResistance: 0.99,
     rocketSpeed: -12,
@@ -591,11 +592,11 @@ class FireworksEngine {
             // rocketSpeed is negative (upward motion, decreasing Y)
             // rocketAcceleration is negative, but we need positive acceleration (gravity pulling down)
             // So we negate it to get proper deceleration of upward motion
-            rocket.vy -= this.config.rocketAcceleration * deltaTime * 60; // Deceleration (gravity)
+            rocket.vy -= this.config.rocketAcceleration * deltaTime * this.config.physicsScale; // Deceleration (gravity)
             rocket.vx *= 0.995; // Air resistance
             
-            rocket.x += rocket.vx * deltaTime * 60;
-            rocket.y += rocket.vy * deltaTime * 60;
+            rocket.x += rocket.vx * deltaTime * this.config.physicsScale;
+            rocket.y += rocket.vy * deltaTime * this.config.physicsScale;
             
             // Check if rocket should explode
             // Rocket explodes when velocity becomes positive (moving down) or reaches target height
@@ -653,8 +654,8 @@ class FireworksEngine {
         
         // Convert normalized position to screen coordinates
         const startX = position.x * this.width;
-        const startY = this.height; // Start at bottom
-        const targetY = position.y * this.height; // Target height
+        const startY = this.height; // Start at bottom (max Y in canvas coordinates)
+        const targetY = position.y * this.height; // Target height (lower Y value)
         
         // Create rocket object
         const rocket = {
@@ -662,7 +663,7 @@ class FireworksEngine {
             y: startY,
             targetY: targetY,
             vx: (Math.random() - 0.5) * 2, // Slight horizontal drift
-            vy: this.config.rocketSpeed, // Initial upward velocity
+            vy: this.config.rocketSpeed, // Initial velocity (negative = upward in canvas Y-down coordinates)
             particleCount: particleCount,
             colors: colors,
             options: options // Store original options for explosion
