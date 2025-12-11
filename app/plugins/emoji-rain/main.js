@@ -21,6 +21,8 @@ class EmojiRainPlugin {
         const persistentUserConfigsDir = configPathManager.getUserConfigsDir();
         this.userConfigMappingsPath = path.join(persistentUserConfigsDir, 'emoji-rain', 'users.json');
         this.emojiRainUpload = null;
+        // Benchmark state
+        this.benchmarkResults = null;
     }
 
     async init() {
@@ -72,6 +74,10 @@ class EmojiRainPlugin {
         // Register routes
         this.api.log('🛣️ [EMOJI RAIN] Registering routes...', 'debug');
         this.registerRoutes();
+
+        // Register socket event handlers
+        this.api.log('🔌 [EMOJI RAIN] Registering socket event handlers...', 'debug');
+        this.registerSocketHandlers();
 
         // Register TikTok event handlers
         this.api.log('🎯 [EMOJI RAIN] Registering TikTok event handlers...', 'debug');
@@ -520,6 +526,68 @@ class EmojiRainPlugin {
             }
         });
 
+        // Benchmark routes
+        // Start FPS benchmark
+        this.api.registerRoute('post', '/api/emoji-rain/benchmark/start', (req, res) => {
+            try {
+                const { targetFPS } = req.body;
+                const target = parseInt(targetFPS) || 60;
+                
+                this.api.log(`🔬 Starting FPS benchmark (Target: ${target} FPS)`, 'info');
+                
+                // Emit to all overlays to start benchmark
+                this.api.emit('emoji-rain:benchmark-start', { targetFPS: target });
+                
+                res.json({ success: true, message: 'Benchmark started', targetFPS: target });
+            } catch (error) {
+                this.api.log(`Error starting benchmark: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Stop benchmark
+        this.api.registerRoute('post', '/api/emoji-rain/benchmark/stop', (req, res) => {
+            try {
+                this.api.log('⏹️ Stopping FPS benchmark', 'info');
+                
+                // Emit to all overlays to stop benchmark
+                this.api.emit('emoji-rain:benchmark-stop');
+                
+                res.json({ success: true, message: 'Benchmark stopped' });
+            } catch (error) {
+                this.api.log(`Error stopping benchmark: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Apply optimized settings
+        this.api.registerRoute('post', '/api/emoji-rain/benchmark/apply', (req, res) => {
+            try {
+                const { settings } = req.body;
+                
+                if (!settings) {
+                    return res.status(400).json({ success: false, error: 'settings is required' });
+                }
+                
+                this.api.log('✨ Applying optimized benchmark settings', 'info');
+                
+                // Update config in database
+                const db = this.api.getDatabase();
+                const currentConfig = db.getEmojiRainConfig();
+                const updatedConfig = { ...currentConfig, ...settings };
+                db.updateEmojiRainConfig(updatedConfig);
+                
+                // Emit to overlays to apply settings
+                this.api.emit('emoji-rain:benchmark-apply', { settings });
+                this.api.emit('emoji-rain:config-update', { config: updatedConfig });
+                
+                res.json({ success: true, message: 'Optimized settings applied' });
+            } catch (error) {
+                this.api.log(`Error applying optimized settings: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
         // Serve uploaded files
         const express = require('express');
         this.api.getApp().use('/plugins/emoji-rain/uploads', express.static(this.emojiRainUploadDir));
@@ -535,6 +603,33 @@ class EmojiRainPlugin {
         this.api.log('   - GET  /api/emoji-rain/user-mappings', 'info');
         this.api.log('   - POST /api/emoji-rain/user-mappings', 'info');
         this.api.log('   - POST /api/emoji-rain/trigger', 'info');
+        this.api.log('   - POST /api/emoji-rain/benchmark/start', 'info');
+        this.api.log('   - POST /api/emoji-rain/benchmark/stop', 'info');
+        this.api.log('   - POST /api/emoji-rain/benchmark/apply', 'info');
+    }
+
+    registerSocketHandlers() {
+        const io = this.api.getSocketIO();
+
+        // Handle benchmark status updates from overlay
+        this.api.registerSocket('emoji-rain:benchmark-status', (data) => {
+            this.api.log(`📊 Benchmark status update: ${data.type}`, 'debug');
+            
+            if (data.type === 'complete') {
+                this.benchmarkResults = data;
+                this.api.log(`✅ Benchmark complete! Results: ${JSON.stringify(data.results)}`, 'info');
+                if (data.optimal) {
+                    this.api.log(`🎯 Optimal settings: ${data.optimal.name} (Avg FPS: ${data.optimal.avgFPS})`, 'info');
+                }
+            } else if (data.type === 'progress') {
+                this.api.log(`🔬 Running test ${data.test}/${data.total}: ${data.name}`, 'info');
+            }
+            
+            // Broadcast to all connected clients (for UI updates)
+            io.emit('emoji-rain:benchmark-update', data);
+        });
+
+        this.api.log('✅ [EMOJI RAIN] Socket event handlers registered', 'info');
     }
 
     registerTikTokEventHandlers() {

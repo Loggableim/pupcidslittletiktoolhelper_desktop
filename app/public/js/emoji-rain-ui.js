@@ -73,7 +73,7 @@ function updateUI() {
         document.getElementById('enable_glow').checked = config.enable_glow !== false;
         document.getElementById('enable_particles').checked = config.enable_particles !== false;
         document.getElementById('enable_depth').checked = config.enable_depth !== false;
-        document.getElementById('target_fps').value = config.target_fps || 60;
+        document.getElementById('obs_hud_target_fps').value = config.target_fps || 60;
 
         // Detect preset
         const width = config.obs_hud_width || 1920;
@@ -727,6 +727,197 @@ function updatePerformanceDisplay(fps, activeEmojis, mode) {
 // ========== INITIALIZATION ==========
 
 // Initialize everything when DOM is ready
+// ========== BENCHMARK FUNCTIONS ==========
+
+let benchmarkActive = false;
+let benchmarkResults = null;
+
+/**
+ * Start FPS benchmark
+ */
+async function startBenchmark() {
+    const targetFPS = parseInt(document.getElementById('target_fps').value) || 60;
+    
+    if (benchmarkActive) {
+        showNotification('Benchmark läuft bereits', true);
+        return;
+    }
+    
+    try {
+        console.log(`🔬 Starting benchmark (Target: ${targetFPS} FPS)`);
+        
+        // Update UI
+        document.getElementById('start-benchmark-btn').style.display = 'none';
+        document.getElementById('stop-benchmark-btn').style.display = 'inline-block';
+        document.getElementById('benchmark-progress').style.display = 'block';
+        document.getElementById('benchmark-results').style.display = 'none';
+        
+        benchmarkActive = true;
+        benchmarkResults = null;
+        
+        // Start benchmark via API
+        const response = await fetch('/api/emoji-rain/benchmark/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetFPS })
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Benchmark start failed');
+        }
+        
+        showNotification('Benchmark gestartet', false);
+    } catch (error) {
+        console.error('Error starting benchmark:', error);
+        showNotification('Fehler beim Starten des Benchmarks', true);
+        resetBenchmarkUI();
+    }
+}
+
+/**
+ * Stop FPS benchmark
+ */
+async function stopBenchmark() {
+    try {
+        console.log('⏹️ Stopping benchmark');
+        
+        const response = await fetch('/api/emoji-rain/benchmark/stop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Benchmark stop failed');
+        }
+        
+        showNotification('Benchmark gestoppt', false);
+        resetBenchmarkUI();
+    } catch (error) {
+        console.error('Error stopping benchmark:', error);
+        showNotification('Fehler beim Stoppen des Benchmarks', true);
+        resetBenchmarkUI();
+    }
+}
+
+/**
+ * Apply optimized settings from benchmark
+ */
+async function applyOptimizedSettings() {
+    if (!benchmarkResults || !benchmarkResults.optimal) {
+        showNotification('Keine optimierten Einstellungen verfügbar', true);
+        return;
+    }
+    
+    try {
+        console.log('✨ Applying optimized settings:', benchmarkResults.optimal);
+        
+        const response = await fetch('/api/emoji-rain/benchmark/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings: benchmarkResults.optimal.settings })
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Apply settings failed');
+        }
+        
+        showNotification('Optimierte Einstellungen angewendet!', false);
+        
+        // Reload config to update UI
+        setTimeout(() => {
+            loadConfig();
+        }, 500);
+    } catch (error) {
+        console.error('Error applying optimized settings:', error);
+        showNotification('Fehler beim Anwenden der Einstellungen', true);
+    }
+}
+
+/**
+ * Reset benchmark UI to initial state
+ */
+function resetBenchmarkUI() {
+    benchmarkActive = false;
+    document.getElementById('start-benchmark-btn').style.display = 'inline-block';
+    document.getElementById('stop-benchmark-btn').style.display = 'none';
+    document.getElementById('benchmark-progress').style.display = 'none';
+}
+
+/**
+ * Update benchmark progress display
+ */
+function updateBenchmarkProgress(data) {
+    if (data.type === 'progress') {
+        const progressPercent = (data.test / data.total) * 100;
+        document.getElementById('benchmark-progress-bar').style.width = progressPercent + '%';
+        document.getElementById('benchmark-status').textContent = `Test ${data.test}/${data.total}: ${data.name}`;
+    } else if (data.type === 'complete') {
+        // Benchmark complete
+        benchmarkActive = false;
+        benchmarkResults = data;
+        
+        // Hide progress, show results
+        document.getElementById('benchmark-progress').style.display = 'none';
+        document.getElementById('start-benchmark-btn').style.display = 'inline-block';
+        document.getElementById('stop-benchmark-btn').style.display = 'none';
+        
+        // Display results
+        displayBenchmarkResults(data);
+        
+        showNotification('Benchmark abgeschlossen!', false);
+    } else if (data.type === 'stopped') {
+        resetBenchmarkUI();
+    }
+}
+
+/**
+ * Display benchmark results
+ */
+function displayBenchmarkResults(data) {
+    const resultsDiv = document.getElementById('benchmark-results');
+    const contentDiv = document.getElementById('benchmark-results-content');
+    const optimalDiv = document.getElementById('optimal-settings');
+    
+    // Build results table
+    let html = '<table style="width: 100%; border-collapse: collapse;">';
+    html += '<tr style="border-bottom: 1px solid var(--color-border);">';
+    html += '<th style="text-align: left; padding: 8px;">Qualität</th>';
+    html += '<th style="text-align: center; padding: 8px;">Durchschn. FPS</th>';
+    html += '<th style="text-align: center; padding: 8px;">Min FPS</th>';
+    html += '<th style="text-align: center; padding: 8px;">Max FPS</th>';
+    html += '<th style="text-align: center; padding: 8px;">Ziel erreicht</th>';
+    html += '</tr>';
+    
+    data.results.forEach(result => {
+        const meetsTarget = result.meetsTarget ? '✅' : '❌';
+        const rowStyle = result.meetsTarget ? 'background: var(--color-success-bg);' : '';
+        html += `<tr style="border-bottom: 1px solid var(--color-border); ${rowStyle}">`;
+        html += `<td style="padding: 8px;">${result.name}</td>`;
+        html += `<td style="text-align: center; padding: 8px;"><strong>${result.avgFPS}</strong></td>`;
+        html += `<td style="text-align: center; padding: 8px;">${result.minFPS}</td>`;
+        html += `<td style="text-align: center; padding: 8px;">${result.maxFPS}</td>`;
+        html += `<td style="text-align: center; padding: 8px;">${meetsTarget}</td>`;
+        html += '</tr>';
+    });
+    
+    html += '</table>';
+    contentDiv.innerHTML = html;
+    resultsDiv.style.display = 'block';
+    
+    // Show optimal settings if available
+    if (data.optimal) {
+        document.getElementById('optimal-name').textContent = data.optimal.name;
+        document.getElementById('optimal-details').textContent = 
+            `Durchschnittliche FPS: ${data.optimal.avgFPS} | Min: ${data.optimal.minFPS} | Max: ${data.optimal.maxFPS}`;
+        optimalDiv.style.display = 'block';
+    } else {
+        optimalDiv.style.display = 'none';
+    }
+}
+
 function initializeEmojiRainUI() {
     console.log('🚀 [EMOJI RAIN UI] Initializing Emoji Rain UI...');
 
@@ -753,6 +944,11 @@ function initializeEmojiRainUI() {
     // Test emoji rain button
     document.getElementById('test-emoji-rain-btn').addEventListener('click', testEmojiRain);
 
+    // Benchmark buttons
+    document.getElementById('start-benchmark-btn').addEventListener('click', startBenchmark);
+    document.getElementById('stop-benchmark-btn').addEventListener('click', stopBenchmark);
+    document.getElementById('apply-optimal-btn').addEventListener('click', applyOptimizedSettings);
+
     // Emoji set input
     document.getElementById('emoji_set').addEventListener('input', updateEmojiPreview);
 
@@ -776,6 +972,11 @@ function initializeEmojiRainUI() {
     // Setup socket listener for performance updates
     socket.on('emoji-rain:performance-update', (data) => {
         updatePerformanceDisplay(data.fps, data.activeEmojis, data.mode);
+    });
+
+    // Setup socket listener for benchmark updates
+    socket.on('emoji-rain:benchmark-update', (data) => {
+        updateBenchmarkProgress(data);
     });
 }
 

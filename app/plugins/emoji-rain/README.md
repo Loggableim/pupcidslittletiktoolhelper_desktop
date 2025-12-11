@@ -8,6 +8,14 @@ Das verbesserte Emoji Rain Plugin bietet jetzt **zwei separate Overlays** mit un
 
 ## 🆕 Neue Features
 
+### 🔬 **FPS Benchmarking & Auto-Optimierung** (NEU!)
+- **Automatische FPS-Messung**: Testet 5 verschiedene Qualitätsstufen
+- **Intelligente Optimierung**: Findet die beste Einstellung für deine Ziel-FPS
+- **Performance-Presets**: Von Maximum Quality (200 Emojis) bis Minimal (50 Emojis)
+- **Ein-Klick-Optimierung**: Automatische Anwendung der optimalen Einstellungen
+- **Detaillierte Ergebnisse**: Durchschnittliche, minimale und maximale FPS pro Preset
+- 📖 **Siehe**: [BENCHMARK_GUIDE.md](./BENCHMARK_GUIDE.md) für ausführliche Anleitung
+
 ### 🎮 OBS HUD Integration
 - **Feste Auflösung**: Wählbar zwischen 720p, 1080p, 1440p, 4K oder Custom
 - **Game-Quality Grafik**:
@@ -40,7 +48,7 @@ Das verbesserte Emoji Rain Plugin bietet jetzt **zwei separate Overlays** mit un
 - `enable_glow`: Glow-Effekte aktivieren
 - `enable_particles`: Partikel-Effekte aktivieren
 - `enable_depth`: Tiefeneffekte aktivieren
-- `target_fps`: Ziel-FPS (30-120)
+- `target_fps`: Ziel-FPS (30-120) - **Nutze das Benchmark-Tool zur Optimierung!**
 
 ## 🚀 OBS Setup
 
