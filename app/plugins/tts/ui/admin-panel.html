@@ -85,6 +85,7 @@
                                 <option value="speechify">Speechify TTS (Premium)</option>
                                 <option value="elevenlabs">ElevenLabs TTS (Premium)</option>
                                 <option value="openai">OpenAI TTS</option>
+                                <option value="fishspeech">Fish Speech 1.5 (SiliconFlow)</option>
                             </select>
                             <p class="text-xs text-gray-400 mt-1">The primary TTS engine to use. API key must be configured in the API Keys section below.</p>
                         </div>
@@ -149,6 +150,13 @@
                                     <label for="enableOpenAIFallback" class="text-sm flex-1">
                                         <span class="font-medium">OpenAI TTS</span>
                                         <span class="text-xs text-gray-400 block">TTS-1 and TTS-1-HD models</span>
+                                    </label>
+                                </div>
+                                <div class="flex items-center space-x-2 bg-gray-700 rounded p-3">
+                                    <input type="checkbox" id="enableFishSpeechFallback" class="w-4 h-4">
+                                    <label for="enableFishSpeechFallback" class="text-sm flex-1">
+                                        <span class="font-medium">Fish Speech 1.5</span>
+                                        <span class="text-xs text-gray-400 block">Multilingual, SiliconFlow API</span>
                                     </label>
                                 </div>
                             </div>
@@ -337,7 +345,7 @@
                                 <strong>API keys are now managed in the global Settings panel.</strong>
                             </p>
                             <p class="text-gray-400 text-sm mb-4">
-                                To configure your TTS engine API keys (Google Cloud, Speechify, ElevenLabs, OpenAI), please go to:
+                                To configure your TTS engine API keys (Google Cloud, Speechify, ElevenLabs, OpenAI, Fish Speech), please go to:
                             </p>
                             <ol class="text-gray-400 text-sm space-y-2 mb-4">
                                 <li>1. Click <strong>Settings</strong> in the left sidebar</li>
@@ -385,6 +393,7 @@
                             <option value="speechify">Speechify TTS</option>
                             <option value="elevenlabs">ElevenLabs TTS</option>
                             <option value="openai">OpenAI TTS</option>
+                            <option value="fishspeech">Fish Speech 1.5</option>
                         </select>
                     </div>
 
@@ -597,6 +606,7 @@
                     <option value="speechify">Speechify (Premium)</option>
                     <option value="elevenlabs">ElevenLabs (Premium)</option>
                     <option value="openai">OpenAI TTS (Premium)</option>
+                    <option value="fishspeech">Fish Speech 1.5</option>
                 </select>
             </div>
 

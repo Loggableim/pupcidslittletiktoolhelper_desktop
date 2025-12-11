@@ -447,6 +447,7 @@ function populateConfig(config) {
     setValue('enableSpeechifyFallback', config.enableSpeechifyFallback || false);
     setValue('enableElevenlabsFallback', config.enableElevenlabsFallback || false);
     setValue('enableOpenAIFallback', config.enableOpenAIFallback || false);
+    setValue('enableFishSpeechFallback', config.enableFishSpeechFallback || false);
 
     // Language detection settings
     setValue('fallbackLanguage', config.fallbackLanguage || 'de');
@@ -508,6 +509,7 @@ async function saveConfig() {
             enableSpeechifyFallback: document.getElementById('enableSpeechifyFallback')?.checked || false,
             enableElevenlabsFallback: document.getElementById('enableElevenlabsFallback')?.checked || false,
             enableOpenAIFallback: document.getElementById('enableOpenAIFallback')?.checked || false,
+            enableFishSpeechFallback: document.getElementById('enableFishSpeechFallback')?.checked || false,
             // Language detection settings
             fallbackLanguage: document.getElementById('fallbackLanguage').value,
             languageConfidenceThreshold: parseFloat(document.getElementById('languageConfidenceThreshold').value),

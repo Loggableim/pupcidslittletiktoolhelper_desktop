@@ -289,7 +289,8 @@ function initializeButtons() {
         { btnId: 'toggle-tts-google-key', inputId: 'tts-google-api-key' },
         { btnId: 'toggle-tts-speechify-key', inputId: 'tts-speechify-api-key' },
         { btnId: 'toggle-tts-elevenlabs-key', inputId: 'tts-elevenlabs-api-key' },
-        { btnId: 'toggle-tts-openai-key', inputId: 'tts-openai-api-key' }
+        { btnId: 'toggle-tts-openai-key', inputId: 'tts-openai-api-key' },
+        { btnId: 'toggle-tts-fishspeech-key', inputId: 'tts-fishspeech-api-key' }
     ];
 
     toggleButtons.forEach(({ btnId, inputId }) => {
@@ -1446,6 +1447,12 @@ async function loadSettings() {
             ttsOpenaiKeyInput.placeholder = 'API key configured (hidden)';
         }
 
+        const ttsFishspeechKeyInput = document.getElementById('tts-fishspeech-api-key');
+        if (ttsFishspeechKeyInput && settings.tts_fishspeech_api_key) {
+            ttsFishspeechKeyInput.value = '***REDACTED***';
+            ttsFishspeechKeyInput.placeholder = 'API key configured (hidden)';
+        }
+
     } catch (error) {
         console.error('Error loading settings:', error);
     }
@@ -1565,22 +1572,25 @@ async function saveTTSAPIKeys() {
     const speechifyKeyInput = document.getElementById('tts-speechify-api-key');
     const elevenlabsKeyInput = document.getElementById('tts-elevenlabs-api-key');
     const openaiKeyInput = document.getElementById('tts-openai-api-key');
+    const fishspeechKeyInput = document.getElementById('tts-fishspeech-api-key');
     
-    if (!googleKeyInput || !speechifyKeyInput || !elevenlabsKeyInput || !openaiKeyInput) return;
+    if (!googleKeyInput || !speechifyKeyInput || !elevenlabsKeyInput || !openaiKeyInput || !fishspeechKeyInput) return;
 
     const googleKey = googleKeyInput.value.trim();
     const speechifyKey = speechifyKeyInput.value.trim();
     const elevenlabsKey = elevenlabsKeyInput.value.trim();
     const openaiKey = openaiKeyInput.value.trim();
+    const fishspeechKey = fishspeechKeyInput.value.trim();
     
     // Check if there are any actual new keys to save (not placeholders or empty)
     const hasNewKeys = (googleKey && googleKey !== '***REDACTED***') ||
                        (speechifyKey && speechifyKey !== '***REDACTED***') ||
                        (elevenlabsKey && elevenlabsKey !== '***REDACTED***') ||
-                       (openaiKey && openaiKey !== '***REDACTED***');
+                       (openaiKey && openaiKey !== '***REDACTED***') ||
+                       (fishspeechKey && fishspeechKey !== '***REDACTED***');
     
     // Check if at least one key exists (either new or placeholder indicating existing)
-    const hasAnyKeys = googleKey || speechifyKey || elevenlabsKey || openaiKey;
+    const hasAnyKeys = googleKey || speechifyKey || elevenlabsKey || openaiKey || fishspeechKey;
     
     if (!hasAnyKeys) {
         alert('❌ Please enter at least one TTS API key');
@@ -1608,6 +1618,9 @@ async function saveTTSAPIKeys() {
         if (openaiKey && openaiKey !== '***REDACTED***') {
             updateData.tts_openai_api_key = openaiKey;
         }
+        if (fishspeechKey && fishspeechKey !== '***REDACTED***') {
+            updateData.tts_fishspeech_api_key = fishspeechKey;
+        }
 
         const response = await fetch('/api/settings', {
             method: 'POST',
@@ -1624,6 +1637,7 @@ async function saveTTSAPIKeys() {
             if (speechifyKey && speechifyKey !== '***REDACTED***') settings.tts_speechify_api_key = speechifyKey;
             if (elevenlabsKey && elevenlabsKey !== '***REDACTED***') settings.tts_elevenlabs_api_key = elevenlabsKey;
             if (openaiKey && openaiKey !== '***REDACTED***') settings.tts_openai_api_key = openaiKey;
+            if (fishspeechKey && fishspeechKey !== '***REDACTED***') settings.tts_fishspeech_api_key = fishspeechKey;
             
             // Reload the settings to show the masked keys
             await loadSettings();
