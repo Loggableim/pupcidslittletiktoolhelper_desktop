@@ -726,15 +726,25 @@ func parseChangelogToHTML(markdown string) string {
 				inList = true
 			}
 			item := strings.TrimPrefix(line, "- ")
-			// Handle bold text **text**
-			item = strings.ReplaceAll(item, "**", "<strong>")
-			count := strings.Count(item, "<strong>")
-			if count%2 != 0 {
-				item = strings.ReplaceAll(item, "<strong>", "**")
-			} else {
-				for i := 0; i < count/2; i++ {
-					item = strings.Replace(item, "<strong>", "<strong>", 1)
-					item = strings.Replace(item, "<strong>", "</strong>", 1)
+			// Handle bold text **text** by replacing pairs of **
+			for strings.Contains(item, "**") {
+				// Find first pair and replace
+				firstPos := strings.Index(item, "**")
+				if firstPos != -1 {
+					// Replace first ** with <strong>
+					item = item[:firstPos] + "<strong>" + item[firstPos+2:]
+					// Find next ** and replace with </strong>
+					secondPos := strings.Index(item[firstPos:], "**")
+					if secondPos != -1 {
+						actualPos := firstPos + secondPos
+						item = item[:actualPos] + "</strong>" + item[actualPos+2:]
+					} else {
+						// Unmatched **, revert the change
+						item = strings.Replace(item, "<strong>", "**", 1)
+						break
+					}
+				} else {
+					break
 				}
 			}
 			html.WriteString(fmt.Sprintf("<li>%s</li>", item))
@@ -1016,7 +1026,7 @@ func main() {
     <div class="launcher-container">
         <!-- Top-left logo -->
         <div class="logo-container">
-            <img src="/bg" alt="LTTH Logo">
+            <img src="/bg" alt="TikTok Stream Tool Logo">
         </div>
         
         <!-- Top-right logging area -->
@@ -1075,6 +1085,8 @@ func main() {
         };
         
         // Load changelog
+        // Note: This content is from our own CHANGELOG.md file served by the launcher,
+        // so it's safe to use innerHTML. It's not user-generated content.
         fetch('/changelog')
             .then(response => response.text())
             .then(data => {
