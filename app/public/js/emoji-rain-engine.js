@@ -151,6 +151,83 @@ let performanceMode = 'normal'; // 'normal', 'reduced', 'minimal'
 // Toaster mode state
 let toasterModeActive = false;
 
+// Benchmarking state
+let benchmarkActive = false;
+let benchmarkResults = [];
+let benchmarkCurrentTest = 0;
+let benchmarkStartTime = 0;
+let benchmarkTargetFPS = 60;
+let benchmarkCallback = null;
+
+// Benchmark test configurations
+const BENCHMARK_TESTS = [
+    {
+        name: 'Maximum Quality',
+        settings: {
+            max_emojis_on_screen: 200,
+            emoji_min_size_px: 40,
+            emoji_max_size_px: 80,
+            emoji_rotation_speed: 0.05,
+            wind_enabled: true,
+            rainbow_enabled: true,
+            pixel_enabled: false,
+            color_mode: 'neon'
+        }
+    },
+    {
+        name: 'High Quality',
+        settings: {
+            max_emojis_on_screen: 150,
+            emoji_min_size_px: 35,
+            emoji_max_size_px: 70,
+            emoji_rotation_speed: 0.04,
+            wind_enabled: true,
+            rainbow_enabled: false,
+            pixel_enabled: false,
+            color_mode: 'warm'
+        }
+    },
+    {
+        name: 'Medium Quality',
+        settings: {
+            max_emojis_on_screen: 100,
+            emoji_min_size_px: 30,
+            emoji_max_size_px: 60,
+            emoji_rotation_speed: 0.03,
+            wind_enabled: false,
+            rainbow_enabled: false,
+            pixel_enabled: false,
+            color_mode: 'off'
+        }
+    },
+    {
+        name: 'Low Quality',
+        settings: {
+            max_emojis_on_screen: 75,
+            emoji_min_size_px: 30,
+            emoji_max_size_px: 50,
+            emoji_rotation_speed: 0.02,
+            wind_enabled: false,
+            rainbow_enabled: false,
+            pixel_enabled: false,
+            color_mode: 'off'
+        }
+    },
+    {
+        name: 'Minimal Quality',
+        settings: {
+            max_emojis_on_screen: 50,
+            emoji_min_size_px: 25,
+            emoji_max_size_px: 45,
+            emoji_rotation_speed: 0,
+            wind_enabled: false,
+            rainbow_enabled: false,
+            pixel_enabled: false,
+            color_mode: 'off'
+        }
+    }
+];
+
 /**
  * Apply toaster mode settings for low-end PCs
  * Reduces resource usage by limiting effects and emoji count
@@ -702,6 +779,251 @@ function checkAndOptimizeFPS() {
 }
 
 /**
+ * Start FPS benchmarking process
+ * @param {number} targetFPS - Desired FPS to optimize for
+ * @param {function} callback - Callback function to report progress and results
+ */
+function startBenchmark(targetFPS = 60, callback = null) {
+    if (benchmarkActive) {
+        console.warn('⚠️ Benchmark already running');
+        return;
+    }
+
+    console.log(`🔬 Starting FPS benchmark (Target: ${targetFPS} FPS)`);
+    
+    benchmarkActive = true;
+    benchmarkResults = [];
+    benchmarkCurrentTest = 0;
+    benchmarkTargetFPS = targetFPS;
+    benchmarkCallback = callback;
+    
+    // Store original config
+    config._originalConfig = JSON.parse(JSON.stringify(config));
+    
+    // Clear all existing emojis
+    emojis.forEach(emoji => removeEmoji(emoji));
+    emojis = [];
+    emojiBodyMap.clear();
+    
+    // Reset FPS history
+    fpsHistory = [];
+    
+    // Start first test
+    runBenchmarkTest();
+}
+
+/**
+ * Run a single benchmark test
+ */
+function runBenchmarkTest() {
+    if (benchmarkCurrentTest >= BENCHMARK_TESTS.length) {
+        // All tests complete
+        completeBenchmark();
+        return;
+    }
+
+    const test = BENCHMARK_TESTS[benchmarkCurrentTest];
+    console.log(`🔬 Running benchmark test ${benchmarkCurrentTest + 1}/${BENCHMARK_TESTS.length}: ${test.name}`);
+    
+    // Apply test settings
+    Object.assign(config, test.settings);
+    
+    // Clear emojis and reset FPS tracking
+    emojis.forEach(emoji => removeEmoji(emoji));
+    emojis = [];
+    emojiBodyMap.clear();
+    fpsHistory = [];
+    
+    // Spawn test emojis to fill the screen
+    const testEmojiCount = Math.min(config.max_emojis_on_screen, 100);
+    for (let i = 0; i < testEmojiCount; i++) {
+        const emoji = getRandomEmoji();
+        const x = Math.random();
+        const y = Math.random() * 0.3; // Spawn in top 30% of screen
+        const size = config.emoji_min_size_px + Math.random() * (config.emoji_max_size_px - config.emoji_min_size_px);
+        
+        setTimeout(() => {
+            if (benchmarkActive && benchmarkCurrentTest < BENCHMARK_TESTS.length) {
+                spawnEmoji(emoji, x, y, size);
+            }
+        }, i * 20); // Stagger spawning
+    }
+    
+    benchmarkStartTime = performance.now();
+    
+    // Report progress
+    if (benchmarkCallback) {
+        benchmarkCallback({
+            type: 'progress',
+            test: benchmarkCurrentTest + 1,
+            total: BENCHMARK_TESTS.length,
+            name: test.name
+        });
+    }
+    
+    // Run test for 5 seconds, then move to next
+    setTimeout(() => {
+        if (!benchmarkActive) return;
+        
+        recordBenchmarkResult();
+        benchmarkCurrentTest++;
+        runBenchmarkTest();
+    }, 5000);
+}
+
+/**
+ * Record the result of current benchmark test
+ */
+function recordBenchmarkResult() {
+    if (fpsHistory.length < 5) {
+        console.warn('⚠️ Not enough FPS data collected for test');
+        return;
+    }
+
+    const test = BENCHMARK_TESTS[benchmarkCurrentTest];
+    const avgFPS = fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length;
+    const minFPS = Math.min(...fpsHistory);
+    const maxFPS = Math.max(...fpsHistory);
+    
+    const result = {
+        name: test.name,
+        settings: { ...test.settings },
+        avgFPS: Math.round(avgFPS),
+        minFPS: Math.round(minFPS),
+        maxFPS: Math.round(maxFPS),
+        meetsTarget: avgFPS >= benchmarkTargetFPS * 0.95 // Within 5% of target
+    };
+    
+    benchmarkResults.push(result);
+    
+    console.log(`📊 Benchmark result: ${test.name} - Avg FPS: ${result.avgFPS}, Min: ${result.minFPS}, Max: ${result.maxFPS}`);
+}
+
+/**
+ * Complete benchmark and determine optimal settings
+ */
+function completeBenchmark() {
+    console.log('✅ Benchmark complete!');
+    
+    // Clear test emojis
+    emojis.forEach(emoji => removeEmoji(emoji));
+    emojis = [];
+    emojiBodyMap.clear();
+    
+    // Find the best quality setting that meets target FPS
+    let optimalSettings = null;
+    
+    for (const result of benchmarkResults) {
+        if (result.meetsTarget) {
+            optimalSettings = result;
+            break; // Take first (highest quality) that meets target
+        }
+    }
+    
+    // If no setting meets target, use the one with highest FPS
+    if (!optimalSettings && benchmarkResults.length > 0) {
+        optimalSettings = benchmarkResults.reduce((best, current) => 
+            current.avgFPS > best.avgFPS ? current : best
+        );
+    }
+    
+    // Restore original config first
+    if (config._originalConfig) {
+        const originalConfig = config._originalConfig;
+        delete config._originalConfig;
+        Object.assign(config, originalConfig);
+    }
+    
+    benchmarkActive = false;
+    
+    // Report results
+    if (benchmarkCallback) {
+        benchmarkCallback({
+            type: 'complete',
+            results: benchmarkResults,
+            optimal: optimalSettings,
+            targetFPS: benchmarkTargetFPS
+        });
+    }
+    
+    console.log('🎯 Optimal settings:', optimalSettings ? optimalSettings.name : 'None found');
+    console.log('📊 All results:', benchmarkResults);
+}
+
+/**
+ * Stop benchmark and restore original config
+ */
+function stopBenchmark() {
+    if (!benchmarkActive) return;
+    
+    console.log('⏹️ Stopping benchmark');
+    
+    // Clear test emojis
+    emojis.forEach(emoji => removeEmoji(emoji));
+    emojis = [];
+    emojiBodyMap.clear();
+    
+    // Restore original config
+    if (config._originalConfig) {
+        const originalConfig = config._originalConfig;
+        delete config._originalConfig;
+        Object.assign(config, originalConfig);
+    }
+    
+    benchmarkActive = false;
+    benchmarkResults = [];
+    benchmarkCurrentTest = 0;
+    
+    if (benchmarkCallback) {
+        benchmarkCallback({
+            type: 'stopped'
+        });
+    }
+}
+
+/**
+ * Apply optimized settings from benchmark results
+ * @param {object} settings - Settings object to apply
+ */
+function applyOptimizedSettings(settings) {
+    if (!settings) {
+        console.warn('⚠️ No settings provided to apply');
+        return false;
+    }
+    
+    console.log('✨ Applying optimized settings:', settings);
+    
+    // Apply settings
+    Object.assign(config, settings);
+    
+    // Update physics if needed
+    if (ground) {
+        ground.restitution = config.bounce_height || config.physics_restitution;
+    }
+    if (leftWall) {
+        leftWall.restitution = config.bounce_height || config.physics_restitution;
+    }
+    if (rightWall) {
+        rightWall.restitution = config.bounce_height || config.physics_restitution;
+    }
+    
+    return true;
+}
+
+/**
+ * Get current benchmark status
+ */
+function getBenchmarkStatus() {
+    return {
+        active: benchmarkActive,
+        currentTest: benchmarkCurrentTest,
+        totalTests: BENCHMARK_TESTS.length,
+        results: benchmarkResults,
+        targetFPS: benchmarkTargetFPS
+    };
+}
+
+/**
  * Spawn emoji
  */
 function spawnEmoji(emoji, x, y, size, username = null, color = null) {
@@ -1174,6 +1496,30 @@ function initSocket() {
             console.log('🔄 User emoji mappings updated', userEmojiMap);
             console.log('👤 [USER MAPPINGS UPDATE] Total mappings:', Object.keys(userEmojiMap).length);
             console.log('👤 [USER MAPPINGS UPDATE] Users:', Object.keys(userEmojiMap).join(', '));
+        }
+    });
+
+    // Benchmark event handlers
+    socket.on('emoji-rain:benchmark-start', (data) => {
+        const targetFPS = data.targetFPS || 60;
+        console.log(`🔬 Received benchmark start request (Target FPS: ${targetFPS})`);
+        
+        startBenchmark(targetFPS, (result) => {
+            // Send benchmark progress/results back to server
+            socket.emit('emoji-rain:benchmark-status', result);
+        });
+    });
+
+    socket.on('emoji-rain:benchmark-stop', () => {
+        console.log('⏹️ Received benchmark stop request');
+        stopBenchmark();
+    });
+
+    socket.on('emoji-rain:benchmark-apply', (data) => {
+        if (data.settings) {
+            console.log('✨ Received request to apply optimized settings');
+            const success = applyOptimizedSettings(data.settings);
+            socket.emit('emoji-rain:benchmark-applied', { success });
         }
     });
 }

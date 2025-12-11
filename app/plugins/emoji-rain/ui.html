@@ -441,6 +441,33 @@
             background: var(--brand-primary-light);
             filter: brightness(1.2);
         }
+
+        .section-info {
+            border: 2px solid var(--color-accent-info, #3b82f6);
+            background: var(--color-bg-card);
+        }
+
+        .progress-bar {
+            width: 100%;
+            background: var(--color-bg-primary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .button-success {
+            background: var(--color-accent-success);
+            color: white;
+        }
+
+        .button-success:hover {
+            filter: brightness(1.1);
+        }
     </style>
 </head>
 <body>
@@ -494,6 +521,73 @@
 
             <div class="tip-box">
                 <strong>💡 Tipp:</strong> Nutze den Toaster Modus, wenn dein PC beim Streamen langsamer wird oder die CPU-Auslastung zu hoch ist.
+            </div>
+        </div>
+
+        <!-- FPS Benchmark & Auto-Optimization -->
+        <div class="config-section section-info">
+            <h2>🔬 FPS Benchmark & Auto-Optimierung</h2>
+            <div class="help-text" style="margin-bottom: 20px; font-size: 1em;">
+                Automatisches Benchmarking-Tool, das die FPS misst und die Einstellungen auf deine gewünschte Ziel-FPS optimiert.
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="target_fps">Ziel-FPS</label>
+                    <input type="number" id="target_fps" min="30" max="144" value="60" step="1">
+                    <div class="help-text">Gewünschte FPS-Zahl für optimale Performance</div>
+                </div>
+            </div>
+
+            <div class="button-group" style="margin: 20px 0;">
+                <button id="start-benchmark-btn" class="button button-primary">
+                    🔬 Benchmark starten
+                </button>
+                <button id="stop-benchmark-btn" class="button button-secondary" style="display: none;">
+                    ⏹️ Benchmark stoppen
+                </button>
+            </div>
+
+            <div id="benchmark-progress" style="display: none; margin: 20px 0; padding: 15px; background: var(--color-bg-tertiary); border-radius: 8px;">
+                <div style="margin-bottom: 10px;">
+                    <strong>🔄 Benchmark läuft...</strong>
+                </div>
+                <div id="benchmark-status" style="margin-bottom: 10px; color: var(--color-text-secondary);"></div>
+                <div class="progress-bar">
+                    <div id="benchmark-progress-bar" style="width: 0%; height: 8px; background: var(--brand-primary); border-radius: 4px; transition: width 0.3s;"></div>
+                </div>
+            </div>
+
+            <div id="benchmark-results" style="display: none; margin-top: 20px;">
+                <h3 style="margin-bottom: 15px; color: var(--color-text-primary);">📊 Benchmark Ergebnisse</h3>
+                <div id="benchmark-results-content" style="background: var(--color-bg-tertiary); padding: 15px; border-radius: 8px;">
+                    <!-- Results will be inserted here -->
+                </div>
+                <div id="optimal-settings" style="display: none; margin-top: 15px; padding: 15px; background: var(--color-success-bg); border-left: 4px solid var(--color-success); border-radius: 8px;">
+                    <div style="margin-bottom: 10px;">
+                        <strong>🎯 Empfohlene Einstellungen:</strong>
+                        <span id="optimal-name" style="color: var(--color-success); font-weight: bold;"></span>
+                    </div>
+                    <div id="optimal-details" style="color: var(--color-text-secondary); margin-bottom: 15px;"></div>
+                    <button id="apply-optimal-btn" class="button button-success">
+                        ✨ Optimierte Einstellungen anwenden
+                    </button>
+                </div>
+            </div>
+
+            <div class="info-box" style="margin-top: 20px;">
+                <strong>ℹ️ Wie funktioniert's:</strong><br>
+                <div class="info-box-item">
+                    <div>1. Gib deine gewünschte Ziel-FPS ein (z.B. 60 FPS)</div>
+                    <div>2. Klicke auf "Benchmark starten"</div>
+                    <div>3. Das Tool testet 5 verschiedene Qualitätsstufen (dauert ca. 25 Sekunden)</div>
+                    <div>4. Du erhältst eine Empfehlung für die beste Einstellung</div>
+                    <div>5. Klicke auf "Optimierte Einstellungen anwenden" um sie zu übernehmen</div>
+                </div>
+            </div>
+
+            <div class="tip-box">
+                <strong>💡 Tipp:</strong> Führe den Benchmark aus, wenn dein System unter normaler Streaming-Last läuft, um realistische Ergebnisse zu erhalten.
             </div>
         </div>
 
