@@ -133,6 +133,9 @@ class QuizShowPlugin {
             totalAnswers: 0,
             totalCorrectAnswers: 0
         };
+        
+        // GCCE integration tracking
+        this.gcceCommandsRegistered = false;
     }
 
     async init() {
@@ -155,6 +158,19 @@ class QuizShowPlugin {
 
         // Register TikTok event handlers
         this.registerTikTokEvents();
+        
+        // Register GCCE commands if enabled
+        if (this.config.useGCCE) {
+            this.registerGCCECommands();
+            
+            // Also listen for GCCE ready event in case it loads later
+            this.api.registerSocket('gcce:ready', () => {
+                if (this.config.useGCCE && !this.gcceCommandsRegistered) {
+                    this.api.log('GCCE became available, registering quiz commands now', 'info');
+                    this.registerGCCECommands();
+                }
+            });
+        }
 
         this.api.log('Quiz Show Plugin initialized successfully', 'info');
     }
@@ -613,6 +629,65 @@ class QuizShowPlugin {
             this.api.log(`Loaded ${mappings.length} gift-joker mappings`, 'info');
         } catch (error) {
             this.api.log('Error loading gift-joker mappings: ' + error.message, 'warn');
+        }
+    }
+
+    /**
+     * Register quiz commands with GCCE (Global Chat Command Engine)
+     */
+    registerGCCECommands() {
+        // Skip if already registered
+        if (this.gcceCommandsRegistered) {
+            return;
+        }
+        
+        // Try to get GCCE plugin from the plugin loader
+        const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
+        
+        if (!gccePlugin || !gccePlugin.instance) {
+            this.api.log('GCCE not available yet - will register when available', 'debug');
+            return;
+        }
+
+        const gcce = gccePlugin.instance;
+
+        try {
+            // Register joker command
+            gcce.registry.registerCommand({
+                pluginId: 'quiz_show',
+                name: 'joker',
+                description: 'Activate a quiz joker (25, 50, info, or time)',
+                syntax: '/joker [type]',
+                permission: this.config.jokerSuperfanOnly ? 'subscriber' : 'all',
+                enabled: true,
+                minArgs: 0,
+                maxArgs: 1,
+                category: 'Quiz',
+                handler: async (args, context) => {
+                    if (!this.gameState.isRunning) {
+                        return { success: false, message: 'Quiz is not running' };
+                    }
+
+                    const userId = context.userId;
+                    const username = context.username;
+                    
+                    // Build joker command
+                    let jokerCommand = this.config.jokerCommandPrefix || '!joker';
+                    if (args.length > 0) {
+                        jokerCommand += args[0]; // e.g., "25", "50", "info", "time"
+                    }
+                    
+                    // Handle the joker
+                    this.handleJokerCommand(userId, username, jokerCommand, false);
+                    
+                    return { success: true, message: 'Joker activated!' };
+                }
+            });
+
+            this.gcceCommandsRegistered = true;
+            this.api.log('Quiz commands registered with GCCE', 'info');
+        } catch (error) {
+            this.api.log('Error registering GCCE commands: ' + error.message, 'error');
         }
     }
 
