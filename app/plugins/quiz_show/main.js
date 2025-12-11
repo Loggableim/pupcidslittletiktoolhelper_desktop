@@ -2066,6 +2066,20 @@ class QuizShowPlugin {
                 socket.emit('quiz-show:error', { message: error.message });
             }
         });
+
+        // Request leaderboard rotation
+        this.api.registerSocket('quiz-show:request-leaderboard-rotation', async (socket, data) => {
+            try {
+                const leaderboards = await this.getLeaderboardRotation();
+                socket.emit('quiz-show:leaderboard-rotation', {
+                    leaderboards,
+                    rotationDuration: this.config.leaderboardRotationDuration || 6
+                });
+            } catch (error) {
+                this.api.log('Error getting leaderboard rotation: ' + error.message, 'error');
+                socket.emit('quiz-show:error', { message: error.message });
+            }
+        });
     }
 
     extractProfilePicture(data) {
@@ -2671,6 +2685,71 @@ class QuizShowPlugin {
         }
     }
 
+    async getLeaderboardRotation() {
+        try {
+            const leaderboards = [];
+            
+            // Get round leaderboard (current round results)
+            const results = this.calculateResults();
+            if (results.correctUsers.length > 0) {
+                const roundLeaderboard = results.correctUsers.slice(0, 10).map((user, index) => ({
+                    username: user.username,
+                    points: index === 0 ? this.config.pointsFirstCorrect : this.config.pointsOtherCorrect,
+                    rank: index + 1
+                }));
+                
+                leaderboards.push({
+                    type: 'round',
+                    data: roundLeaderboard
+                });
+            }
+            
+            // Get season leaderboard
+            const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+            if (activeSeason) {
+                const seasonLeaderboard = this.mainDb.prepare(
+                    'SELECT user_id, username, points FROM quiz_leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
+                ).all(activeSeason.id);
+                
+                if (seasonLeaderboard.length > 0) {
+                    leaderboards.push({
+                        type: 'season',
+                        data: seasonLeaderboard.map((entry, index) => ({
+                            username: entry.username,
+                            points: entry.points,
+                            rank: index + 1
+                        }))
+                    });
+                }
+            }
+            
+            // Get lifetime leaderboard (aggregate all seasons)
+            const lifetimeLeaderboard = this.mainDb.prepare(`
+                SELECT username, SUM(points) as points 
+                FROM quiz_leaderboard_entries 
+                GROUP BY user_id 
+                ORDER BY points DESC 
+                LIMIT 10
+            `).all();
+            
+            if (lifetimeLeaderboard.length > 0) {
+                leaderboards.push({
+                    type: 'lifetime',
+                    data: lifetimeLeaderboard.map((entry, index) => ({
+                        username: entry.username,
+                        points: entry.points,
+                        rank: index + 1
+                    }))
+                });
+            }
+            
+            return leaderboards;
+        } catch (error) {
+            this.api.log('Error getting leaderboard rotation: ' + error.message, 'error');
+            return [];
+        }
+    }
+
     calculateResults() {
         const correctAnswerIndex = this.gameState.currentQuestion.correct;
         const correctAnswerText = this.gameState.currentQuestion.answers[correctAnswerIndex];
@@ -3099,6 +3178,10 @@ class QuizShowPlugin {
             hiddenAnswers: this.gameState.hiddenAnswers,
             revealedWrongAnswer: this.gameState.revealedWrongAnswer,
             giftJokerMappings: this.config.giftJokerMappings || {}, // NEW: Include gift-joker mappings
+            answerDisplayDuration: this.config.answerDisplayDuration || 5,
+            showNextQuestionCountdown: this.config.showNextQuestionCountdown !== undefined ? this.config.showNextQuestionCountdown : true,
+            nextQuestionCountdownDuration: this.config.nextQuestionCountdownDuration || 5,
+            leaderboardRotationDuration: this.config.leaderboardRotationDuration || 6,
             votersPerAnswer: this.gameState.votersPerAnswer, // Include voter icon data
             voterIconsConfig: {
                 enabled: this.config.voterIconsEnabled,

@@ -183,6 +183,27 @@
                     <!-- Joker items will be inserted here -->
                 </div>
             </div>
+
+            <!-- Answer Info Display (shown after correct answer reveal) -->
+            <div id="answerInfoDisplay" class="answer-info-display hidden">
+                <div class="answer-info-content">
+                    <div class="answer-info-header">
+                        <div class="answer-info-icon">✓</div>
+                        <div class="answer-info-title" id="answerInfoTitle">Richtige Antwort: A</div>
+                    </div>
+                    <div class="answer-info-text" id="answerInfoText">Antwort Text</div>
+                    <div class="answer-info-details" id="answerInfoDetails"></div>
+                </div>
+            </div>
+
+            <!-- Next Question Countdown -->
+            <div id="nextQuestionCountdown" class="next-question-countdown hidden">
+                <div class="countdown-content">
+                    <div class="countdown-label">Nächste Frage in</div>
+                    <div class="countdown-timer" id="countdownTimer">5</div>
+                    <div class="countdown-sublabel">Sekunden</div>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -1967,3 +1967,179 @@ body {
 .joker-item.activated {
     animation: jokerActivate 0.6s ease-out;
 }
+
+/* ============================================
+   ANSWER INFO DISPLAY (After Correct Answer)
+   ============================================ */
+
+.answer-info-display {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-glass);
+    backdrop-filter: blur(var(--bg-blur));
+    border-radius: var(--border-radius-large);
+    border: 3px solid var(--color-success);
+    padding: 40px 60px;
+    box-shadow: var(--shadow-lg), var(--glow-green);
+    z-index: 150;
+    max-width: 90%;
+    text-align: center;
+    animation: answerInfoSlideIn 0.5s ease-out;
+}
+
+.answer-info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+}
+
+.answer-info-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.answer-info-icon {
+    font-size: 4rem;
+    color: var(--color-success);
+    text-shadow: var(--glow-green);
+}
+
+.answer-info-title {
+    font-size: 2.5rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+}
+
+.answer-info-text {
+    font-size: 2rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.answer-info-details {
+    font-size: 1.3rem;
+    color: var(--text-tertiary);
+    line-height: 1.6;
+    max-width: 800px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--border-radius);
+}
+
+@keyframes answerInfoSlideIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* ============================================
+   NEXT QUESTION COUNTDOWN
+   ============================================ */
+
+.next-question-countdown {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-glass);
+    backdrop-filter: blur(var(--bg-blur));
+    border-radius: var(--border-radius-large);
+    border: 3px solid var(--color-primary);
+    padding: 50px 80px;
+    box-shadow: var(--shadow-lg), var(--glow-blue);
+    z-index: 140;
+    text-align: center;
+    animation: countdownPulse 1s ease-in-out infinite;
+}
+
+.countdown-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.countdown-label {
+    font-size: 2rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.countdown-timer {
+    font-size: 6rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    text-shadow: var(--glow-blue);
+    line-height: 1;
+}
+
+.countdown-sublabel {
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+}
+
+@keyframes countdownPulse {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        box-shadow: var(--shadow-lg), var(--glow-blue);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.05);
+        box-shadow: var(--shadow-lg), 0 0 30px rgba(59, 130, 246, 0.7);
+    }
+}
+
+/* ============================================
+   LEADERBOARD POSITIONING AT QUESTION LOCATION
+   ============================================ */
+
+.leaderboard-overlay.at-question-location {
+    /* Position at the same location as question/answer sections */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 1200px;
+    height: auto;
+    max-height: 80vh;
+}
+
+.leaderboard-overlay.at-question-location .leaderboard-header {
+    padding: 30px;
+}
+
+.leaderboard-overlay.at-question-location .leaderboard-title {
+    font-size: 3rem;
+}
+
+.leaderboard-overlay.at-question-location .leaderboard-type {
+    font-size: 2rem;
+}
+
+.leaderboard-overlay.at-question-location .leaderboard-entry {
+    padding: 20px 30px;
+}
+
+.leaderboard-overlay.at-question-location .leaderboard-rank {
+    font-size: 2.5rem;
+    min-width: 80px;
+}
+
+.leaderboard-overlay.at-question-location .leaderboard-username {
+    font-size: 1.8rem;
+}
+
+.leaderboard-overlay.at-question-location .leaderboard-points {
+    font-size: 2rem;
+}

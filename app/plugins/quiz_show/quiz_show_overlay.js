@@ -20,11 +20,15 @@
         TIME_LOW: 'time_low',
         TIME_UP: 'time_up',
         REVEAL_CORRECT: 'reveal_correct',
+        SHOW_ANSWER_INFO: 'show_answer_info',
+        SHOW_LEADERBOARD: 'show_leaderboard',
+        NEXT_QUESTION_COUNTDOWN: 'next_question_countdown',
         WAIT_NEXT: 'wait_next'
     };
 
     let currentState = States.IDLE;
     let stateTimeout = null;
+    let leaderboardRotationInterval = null;
 
     // Game Data
     let gameData = {
@@ -39,6 +43,9 @@
         hiddenAnswers: [],
         revealedWrongAnswer: null,
         answerDisplayDuration: 5, // Default to 5 seconds
+        showNextQuestionCountdown: true,
+        nextQuestionCountdownDuration: 5,
+        leaderboardRotationDuration: 6,
         votersPerAnswer: { 0: [], 1: [], 2: [], 3: [] },
         voterIconsConfig: {
             enabled: true,
@@ -436,6 +443,7 @@
         socket.on('quiz-show:show-leaderboard', handleShowLeaderboard);
         socket.on('quiz-show:hide-leaderboard', handleHideLeaderboard);
         socket.on('quiz-show:leaderboard-updated', handleLeaderboardUpdated);
+        socket.on('quiz-show:leaderboard-rotation', handleShowLeaderboardRotation);
         
         // NEW: Custom layout events
         socket.on('quiz-show:layout-updated', handleLayoutUpdated);
@@ -546,10 +554,27 @@
             case States.REVEAL_CORRECT:
                 revealCorrectAnswer();
                 // Use answerDisplayDuration from config (in milliseconds), fallback to 5000ms
+                const revealDuration = 2000; // Show checkmark for 2 seconds
+                stateTimeout = setTimeout(() => {
+                    transitionToState(States.SHOW_ANSWER_INFO);
+                }, revealDuration / hudConfig.animationSpeed);
+                break;
+
+            case States.SHOW_ANSWER_INFO:
+                showAnswerInfo();
                 const displayDuration = (gameData.answerDisplayDuration || 5) * 1000;
                 stateTimeout = setTimeout(() => {
-                    transitionToState(States.WAIT_NEXT);
+                    hideAnswerInfo();
+                    transitionToState(States.SHOW_LEADERBOARD);
                 }, displayDuration / hudConfig.animationSpeed);
+                break;
+
+            case States.SHOW_LEADERBOARD:
+                showLeaderboardAtQuestionLocation();
+                break;
+
+            case States.NEXT_QUESTION_COUNTDOWN:
+                showNextQuestionCountdown();
                 break;
 
             case States.WAIT_NEXT:
@@ -577,6 +602,10 @@
                 hiddenAnswers: state.hiddenAnswers || [],
                 revealedWrongAnswer: state.revealedWrongAnswer,
                 info: state.currentQuestion.info || null,
+                answerDisplayDuration: state.answerDisplayDuration || 5,
+                showNextQuestionCountdown: state.showNextQuestionCountdown !== undefined ? state.showNextQuestionCountdown : true,
+                nextQuestionCountdownDuration: state.nextQuestionCountdownDuration || 5,
+                leaderboardRotationDuration: state.leaderboardRotationDuration || 6,
                 votersPerAnswer: state.votersPerAnswer || { 0: [], 1: [], 2: [], 3: [] },
                 voterIconsConfig: state.voterIconsConfig || {
                     enabled: true,
@@ -1717,6 +1746,211 @@
     }
 
     // ============================================
+    // ANSWER INFO DISPLAY
+    // ============================================
+
+    function showAnswerInfo() {
+        // Hide question and answers
+        const questionSection = document.getElementById('questionSection');
+        const answersSection = document.getElementById('answersSection');
+        
+        if (questionSection) questionSection.style.display = 'none';
+        if (answersSection) answersSection.style.display = 'none';
+        
+        // Show answer info display
+        const answerInfoDisplay = document.getElementById('answerInfoDisplay');
+        const answerInfoTitle = document.getElementById('answerInfoTitle');
+        const answerInfoText = document.getElementById('answerInfoText');
+        const answerInfoDetails = document.getElementById('answerInfoDetails');
+        
+        if (!answerInfoDisplay) return;
+        
+        const correctAnswerLetter = gameData.correctAnswerLetter || String.fromCharCode(65 + gameData.correctIndex);
+        const correctAnswerText = gameData.correctAnswerText || gameData.answers[gameData.correctIndex];
+        
+        answerInfoTitle.textContent = `Richtige Antwort: ${correctAnswerLetter}`;
+        answerInfoText.textContent = correctAnswerText;
+        
+        if (gameData.info) {
+            answerInfoDetails.textContent = gameData.info;
+            answerInfoDetails.style.display = 'block';
+        } else {
+            answerInfoDetails.style.display = 'none';
+        }
+        
+        answerInfoDisplay.classList.remove('hidden');
+    }
+
+    function hideAnswerInfo() {
+        const answerInfoDisplay = document.getElementById('answerInfoDisplay');
+        if (answerInfoDisplay) {
+            answerInfoDisplay.classList.add('hidden');
+        }
+    }
+
+    // ============================================
+    // NEXT QUESTION COUNTDOWN
+    // ============================================
+
+    function showNextQuestionCountdown() {
+        if (!gameData.showNextQuestionCountdown) {
+            transitionToState(States.WAIT_NEXT);
+            return;
+        }
+        
+        const countdownElement = document.getElementById('nextQuestionCountdown');
+        const countdownTimer = document.getElementById('countdownTimer');
+        
+        if (!countdownElement || !countdownTimer) {
+            transitionToState(States.WAIT_NEXT);
+            return;
+        }
+        
+        let timeLeft = gameData.nextQuestionCountdownDuration || 5;
+        countdownTimer.textContent = timeLeft;
+        countdownElement.classList.remove('hidden');
+        
+        const countdownInterval = setInterval(() => {
+            timeLeft--;
+            if (timeLeft > 0) {
+                countdownTimer.textContent = timeLeft;
+            } else {
+                clearInterval(countdownInterval);
+                countdownElement.classList.add('hidden');
+                transitionToState(States.WAIT_NEXT);
+            }
+        }, 1000);
+    }
+
+    // ============================================
+    // LEADERBOARD AT QUESTION LOCATION
+    // ============================================
+
+    function showLeaderboardAtQuestionLocation() {
+        // Request leaderboard data from server
+        socket.emit('quiz-show:request-leaderboard-rotation');
+    }
+
+    function handleShowLeaderboardRotation(data) {
+        try {
+            const { leaderboards, rotationDuration } = data;
+            
+            if (!leaderboards || leaderboards.length === 0) {
+                console.log('No leaderboard data for rotation');
+                if (gameData.showNextQuestionCountdown) {
+                    transitionToState(States.NEXT_QUESTION_COUNTDOWN);
+                } else {
+                    transitionToState(States.WAIT_NEXT);
+                }
+                return;
+            }
+            
+            const leaderboardOverlay = document.getElementById('leaderboardOverlay');
+            if (!leaderboardOverlay) {
+                console.error('Leaderboard overlay not found');
+                return;
+            }
+            
+            // Position leaderboard at question location (hide question/answer first)
+            const questionSection = document.getElementById('questionSection');
+            const answersSection = document.getElementById('answersSection');
+            
+            if (questionSection) questionSection.style.display = 'none';
+            if (answersSection) answersSection.style.display = 'none';
+            
+            // Add class for positioning at question location
+            leaderboardOverlay.classList.add('at-question-location');
+            
+            // Start rotation through leaderboards
+            let currentIndex = 0;
+            
+            const showLeaderboard = (leaderboard) => {
+                const { type, data } = leaderboard;
+                const displayName = type === 'round' ? 'Runde' : type === 'season' ? 'Season' : 'Lifetime';
+                
+                const leaderboardType = document.getElementById('leaderboardType');
+                const leaderboardList = document.getElementById('leaderboardList');
+                
+                if (!leaderboardType || !leaderboardList) return;
+                
+                leaderboardType.textContent = displayName;
+                leaderboardList.innerHTML = '';
+                
+                data.forEach((entry, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'leaderboard-entry';
+                    li.style.animationDelay = `${index * 0.1}s`;
+                    
+                    const rank = document.createElement('div');
+                    rank.className = `leaderboard-rank rank-${index + 1}`;
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+                    rank.textContent = medal;
+                    
+                    const username = document.createElement('div');
+                    username.className = 'leaderboard-username';
+                    username.textContent = entry.username || 'Unknown';
+                    
+                    const points = document.createElement('div');
+                    points.className = 'leaderboard-points';
+                    points.textContent = `${entry.points || 0} Pkt`;
+                    
+                    li.appendChild(rank);
+                    li.appendChild(username);
+                    li.appendChild(points);
+                    leaderboardList.appendChild(li);
+                });
+                
+                leaderboardOverlay.classList.remove('hidden');
+            };
+            
+            // Show first leaderboard immediately
+            showLeaderboard(leaderboards[currentIndex]);
+            
+            // Rotate through leaderboards
+            const duration = (rotationDuration || gameData.leaderboardRotationDuration || 6) * 1000;
+            
+            if (leaderboardRotationInterval) {
+                clearInterval(leaderboardRotationInterval);
+            }
+            
+            leaderboardRotationInterval = setInterval(() => {
+                currentIndex++;
+                if (currentIndex >= leaderboards.length) {
+                    // Rotation complete
+                    clearInterval(leaderboardRotationInterval);
+                    leaderboardRotationInterval = null;
+                    
+                    setTimeout(() => {
+                        leaderboardOverlay.classList.add('hidden');
+                        leaderboardOverlay.classList.remove('at-question-location');
+                        
+                        // Show question/answer sections again
+                        if (questionSection) questionSection.style.display = '';
+                        if (answersSection) answersSection.style.display = '';
+                        
+                        // Transition to countdown or wait
+                        if (gameData.showNextQuestionCountdown) {
+                            transitionToState(States.NEXT_QUESTION_COUNTDOWN);
+                        } else {
+                            transitionToState(States.WAIT_NEXT);
+                        }
+                    }, 500);
+                } else {
+                    showLeaderboard(leaderboards[currentIndex]);
+                }
+            }, duration);
+            
+        } catch (error) {
+            console.error('Error showing leaderboard rotation:', error);
+            if (gameData.showNextQuestionCountdown) {
+                transitionToState(States.NEXT_QUESTION_COUNTDOWN);
+            } else {
+                transitionToState(States.WAIT_NEXT);
+            }
+        }
+    }
+
+    // ============================================
     // CLEANUP
     // ============================================
 
@@ -1726,6 +1960,9 @@
         }
         if (stateTimeout) {
             clearTimeout(stateTimeout);
+        }
+        if (leaderboardRotationInterval) {
+            clearInterval(leaderboardRotationInterval);
         }
     });
 
