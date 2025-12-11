@@ -1,6 +1,7 @@
 let socket = null;
 let goals = [];
 let editingGoalId = null;
+let previewUpdateTimer = null;
 
 // Initialize
 function init() {
@@ -49,6 +50,17 @@ function init() {
         document.getElementById('increment-amount-group').style.display =
             e.target.value === 'increment' ? 'block' : 'none';
     });
+
+    // Update color pickers when goal type changes
+    document.getElementById('goal-type').addEventListener('change', (e) => {
+        const theme = getDefaultTheme(e.target.value);
+        document.getElementById('goal-primary-color').value = theme.primaryColor;
+        document.getElementById('goal-secondary-color').value = theme.secondaryColor;
+        // Text and bg colors stay the same
+    });
+
+    // Setup preview update listeners
+    setupPreviewListeners();
 }
 
 function renderGoals() {
@@ -120,10 +132,21 @@ function openCreateModal() {
     editingGoalId = null;
     document.querySelector('.modal-header').textContent = 'Create New Goal';
     document.getElementById('goal-form').reset();
+    
+    // Set default colors based on coin type (will update when type changes)
+    const defaultTheme = getDefaultTheme('coin');
+    document.getElementById('goal-primary-color').value = defaultTheme.primaryColor;
+    document.getElementById('goal-secondary-color').value = defaultTheme.secondaryColor;
+    document.getElementById('goal-text-color').value = defaultTheme.textColor;
+    document.getElementById('goal-bg-color').value = '#0f172a'; // Default bg in hex
+    document.getElementById('goal-font-family').value = "'Impact', 'Haettenschweiler', 'Arial Narrow Bold', sans-serif";
+    document.getElementById('goal-font-size').value = '20';
+    
     document.getElementById('goal-modal').classList.add('active');
     
-    // Focus the first input field after a brief delay to ensure modal is visible
+    // Update preview with default values
     setTimeout(() => {
+        updatePreview();
         const firstInput = document.getElementById('goal-name');
         if (firstInput) {
             firstInput.focus();
@@ -154,8 +177,9 @@ function editGoal(id) {
 
     document.getElementById('goal-modal').classList.add('active');
     
-    // Focus the first input field after a brief delay to ensure modal is visible
+    // Update preview with current goal values
     setTimeout(() => {
+        updatePreview();
         const firstInput = document.getElementById('goal-name');
         if (firstInput) {
             firstInput.focus();
@@ -318,4 +342,205 @@ document.getElementById('cancel-goal-btn').addEventListener('click', closeModal)
 const initialCreateBtn = document.getElementById('create-first-goal-initial-btn');
 if (initialCreateBtn) {
     initialCreateBtn.addEventListener('click', openCreateModal);
+}
+
+// ============================================================================
+// PREVIEW FUNCTIONALITY
+// ============================================================================
+
+/**
+ * Setup event listeners for preview updates
+ */
+function setupPreviewListeners() {
+    const fieldsToWatch = [
+        'goal-name',
+        'goal-type',
+        'goal-template',
+        'goal-start',
+        'goal-target',
+        'goal-width',
+        'goal-height',
+        'goal-primary-color',
+        'goal-secondary-color',
+        'goal-text-color',
+        'goal-bg-color',
+        'goal-font-family',
+        'goal-font-size'
+    ];
+
+    fieldsToWatch.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('input', updatePreviewDebounced);
+            field.addEventListener('change', updatePreviewDebounced);
+        }
+    });
+}
+
+/**
+ * Debounced preview update to avoid excessive rendering
+ */
+function updatePreviewDebounced() {
+    if (previewUpdateTimer) {
+        clearTimeout(previewUpdateTimer);
+    }
+    previewUpdateTimer = setTimeout(updatePreview, 150);
+}
+
+/**
+ * Update the live preview with current form values
+ */
+function updatePreview() {
+    const previewFrame = document.getElementById('goal-preview-frame');
+    const previewContainer = document.getElementById('goal-preview-container');
+    if (!previewFrame || !previewContainer) return;
+
+    // Get current form values
+    const name = document.getElementById('goal-name').value || 'Sample Goal';
+    const goalType = document.getElementById('goal-type').value || 'coin';
+    const templateId = document.getElementById('goal-template').value || 'compact-bar';
+    const startValue = parseInt(document.getElementById('goal-start').value) || 0;
+    const targetValue = parseInt(document.getElementById('goal-target').value) || 1000;
+    const overlayWidth = parseInt(document.getElementById('goal-width').value) || 500;
+    const overlayHeight = parseInt(document.getElementById('goal-height').value) || 100;
+
+    // Get custom style values
+    const primaryColor = document.getElementById('goal-primary-color')?.value;
+    const secondaryColor = document.getElementById('goal-secondary-color')?.value;
+    const textColor = document.getElementById('goal-text-color')?.value;
+    const bgColor = document.getElementById('goal-bg-color')?.value;
+    const fontFamily = document.getElementById('goal-font-family')?.value;
+    const fontSize = document.getElementById('goal-font-size')?.value;
+
+    // Create mock goal object for preview
+    const mockGoal = {
+        id: 'preview',
+        name: name,
+        goal_type: goalType,
+        template_id: templateId,
+        current_value: Math.floor(startValue + (targetValue - startValue) * 0.65), // Show 65% progress
+        target_value: targetValue,
+        start_value: startValue
+    };
+
+    // Get the template
+    const template = getTemplate(templateId);
+    if (!template) {
+        previewFrame.innerHTML = '<div class="preview-loading">Template not found</div>';
+        return;
+    }
+
+    // Get theme (default or custom)
+    let theme = getDefaultTheme(goalType);
+    
+    // Apply custom colors if set
+    if (primaryColor) theme.primaryColor = primaryColor;
+    if (secondaryColor) theme.secondaryColor = secondaryColor;
+    if (textColor) theme.textColor = textColor;
+    if (bgColor) {
+        // Convert hex to rgba with opacity
+        const hex = bgColor.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        theme.bgColor = `rgba(${r}, ${g}, ${b}, 0.95)`;
+    }
+    if (fontFamily) theme.fontFamily = fontFamily;
+    if (fontSize) theme.fontSize = parseInt(fontSize);
+
+    // Calculate scale to fit preview while maintaining aspect ratio
+    const containerWidth = previewContainer.clientWidth - 40; // Account for padding
+    const containerHeight = 300; // Fixed preview height
+    const aspectRatio = overlayWidth / overlayHeight;
+    
+    let previewWidth, previewHeight, scale;
+    
+    if (aspectRatio > containerWidth / containerHeight) {
+        // Width is the limiting factor
+        previewWidth = Math.min(containerWidth, overlayWidth);
+        previewHeight = previewWidth / aspectRatio;
+        scale = previewWidth / overlayWidth;
+    } else {
+        // Height is the limiting factor
+        previewHeight = Math.min(containerHeight, overlayHeight);
+        previewWidth = previewHeight * aspectRatio;
+        scale = previewHeight / overlayHeight;
+    }
+
+    // Render the preview
+    try {
+        const html = template.render(mockGoal, theme);
+        const styles = template.getStyles(theme);
+
+        previewFrame.innerHTML = `
+            <style>${styles}</style>
+            ${html}
+        `;
+        
+        // Apply size and scaling
+        previewFrame.style.width = overlayWidth + 'px';
+        previewFrame.style.height = overlayHeight + 'px';
+        previewFrame.style.transform = `scale(${scale})`;
+    } catch (error) {
+        console.error('Preview render error:', error);
+        previewFrame.innerHTML = '<div class="preview-loading">Error rendering preview</div>';
+    }
+}
+
+/**
+ * Get default theme colors based on goal type
+ */
+function getDefaultTheme(goalType) {
+    const themes = {
+        coin: {
+            primaryColor: '#fbbf24',
+            secondaryColor: '#f59e0b',
+            textColor: '#ffffff',
+            bgColor: 'rgba(15, 23, 42, 0.95)'
+        },
+        likes: {
+            primaryColor: '#f87171',
+            secondaryColor: '#ef4444',
+            textColor: '#ffffff',
+            bgColor: 'rgba(15, 23, 42, 0.95)'
+        },
+        follower: {
+            primaryColor: '#60a5fa',
+            secondaryColor: '#3b82f6',
+            textColor: '#ffffff',
+            bgColor: 'rgba(15, 23, 42, 0.95)'
+        },
+        custom: {
+            primaryColor: '#a78bfa',
+            secondaryColor: '#8b5cf6',
+            textColor: '#ffffff',
+            bgColor: 'rgba(15, 23, 42, 0.95)'
+        }
+    };
+
+    return themes[goalType] || themes.custom;
+}
+
+/**
+ * Get template by ID (uses shared templates from templates-shared.js)
+ */
+function getTemplate(id) {
+    if (!window.GoalTemplates) {
+        console.error('GoalTemplates not loaded');
+        return null;
+    }
+
+    const templateMap = {
+        'compact-bar': window.GoalTemplates.CompactBarTemplate,
+        'full-width': window.GoalTemplates.FullWidthTemplate,
+        'minimal-counter': window.GoalTemplates.MinimalCounterTemplate,
+        'circular-progress': window.GoalTemplates.CircularProgressTemplate,
+        'floating-pill': window.GoalTemplates.FloatingPillTemplate,
+        'vertical-meter': window.GoalTemplates.VerticalMeterTemplate,
+        'neon-glow': window.GoalTemplates.NeonGlowTemplate,
+        'hexagon-progress': window.GoalTemplates.HexagonProgressTemplate,
+        'glassy-card': window.GoalTemplates.GlassyCardTemplate
+    };
+
+    return templateMap[id] || templateMap['compact-bar'];
 }
