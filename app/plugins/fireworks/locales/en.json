@@ -2,6 +2,9 @@
   "fireworks": {
     "title": "Fireworks Superplugin Settings",
     "subtitle": "GPU-Accelerated Fireworks Effects",
+    "tab_settings": "Settings",
+    "tab_presets": "Presets",
+    "tab_benchmark": "Benchmark",
     "toaster_mode": {
       "title": "🍞 Toaster Mode (Low-End PCs)",
       "description": "Uses Canvas 2D rendering instead of WebGL for maximum compatibility",
@@ -15,6 +18,25 @@
       "effects": "Visual Effects: All maintained",
       "tip_title": "Tip:",
       "tip": "Use Toaster Mode if your PC slows down during fireworks or if you experience rendering issues in OBS."
+    },
+    "presets": {
+      "title": "Presets",
+      "description": "Choose a preset based on your system's performance. Use the Benchmark to find the optimal settings.",
+      "apply": "Apply",
+      "tip": "Tip:",
+      "tip_text": "Use the Benchmark tab to automatically determine the best 2 presets for your system."
+    },
+    "benchmark": {
+      "title": "Performance Benchmark",
+      "description": "Run an automatic performance test to find the optimal settings for your system.",
+      "start": "Start Benchmark",
+      "stop": "Stop",
+      "running": "Benchmark running...",
+      "current_test": "Current test:",
+      "results": "Benchmark Results",
+      "recommendations": "Recommendations",
+      "info": "Note:",
+      "info_text": "The benchmark opens the OBS overlay window and runs various scenarios. This takes about 1-2 minutes. Do not close the window during the test."
     }
   }
 }
