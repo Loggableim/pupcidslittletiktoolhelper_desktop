@@ -222,7 +222,10 @@ class ChatangoPlugin {
         // Embed HTML routes - Serve pre-rendered Chatango embed HTML for iframe loading
         this.api.registerRoute('GET', '/chatango/embed/dashboard', async (req, res) => {
             const config = await this.api.getConfig('config') || this.getDefaultConfig();
-            const theme = req.query.theme || config.theme || 'night';
+            // Validate theme parameter against whitelist
+            const validThemes = ['night', 'day', 'contrast'];
+            const requestedTheme = req.query.theme || config.theme || 'night';
+            const theme = validThemes.includes(requestedTheme) ? requestedTheme : 'night';
             const html = this.generateEmbedHTML('dashboard', theme);
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.send(html);
@@ -230,7 +233,10 @@ class ChatangoPlugin {
 
         this.api.registerRoute('GET', '/chatango/embed/widget', async (req, res) => {
             const config = await this.api.getConfig('config') || this.getDefaultConfig();
-            const theme = req.query.theme || config.theme || 'night';
+            // Validate theme parameter against whitelist
+            const validThemes = ['night', 'day', 'contrast'];
+            const requestedTheme = req.query.theme || config.theme || 'night';
+            const theme = validThemes.includes(requestedTheme) ? requestedTheme : 'night';
             const html = this.generateEmbedHTML('widget', theme);
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.send(html);
@@ -424,7 +430,8 @@ class ChatangoPlugin {
      */
     sanitizeSize(val, defaultVal = '100%') {
         if (typeof val === 'number') {
-            const clamped = Math.max(0, Math.min(1000, val));
+            // Use minimum of 50px to match client-side validation
+            const clamped = Math.max(50, Math.min(1000, val));
             return `${clamped}px`;
         }
         if (typeof val === 'string' && /^[\d]+(%|px)?$/.test(val)) {
