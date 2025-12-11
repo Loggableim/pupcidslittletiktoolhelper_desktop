@@ -219,6 +219,29 @@ class ChatangoPlugin {
             res.sendFile(path.join(this.api.getPluginDir(), 'ui.html'));
         });
 
+        // Embed HTML routes - Serve pre-rendered Chatango embed HTML for iframe loading
+        this.api.registerRoute('GET', '/chatango/embed/dashboard', async (req, res) => {
+            const config = await this.api.getConfig('config') || this.getDefaultConfig();
+            // Validate theme parameter against whitelist
+            const validThemes = ['night', 'day', 'contrast'];
+            const requestedTheme = req.query.theme || config.theme || 'night';
+            const theme = validThemes.includes(requestedTheme) ? requestedTheme : 'night';
+            const html = this.generateEmbedHTML('dashboard', theme);
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.send(html);
+        });
+
+        this.api.registerRoute('GET', '/chatango/embed/widget', async (req, res) => {
+            const config = await this.api.getConfig('config') || this.getDefaultConfig();
+            // Validate theme parameter against whitelist
+            const validThemes = ['night', 'day', 'contrast'];
+            const requestedTheme = req.query.theme || config.theme || 'night';
+            const theme = validThemes.includes(requestedTheme) ? requestedTheme : 'night';
+            const html = this.generateEmbedHTML('widget', theme);
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.send(html);
+        });
+
         // GET /api/chatango/config - Get current configuration
         this.api.registerRoute('get', '/api/chatango/config', async (req, res) => {
             const config = await this.api.getConfig('config') || this.getDefaultConfig();
@@ -356,31 +379,24 @@ class ChatangoPlugin {
         const config = this.generateEmbedCode(type, theme);
         const id = `cid${Date.now()}`;
         
-        // Sanitize dimensions
-        const sanitizeSize = (val, defaultVal) => {
-            if (typeof val === 'number') return Math.max(0, Math.min(1000, val));
-            if (typeof val === 'string' && /^[\d]+(%|px)?$/.test(val)) return val;
-            return defaultVal;
-        };
-        
         const width = type === 'widget' 
-            ? `${sanitizeSize(config.width, 200)}px` 
-            : sanitizeSize(config.width, '100%');
+            ? this.sanitizeSize(config.width, '200px')
+            : this.sanitizeSize(config.width, '100%');
         const height = type === 'widget' 
-            ? `${sanitizeSize(config.height, 300)}px` 
-            : sanitizeSize(config.height, '100%');
+            ? this.sanitizeSize(config.height, '300px')
+            : this.sanitizeSize(config.height, '100%');
         const styleAttr = `width: ${width};height: ${height};`;
 
-        // Sanitize handle to prevent injection
-        const safeHandle = String(config.handle || '').replace(/[<>'"&]/g, '');
-        
+        // Create JSON config and HTML-escape it for safe embedding in HTML
+        // JSON.stringify escapes quotes but not < > which could break out of script context
         const jsonConfig = JSON.stringify({
-            handle: safeHandle,
+            handle: String(config.handle || 'pupcidsltth'),
             arch: 'js', // Fixed value
             styles: config.styles
         });
+        const escapedJson = this.htmlEscape(jsonConfig);
 
-        return `<script id="${id}" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="${styleAttr}">${jsonConfig}</script>`;
+        return `<script id="${id}" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="${styleAttr}">${escapedJson}</script>`;
     }
 
     async updateConfig(newConfig) {
@@ -404,6 +420,92 @@ class ChatangoPlugin {
             config: this.config,
             themes: Object.keys(this.themeConfigs)
         });
+    }
+
+    /**
+     * Validate and sanitize dimensions for safe use in styles
+     * @param {*} val - Value to sanitize
+     * @param {string|number} defaultVal - Default value if validation fails
+     * @returns {string} Sanitized dimension value
+     */
+    sanitizeSize(val, defaultVal = '100%') {
+        if (typeof val === 'number') {
+            // Use minimum of 50px to match client-side validation
+            const clamped = Math.max(50, Math.min(1000, val));
+            return `${clamped}px`;
+        }
+        if (typeof val === 'string' && /^[\d]+(%|px)?$/.test(val)) {
+            return val;
+        }
+        return defaultVal;
+    }
+
+    /**
+     * HTML-escape a string for safe inclusion in HTML content
+     * @param {string} str - String to escape
+     * @returns {string} HTML-escaped string
+     */
+    htmlEscape(str) {
+        const escapeMap = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+            '/': '&#x2F;'
+        };
+        return String(str).replace(/[&<>"'/]/g, (char) => escapeMap[char]);
+    }
+
+    /**
+     * Generate complete HTML document with Chatango embed
+     * This is used by iframe-based embedding to avoid CSP issues with dynamic script injection
+     * @param {string} type - 'dashboard' or 'widget'
+     * @param {string} theme - Theme name
+     * @returns {string} Complete HTML document
+     */
+    generateEmbedHTML(type, theme) {
+        const embedConfig = this.generateEmbedCode(type, theme);
+        const scriptTag = this.generateScriptTag(type, theme);
+        
+        const width = type === 'widget' 
+            ? this.sanitizeSize(embedConfig.width, '200px')
+            : this.sanitizeSize(embedConfig.width, '100%');
+        const height = type === 'widget' 
+            ? this.sanitizeSize(embedConfig.height, '300px')
+            : this.sanitizeSize(embedConfig.height, '100%');
+        
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatango ${type === 'dashboard' ? 'Dashboard' : 'Widget'}</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chatango-container {
+            width: ${width};
+            height: ${height};
+        }
+    </style>
+</head>
+<body>
+    <div class="chatango-container">
+        ${scriptTag}
+    </div>
+</body>
+</html>`;
     }
 
     async destroy() {
