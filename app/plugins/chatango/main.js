@@ -381,16 +381,16 @@ class ChatangoPlugin {
             : this.sanitizeSize(config.height, '100%');
         const styleAttr = `width: ${width};height: ${height};`;
 
-        // Sanitize handle to prevent injection
-        const safeHandle = String(config.handle || '').replace(/[<>'"&]/g, '');
-        
+        // Create JSON config and HTML-escape it for safe embedding in HTML
+        // JSON.stringify escapes quotes but not < > which could break out of script context
         const jsonConfig = JSON.stringify({
-            handle: safeHandle,
+            handle: String(config.handle || 'pupcidsltth'),
             arch: 'js', // Fixed value
             styles: config.styles
         });
+        const escapedJson = this.htmlEscape(jsonConfig);
 
-        return `<script id="${id}" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="${styleAttr}">${jsonConfig}</script>`;
+        return `<script id="${id}" data-cfasync="false" async src="https://st.chatango.com/js/gz/emb.js" style="${styleAttr}">${escapedJson}</script>`;
     }
 
     async updateConfig(newConfig) {
@@ -431,6 +431,23 @@ class ChatangoPlugin {
             return val;
         }
         return defaultVal;
+    }
+
+    /**
+     * HTML-escape a string for safe inclusion in HTML content
+     * @param {string} str - String to escape
+     * @returns {string} HTML-escaped string
+     */
+    htmlEscape(str) {
+        const escapeMap = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+            '/': '&#x2F;'
+        };
+        return String(str).replace(/[&<>"'/]/g, (char) => escapeMap[char]);
     }
 
     /**
