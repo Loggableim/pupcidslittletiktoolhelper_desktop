@@ -726,90 +726,51 @@ http://localhost:3000/plugins/gift-counter/ui.html
 
 ## 📦 Verfügbare Plugins
 
-### 1. TTS-Plugin (`plugins/tts/`)
+**Little TikTool Helper v1.2.1** enthält **31 integrierte Plugins**. 
 
-**Zweck:** Text-to-Speech mit 75+ Stimmen
+### Vollständige Plugin-Liste
 
-**Features:**
-- TikTok TTS (75+ Stimmen)
-- Google Cloud TTS (optional)
-- User-Voice-Mappings
-- Queue-Management
-- Auto-TTS für Chat
+Für eine detaillierte Übersicht aller Plugins mit Features, Status, Endpoints und Konfigurationsoptionen siehe:
 
-**Endpoints:**
-- `GET /api/voices` - Verfügbare Stimmen
-- `POST /api/tts/test` - Test-TTS
+➡️ **[[Plugin-Liste]]** - Komplette Liste aller 31 Plugins
 
-### 2. Soundboard-Plugin (`plugins/soundboard/`)
+### Plugin-Kategorien
 
-**Zweck:** Gift-zu-Sound-Mapping
+| Status | Anzahl | Plugins |
+|--------|--------|---------|
+| 🔴 **Early Beta** | 6 | Advanced Timer, Chatango, GCCE HUD, Stream Alchemy, WebGPU Emoji Rain, Fireworks WebGPU |
+| 🟡 **Beta** | 10 | Minecraft Connect, Thermal Printer, Quiz Show, Viewer XP, Leaderboard, OpenShock, Multi-Cam, Gift Milestone, VDO.Ninja, GCCE |
+| 🟢 **Alpha** | 8 | Weather Control, Emoji Rain v2.0, Soundboard, ClarityHUD, LastEvent Spotlight, TTS v2.0, Live Goals |
+| 🔵 **Final** | 7 | OSC-Bridge, Config Import, Fireworks, API Bridge, CoinBattle, Flame Overlay, HybridShock |
 
-**Features:**
-- MyInstants-Integration (100.000+ Sounds)
-- Gift-Mappings
-- Event-Sounds
-- Like-Threshold-System
+### Wichtige Plugins (Highlights)
 
-### 3. Multi-Cam Switcher (`plugins/multicam/`)
+**TTS v2.0** (`plugins/tts/`)
+- Enterprise-Grade TTS mit 75+ TikTok-Stimmen
+- Multi-Engine-Support, Language-Detection
+- Status: 🟢 Alpha
 
-**Zweck:** OBS-Szenen via Gifts/Chat steuern
+**WebGPU Emoji Rain** (`plugins/webgpu-emoji-rain/`)
+- GPU-beschleunigter Emoji-Effekt
+- 10x schneller als Canvas-Version
+- Status: 🔴 Early Beta
 
-**Features:**
-- OBS WebSocket v5
-- Chat-Commands (`!cam 1-5`)
-- Gift-Mappings
-- Macro-System
-- Cooldowns
+**Global Chat Command Engine** (`plugins/gcce/`)
+- Universaler Command-Interpreter
+- Permission-System, Rate-Limiting
+- Status: 🟡 Beta
 
-**Endpoints:**
-- `GET /api/multicam/state`
-- `POST /api/multicam/connect`
-- `POST /api/multicam/action`
+**Viewer XP System** (`plugins/viewer-xp/`)
+- Gamification mit Levels, Badges, Streaks
+- Persistent Storage über Streams hinweg
+- Status: 🟡 Beta
 
-### 4. OSC-Bridge (`plugins/osc-bridge/`)
+**OSC-Bridge** (`plugins/osc-bridge/`)
+- VRChat-Integration
+- Bidirektionale OSC-Kommunikation
+- Status: 🔵 Final
 
-**Zweck:** VRChat-Integration via OSC
-
-**Features:**
-- VRChat-Parameter-Steuerung
-- Bidirektionale Kommunikation
-- Flow-Integration
-- Latenz < 50 ms
-
-**Endpoints:**
-- `POST /api/osc/start`
-- `POST /api/osc/send`
-- `POST /api/osc/vrchat/wave`
-
-### 5. VDO.Ninja Plugin (`plugins/vdoninja/`)
-
-**Zweck:** Multi-Guest-Streaming
-
-**Features:**
-- Room-Management
-- Guest-Verwaltung
-- Layout-Kontrolle
-- 20+ API-Endpoints
-
-### 6. Topboard Plugin (`plugins/topboard/`)
-
-**Zweck:** Top Gifters, Streaks, Donors
-
-**Features:**
-- Top Gifters (sortiert nach Coins)
-- Longest Streaks
-- Recent Donors
-- Echtzeit-Updates
-
-### 7. Emoji Rain (`plugins/emoji-rain/`)
-
-**Zweck:** Emoji-Regen bei Gifts
-
-**Features:**
-- Gift-zu-Emoji-Mappings
-- Animations-Speed/-Density
-- HUD-Integration
+Siehe **[[Plugin-Liste]]** für alle Details zu jedem Plugin.
 
 ---
 
@@ -1005,4 +966,5 @@ registerTikTokEvents() {
 
 ---
 
-*Letzte Aktualisierung: 2025-11-11*
+*Letzte Aktualisierung: 2025-12-11*
+*Version: 1.2.1*

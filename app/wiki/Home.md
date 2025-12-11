@@ -2,8 +2,8 @@
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.0.3-blue)](https://github.com/yourusername/pupcidslittletiktokhelper)
-[![Status](https://img.shields.io/badge/status-active-success)](https://github.com/yourusername/pupcidslittletiktokhelper)
+[![Version](https://img.shields.io/badge/version-1.2.1-blue)](https://github.com/Loggableim/pupcidslittletiktoolhelper_desktop)
+[![Status](https://img.shields.io/badge/status-active-success)](https://github.com/Loggableim/pupcidslittletiktoolhelper_desktop)
 
 ---
 
@@ -21,9 +21,12 @@
 
 ### Plugins & Features
 - **[[Plugin-Dokumentation]]** - Plugin-System, verfügbare Plugins und eigene Plugins erstellen
+- **[[Plugin-Liste]]** - Komplette Liste aller 31 Plugins mit Status und Features
 - **[[Plugins/VDO-Ninja]]** - Multi-Guest-Streaming mit VDO.Ninja
 - **[[Features/Emoji-Rain]]** - Emoji-Regen-Effekt im Overlay
 - **[[Features/Cloud-Sync]]** - Automatische Cloud-Synchronisation für User-Configs
+- **[[Features/WebGPU-Engine]]** - GPU-beschleunigtes Rendering
+- **[[Features/GCCE]]** - Global Chat Command Engine
 
 ---
 
@@ -156,7 +159,9 @@ Modulares Erweiterungssystem:
 - 📦 **ZIP-Upload** - Plugins via Web-UI hochladen
 - 🛠️ **Plugin-API** - Express-Routes, Socket.io, TikTok-Events
 - 🎨 **Admin-UI** - Plugins mit eigenem Web-Interface
-- 📚 **7 Plugins vorinstalliert** - TTS, Soundboard, Multi-Cam, OSC-Bridge, etc.
+- 📚 **31 Plugins integriert** - TTS v2.0, WebGPU Emoji Rain, Fireworks, GCCE, Viewer XP, etc.
+- 🎮 **WebGPU-Engine** - GPU-beschleunigtes Rendering für Partikel-Effekte
+- 🌐 **GCCE** - Global Chat Command Engine für alle Plugins
 
 ### 9. Multi-Profile-System
 
@@ -487,5 +492,5 @@ Abhängig von deinem Ziel, wähle die passende Seite:
 
 ---
 
-*Letzte Aktualisierung: 2025-11-11*
-*Version: 1.0.2*
+*Letzte Aktualisierung: 2025-12-11*
+*Version: 1.2.1*
