@@ -39,6 +39,7 @@ class FireworksPlugin {
         // Benchmark state
         this.currentFps = 0;
         this.benchmarkPreset = null;
+        this.connectedSockets = new Set();
         
         // Combo timeout (ms) - reset combo if no gift within this time
         this.COMBO_TIMEOUT = 10000;
@@ -114,17 +115,31 @@ class FireworksPlugin {
     registerSocketHandlers() {
         const io = this.api.getSocketIO();
         
+        // Initialize socket tracking
+        if (!this.connectedSockets) {
+            this.connectedSockets = new Set();
+        }
+        
         // Store reference to bound handler to avoid duplicates
         if (!this.fpsUpdateHandler) {
             this.fpsUpdateHandler = (socket) => {
+                // Track this socket connection
+                this.connectedSockets.add(socket);
+                
+                // Listen for FPS updates
                 socket.on('fireworks:fps-update', (data) => {
                     if (data && data.fps !== undefined) {
                         this.currentFps = data.fps;
                     }
                 });
+                
+                // Clean up on disconnect
+                socket.on('disconnect', () => {
+                    this.connectedSockets.delete(socket);
+                });
             };
             
-            // Listen for FPS updates from overlay
+            // Listen for new connections
             io.on('connection', this.fpsUpdateHandler);
         }
     }
@@ -1184,11 +1199,19 @@ class FireworksPlugin {
         this.comboState.clear();
         this.lastGiftTime.clear();
         
-        // Remove socket event handler to prevent memory leaks
+        // Remove socket event handler and disconnect all tracked sockets
         if (this.fpsUpdateHandler) {
             const io = this.api.getSocketIO();
             io.off('connection', this.fpsUpdateHandler);
             this.fpsUpdateHandler = null;
+        }
+        
+        // Clean up tracked sockets
+        if (this.connectedSockets) {
+            this.connectedSockets.forEach(socket => {
+                socket.removeAllListeners('fireworks:fps-update');
+            });
+            this.connectedSockets.clear();
         }
         
         this.api.log('🎆 [FIREWORKS] Fireworks Superplugin destroyed', 'info');
