@@ -114,14 +114,19 @@ class FireworksPlugin {
     registerSocketHandlers() {
         const io = this.api.getSocketIO();
         
-        // Listen for FPS updates from overlay
-        io.on('connection', (socket) => {
-            socket.on('fireworks:fps-update', (data) => {
-                if (data && data.fps !== undefined) {
-                    this.currentFps = data.fps;
-                }
-            });
-        });
+        // Store reference to bound handler to avoid duplicates
+        if (!this.fpsUpdateHandler) {
+            this.fpsUpdateHandler = (socket) => {
+                socket.on('fireworks:fps-update', (data) => {
+                    if (data && data.fps !== undefined) {
+                        this.currentFps = data.fps;
+                    }
+                });
+            };
+            
+            // Listen for FPS updates from overlay
+            io.on('connection', this.fpsUpdateHandler);
+        }
     }
 
     /**
@@ -1178,6 +1183,13 @@ class FireworksPlugin {
         // Clear combo states
         this.comboState.clear();
         this.lastGiftTime.clear();
+        
+        // Remove socket event handler to prevent memory leaks
+        if (this.fpsUpdateHandler) {
+            const io = this.api.getSocketIO();
+            io.removeListener('connection', this.fpsUpdateHandler);
+            this.fpsUpdateHandler = null;
+        }
         
         this.api.log('🎆 [FIREWORKS] Fireworks Superplugin destroyed', 'info');
     }

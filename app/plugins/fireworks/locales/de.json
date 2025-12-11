@@ -24,7 +24,12 @@
       "description": "Wählen Sie eine Voreinstellung basierend auf Ihrer System-Performance. Nutzen Sie den Benchmark, um die optimale Einstellung zu finden.",
       "apply": "Anwenden",
       "tip": "Tipp:",
-      "tip_text": "Nutzen Sie den Benchmark-Tab, um automatisch die besten 2 Voreinstellungen für Ihr System zu ermitteln."
+      "tip_text": "Nutzen Sie den Benchmark-Tab, um automatisch die besten 2 Voreinstellungen für Ihr System zu ermitteln.",
+      "not_found": "Preset nicht gefunden",
+      "applied": "Voreinstellung angewendet!",
+      "warning_title": "Warnung: Diese Voreinstellung könnte auf Ihrem System laggen!",
+      "warning_fps": "Der Benchmark hat eine durchschnittliche FPS von {fps} gemessen.",
+      "warning_confirm": "Möchten Sie diese Einstellung trotzdem verwenden?"
     },
     "benchmark": {
       "title": "Performance Benchmark",
@@ -36,7 +41,12 @@
       "results": "Benchmark-Ergebnisse",
       "recommendations": "Empfehlungen",
       "info": "Hinweis:",
-      "info_text": "Der Benchmark öffnet das OBS-Overlay-Fenster und führt verschiedene Szenarien durch. Dies dauert etwa 1-2 Minuten. Schließen Sie das Fenster nicht während des Tests."
+      "info_text": "Der Benchmark öffnet das OBS-Overlay-Fenster und führt verschiedene Szenarien durch. Dies dauert etwa 1-2 Minuten. Schließen Sie das Fenster nicht während des Tests.",
+      "popup_blocked": "Konnte Benchmark-Fenster nicht öffnen. Bitte Pop-ups erlauben.",
+      "cancelled": "Benchmark abgebrochen",
+      "no_good_presets": "Keine Voreinstellung erreicht 30 FPS. Wir empfehlen die \"Potato\" Voreinstellung für Ihr System.",
+      "best_choice": "Beste Wahl",
+      "alternative": "Alternative"
     }
   }
 }

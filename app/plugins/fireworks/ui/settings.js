@@ -896,7 +896,8 @@ function initializePresets() {
 async function applyPreset(presetName) {
     const preset = PRESETS[presetName];
     if (!preset) {
-        showToast('Preset nicht gefunden', 'error');
+        const msg = window.i18n ? window.i18n.t('fireworks.presets.not_found') : 'Preset not found';
+        showToast(msg, 'error');
         return;
     }
     
@@ -908,10 +909,12 @@ async function applyPreset(presetName) {
             const presetResult = results.find(r => r.preset === presetName);
             
             if (presetResult && presetResult.avgFps < 30) {
+                const warningTitle = window.i18n ? window.i18n.t('fireworks.presets.warning_title') : 'Warning: This preset might lag on your system!';
+                const warningFps = window.i18n ? window.i18n.t('fireworks.presets.warning_fps').replace('{fps}', presetResult.avgFps.toFixed(1)) : `The benchmark measured an average FPS of ${presetResult.avgFps.toFixed(1)}.`;
+                const warningConfirm = window.i18n ? window.i18n.t('fireworks.presets.warning_confirm') : 'Do you want to use this setting anyway?';
+                
                 const confirmed = confirm(
-                    `⚠️ Warnung: Diese Voreinstellung könnte auf Ihrem System laggen!\n\n` +
-                    `Der Benchmark hat eine durchschnittliche FPS von ${presetResult.avgFps.toFixed(1)} gemessen.\n\n` +
-                    `Möchten Sie diese Einstellung trotzdem verwenden?`
+                    `⚠️ ${warningTitle}\n\n${warningFps}\n\n${warningConfirm}`
                 );
                 
                 if (!confirmed) {
@@ -932,7 +935,8 @@ async function applyPreset(presetName) {
     // Save config
     await saveConfig();
     
-    showToast(`Voreinstellung "${presetName.toUpperCase()}" angewendet!`, 'success');
+    const msg = window.i18n ? window.i18n.t('fireworks.presets.applied') : 'Preset applied!';
+    showToast(`${msg} (${presetName.toUpperCase()})`, 'success');
     
     // Switch to settings tab to show changes
     switchTab('settings');
@@ -983,7 +987,8 @@ async function startBenchmark() {
     benchmarkWindow = window.open(overlayUrl, 'FireworksBenchmark', 'width=1920,height=1080');
     
     if (!benchmarkWindow) {
-        showToast('Konnte Benchmark-Fenster nicht öffnen. Bitte Pop-ups erlauben.', 'error');
+        const msg = window.i18n ? window.i18n.t('fireworks.benchmark.popup_blocked') : 'Could not open benchmark window. Please allow pop-ups.';
+        showToast(msg, 'error');
         stopBenchmark();
         return;
     }
@@ -1041,7 +1046,8 @@ function stopBenchmark() {
     stopBtn.style.display = 'none';
     progressDiv.style.display = 'none';
     
-    showToast('Benchmark abgebrochen', 'error');
+    const msg = window.i18n ? window.i18n.t('fireworks.benchmark.cancelled') : 'Benchmark cancelled';
+    showToast(msg, 'error');
 }
 
 async function runBenchmarkTest(presetName) {
@@ -1177,12 +1183,15 @@ function displayBenchmarkResults() {
     recommendationsDiv.innerHTML = '';
     
     if (recommendations.length === 0) {
+        const msg = window.i18n ? window.i18n.t('fireworks.benchmark.no_good_presets') : 'No preset reaches 30 FPS. We recommend the "Potato" preset for your system.';
+        const applyText = window.i18n ? window.i18n.t('fireworks.presets.apply') : 'Apply';
+        
         recommendationsDiv.innerHTML = `
             <p class="text-yellow-300">
-                ⚠️ Keine Voreinstellung erreicht 30 FPS. Wir empfehlen die "Potato" Voreinstellung für Ihr System.
+                ⚠️ ${msg}
             </p>
             <button class="w-full mt-4 bg-green-500 hover:bg-green-600 py-3 rounded-lg font-bold transition" onclick="applyPreset('potato')">
-                🥔 Potato Voreinstellung Anwenden
+                🥔 Potato ${applyText}
             </button>
         `;
     } else {
@@ -1190,7 +1199,11 @@ function displayBenchmarkResults() {
             const recDiv = document.createElement('div');
             recDiv.className = 'mb-4';
             
-            const rank = index === 0 ? '🥇 Beste Wahl' : '🥈 Alternative';
+            const bestChoice = window.i18n ? window.i18n.t('fireworks.benchmark.best_choice') : 'Best Choice';
+            const alternative = window.i18n ? window.i18n.t('fireworks.benchmark.alternative') : 'Alternative';
+            const applyText = window.i18n ? window.i18n.t('fireworks.presets.apply') : 'Apply';
+            
+            const rank = index === 0 ? `🥇 ${bestChoice}` : `🥈 ${alternative}`;
             
             recDiv.innerHTML = `
                 <div class="flex items-center justify-between mb-2">
@@ -1198,7 +1211,7 @@ function displayBenchmarkResults() {
                     <span class="text-green-300 font-bold">${rec.avgFps.toFixed(1)} FPS</span>
                 </div>
                 <button class="w-full bg-green-500 hover:bg-green-600 py-2 rounded-lg font-bold transition" onclick="applyPreset('${rec.preset}')">
-                    Anwenden
+                    ${applyText}
                 </button>
             `;
             
