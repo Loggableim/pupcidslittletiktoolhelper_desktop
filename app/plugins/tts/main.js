@@ -5,6 +5,7 @@ const GoogleEngine = require('./engines/google-engine');
 const SpeechifyEngine = require('./engines/speechify-engine');
 const ElevenLabsEngine = require('./engines/elevenlabs-engine');
 const OpenAIEngine = require('./engines/openai-engine');
+const FishSpeechEngine = require('./engines/fishspeech-engine');
 const LanguageDetector = require('./utils/language-detector');
 const ProfanityFilter = require('./utils/profanity-filter');
 const PermissionManager = require('./utils/permission-manager');
@@ -20,7 +21,7 @@ class TTSPlugin {
     static EMOJI_PATTERN = /(?:[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F1FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1FA00}-\u{1FAFF}]|[\u{FE00}-\u{FE0F}]|[\u{200D}]|[\u{20E3}])+/gu;
     
     // Error message constant for missing engines
-    static NO_ENGINES_ERROR = 'No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, or OpenAI)';
+    static NO_ENGINES_ERROR = 'No TTS engines available - please configure at least one engine (Google, Speechify, ElevenLabs, OpenAI, or Fish Speech)';
 
     constructor(api) {
         this.api = api;
@@ -46,7 +47,8 @@ class TTSPlugin {
             google: null, // Initialized if API key is available AND engine is enabled
             speechify: null, // Initialized if API key is available AND engine is enabled
             elevenlabs: null, // Initialized if API key is available AND engine is enabled
-            openai: null // Initialized if API key is available AND engine is enabled
+            openai: null, // Initialized if API key is available AND engine is enabled
+            fishspeech: null // Initialized if API key is available AND engine is enabled
         };
 
         // Helper function to check if an engine should be loaded
@@ -65,6 +67,8 @@ class TTSPlugin {
                     return this.config.enableElevenlabsFallback === true;
                 case 'openai':
                     return this.config.enableOpenAIFallback === true;
+                case 'fishspeech':
+                    return this.config.enableFishSpeechFallback === true;
                 default:
                     return false;
             }
@@ -138,6 +142,23 @@ class TTSPlugin {
             this._logDebug('INIT', 'OpenAI TTS engine NOT initialized', { hasApiKey: false });
         }
 
+        // Initialize Fish Speech engine if API key is configured AND engine is enabled
+        if (this.config.fishspeechApiKey && shouldLoadEngine('fishspeech')) {
+            this.engines.fishspeech = new FishSpeechEngine(
+                this.config.fishspeechApiKey,
+                this.logger,
+                { performanceMode: this.config.performanceMode }
+            );
+            this.logger.info('TTS: ✅ Fish Speech 1.5 TTS engine initialized');
+            this._logDebug('INIT', 'Fish Speech TTS engine initialized', { hasApiKey: true, isDefault: this.config.defaultEngine === 'fishspeech', isFallback: this.config.enableFishSpeechFallback });
+        } else if (this.config.fishspeechApiKey) {
+            this.logger.info('TTS: ⏸️  Fish Speech TTS engine NOT loaded (disabled as fallback)');
+            this._logDebug('INIT', 'Fish Speech TTS engine NOT loaded', { hasApiKey: true, disabled: true });
+        } else {
+            this.logger.info('TTS: ⚠️  Fish Speech TTS engine NOT initialized (no API key)');
+            this._logDebug('INIT', 'Fish Speech TTS engine NOT initialized', { hasApiKey: false });
+        }
+
         // Initialize utilities
         this.languageDetector = new LanguageDetector(this.logger, {
             confidenceThreshold: this.config.languageConfidenceThreshold,
@@ -155,10 +176,11 @@ class TTSPlugin {
         // Define fallback chains for each engine (TikTok removed)
         // Each engine has a preferred order of fallback engines based on quality and reliability
         this.fallbackChains = {
-            'google': ['openai', 'elevenlabs', 'speechify'],      // Google → OpenAI → Premium engines
-            'elevenlabs': ['openai', 'speechify', 'google'],      // Premium → OpenAI → Good → Standard
-            'speechify': ['openai', 'elevenlabs', 'google'],      // Speechify → OpenAI → Premium → Standard
-            'openai': ['elevenlabs', 'google', 'speechify']       // OpenAI → Premium → Standard → Good
+            'google': ['openai', 'fishspeech', 'elevenlabs', 'speechify'],      // Google → OpenAI → Fish Speech → Premium engines
+            'elevenlabs': ['openai', 'fishspeech', 'speechify', 'google'],      // Premium → OpenAI → Fish Speech → Good → Standard
+            'speechify': ['openai', 'fishspeech', 'elevenlabs', 'google'],      // Speechify → OpenAI → Fish Speech → Premium → Standard
+            'openai': ['fishspeech', 'elevenlabs', 'google', 'speechify'],      // OpenAI → Fish Speech → Premium → Standard → Good
+            'fishspeech': ['openai', 'elevenlabs', 'google', 'speechify']       // Fish Speech → OpenAI → Premium → Standard → Good
         };
 
         this._logDebug('INIT', 'TTS Plugin initialized', {
@@ -171,7 +193,8 @@ class TTSPlugin {
                 google: this.config.enableGoogleFallback,
                 speechify: this.config.enableSpeechifyFallback,
                 elevenlabs: this.config.enableElevenlabsFallback,
-                openai: this.config.enableOpenAIFallback
+                openai: this.config.enableOpenAIFallback,
+                fishspeech: this.config.enableFishSpeechFallback
             },
             startupTimestamp: this.startupTimestamp
         });
@@ -182,6 +205,7 @@ class TTSPlugin {
         if (this.engines.speechify) availableEngines.push('Speechify');
         if (this.engines.elevenlabs) availableEngines.push('ElevenLabs');
         if (this.engines.openai) availableEngines.push('OpenAI');
+        if (this.engines.fishspeech) availableEngines.push('Fish Speech 1.5');
         
         this.logger.info(`TTS Plugin initialized successfully`);
         this.logger.info(`TTS: Available engines: ${availableEngines.length > 0 ? availableEngines.join(', ') : 'None configured'}`);
@@ -271,6 +295,20 @@ class TTSPlugin {
                 } else {
                     // User had assigned voice - use engine's default for fallback language
                     fallbackVoice = OpenAIEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted for ${engineName} (preserving user assignment intent)`, { fallbackVoice, hasUserAssignedVoice });
+                }
+            }
+        } else if (engineName === 'fishspeech') {
+            const fishspeechVoices = FishSpeechEngine.getVoices();
+            if (!fallbackVoice || !fishspeechVoices[fallbackVoice]) {
+                // Only use language detection if user doesn't have an assigned voice
+                if (!hasUserAssignedVoice) {
+                    const langResult = this.languageDetector.detectAndGetVoice(text, FishSpeechEngine, this.config.fallbackLanguage);
+                    fallbackVoice = langResult?.voiceId || FishSpeechEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
+                    this._logDebug('FALLBACK', `Voice adjusted via language detection for ${engineName}`, { fallbackVoice, langResult });
+                } else {
+                    // User had assigned voice - use engine's default for fallback language
+                    fallbackVoice = FishSpeechEngine.getDefaultVoiceForLanguage(this.config.fallbackLanguage) || this.config.defaultVoice;
                     this._logDebug('FALLBACK', `Voice adjusted for ${engineName} (preserving user assignment intent)`, { fallbackVoice, hasUserAssignedVoice });
                 }
             }
@@ -374,6 +412,7 @@ class TTSPlugin {
             speechifyApiKey: null,
             elevenlabsApiKey: null,
             openaiApiKey: null,
+            fishspeechApiKey: null,
             tiktokSessionId: null, // Deprecated but kept for backwards compatibility
             enabledForChat: true,
             autoLanguageDetection: true,
@@ -389,6 +428,7 @@ class TTSPlugin {
             enableSpeechifyFallback: false, // Enable Speechify as fallback engine
             enableElevenlabsFallback: false, // Enable ElevenLabs as fallback engine
             enableOpenAIFallback: false, // Enable OpenAI as fallback engine
+            enableFishSpeechFallback: false, // Enable Fish Speech as fallback engine
             // Message prefix filter - ignore messages starting with these prefixes
             messagePrefixFilter: [] // e.g., ['!', '/', '.'] - messages starting with these will be ignored
         };
@@ -404,6 +444,7 @@ class TTSPlugin {
         config.speechifyApiKey = db.getSetting('tts_speechify_api_key') || config.speechifyApiKey;
         config.elevenlabsApiKey = db.getSetting('tts_elevenlabs_api_key') || config.elevenlabsApiKey;
         config.openaiApiKey = db.getSetting('tts_openai_api_key') || config.openaiApiKey;
+        config.fishspeechApiKey = db.getSetting('tts_fishspeech_api_key') || config.fishspeechApiKey;
         
         // If no saved config exists, save defaults
         if (!saved) {
@@ -469,6 +510,7 @@ class TTSPlugin {
                     speechifyApiKey: this.config.speechifyApiKey ? '***REDACTED***' : null,
                     elevenlabsApiKey: this.config.elevenlabsApiKey ? '***REDACTED***' : null,
                     openaiApiKey: this.config.openaiApiKey ? '***REDACTED***' : null,
+                    fishspeechApiKey: this.config.fishspeechApiKey ? '***REDACTED***' : null,
                     tiktokSessionId: this.config.tiktokSessionId ? '***HIDDEN***' : null
                 }
             });
@@ -499,6 +541,9 @@ class TTSPlugin {
                             canValidate = true;
                         } else if (updates.defaultEngine === 'openai' && this.engines.openai) {
                             engineVoices = OpenAIEngine.getVoices();
+                            canValidate = true;
+                        } else if (updates.defaultEngine === 'fishspeech' && this.engines.fishspeech) {
+                            engineVoices = FishSpeechEngine.getVoices();
                             canValidate = true;
                         }
                     } catch (error) {
@@ -631,6 +676,24 @@ class TTSPlugin {
                     }
                 }
 
+                // Update Fish Speech API key if provided (and not the placeholder)
+                if (updates.fishspeechApiKey && updates.fishspeechApiKey !== '***REDACTED***') {
+                    this.config.fishspeechApiKey = updates.fishspeechApiKey;
+                    // Save to global settings for centralized management
+                    const db = this.api.getDatabase();
+                    db.setSetting('tts_fishspeech_api_key', updates.fishspeechApiKey);
+                    if (!this.engines.fishspeech) {
+                        this.engines.fishspeech = new FishSpeechEngine(
+                            updates.fishspeechApiKey,
+                            this.logger,
+                            { performanceMode: this.config.performanceMode }
+                        );
+                        this.logger.info('Fish Speech TTS engine initialized via config update');
+                    } else {
+                        this.engines.fishspeech.setApiKey(updates.fishspeechApiKey);
+                    }
+                }
+
                 // Update profanity filter if changed
                 if (updates.profanityFilter) {
                     this.profanityFilter.setMode(updates.profanityFilter);
@@ -689,6 +752,15 @@ class TTSPlugin {
                             { ...this.config, performanceMode: updates.performanceMode }
                         );
                     }
+                    
+                    // Reinitialize Fish Speech engine with new performance mode
+                    if (this.engines.fishspeech) {
+                        this.engines.fishspeech = new FishSpeechEngine(
+                            this.config.fishspeechApiKey,
+                            this.logger,
+                            { ...this.config, performanceMode: updates.performanceMode }
+                        );
+                    }
                 }
 
                 // Handle fallback engine enable/disable changes
@@ -699,6 +771,7 @@ class TTSPlugin {
                     updates.enableSpeechifyFallback !== undefined ||
                     updates.enableElevenlabsFallback !== undefined ||
                     updates.enableOpenAIFallback !== undefined ||
+                    updates.enableFishSpeechFallback !== undefined ||
                     updates.defaultEngine !== undefined
                 );
                 
@@ -708,6 +781,7 @@ class TTSPlugin {
                         enableSpeechifyFallback: updates.enableSpeechifyFallback,
                         enableElevenlabsFallback: updates.enableElevenlabsFallback,
                         enableOpenAIFallback: updates.enableOpenAIFallback,
+                        enableFishSpeechFallback: updates.enableFishSpeechFallback,
                         defaultEngine: updates.defaultEngine
                     });
                     
@@ -725,6 +799,8 @@ class TTSPlugin {
                                 return (updates.enableElevenlabsFallback !== undefined ? updates.enableElevenlabsFallback : this.config.enableElevenlabsFallback) === true;
                             case 'openai':
                                 return (updates.enableOpenAIFallback !== undefined ? updates.enableOpenAIFallback : this.config.enableOpenAIFallback) === true;
+                            case 'fishspeech':
+                                return (updates.enableFishSpeechFallback !== undefined ? updates.enableFishSpeechFallback : this.config.enableFishSpeechFallback) === true;
                             default:
                                 return false;
                         }
@@ -772,6 +848,17 @@ class TTSPlugin {
                         } else if (!shouldLoadEngine('openai') && this.engines.openai) {
                             this.engines.openai = null;
                             this.logger.info('TTS: ⏸️  OpenAI engine disabled via config update');
+                        }
+                    }
+                    
+                    // Enable/Disable Fish Speech engine based on new settings
+                    if (this.config.fishspeechApiKey) {
+                        if (shouldLoadEngine('fishspeech') && !this.engines.fishspeech) {
+                            this.engines.fishspeech = new FishSpeechEngine(this.config.fishspeechApiKey, this.logger, { performanceMode: this.config.performanceMode });
+                            this.logger.info('TTS: ✅ Fish Speech engine enabled via config update');
+                        } else if (!shouldLoadEngine('fishspeech') && this.engines.fishspeech) {
+                            this.engines.fishspeech = null;
+                            this.logger.info('TTS: ⏸️  Fish Speech engine disabled via config update');
                         }
                     }
                 }
@@ -824,6 +911,10 @@ class TTSPlugin {
 
             if ((engine === 'all' || engine === 'openai') && this.engines.openai) {
                 voices.openai = OpenAIEngine.getVoices();
+            }
+
+            if ((engine === 'all' || engine === 'fishspeech') && this.engines.fishspeech) {
+                voices.fishspeech = FishSpeechEngine.getVoices();
             }
 
             res.json({ success: true, voices });
