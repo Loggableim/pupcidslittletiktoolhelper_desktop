@@ -679,6 +679,89 @@ func (l *Launcher) runLauncher() {
 	os.Exit(0)
 }
 
+// parseChangelogToHTML converts markdown changelog to HTML
+func parseChangelogToHTML(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	var html strings.Builder
+	inList := false
+	
+	// Only show the first 50 lines (recent changes)
+	maxLines := 50
+	if len(lines) > maxLines {
+		lines = lines[:maxLines]
+	}
+	
+	for _, line := range lines {
+		line = strings.TrimRight(line, "\r")
+		
+		// Skip the title and format line
+		if strings.HasPrefix(line, "# Changelog") {
+			continue
+		}
+		if strings.HasPrefix(line, "All notable changes") {
+			continue
+		}
+		if strings.HasPrefix(line, "The format is") {
+			continue
+		}
+		
+		// Handle headers
+		if strings.HasPrefix(line, "## ") {
+			if inList {
+				html.WriteString("</ul>")
+				inList = false
+			}
+			version := strings.TrimPrefix(line, "## ")
+			html.WriteString(fmt.Sprintf("<div class='changelog-version'>%s</div>", template.HTMLEscapeString(version)))
+		} else if strings.HasPrefix(line, "### ") {
+			if inList {
+				html.WriteString("</ul>")
+				inList = false
+			}
+			title := strings.TrimPrefix(line, "### ")
+			html.WriteString(fmt.Sprintf("<h3>%s</h3>", template.HTMLEscapeString(title)))
+		} else if strings.HasPrefix(line, "- ") {
+			if !inList {
+				html.WriteString("<ul>")
+				inList = true
+			}
+			item := strings.TrimPrefix(line, "- ")
+			// Handle bold text **text**
+			item = strings.ReplaceAll(item, "**", "<strong>")
+			count := strings.Count(item, "<strong>")
+			if count%2 != 0 {
+				item = strings.ReplaceAll(item, "<strong>", "**")
+			} else {
+				for i := 0; i < count/2; i++ {
+					item = strings.Replace(item, "<strong>", "<strong>", 1)
+					item = strings.Replace(item, "<strong>", "</strong>", 1)
+				}
+			}
+			html.WriteString(fmt.Sprintf("<li>%s</li>", item))
+		} else if strings.TrimSpace(line) == "" {
+			if inList {
+				html.WriteString("</ul>")
+				inList = false
+			}
+		} else if !strings.HasPrefix(line, "[") {
+			// Regular paragraph
+			if inList {
+				html.WriteString("</ul>")
+				inList = false
+			}
+			if strings.TrimSpace(line) != "" {
+				html.WriteString(fmt.Sprintf("<p>%s</p>", template.HTMLEscapeString(line)))
+			}
+		}
+	}
+	
+	if inList {
+		html.WriteString("</ul>")
+	}
+	
+	return html.String()
+}
+
 func main() {
 	launcher := NewLauncher()
 
@@ -721,55 +804,75 @@ func main() {
         body {
             width: 100vw;
             height: 100vh;
-            background-color: #f5f5f5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             overflow: hidden;
             position: relative;
         }
         
         .launcher-container {
-            width: 1536px;
-            height: 1024px;
-            max-width: 95vw;
-            max-height: 95vh;
-            background-image: url(/bg);
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            position: relative;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 250px 1fr 350px;
+            grid-template-rows: auto 1fr auto;
+            gap: 15px;
+            padding: 15px;
         }
         
-        .progress-container {
-            position: absolute;
-            right: 5%;
-            width: 36%;
-            height: 70%;
-            padding: 3%;
+        /* Top-left logo */
+        .logo-container {
+            grid-column: 1;
+            grid-row: 1;
             background-color: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .logo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 5px;
+        }
+        
+        /* Top-right logging area */
+        .logging-container {
+            grid-column: 3;
+            grid-row: 1 / 3;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             display: flex;
             flex-direction: column;
         }
         
+        .logging-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
         .status-text {
             color: #333;
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 13px;
+            font-weight: 500;
             margin-bottom: 15px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             line-height: 1.4;
             flex: 1;
             overflow-y: auto;
             word-wrap: break-word;
             overflow-wrap: break-word;
+            padding-right: 5px;
         }
         
         .progress-bar-bg {
@@ -785,7 +888,7 @@ func main() {
         .progress-bar-fill {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #00d4ff, #0099ff);
+            background: linear-gradient(90deg, #667eea, #764ba2);
             border-radius: 20px;
             transition: width 0.3s ease;
             display: flex;
@@ -794,17 +897,155 @@ func main() {
             color: white;
             font-weight: bold;
             font-size: 14px;
-            box-shadow: 0 2px 4px rgba(0, 153, 255, 0.3);
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Center changelog area */
+        .changelog-container {
+            grid-column: 1 / 3;
+            grid-row: 2 / 3;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+        }
+        
+        .changelog-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .changelog-content {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .changelog-content h3 {
+            color: #667eea;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+        
+        .changelog-content ul {
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .changelog-content li {
+            margin-bottom: 5px;
+        }
+        
+        .changelog-version {
+            color: #764ba2;
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        /* Bottom-right links */
+        .links-container {
+            grid-column: 1 / 4;
+            grid-row: 3;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .link-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+        }
+        
+        .link-icon {
+            font-size: 18px;
+        }
+        
+        /* Custom scrollbar */
+        .status-text::-webkit-scrollbar,
+        .changelog-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .status-text::-webkit-scrollbar-track,
+        .changelog-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .status-text::-webkit-scrollbar-thumb,
+        .changelog-container::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+        
+        .status-text::-webkit-scrollbar-thumb:hover,
+        .changelog-container::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
         }
     </style>
 </head>
 <body>
     <div class="launcher-container">
-        <div class="progress-container">
+        <!-- Top-left logo -->
+        <div class="logo-container">
+            <img src="/bg" alt="LTTH Logo">
+        </div>
+        
+        <!-- Top-right logging area -->
+        <div class="logging-container">
+            <div class="logging-title">📋 Status</div>
             <div class="status-text" id="status">Initialisiere...</div>
             <div class="progress-bar-bg">
                 <div class="progress-bar-fill" id="progressBar">0%</div>
             </div>
+        </div>
+        
+        <!-- Center changelog area -->
+        <div class="changelog-container">
+            <div class="changelog-title">📝 Changelog</div>
+            <div class="changelog-content" id="changelog">
+                <p style="color: #999;">Lade Changelog...</p>
+            </div>
+        </div>
+        
+        <!-- Bottom links -->
+        <div class="links-container">
+            <a href="https://github.com/Loggableim/ltth.app/discussions" target="_blank" class="link-item">
+                <span class="link-icon">💬</span>
+                <span>GitHub Discussions</span>
+            </a>
+            <a href="https://discord.gg/pawsunited" target="_blank" class="link-item">
+                <span class="link-icon">💜</span>
+                <span>Discord Community</span>
+            </a>
         </div>
     </div>
     
@@ -832,6 +1073,16 @@ func main() {
             progressBar.textContent = data.progress + '%';
             statusText.textContent = data.status;
         };
+        
+        // Load changelog
+        fetch('/changelog')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('changelog').innerHTML = data;
+            })
+            .catch(error => {
+                document.getElementById('changelog').innerHTML = '<p style="color: #999;">Changelog konnte nicht geladen werden.</p>';
+            });
     </script>
 </body>
 </html>
@@ -841,6 +1092,21 @@ func main() {
 
 	http.HandleFunc("/bg", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, bgImagePath)
+	})
+
+	http.HandleFunc("/changelog", func(w http.ResponseWriter, r *http.Request) {
+		changelogPath := filepath.Join(exeDir, "CHANGELOG.md")
+		content, err := os.ReadFile(changelogPath)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write([]byte("<p style='color: #999;'>Changelog konnte nicht geladen werden.</p>"))
+			return
+		}
+		
+		// Parse markdown and convert to HTML (simple conversion)
+		html := parseChangelogToHTML(string(content))
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(html))
 	})
 
 	http.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
