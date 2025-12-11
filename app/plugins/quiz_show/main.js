@@ -40,6 +40,15 @@ class QuizShowPlugin {
             ttsVolume: 80, // NEW: TTS volume (0-100%)
             autoMode: false, // Auto advance to next question
             autoModeDelay: 5, // Seconds to wait before auto-advancing
+            // NEW: Auto mode granular controls
+            autoModeRestartAfterRounds: true, // Restart quiz after configured number of rounds
+            autoModePauseBetweenRounds: true, // Pause between rounds (show leaderboard)
+            autoModeShowLeaderboardBetweenQuestions: false, // Show leaderboard after each question
+            // NEW: End-of-round leaderboard configuration
+            autoModeEndRoundShowSeason: true, // Show season leaderboard at end of round
+            autoModeEndRoundShowRound: true, // Show round leaderboard at end of round
+            autoModeEndRoundShowLifetime: false, // Show lifetime leaderboard at end of round
+            autoModeEndRoundRotationSeconds: 6, // Seconds per leaderboard type in rotation
             answerDisplayDuration: 5, // Seconds to display the correct answer (including info text)
             // Voter Icons Configuration
             voterIconsEnabled: true,
@@ -2582,27 +2591,59 @@ class QuizShowPlugin {
 
         // Calculate total display time: answer info (6s) + leaderboard display
         const answerInfoDuration = 6; // 6 seconds for answer info display
-        const leaderboardDisplayDuration = this.config.leaderboardAutoHideDelay || 10;
         
-        // Show leaderboard after question if configured
-        if (this.config.leaderboardShowAfterQuestion) {
+        // Check if this is the final round based on totalRounds config
+        const isGameEnding = this.config.totalRounds > 0 && this.gameState.currentRound >= this.config.totalRounds;
+        
+        // Show leaderboard after question if configured (auto mode setting)
+        if (this.config.autoMode && this.config.autoModeShowLeaderboardBetweenQuestions) {
             setTimeout(() => {
                 this.showLeaderboardAfterQuestion();
-            }, answerInfoDuration * 1000); // Show after answer info display (6 seconds)
+            }, answerInfoDuration * 1000);
+        } else if (!this.config.autoMode && this.config.leaderboardShowAfterQuestion) {
+            // Legacy behavior for non-auto mode
+            setTimeout(() => {
+                this.showLeaderboardAfterQuestion();
+            }, answerInfoDuration * 1000);
         }
 
-        // Show leaderboard after round if configured (only if not showing after question, to avoid duplication)
-        if (this.config.leaderboardShowAfterRound && !this.config.leaderboardShowAfterQuestion) {
+        // Determine what leaderboards to show at end of round
+        let leaderboardDelay = 0;
+        if (isGameEnding || (this.config.autoMode && this.config.autoModePauseBetweenRounds)) {
+            // Show end-of-round leaderboards
+            const enabledLeaderboards = [];
+            if (this.config.autoModeEndRoundShowRound) enabledLeaderboards.push('round');
+            if (this.config.autoModeEndRoundShowSeason) enabledLeaderboards.push('season');
+            if (this.config.autoModeEndRoundShowLifetime) enabledLeaderboards.push('lifetime');
+            
+            if (enabledLeaderboards.length > 0) {
+                setTimeout(() => {
+                    if (enabledLeaderboards.length === 1) {
+                        // Show single leaderboard without rotation
+                        this.showSingleLeaderboard(enabledLeaderboards[0]);
+                    } else {
+                        // Start rotation with configured leaderboard types
+                        this.startCustomLeaderboardRotation(enabledLeaderboards, isGameEnding);
+                    }
+                }, answerInfoDuration * 1000);
+                
+                // Calculate total leaderboard display time
+                const rotationSeconds = this.config.autoModeEndRoundRotationSeconds || 6;
+                leaderboardDelay = enabledLeaderboards.length * rotationSeconds;
+            }
+        } else if (!this.config.autoMode && this.config.leaderboardShowAfterRound && !this.config.leaderboardShowAfterQuestion) {
+            // Legacy behavior for non-auto mode
             setTimeout(() => {
                 this.showLeaderboardAfterRound();
-            }, answerInfoDuration * 1000); // Show after answer info display (6 seconds)
+            }, answerInfoDuration * 1000);
+            leaderboardDelay = this.config.leaderboardAutoHideDelay || 10;
         }
 
-        // Pre-generate TTS for next question 4 seconds before it displays (if not end of game)
-        const totalDelayBeforeNextQuestion = answerInfoDuration + leaderboardDisplayDuration;
+        // Pre-generate TTS for next question (if not end of game)
+        const totalDelayBeforeNextQuestion = answerInfoDuration + leaderboardDelay;
         const ttsPreGenTime = totalDelayBeforeNextQuestion - 4; // 4 seconds before next question
         
-        if (this.config.ttsEnabled && ttsPreGenTime > 0 && this.gameState.currentRound > 0) {
+        if (this.config.ttsEnabled && ttsPreGenTime > 0 && this.gameState.currentRound > 0 && !isGameEnding) {
             setTimeout(() => {
                 const nextQuestion = this.getNextQuestion();
                 if (nextQuestion) {
@@ -2613,11 +2654,8 @@ class QuizShowPlugin {
             }, ttsPreGenTime * 1000);
         }
 
-        // Auto mode - automatically start next round after delay (but not at end of game)
-        // Check if this is NOT the final round based on totalRounds config
-        const isGameEnding = this.config.totalRounds > 0 && this.gameState.currentRound >= this.config.totalRounds;
-        
-        if (this.config.autoMode && !isGameEnding) {
+        // Auto mode - automatically start next round after delay
+        if (this.config.autoMode && !isGameEnding && this.config.autoModeRestartAfterRounds) {
             const delay = totalDelayBeforeNextQuestion * 1000;
             this.autoModeTimeout = setTimeout(() => {
                 this.autoModeTimeout = null;
@@ -2625,9 +2663,10 @@ class QuizShowPlugin {
                     this.api.log('Error auto-starting next round: ' + err.message, 'error');
                 });
             }, delay);
-        } else if (isGameEnding) {
-            // At end of game, show rotating leaderboards until manual start
-            this.startLeaderboardRotation();
+        } else if (isGameEnding && !this.config.autoModeRestartAfterRounds) {
+            // At end of game, if not restarting, keep showing rotating leaderboards
+            // (rotation is already started above if configured)
+            this.api.log('Game ended - leaderboard rotation active until manual restart', 'info');
         }
     }
 
@@ -2903,6 +2942,171 @@ class QuizShowPlugin {
             this.leaderboardRotationInterval = null;
             this.api.log('Leaderboard rotation stopped', 'info');
         }
+    }
+
+    /**
+     * Show a single leaderboard without rotation
+     * @param {string} type - Type of leaderboard (round, season, lifetime)
+     */
+    showSingleLeaderboard(type) {
+        try {
+            const animationStyle = this.config.leaderboardAnimationStyle || 'fade';
+            let leaderboard = [];
+
+            if (type === 'round') {
+                const results = this.calculateResults();
+                leaderboard = results.correctUsers.map((user, index) => ({
+                    username: user.username,
+                    points: index === 0 ? this.config.pointsFirstCorrect : this.config.pointsOtherCorrect,
+                    rank: index + 1
+                }));
+                if (leaderboard.length === 0) {
+                    leaderboard = this.generateMockLeaderboard('round');
+                }
+            } else if (type === 'season') {
+                const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                if (activeSeason) {
+                    const seasonLeaderboard = this.mainDb.prepare(
+                        'SELECT user_id, username, points FROM quiz_leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
+                    ).all(activeSeason.id);
+                    
+                    leaderboard = seasonLeaderboard.map((entry, index) => ({
+                        username: entry.username,
+                        points: entry.points,
+                        rank: index + 1
+                    }));
+                }
+                if (leaderboard.length === 0) {
+                    leaderboard = this.generateMockLeaderboard('season');
+                }
+            } else if (type === 'lifetime') {
+                const lifetimeLeaderboard = this.mainDb.prepare(`
+                    SELECT user_id, username, SUM(points) as points 
+                    FROM quiz_leaderboard_entries 
+                    GROUP BY user_id 
+                    ORDER BY points DESC 
+                    LIMIT 10
+                `).all();
+                
+                leaderboard = lifetimeLeaderboard.map((entry, index) => ({
+                    username: entry.username,
+                    points: entry.points,
+                    rank: index + 1
+                }));
+                if (leaderboard.length === 0) {
+                    leaderboard = this.generateMockLeaderboard('lifetime');
+                }
+            }
+
+            // Emit leaderboard display event
+            this.api.emit('quiz-show:show-leaderboard', {
+                leaderboard,
+                displayType: type,
+                animationStyle,
+                context: 'end-round-single',
+                isRotating: false
+            });
+
+            this.api.log(`Single leaderboard displayed: ${type}`, 'info');
+        } catch (error) {
+            this.api.log(`Error showing single leaderboard: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Start custom leaderboard rotation with user-selected types
+     * @param {Array<string>} types - Array of leaderboard types to rotate
+     * @param {boolean} isEndGame - Whether this is end of game (continuous until restart)
+     */
+    startCustomLeaderboardRotation(types, isEndGame = false) {
+        // Clear any existing rotation interval
+        if (this.leaderboardRotationInterval) {
+            clearInterval(this.leaderboardRotationInterval);
+        }
+
+        if (!types || types.length === 0) {
+            this.api.log('No leaderboard types specified for rotation', 'warn');
+            return;
+        }
+
+        let currentRotationIndex = 0;
+        const rotationSeconds = this.config.autoModeEndRoundRotationSeconds || 6;
+
+        const rotateLeaderboard = () => {
+            try {
+                const displayType = types[currentRotationIndex];
+                const animationStyle = this.config.leaderboardAnimationStyle || 'fade';
+                let leaderboard = [];
+
+                if (displayType === 'round') {
+                    const results = this.calculateResults();
+                    leaderboard = results.correctUsers.map((user, index) => ({
+                        username: user.username,
+                        points: index === 0 ? this.config.pointsFirstCorrect : this.config.pointsOtherCorrect,
+                        rank: index + 1
+                    }));
+                    if (leaderboard.length === 0) {
+                        leaderboard = this.generateMockLeaderboard('round');
+                    }
+                } else if (displayType === 'season') {
+                    const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                    if (activeSeason) {
+                        const seasonLeaderboard = this.mainDb.prepare(
+                            'SELECT user_id, username, points FROM quiz_leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
+                        ).all(activeSeason.id);
+                        
+                        leaderboard = seasonLeaderboard.map((entry, index) => ({
+                            username: entry.username,
+                            points: entry.points,
+                            rank: index + 1
+                        }));
+                    }
+                    if (leaderboard.length === 0) {
+                        leaderboard = this.generateMockLeaderboard('season');
+                    }
+                } else if (displayType === 'lifetime') {
+                    const lifetimeLeaderboard = this.mainDb.prepare(`
+                        SELECT user_id, username, SUM(points) as points 
+                        FROM quiz_leaderboard_entries 
+                        GROUP BY user_id 
+                        ORDER BY points DESC 
+                        LIMIT 10
+                    `).all();
+                    
+                    leaderboard = lifetimeLeaderboard.map((entry, index) => ({
+                        username: entry.username,
+                        points: entry.points,
+                        rank: index + 1
+                    }));
+                    if (leaderboard.length === 0) {
+                        leaderboard = this.generateMockLeaderboard('lifetime');
+                    }
+                }
+
+                // Emit leaderboard display event with rotation context
+                this.api.emit('quiz-show:show-leaderboard', {
+                    leaderboard,
+                    displayType,
+                    animationStyle,
+                    context: isEndGame ? 'end-game-rotation' : 'end-round-rotation',
+                    isRotating: true
+                });
+
+                // Move to next rotation type
+                currentRotationIndex = (currentRotationIndex + 1) % types.length;
+            } catch (error) {
+                this.api.log('Error rotating leaderboard: ' + error.message, 'error');
+            }
+        };
+
+        // Show first leaderboard immediately
+        rotateLeaderboard();
+
+        // Set up rotation interval
+        this.leaderboardRotationInterval = setInterval(rotateLeaderboard, rotationSeconds * 1000);
+        
+        const typesList = types.join('/');
+        this.api.log(`Leaderboard rotation started (${typesList} every ${rotationSeconds}s)${isEndGame ? ' - continuous until restart' : ''}`, 'info');
     }
 
     /**
