@@ -48,7 +48,7 @@ Das verbesserte Emoji Rain Plugin bietet jetzt **zwei separate Overlays** mit un
 - `enable_glow`: Glow-Effekte aktivieren
 - `enable_particles`: Partikel-Effekte aktivieren
 - `enable_depth`: Tiefeneffekte aktivieren
-- `target_fps`: Ziel-FPS (30-144) - **Nutze das Benchmark-Tool zur Optimierung!**
+- `target_fps`: Ziel-FPS (30-120) - **Nutze das Benchmark-Tool zur Optimierung!**
 
 ## 🚀 OBS Setup
 

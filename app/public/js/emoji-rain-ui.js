@@ -73,7 +73,7 @@ function updateUI() {
         document.getElementById('enable_glow').checked = config.enable_glow !== false;
         document.getElementById('enable_particles').checked = config.enable_particles !== false;
         document.getElementById('enable_depth').checked = config.enable_depth !== false;
-        document.getElementById('target_fps').value = config.target_fps || 60;
+        document.getElementById('obs_hud_target_fps').value = config.target_fps || 60;
 
         // Detect preset
         const width = config.obs_hud_width || 1920;
