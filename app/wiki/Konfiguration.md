@@ -1130,4 +1130,5 @@ Nur Port 3000 öffnen, **nicht öffentlich** verfügbar machen ohne Authentifizi
 
 ---
 
-*Letzte Aktualisierung: 2025-11-11*
+*Letzte Aktualisierung: 2025-12-11*
+*Version: 1.2.1*

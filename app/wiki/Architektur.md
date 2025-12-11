@@ -1013,4 +1013,5 @@ io.to('goal:likes').emit('goal:update', data);
 
 ---
 
-*Letzte Aktualisierung: 2025-11-11*
+*Letzte Aktualisierung: 2025-12-11*
+*Version: 1.2.1*

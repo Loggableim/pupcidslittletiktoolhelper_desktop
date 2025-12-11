@@ -234,4 +234,5 @@ Details siehe [API-Reference](../API-Reference.md).
 ---
 
 **Version**: 1.0.0  
-**Letzte Aktualisierung**: 2025-11-17
+**Letzte Aktualisierung**: 2025-12-11  
+**Version**: 1.2.1

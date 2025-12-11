@@ -1479,4 +1479,5 @@ http://localhost:3000/api-docs
 
 ---
 
-*Letzte Aktualisierung: 2025-11-11*
+*Letzte Aktualisierung: 2025-12-11*
+*Version: 1.2.1*
