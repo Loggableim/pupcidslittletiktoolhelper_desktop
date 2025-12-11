@@ -2170,6 +2170,11 @@ class FireworksEngine {
                 if (particleEl) particleEl.textContent = this.getTotalParticles();
                 if (modeEl) modeEl.textContent = this.performanceMode.toUpperCase();
             }
+
+            // Emit FPS to server for benchmark tracking
+            if (this.socket && this.socket.connected) {
+                this.socket.emit('fireworks:fps-update', { fps: this.fps, timestamp: now });
+            }
         }
 
         requestAnimationFrame(() => this.render());
