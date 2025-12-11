@@ -9,6 +9,8 @@
 
 ## 📑 Navigation
 
+**[[Wiki-Index]]** - Vollständige Wiki-Übersicht mit allen Seiten
+
 ### Erste Schritte
 - **[[Getting-Started]]** - Schnelleinstieg in 5 Minuten
 - **[[Installation-&-Setup]]** - Systemanforderungen, Installation und erste Schritte
@@ -23,11 +25,13 @@
 ### Plugins & Features
 - **[[Plugin-Dokumentation]]** - Plugin-System, verfügbare Plugins und eigene Plugins erstellen
 - **[[Plugin-Liste]]** - Komplette Liste aller 31 Plugins mit Status und Features
+- **[[Overlays-&-Alerts]]** - 25+ OBS-Overlays für Alerts, Goals, Leaderboards, Effekte
 - **[[Plugins/VDO-Ninja]]** - Multi-Guest-Streaming mit VDO.Ninja
 - **[[Features/Emoji-Rain]]** - Emoji-Regen-Effekt im Overlay
 - **[[Features/Cloud-Sync]]** - Automatische Cloud-Synchronisation für User-Configs
 - **[[Features/WebGPU-Engine]]** - GPU-beschleunigtes Rendering
 - **[[Features/GCCE]]** - Global Chat Command Engine
+- **[[Advanced-Features]]** - Erweiterte Features für Power-User
 
 ---
 
