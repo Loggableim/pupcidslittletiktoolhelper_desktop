@@ -3877,7 +3877,7 @@ function initZappieHellTab() {
     // Set overlay URL
     const overlayUrlInput = document.getElementById('zappiehellOverlayUrl');
     if (overlayUrlInput) {
-        const overlayUrl = `${window.location.origin}/openshock/overlay/zappiehell-overlay.html`;
+        const overlayUrl = `${window.location.origin}/openshock/zappiehell/overlay`;
         overlayUrlInput.value = overlayUrl;
     }
 
