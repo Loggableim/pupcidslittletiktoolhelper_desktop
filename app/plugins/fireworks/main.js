@@ -36,6 +36,10 @@ class FireworksPlugin {
         this.lastGiftTime = new Map(); // Track last gift time per user for combo
         this.giftCatalogCache = new Map(); // Cache gift info for performance
         
+        // Benchmark state
+        this.currentFps = 0;
+        this.benchmarkPreset = null;
+        
         // Combo timeout (ms) - reset combo if no gift within this time
         this.COMBO_TIMEOUT = 10000;
     }
@@ -97,8 +101,27 @@ class FireworksPlugin {
         // Cache gift catalog
         await this.cacheGiftCatalog();
 
+        // Register socket event handlers for benchmark
+        this.registerSocketHandlers();
+
         this.api.log('✅ [FIREWORKS] Fireworks Superplugin initialized successfully', 'info');
         this.logRoutes();
+    }
+
+    /**
+     * Register socket event handlers
+     */
+    registerSocketHandlers() {
+        const io = this.api.getSocketIO();
+        
+        // Listen for FPS updates from overlay
+        io.on('connection', (socket) => {
+            socket.on('fireworks:fps-update', (data) => {
+                if (data && data.fps !== undefined) {
+                    this.currentFps = data.fps;
+                }
+            });
+        });
     }
 
     /**
@@ -535,6 +558,62 @@ class FireworksPlugin {
             fs.mkdirSync(audioDir, { recursive: true });
         }
         this.api.getApp().use('/plugins/fireworks/audio', express.static(audioDir));
+
+        // Benchmark API endpoints
+        this.api.registerRoute('post', '/api/fireworks/benchmark/set-preset', (req, res) => {
+            try {
+                const { preset } = req.body;
+                if (!preset) {
+                    return res.status(400).json({ success: false, error: 'Preset data required' });
+                }
+
+                // Temporarily apply preset without saving
+                this.benchmarkPreset = { ...this.config };
+                Object.assign(this.config, preset);
+
+                // Notify overlay about config change
+                this.api.emit('fireworks:config-update', { config: this.config });
+
+                res.json({ success: true, message: 'Preset applied for benchmark' });
+            } catch (error) {
+                this.api.log(`❌ [FIREWORKS] Error setting benchmark preset: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('get', '/api/fireworks/benchmark/fps', (req, res) => {
+            try {
+                // FPS is tracked in the overlay's GPU engine
+                // We'll use socket.io to request current FPS
+                this.api.emit('fireworks:request-fps');
+
+                // Return current FPS if available (stored from overlay)
+                res.json({ 
+                    success: true, 
+                    fps: this.currentFps || 0,
+                    timestamp: Date.now()
+                });
+            } catch (error) {
+                this.api.log(`❌ [FIREWORKS] Error getting FPS: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('post', '/api/fireworks/benchmark/restore', (req, res) => {
+            try {
+                // Restore original config after benchmark
+                if (this.benchmarkPreset) {
+                    this.config = { ...this.benchmarkPreset };
+                    this.benchmarkPreset = null;
+                    this.api.emit('fireworks:config-update', { config: this.config });
+                }
+
+                res.json({ success: true, message: 'Original config restored' });
+            } catch (error) {
+                this.api.log(`❌ [FIREWORKS] Error restoring config: ${error.message}`, 'error');
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
     }
 
     /**

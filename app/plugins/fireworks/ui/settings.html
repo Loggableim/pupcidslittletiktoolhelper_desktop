@@ -179,6 +179,47 @@
         .toast.error {
             background: #ef4444;
         }
+        
+        /* Tab System */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 0;
+        }
+        
+        .tab-button {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+        
+        .tab-button:hover {
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .tab-button.active {
+            color: #ffd700;
+            border-bottom-color: #ffd700;
+            background: rgba(255, 215, 0, 0.05);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body class="text-white p-6">
@@ -202,8 +243,17 @@
             </div>
         </header>
 
-        <!-- Main Toggle -->
-        <div class="card rounded-xl p-6 mb-6">
+        <!-- Tabs Navigation -->
+        <div class="tabs">
+            <button class="tab-button active" data-tab="settings">⚙️ <span data-i18n="fireworks.tab_settings">Einstellungen</span></button>
+            <button class="tab-button" data-tab="presets">🎨 <span data-i18n="fireworks.tab_presets">Voreinstellungen</span></button>
+            <button class="tab-button" data-tab="benchmark">📊 <span data-i18n="fireworks.tab_benchmark">Benchmark</span></button>
+        </div>
+
+        <!-- Tab 1: Settings -->
+        <div id="settings" class="tab-content active">
+            <!-- Main Toggle -->
+            <div class="card rounded-xl p-6 mb-6">
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-xl font-bold" data-i18n="fireworks.enable_fireworks">Enable Fireworks</h2>
@@ -852,6 +902,212 @@
                 </div>
             </div>
         </div>
+        </div>
+        <!-- END Settings Tab -->
+
+        <!-- Tab 2: Presets -->
+        <div id="presets" class="tab-content">
+            <div class="card rounded-xl p-6 mb-6">
+                <h2 class="section-title text-2xl font-bold mb-4">🎨 <span data-i18n="fireworks.presets.title">Voreinstellungen</span></h2>
+                <p class="text-gray-400 mb-6" data-i18n="fireworks.presets.description">
+                    Wählen Sie eine Voreinstellung basierend auf Ihrer System-Performance. Nutzen Sie den Benchmark, um die optimale Einstellung zu finden.
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Ultra Preset -->
+                    <div class="card rounded-xl p-6 border-2 border-purple-500/30 hover:border-purple-500/60 transition cursor-pointer preset-card" data-preset="ultra">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-purple-400">🚀 Ultra</h3>
+                            <span class="text-xs bg-purple-500/20 px-2 py-1 rounded">4K Ready</span>
+                        </div>
+                        <div class="space-y-2 text-sm text-gray-300">
+                            <div>• Resolution: 4K (3840x2160)</div>
+                            <div>• Max Particles: 3000</div>
+                            <div>• Target FPS: 60</div>
+                            <div>• Effects: All Enabled</div>
+                            <div>• GPU: WebGL</div>
+                        </div>
+                        <button class="w-full mt-4 bg-purple-500 hover:bg-purple-600 py-2 rounded-lg font-bold transition" data-i18n="fireworks.presets.apply">
+                            Anwenden
+                        </button>
+                    </div>
+
+                    <!-- High Preset -->
+                    <div class="card rounded-xl p-6 border-2 border-blue-500/30 hover:border-blue-500/60 transition cursor-pointer preset-card" data-preset="high">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-blue-400">⚡ High</h3>
+                            <span class="text-xs bg-blue-500/20 px-2 py-1 rounded">1440p</span>
+                        </div>
+                        <div class="space-y-2 text-sm text-gray-300">
+                            <div>• Resolution: 1440p (2560x1440)</div>
+                            <div>• Max Particles: 2000</div>
+                            <div>• Target FPS: 60</div>
+                            <div>• Effects: All Enabled</div>
+                            <div>• GPU: WebGL</div>
+                        </div>
+                        <button class="w-full mt-4 bg-blue-500 hover:bg-blue-600 py-2 rounded-lg font-bold transition" data-i18n="fireworks.presets.apply">
+                            Anwenden
+                        </button>
+                    </div>
+
+                    <!-- Medium Preset (Default) -->
+                    <div class="card rounded-xl p-6 border-2 border-green-500/30 hover:border-green-500/60 transition cursor-pointer preset-card" data-preset="medium">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-green-400">✨ Medium</h3>
+                            <span class="text-xs bg-green-500/20 px-2 py-1 rounded">Empfohlen</span>
+                        </div>
+                        <div class="space-y-2 text-sm text-gray-300">
+                            <div>• Resolution: 1080p (1920x1080)</div>
+                            <div>• Max Particles: 1500</div>
+                            <div>• Target FPS: 60</div>
+                            <div>• Effects: All Enabled</div>
+                            <div>• GPU: WebGL</div>
+                        </div>
+                        <button class="w-full mt-4 bg-green-500 hover:bg-green-600 py-2 rounded-lg font-bold transition" data-i18n="fireworks.presets.apply">
+                            Anwenden
+                        </button>
+                    </div>
+
+                    <!-- Low Preset -->
+                    <div class="card rounded-xl p-6 border-2 border-yellow-500/30 hover:border-yellow-500/60 transition cursor-pointer preset-card" data-preset="low">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-yellow-400">💫 Low</h3>
+                            <span class="text-xs bg-yellow-500/20 px-2 py-1 rounded">720p</span>
+                        </div>
+                        <div class="space-y-2 text-sm text-gray-300">
+                            <div>• Resolution: 720p (1280x720)</div>
+                            <div>• Max Particles: 1000</div>
+                            <div>• Target FPS: 48</div>
+                            <div>• Effects: Reduced</div>
+                            <div>• GPU: WebGL</div>
+                        </div>
+                        <button class="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 py-2 rounded-lg font-bold transition" data-i18n="fireworks.presets.apply">
+                            Anwenden
+                        </button>
+                    </div>
+
+                    <!-- Toaster Preset -->
+                    <div class="card rounded-xl p-6 border-2 border-orange-500/30 hover:border-orange-500/60 transition cursor-pointer preset-card" data-preset="toaster">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-orange-400">🍞 Toaster</h3>
+                            <span class="text-xs bg-orange-500/20 px-2 py-1 rounded">540p</span>
+                        </div>
+                        <div class="space-y-2 text-sm text-gray-300">
+                            <div>• Resolution: 540p (960x540)</div>
+                            <div>• Max Particles: 500</div>
+                            <div>• Target FPS: 30</div>
+                            <div>• Effects: Minimal</div>
+                            <div>• GPU: Canvas 2D</div>
+                        </div>
+                        <button class="w-full mt-4 bg-orange-500 hover:bg-orange-600 py-2 rounded-lg font-bold transition" data-i18n="fireworks.presets.apply">
+                            Anwenden
+                        </button>
+                    </div>
+
+                    <!-- Potato Preset -->
+                    <div class="card rounded-xl p-6 border-2 border-red-500/30 hover:border-red-500/60 transition cursor-pointer preset-card" data-preset="potato">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-red-400">🥔 Potato</h3>
+                            <span class="text-xs bg-red-500/20 px-2 py-1 rounded">360p</span>
+                        </div>
+                        <div class="space-y-2 text-sm text-gray-300">
+                            <div>• Resolution: 360p (640x360)</div>
+                            <div>• Max Particles: 300</div>
+                            <div>• Target FPS: 24</div>
+                            <div>• Effects: Minimal</div>
+                            <div>• GPU: Canvas 2D</div>
+                        </div>
+                        <button class="w-full mt-4 bg-red-500 hover:bg-red-600 py-2 rounded-lg font-bold transition" data-i18n="fireworks.presets.apply">
+                            Anwenden
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-6 card rounded-xl p-4 bg-blue-900/20 border border-blue-500/30">
+                    <p class="text-sm text-blue-300">
+                        💡 <strong data-i18n="fireworks.presets.tip">Tipp:</strong>
+                        <span data-i18n="fireworks.presets.tip_text">
+                            Nutzen Sie den Benchmark-Tab, um automatisch die besten 2 Voreinstellungen für Ihr System zu ermitteln.
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <!-- END Presets Tab -->
+
+        <!-- Tab 3: Benchmark -->
+        <div id="benchmark" class="tab-content">
+            <div class="card rounded-xl p-6 mb-6">
+                <h2 class="section-title text-2xl font-bold mb-4">📊 <span data-i18n="fireworks.benchmark.title">Performance Benchmark</span></h2>
+                <p class="text-gray-400 mb-6" data-i18n="fireworks.benchmark.description">
+                    Führen Sie einen automatischen Performance-Test durch, um die optimalen Einstellungen für Ihr System zu finden.
+                </p>
+
+                <!-- Benchmark Controls -->
+                <div class="mb-6">
+                    <div class="flex gap-4">
+                        <button id="start-benchmark" class="flex-1 btn-primary py-4 rounded-lg font-bold text-lg">
+                            🚀 <span data-i18n="fireworks.benchmark.start">Benchmark Starten</span>
+                        </button>
+                        <button id="stop-benchmark" class="px-6 btn-danger py-4 rounded-lg font-bold" style="display: none;">
+                            ⏹️ <span data-i18n="fireworks.benchmark.stop">Stoppen</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Benchmark Progress -->
+                <div id="benchmark-progress" class="mb-6" style="display: none;">
+                    <div class="card rounded-xl p-4 bg-blue-900/20 border border-blue-500/30">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="animate-spin text-2xl">⚙️</div>
+                            <div>
+                                <div class="font-bold" data-i18n="fireworks.benchmark.running">Benchmark läuft...</div>
+                                <div class="text-sm text-gray-400">
+                                    <span data-i18n="fireworks.benchmark.current_test">Aktueller Test:</span>
+                                    <span id="current-test-name">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2 mb-2">
+                            <div id="benchmark-progress-bar" class="bg-blue-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                        <div class="text-xs text-gray-400 text-center">
+                            <span id="benchmark-step">0</span> / <span id="benchmark-total">6</span> Tests abgeschlossen
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Benchmark Results -->
+                <div id="benchmark-results" style="display: none;">
+                    <h3 class="text-xl font-bold mb-4">📈 <span data-i18n="fireworks.benchmark.results">Benchmark-Ergebnisse</span></h3>
+                    
+                    <div class="grid grid-cols-1 gap-4 mb-6">
+                        <!-- Results will be populated here -->
+                    </div>
+
+                    <!-- Recommendations -->
+                    <div class="card rounded-xl p-6 bg-green-900/20 border-2 border-green-500/30">
+                        <h3 class="text-xl font-bold text-green-400 mb-4">✅ <span data-i18n="fireworks.benchmark.recommendations">Empfehlungen</span></h3>
+                        <div id="benchmark-recommendations">
+                            <!-- Recommendations will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Box -->
+                <div class="card rounded-xl p-4 bg-yellow-900/20 border border-yellow-500/30">
+                    <p class="text-sm text-yellow-300">
+                        ⚠️ <strong data-i18n="fireworks.benchmark.info">Hinweis:</strong>
+                        <span data-i18n="fireworks.benchmark.info_text">
+                            Der Benchmark öffnet das OBS-Overlay-Fenster und führt verschiedene Szenarien durch. 
+                            Dies dauert etwa 1-2 Minuten. Schließen Sie das Fenster nicht während des Tests.
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <!-- END Benchmark Tab -->
+
     </div>
 
     <!-- Toast notification -->
