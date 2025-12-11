@@ -731,6 +731,7 @@ function updatePerformanceDisplay(fps, activeEmojis, mode) {
 
 let benchmarkActive = false;
 let benchmarkResults = null;
+let benchmarkPreviewWindow = null;
 
 /**
  * Start FPS benchmark
@@ -746,6 +747,22 @@ async function startBenchmark() {
     try {
         console.log(`🔬 Starting benchmark (Target: ${targetFPS} FPS)`);
         
+        // Open preview window so user can see the benchmark
+        const previewWidth = 800;
+        const previewHeight = 600;
+        const left = (screen.width - previewWidth) / 2;
+        const top = (screen.height - previewHeight) / 2;
+        
+        benchmarkPreviewWindow = window.open(
+            '/plugins/emoji-rain/overlay.html',
+            'EmojiRainBenchmarkPreview',
+            `width=${previewWidth},height=${previewHeight},left=${left},top=${top},resizable=yes,scrollbars=no,status=no,menubar=no,toolbar=no,location=no`
+        );
+        
+        if (!benchmarkPreviewWindow) {
+            throw new Error('Konnte Preview-Fenster nicht öffnen. Bitte Pop-ups erlauben.');
+        }
+        
         // Update UI
         document.getElementById('start-benchmark-btn').style.display = 'none';
         document.getElementById('stop-benchmark-btn').style.display = 'inline-block';
@@ -755,22 +772,33 @@ async function startBenchmark() {
         benchmarkActive = true;
         benchmarkResults = null;
         
-        // Start benchmark via API
-        const response = await fetch('/api/emoji-rain/benchmark/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ targetFPS })
-        });
+        // Wait a bit for preview window to load before starting benchmark
+        setTimeout(async () => {
+            // Start benchmark via API
+            const response = await fetch('/api/emoji-rain/benchmark/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetFPS })
+            });
+            
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Benchmark start failed');
+            }
+            
+            showNotification('Benchmark gestartet - Fortschritt im Preview-Fenster sichtbar', false);
+        }, 1000);
         
-        const data = await response.json();
-        if (!data.success) {
-            throw new Error(data.error || 'Benchmark start failed');
-        }
-        
-        showNotification('Benchmark gestartet', false);
     } catch (error) {
         console.error('Error starting benchmark:', error);
-        showNotification('Fehler beim Starten des Benchmarks', true);
+        showNotification('Fehler beim Starten des Benchmarks: ' + error.message, true);
+        
+        // Close preview window if it was opened
+        if (benchmarkPreviewWindow && !benchmarkPreviewWindow.closed) {
+            benchmarkPreviewWindow.close();
+            benchmarkPreviewWindow = null;
+        }
+        
         resetBenchmarkUI();
     }
 }
@@ -792,12 +820,93 @@ async function stopBenchmark() {
             throw new Error(data.error || 'Benchmark stop failed');
         }
         
+        // Close preview window
+        if (benchmarkPreviewWindow && !benchmarkPreviewWindow.closed) {
+            benchmarkPreviewWindow.close();
+            benchmarkPreviewWindow = null;
+        }
+        
         showNotification('Benchmark gestoppt', false);
         resetBenchmarkUI();
     } catch (error) {
         console.error('Error stopping benchmark:', error);
         showNotification('Fehler beim Stoppen des Benchmarks', true);
         resetBenchmarkUI();
+    }
+}
+
+/**
+ * Apply specific benchmark preset (called when user clicks on a result row)
+ */
+async function applyBenchmarkPreset(presetName) {
+    if (!benchmarkResults || !benchmarkResults.results) {
+        showNotification('Keine Benchmark-Ergebnisse verfügbar', true);
+        return;
+    }
+    
+    // Find the selected preset
+    const selectedPreset = benchmarkResults.results.find(r => r.name === presetName);
+    if (!selectedPreset) {
+        showNotification('Preset nicht gefunden', true);
+        return;
+    }
+    
+    const targetFPS = benchmarkResults.targetFPS || 60;
+    
+    // Check if the selected setting doesn't meet the target FPS
+    if (!selectedPreset.meetsTarget) {
+        const warningMessage = `⚠️ WARNUNG: Diese Einstellung erreicht nicht die Ziel-FPS!\n\n` +
+            `Gewählte Einstellung: ${selectedPreset.name}\n` +
+            `Ziel: ${targetFPS} FPS\n` +
+            `Erreicht: ${selectedPreset.avgFPS} FPS (±${selectedPreset.stdDev})\n` +
+            `Mindest-FPS: ${selectedPreset.minFPS}\n\n` +
+            `Diese Einstellung könnte zu ruckeligem Gameplay führen. ` +
+            `Möchten Sie diese Einstellung trotzdem anwenden?`;
+        
+        if (!confirm(warningMessage)) {
+            console.log('User cancelled applying sub-optimal preset');
+            showNotification('Anwendung abgebrochen', false);
+            return;
+        }
+    }
+    
+    // Check for low reliability (high variance between runs)
+    if (selectedPreset.reliability === 'low') {
+        const reliabilityWarning = `⚠️ HINWEIS: Diese Einstellung zeigt inkonsistente Performance!\n\n` +
+            `FPS-Schwankung: ±${selectedPreset.stdDev} FPS\n` +
+            `Dies bedeutet, die Performance kann stark variieren.\n\n` +
+            `Möchten Sie fortfahren?`;
+        
+        if (!confirm(reliabilityWarning)) {
+            console.log('User cancelled due to low reliability');
+            showNotification('Anwendung abgebrochen', false);
+            return;
+        }
+    }
+    
+    try {
+        console.log('✨ Applying selected preset:', selectedPreset);
+        
+        const response = await fetch('/api/emoji-rain/benchmark/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings: selectedPreset.settings })
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Apply settings failed');
+        }
+        
+        showNotification(`Einstellung "${selectedPreset.name}" erfolgreich angewendet!`, false);
+        
+        // Reload config to update UI
+        setTimeout(() => {
+            loadConfig();
+        }, 500);
+    } catch (error) {
+        console.error('Error applying preset:', error);
+        showNotification('Fehler beim Anwenden der Einstellungen', true);
     }
 }
 
@@ -811,12 +920,45 @@ async function applyOptimizedSettings() {
     }
     
     try {
-        console.log('✨ Applying optimized settings:', benchmarkResults.optimal);
+        const optimal = benchmarkResults.optimal;
+        const targetFPS = benchmarkResults.targetFPS || 60;
+        
+        // Check if the selected setting doesn't meet the target FPS
+        if (!optimal.meetsTarget) {
+            const warningMessage = `⚠️ WARNUNG: Diese Einstellung erreicht nicht die Ziel-FPS!\n\n` +
+                `Ziel: ${targetFPS} FPS\n` +
+                `Erreicht: ${optimal.avgFPS} FPS (±${optimal.stdDev})\n` +
+                `Mindest-FPS: ${optimal.minFPS}\n\n` +
+                `Diese Einstellung könnte zu ruckeligem Gameplay führen. ` +
+                `Möchten Sie diese Einstellung trotzdem anwenden?`;
+            
+            if (!confirm(warningMessage)) {
+                console.log('User cancelled applying sub-optimal settings');
+                showNotification('Anwendung abgebrochen', false);
+                return;
+            }
+        }
+        
+        // Check for low reliability (high variance between runs)
+        if (optimal.reliability === 'low') {
+            const reliabilityWarning = `⚠️ HINWEIS: Diese Einstellung zeigt inkonsistente Performance!\n\n` +
+                `FPS-Schwankung: ±${optimal.stdDev} FPS\n` +
+                `Dies bedeutet, die Performance kann stark variieren.\n\n` +
+                `Möchten Sie fortfahren?`;
+            
+            if (!confirm(reliabilityWarning)) {
+                console.log('User cancelled due to low reliability');
+                showNotification('Anwendung abgebrochen', false);
+                return;
+            }
+        }
+        
+        console.log('✨ Applying optimized settings:', optimal);
         
         const response = await fetch('/api/emoji-rain/benchmark/apply', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ settings: benchmarkResults.optimal.settings })
+            body: JSON.stringify({ settings: optimal.settings })
         });
         
         const data = await response.json();
@@ -824,7 +966,7 @@ async function applyOptimizedSettings() {
             throw new Error(data.error || 'Apply settings failed');
         }
         
-        showNotification('Optimierte Einstellungen angewendet!', false);
+        showNotification('Optimierte Einstellungen erfolgreich angewendet!', false);
         
         // Reload config to update UI
         setTimeout(() => {
@@ -841,6 +983,13 @@ async function applyOptimizedSettings() {
  */
 function resetBenchmarkUI() {
     benchmarkActive = false;
+    
+    // Close preview window if still open
+    if (benchmarkPreviewWindow && !benchmarkPreviewWindow.closed) {
+        benchmarkPreviewWindow.close();
+        benchmarkPreviewWindow = null;
+    }
+    
     document.getElementById('start-benchmark-btn').style.display = 'inline-block';
     document.getElementById('stop-benchmark-btn').style.display = 'none';
     document.getElementById('benchmark-progress').style.display = 'none';
@@ -858,6 +1007,12 @@ function updateBenchmarkProgress(data) {
         // Benchmark complete
         benchmarkActive = false;
         benchmarkResults = data;
+        
+        // Close preview window
+        if (benchmarkPreviewWindow && !benchmarkPreviewWindow.closed) {
+            benchmarkPreviewWindow.close();
+            benchmarkPreviewWindow = null;
+        }
         
         // Hide progress, show results
         document.getElementById('benchmark-progress').style.display = 'none';
@@ -881,37 +1036,97 @@ function displayBenchmarkResults(data) {
     const contentDiv = document.getElementById('benchmark-results-content');
     const optimalDiv = document.getElementById('optimal-settings');
     
-    // Build results table
-    let html = '<table style="width: 100%; border-collapse: collapse;">';
-    html += '<tr style="border-bottom: 1px solid var(--color-border);">';
+    // Build enhanced results table with reliability info
+    let html = '<div style="margin-bottom: 10px; color: var(--color-text-secondary); font-size: 0.9em;">';
+    html += '💡 <strong>Tipp:</strong> Klicke auf eine Zeile um diese Einstellung direkt anzuwenden';
+    html += '</div>';
+    
+    html += '<table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">';
+    html += '<tr style="border-bottom: 2px solid var(--color-border); font-weight: bold;">';
     html += '<th style="text-align: left; padding: 8px;">Qualität</th>';
-    html += '<th style="text-align: center; padding: 8px;">Durchschn. FPS</th>';
-    html += '<th style="text-align: center; padding: 8px;">Min FPS</th>';
-    html += '<th style="text-align: center; padding: 8px;">Max FPS</th>';
-    html += '<th style="text-align: center; padding: 8px;">Ziel erreicht</th>';
+    html += '<th style="text-align: center; padding: 8px;">Ø FPS</th>';
+    html += '<th style="text-align: center; padding: 8px;">Min</th>';
+    html += '<th style="text-align: center; padding: 8px;">Max</th>';
+    html += '<th style="text-align: center; padding: 8px;">Zuverlässigkeit</th>';
+    html += '<th style="text-align: center; padding: 8px;">Status</th>';
     html += '</tr>';
     
+    const targetFPS = data.targetFPS || 60;
+    
     data.results.forEach(result => {
-        const meetsTarget = result.meetsTarget ? '✅' : '❌';
-        const rowStyle = result.meetsTarget ? 'background: var(--color-success-bg);' : '';
-        html += `<tr style="border-bottom: 1px solid var(--color-border); ${rowStyle}">`;
-        html += `<td style="padding: 8px;">${result.name}</td>`;
-        html += `<td style="text-align: center; padding: 8px;"><strong>${result.avgFPS}</strong></td>`;
+        // Color coding based on performance
+        let rowColor = '';
+        let statusIcon = '';
+        let statusText = '';
+        
+        if (result.meetsTarget) {
+            rowColor = 'background: var(--color-success-bg);';
+            statusIcon = '✅';
+            statusText = 'Ziel erreicht';
+        } else if (result.avgFPS >= targetFPS * 0.85) {
+            rowColor = 'background: rgba(255, 193, 7, 0.1);'; // Yellow tint
+            statusIcon = '⚠️';
+            statusText = 'Fast erreicht';
+        } else {
+            rowColor = 'background: rgba(220, 53, 69, 0.1);'; // Red tint
+            statusIcon = '❌';
+            statusText = 'Zu langsam';
+        }
+        
+        // Reliability indicator
+        const reliabilityEmoji = result.reliability === 'high' ? '🟢' : 
+                                 result.reliability === 'medium' ? '🟡' : '🔴';
+        const reliabilityText = `${reliabilityEmoji} ±${result.stdDev}`;
+        
+        // Make rows clickable with hover effect
+        const rowStyle = `${rowColor} cursor: pointer; transition: opacity 0.2s;`;
+        const rowClass = 'benchmark-result-row';
+        
+        html += `<tr style="border-bottom: 1px solid var(--color-border); ${rowStyle}" class="${rowClass}" data-preset="${result.name}" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">`;
+        html += `<td style="padding: 8px;"><strong>${result.name}</strong></td>`;
+        html += `<td style="text-align: center; padding: 8px;"><strong style="font-size: 1.1em;">${result.avgFPS}</strong></td>`;
         html += `<td style="text-align: center; padding: 8px;">${result.minFPS}</td>`;
         html += `<td style="text-align: center; padding: 8px;">${result.maxFPS}</td>`;
-        html += `<td style="text-align: center; padding: 8px;">${meetsTarget}</td>`;
+        html += `<td style="text-align: center; padding: 8px;" title="FPS-Schwankung über ${result.runs} Läufe">${reliabilityText}</td>`;
+        html += `<td style="text-align: center; padding: 8px;">${statusIcon} ${statusText}</td>`;
         html += '</tr>';
     });
     
     html += '</table>';
+    
+    // Add legend
+    html += '<div style="margin-top: 15px; padding: 10px; background: var(--color-bg-secondary); border-radius: 6px; font-size: 0.85em;">';
+    html += '<strong>📊 Legende:</strong><br>';
+    html += '<span style="margin-right: 15px;">🟢 Hohe Zuverlässigkeit (±&lt;5 FPS)</span>';
+    html += '<span style="margin-right: 15px;">🟡 Mittlere Zuverlässigkeit (±5-10 FPS)</span>';
+    html += '<span>🔴 Niedrige Zuverlässigkeit (±&gt;10 FPS)</span>';
+    html += '</div>';
+    
     contentDiv.innerHTML = html;
+    
+    // Add click handlers to result rows
+    document.querySelectorAll('.benchmark-result-row').forEach(row => {
+        row.addEventListener('click', function() {
+            const presetName = this.getAttribute('data-preset');
+            applyBenchmarkPreset(presetName);
+        });
+    });
+    
     resultsDiv.style.display = 'block';
     
     // Show optimal settings if available
     if (data.optimal) {
+        const optimalPerf = data.optimal.meetsTarget ? '✅ Erreicht Ziel-FPS' : '⚠️ Erreicht Ziel-FPS nicht';
+        const reliabilityStatus = data.optimal.reliability === 'high' ? '🟢 Sehr stabil' :
+                                   data.optimal.reliability === 'medium' ? '🟡 Relativ stabil' :
+                                   '🔴 Instabil - Vorsicht';
+        
         document.getElementById('optimal-name').textContent = data.optimal.name;
-        document.getElementById('optimal-details').textContent = 
-            `Durchschnittliche FPS: ${data.optimal.avgFPS} | Min: ${data.optimal.minFPS} | Max: ${data.optimal.maxFPS}`;
+        document.getElementById('optimal-details').innerHTML = 
+            `<strong>Performance:</strong> ${optimalPerf}<br>` +
+            `<strong>Durchschnitt:</strong> ${data.optimal.avgFPS} FPS (±${data.optimal.stdDev})<br>` +
+            `<strong>Bereich:</strong> ${data.optimal.minFPS} - ${data.optimal.maxFPS} FPS<br>` +
+            `<strong>Stabilität:</strong> ${reliabilityStatus} (${data.optimal.runs} Testläufe)`;
         optimalDiv.style.display = 'block';
     } else {
         optimalDiv.style.display = 'none';

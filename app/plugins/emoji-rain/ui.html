@@ -528,7 +528,7 @@
         <div class="config-section section-info">
             <h2>🔬 FPS Benchmark & Auto-Optimierung</h2>
             <div class="help-text" style="margin-bottom: 20px; font-size: 1em;">
-                Automatisches Benchmarking-Tool, das die FPS misst und die Einstellungen auf deine gewünschte Ziel-FPS optimiert.
+                Automatisches Benchmarking-Tool mit Preview-Fenster. Misst FPS über mehrere Testläufe und optimiert die Einstellungen für dein System.
             </div>
 
             <div class="form-grid">
@@ -550,7 +550,7 @@
 
             <div id="benchmark-progress" style="display: none; margin: 20px 0; padding: 15px; background: var(--color-bg-tertiary); border-radius: 8px;">
                 <div style="margin-bottom: 10px;">
-                    <strong>🔄 Benchmark läuft...</strong>
+                    <strong>🔄 Benchmark läuft im Preview-Fenster...</strong>
                 </div>
                 <div id="benchmark-status" style="margin-bottom: 10px; color: var(--color-text-secondary);"></div>
                 <div class="progress-bar">
@@ -568,7 +568,7 @@
                         <strong>🎯 Empfohlene Einstellungen:</strong>
                         <span id="optimal-name" style="color: var(--color-success); font-weight: bold;"></span>
                     </div>
-                    <div id="optimal-details" style="color: var(--color-text-secondary); margin-bottom: 15px;"></div>
+                    <div id="optimal-details" style="color: var(--color-text-secondary); margin-bottom: 15px; line-height: 1.6;"></div>
                     <button id="apply-optimal-btn" class="button button-success">
                         ✨ Optimierte Einstellungen anwenden
                     </button>
@@ -579,15 +579,17 @@
                 <strong>ℹ️ Wie funktioniert's:</strong><br>
                 <div class="info-box-item">
                     <div>1. Gib deine gewünschte Ziel-FPS ein (z.B. 60 FPS)</div>
-                    <div>2. Klicke auf "Benchmark starten"</div>
-                    <div>3. Das Tool testet 5 verschiedene Qualitätsstufen (dauert ca. 25 Sekunden)</div>
-                    <div>4. Du erhältst eine Empfehlung für die beste Einstellung</div>
-                    <div>5. Klicke auf "Optimierte Einstellungen anwenden" um sie zu übernehmen</div>
+                    <div>2. Klicke auf "Benchmark starten" - ein Preview-Fenster öffnet sich</div>
+                    <div>3. Das Tool testet 5 Qualitätsstufen mit je 3 Läufen (ca. 75 Sekunden)</div>
+                    <div>4. Jede Einstellung wird auf Geschwindigkeit und Stabilität geprüft</div>
+                    <div>5. Du erhältst eine Empfehlung für die beste Einstellung</div>
+                    <div>6. Bei suboptimalen Einstellungen erfolgt eine Warnung</div>
+                    <div>7. Klicke auf "Optimierte Einstellungen anwenden" um sie zu übernehmen</div>
                 </div>
             </div>
 
             <div class="tip-box">
-                <strong>💡 Tipp:</strong> Führe den Benchmark aus, wenn dein System unter normaler Streaming-Last läuft, um realistische Ergebnisse zu erhalten.
+                <strong>💡 Tipp:</strong> Führe den Benchmark aus, wenn dein System unter normaler Streaming-Last läuft, um realistische Ergebnisse zu erhalten. Das Preview-Fenster zeigt dir den Test live!
             </div>
         </div>
 
