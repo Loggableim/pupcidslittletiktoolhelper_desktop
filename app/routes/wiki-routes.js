@@ -160,6 +160,7 @@ router.get('/structure', (req, res) => {
 router.get('/page/:pageId', async (req, res) => {
     try {
         const { pageId } = req.params;
+        const { lang } = req.query; // Get language preference from query parameter
         const pageInfo = findPageById(pageId);
         
         if (!pageInfo) {
@@ -271,7 +272,9 @@ router.get('/page/:pageId', async (req, res) => {
             html,
             toc,
             breadcrumb,
-            lastUpdated: stats.mtime.toISOString()
+            lastUpdated: stats.mtime.toISOString(),
+            preferredLanguage: lang || 'en', // Include language preference in response
+            languageAnchor: getLanguageAnchor(lang) // Get anchor for scrolling
         });
         
     } catch (error) {
@@ -391,6 +394,17 @@ If you have questions about ${title}, please:
 
 *This is placeholder content. Full documentation will be added in a future update.*
 `;
+}
+
+// Helper function to get language anchor for scrolling
+function getLanguageAnchor(lang) {
+    const languageAnchors = {
+        'en': 'english',
+        'de': 'deutsch',
+        'es': 'español',
+        'fr': 'français'
+    };
+    return languageAnchors[lang] || 'english';
 }
 
 module.exports = router;

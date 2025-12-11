@@ -113,6 +113,16 @@
                 <i data-lucide="book-open"></i>
                 Wiki & Documentation
             </h1>
+            <!-- Language Selector -->
+            <div class="language-selector" style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center;">
+                <i data-lucide="globe" style="width: 18px; height: 18px;"></i>
+                <select id="wiki-language-selector" style="background: var(--color-bg-tertiary); color: var(--color-text-primary); border: 1px solid var(--color-border); border-radius: 4px; padding: 0.25rem 0.5rem; cursor: pointer;">
+                    <option value="en">🇬🇧 English</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="fr">🇫🇷 Français</option>
+                </select>
+            </div>
         </header>
 
         <!-- Main Content -->
@@ -156,5 +166,23 @@
 
     <!-- Load wiki system -->
     <script src="/js/wiki.js"></script>
+    <script>
+        // Language selector handler
+        document.addEventListener('DOMContentLoaded', () => {
+            const languageSelector = document.getElementById('wiki-language-selector');
+            if (languageSelector && window.WikiSystem) {
+                // Set initial value from current language
+                setTimeout(() => {
+                    const currentLang = window.WikiSystem.getCurrentLanguage();
+                    languageSelector.value = currentLang;
+                }, 500);
+                
+                // Handle language changes
+                languageSelector.addEventListener('change', (e) => {
+                    window.WikiSystem.setLanguage(e.target.value);
+                });
+            }
+        });
+    </script>
 </body>
 </html>

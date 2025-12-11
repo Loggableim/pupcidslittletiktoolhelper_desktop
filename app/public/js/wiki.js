@@ -10,6 +10,7 @@
     let wikiStructure = null;
     let wikiCache = new Map();
     let currentPage = 'home';
+    let currentLanguage = 'en'; // Default language
     let isInitialized = false;
     let viewObserver = null;
     let searchTimeout = null;
@@ -18,6 +19,7 @@
     const WIKI_API_BASE = '/api/wiki';
     const SEARCH_DEBOUNCE_MS = 300;
     const CACHE_MAX_SIZE = 50; // Limit cache size to prevent memory issues
+    const SUPPORTED_LANGUAGES = ['en', 'de', 'es', 'fr']; // Supported languages
 
     // ========== INITIALIZATION ==========
     document.addEventListener('DOMContentLoaded', async () => {
@@ -76,6 +78,9 @@
             const hashPage = getPageFromHash();
             await loadPage(hashPage || 'home');
 
+            // Initialize language from localStorage or browser
+            currentLanguage = getPreferredLanguage();
+
             // Re-initialize Lucide icons once
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
@@ -83,6 +88,33 @@
         } catch (error) {
             console.error('❌ [Wiki] Initialization failed:', error);
             showError('Failed to load wiki. Please try again later.');
+        }
+    }
+
+    // ========== LANGUAGE PREFERENCE ==========
+    function getPreferredLanguage() {
+        // Check localStorage first
+        const stored = localStorage.getItem('wiki-language');
+        if (stored && SUPPORTED_LANGUAGES.includes(stored)) {
+            return stored;
+        }
+        
+        // Check browser language
+        const browserLang = navigator.language.split('-')[0];
+        if (SUPPORTED_LANGUAGES.includes(browserLang)) {
+            return browserLang;
+        }
+        
+        // Default to English
+        return 'en';
+    }
+
+    function setPreferredLanguage(lang) {
+        if (SUPPORTED_LANGUAGES.includes(lang)) {
+            currentLanguage = lang;
+            localStorage.setItem('wiki-language', lang);
+            // Reload current page with new language
+            loadPage(currentPage);
         }
     }
 
@@ -209,11 +241,12 @@
         try {
             // Check cache first
             let content;
-            if (wikiCache.has(pageId)) {
-                content = wikiCache.get(pageId);
+            const cacheKey = `${pageId}-${currentLanguage}`;
+            if (wikiCache.has(cacheKey)) {
+                content = wikiCache.get(cacheKey);
             } else {
-                // Fetch from server
-                const response = await fetch(`${WIKI_API_BASE}/page/${pageId}`);
+                // Fetch from server with language preference
+                const response = await fetch(`${WIKI_API_BASE}/page/${pageId}?lang=${currentLanguage}`);
                 if (!response.ok) throw new Error(`Failed to load page: ${pageId}`);
                 
                 content = await response.json();
@@ -224,7 +257,7 @@
                     const firstKey = wikiCache.keys().next().value;
                     wikiCache.delete(firstKey);
                 }
-                wikiCache.set(pageId, content);
+                wikiCache.set(cacheKey, content);
             }
 
             // Render content
@@ -238,6 +271,13 @@
 
             // Scroll to top of article container
             articleContainer.scrollTop = 0;
+
+            // Auto-scroll to language section if available
+            if (content.languageAnchor) {
+                setTimeout(() => {
+                    scrollToLanguageSection(content.languageAnchor);
+                }, 100);
+            }
 
         } catch (error) {
             console.error(`❌ [Wiki] Failed to load page ${pageId}:`, error);
@@ -597,10 +637,25 @@
         console.log('🧹 [Wiki] Cleanup completed');
     }
 
+    // ========== LANGUAGE SECTION SCROLLING ==========
+    function scrollToLanguageSection(anchor) {
+        const articleContainer = document.getElementById('wiki-article');
+        if (!articleContainer) return;
+
+        const heading = articleContainer.querySelector(`h2[id="${anchor}"], h2 a[name="${anchor}"]`);
+        if (heading) {
+            // Scroll the article container to the language section
+            const offset = heading.offsetTop - 20;
+            articleContainer.scrollTop = offset;
+        }
+    }
+
     // ========== EXPORT ==========
     window.WikiSystem = {
         loadPage,
         getCurrentPage: () => currentPage,
+        getCurrentLanguage: () => currentLanguage,
+        setLanguage: setPreferredLanguage,
         clearCache: () => wikiCache.clear(),
         cleanup
     };
