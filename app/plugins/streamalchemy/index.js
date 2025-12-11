@@ -6,20 +6,26 @@
  * Features:
  * - Gift-to-item conversion with AI-generated icons
  * - Real-time crafting when users send 2 gifts within 6 seconds
- * - Deterministic generation (no duplicate AI calls)
- * - Persistent inventory system
+ * - Manual and automatic fusion with style selection
+ * - LightX API integration for image generation
+ * - Deterministic generation with fusion key caching
+ * - Persistent inventory system with tier/frame system
  * - Real-time overlay with animations
- * - Rarity-based item tiers
+ * - Rarity-based item tiers with upgrade mechanics
  * 
  * Architecture:
  * - Event-driven design (TikTok events → Item generation → Overlay updates)
  * - Race-condition safe (serialized AI requests, atomic DB writes)
- * - Modular components (DB, Crafting Service, Overlay)
+ * - Modular components (DB, Crafting Service, Fusion Service, Tier System)
  */
 
 const path = require('path');
+const fs = require('fs').promises;
 const AlchemyDatabase = require('./db');
 const CraftingService = require('./craftingService');
+const FusionService = require('./fusionService');
+const TierSystem = require('./tierSystem');
+const PromptGenerator = require('./promptGenerator');
 const config = require('./config');
 
 class StreamAlchemyPlugin {
@@ -30,6 +36,8 @@ class StreamAlchemyPlugin {
         // Core services
         this.db = null;
         this.craftingService = null;
+        this.fusionService = null;
+        this.tierSystem = null;
         
         // User gift buffers for crafting detection
         // Map<userId, Array<{gift, timestamp, item}>>
@@ -50,6 +58,10 @@ class StreamAlchemyPlugin {
         
         // Store socket listener references for cleanup
         this.socketListeners = [];
+        
+        // Selected items for manual fusion (per user)
+        // Map<userId, Array<itemId>>
+        this.selectedItemsForFusion = new Map();
     }
 
     /**
@@ -74,10 +86,30 @@ class StreamAlchemyPlugin {
             this.db = new AlchemyDatabase(this.pluginDir, logger);
             await this.db.init();
 
-            // Initialize crafting service
+            // Initialize crafting service (DALL-E based)
             const openaiKey = process.env.OPENAI_API_KEY || this.pluginConfig?.openaiApiKey;
             const customPrompts = this.pluginConfig?.customPrompts || null;
             this.craftingService = new CraftingService(this.db, logger, openaiKey, customPrompts);
+
+            // Initialize fusion service (LightX + DALL-E fallback)
+            const lightxKey = this.getLightXApiKey();
+            this.fusionService = new FusionService(this.db, logger, {
+                lightxApiKey: lightxKey,
+                customPrompts: this.pluginConfig?.customPrompts,
+                autoFusionEnabled: this.pluginConfig?.autoFusionEnabled || config.FUSION_MODE.AUTO_FUSION_ENABLED,
+                preferLightX: this.pluginConfig?.preferLightX ?? config.FUSION_MODE.PREFER_LIGHTX,
+                defaultStyle: this.pluginConfig?.defaultStyle || config.FUSION_MODE.DEFAULT_STYLE
+            });
+            // Set DALL-E service as fallback
+            this.fusionService.setDalleService(this.craftingService);
+
+            // Initialize tier system
+            const dataDir = this.api.ensurePluginDataDir();
+            this.tierSystem = new TierSystem(this.db, logger, dataDir);
+            await this.tierSystem.init();
+            if (this.pluginConfig?.tierConfig) {
+                this.tierSystem.updateConfig(this.pluginConfig.tierConfig);
+            }
 
             // Register routes
             this.registerRoutes();
@@ -112,6 +144,27 @@ class StreamAlchemyPlugin {
     }
 
     /**
+     * Get LightX API key from settings or environment
+     * @returns {string|null} LightX API key
+     */
+    getLightXApiKey() {
+        // Try plugin config first
+        if (this.pluginConfig?.lightxApiKey) {
+            return this.pluginConfig.lightxApiKey;
+        }
+        // Try global settings
+        try {
+            const db = this.api.getDatabase();
+            const key = db.getSetting('streamalchemy_lightx_api_key');
+            if (key) return key;
+        } catch (error) {
+            this.api.log(`[STREAMALCHEMY] Failed to get LightX key from settings: ${error.message}`, 'warn');
+        }
+        // Try environment variable
+        return process.env.LIGHTX_API_KEY || null;
+    }
+
+    /**
      * Load plugin configuration from database
      */
     async loadConfiguration() {
@@ -122,18 +175,24 @@ class StreamAlchemyPlugin {
             this.pluginConfig = {
                 enabled: true,
                 openaiApiKey: null,
+                lightxApiKey: null,
                 autoGenerateItems: true,
                 autoCrafting: true,
+                autoFusionEnabled: config.FUSION_MODE.AUTO_FUSION_ENABLED,
+                preferLightX: config.FUSION_MODE.PREFER_LIGHTX,
+                defaultStyle: config.FUSION_MODE.DEFAULT_STYLE,
                 itemGenerationMode: config.ITEM_GENERATION_MODE,
                 customPrompts: {
                     baseItemTemplate: config.CUSTOM_PROMPTS.BASE_ITEM_TEMPLATE,
                     craftedItemTemplate: config.CUSTOM_PROMPTS.CRAFTED_ITEM_TEMPLATE
                 },
                 dalleConfig: { ...config.DALLE_CONFIG },
+                lightxConfig: { ...config.LIGHTX_CONFIG },
                 craftingWindowMs: config.CRAFTING_WINDOW_MS,
                 rarityTiers: { ...config.RARITY_TIERS },
                 animations: { ...config.ANIMATIONS },
                 rateLimit: { ...config.RATE_LIMIT },
+                tierConfig: { ...config.TIER_SYSTEM },
                 ...this.pluginConfig
             };
 
@@ -488,6 +547,386 @@ class StreamAlchemyPlugin {
                     success: false,
                     error: error.message
                 });
+            }
+        });
+
+        // ==================== FUSION API ROUTES ====================
+
+        // API: Get fusion service configuration
+        this.api.registerRoute('GET', '/api/streamalchemy/fusion/config', async (req, res) => {
+            try {
+                res.json({
+                    success: true,
+                    config: this.fusionService.getConfig(),
+                    styles: this.fusionService.getStyles()
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Update fusion configuration
+        this.api.registerRoute('POST', '/api/streamalchemy/fusion/config', async (req, res) => {
+            try {
+                const updates = req.body;
+                
+                // Validate style if provided
+                if (updates.defaultStyle) {
+                    const validStyles = config.STYLE_PRESETS;
+                    if (!validStyles.includes(updates.defaultStyle)) {
+                        return res.status(400).json({
+                            success: false,
+                            error: `Invalid style. Must be one of: ${validStyles.join(', ')}`
+                        });
+                    }
+                }
+                
+                this.fusionService.updateConfig(updates);
+                
+                // Update plugin config
+                if (updates.autoFusionEnabled !== undefined) {
+                    this.pluginConfig.autoFusionEnabled = updates.autoFusionEnabled;
+                }
+                if (updates.preferLightX !== undefined) {
+                    this.pluginConfig.preferLightX = updates.preferLightX;
+                }
+                if (updates.defaultStyle) {
+                    this.pluginConfig.defaultStyle = updates.defaultStyle;
+                }
+                
+                // Save LightX API key to global settings if provided
+                if (updates.lightxApiKey && updates.lightxApiKey !== '***HIDDEN***') {
+                    try {
+                        const db = this.api.getDatabase();
+                        db.setSetting('streamalchemy_lightx_api_key', updates.lightxApiKey);
+                        this.pluginConfig.lightxApiKey = updates.lightxApiKey;
+                    } catch (error) {
+                        this.api.log(`[STREAMALCHEMY] Failed to save LightX key: ${error.message}`, 'error');
+                    }
+                }
+                
+                await this.api.setConfig('streamalchemy_config', this.pluginConfig);
+                
+                res.json({
+                    success: true,
+                    config: this.fusionService.getConfig()
+                });
+            } catch (error) {
+                this.api.log(`[STREAMALCHEMY] Error updating fusion config: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Perform manual fusion
+        this.api.registerRoute('POST', '/api/streamalchemy/fusion/perform', async (req, res) => {
+            try {
+                const { itemAId, itemBId, userId, style } = req.body;
+                
+                // Validate required fields
+                if (!itemAId || !itemBId) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'itemAId and itemBId are required'
+                    });
+                }
+                
+                // Validate UUIDs
+                if (!validateUUID(itemAId) || !validateUUID(itemBId)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid item ID format'
+                    });
+                }
+                
+                // Validate items are different
+                if (itemAId === itemBId) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Cannot fuse an item with itself'
+                    });
+                }
+                
+                // Get items
+                const itemA = await this.db.getItemById(itemAId);
+                const itemB = await this.db.getItemById(itemBId);
+                
+                if (!itemA || !itemB) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'One or both items not found'
+                    });
+                }
+                
+                // Perform fusion
+                const result = await this.fusionService.performManualFusion(
+                    itemA,
+                    itemB,
+                    userId || 'manual_fusion',
+                    { style: style || this.pluginConfig.defaultStyle }
+                );
+                
+                if (result.success) {
+                    // Emit socket event for overlay
+                    this.api.emit('streamalchemy:fusion_complete', {
+                        itemA,
+                        itemB,
+                        craftedItem: result.item,
+                        fromCache: result.fromCache
+                    });
+                }
+                
+                res.json(result);
+            } catch (error) {
+                this.api.log(`[STREAMALCHEMY] Fusion error: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Get fusion statistics
+        this.api.registerRoute('GET', '/api/streamalchemy/fusion/stats', async (req, res) => {
+            try {
+                res.json({
+                    success: true,
+                    stats: this.fusionService.getStats()
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Clear fusion cache
+        this.api.registerRoute('POST', '/api/streamalchemy/fusion/clear-cache', async (req, res) => {
+            try {
+                const cleared = this.fusionService.clearCache();
+                res.json({
+                    success: true,
+                    clearedEntries: cleared
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // ==================== TIER SYSTEM API ROUTES ====================
+
+        // API: Get tier system configuration
+        this.api.registerRoute('GET', '/api/streamalchemy/tiers/config', async (req, res) => {
+            try {
+                res.json({
+                    success: true,
+                    config: this.tierSystem.getConfig()
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Update tier system configuration
+        this.api.registerRoute('POST', '/api/streamalchemy/tiers/config', async (req, res) => {
+            try {
+                const updates = req.body;
+                this.tierSystem.updateConfig(updates);
+                
+                // Save to plugin config
+                this.pluginConfig.tierConfig = this.tierSystem.getConfig();
+                await this.api.setConfig('streamalchemy_config', this.pluginConfig);
+                
+                res.json({
+                    success: true,
+                    config: this.tierSystem.getConfig()
+                });
+            } catch (error) {
+                this.api.log(`[STREAMALCHEMY] Error updating tier config: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Check upgrade eligibility
+        this.api.registerRoute('GET', '/api/streamalchemy/tiers/check-upgrade/:userId/:itemId', async (req, res) => {
+            try {
+                const { userId, itemId } = req.params;
+                const tier = parseInt(req.query.tier) || 1;
+                
+                if (!validateUUID(itemId)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid item ID format'
+                    });
+                }
+                
+                const eligibility = await this.tierSystem.checkUpgradeEligibility(userId, itemId, tier);
+                res.json({
+                    success: true,
+                    ...eligibility
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Perform upgrade
+        this.api.registerRoute('POST', '/api/streamalchemy/tiers/upgrade', async (req, res) => {
+            try {
+                const { userId, itemId } = req.body;
+                
+                if (!itemId || !validateUUID(itemId)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid item ID'
+                    });
+                }
+                
+                const item = await this.db.getItemById(itemId);
+                if (!item) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Item not found'
+                    });
+                }
+                
+                const result = await this.tierSystem.performUpgrade(userId, item);
+                
+                if (result.success) {
+                    // Emit upgrade event for overlay
+                    this.api.emit('streamalchemy:item_upgraded', {
+                        userId,
+                        previousItem: result.previousItem,
+                        upgradedItem: result.upgradedItem,
+                        newTier: result.newTier,
+                        newTierName: result.newTierName
+                    });
+                }
+                
+                res.json(result);
+            } catch (error) {
+                this.api.log(`[STREAMALCHEMY] Upgrade error: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Get upgrade progress
+        this.api.registerRoute('GET', '/api/streamalchemy/tiers/progress/:userId/:itemId', async (req, res) => {
+            try {
+                const { userId, itemId } = req.params;
+                const tier = parseInt(req.query.tier) || 1;
+                
+                if (!validateUUID(itemId)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid item ID format'
+                    });
+                }
+                
+                const progress = await this.tierSystem.getUpgradeProgress(userId, itemId, tier);
+                res.json({
+                    success: true,
+                    ...progress
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // API: Get frame style for item
+        this.api.registerRoute('GET', '/api/streamalchemy/tiers/frame/:itemId', async (req, res) => {
+            try {
+                const { itemId } = req.params;
+                
+                if (!validateUUID(itemId)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid item ID format'
+                    });
+                }
+                
+                const item = await this.db.getItemById(itemId);
+                if (!item) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Item not found'
+                    });
+                }
+                
+                const frameStyle = this.tierSystem.getFrameStyle(item);
+                res.json({
+                    success: true,
+                    itemId,
+                    tier: item.tier || 1,
+                    frameStyle
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // ==================== STYLE PRESETS API ====================
+
+        // API: Get available style presets
+        this.api.registerRoute('GET', '/api/streamalchemy/styles', async (req, res) => {
+            try {
+                const styles = PromptGenerator.STYLE_PRESETS;
+                const styleList = Object.entries(styles).map(([id, preset]) => ({
+                    id,
+                    name: preset.name,
+                    description: preset.description
+                }));
+                
+                res.json({
+                    success: true,
+                    styles: styleList,
+                    defaultStyle: this.pluginConfig.defaultStyle || 'rpg'
+                });
+            } catch (error) {
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Serve custom frame files
+        this.api.registerRoute('GET', '/streamalchemy/frames/:filename', async (req, res) => {
+            try {
+                const { filename } = req.params;
+                // Sanitize filename
+                const safeName = path.basename(filename);
+                const filePath = path.join(this.api.getPluginDataDir(), 'frames', safeName);
+                res.sendFile(filePath);
+            } catch (error) {
+                res.status(404).json({ error: 'Frame not found' });
             }
         });
 
@@ -1218,8 +1657,13 @@ class StreamAlchemyPlugin {
         this.giftBuffers.clear();
         this.userRateLimits.clear();
         this.processingQueues.clear();
+        this.selectedItemsForFusion.clear();
 
         // Destroy services
+        if (this.fusionService) {
+            await this.fusionService.destroy();
+        }
+
         if (this.craftingService) {
             await this.craftingService.destroy();
         }

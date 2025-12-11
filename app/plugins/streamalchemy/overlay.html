@@ -282,6 +282,78 @@
         });
 
         /**
+         * Handle fusion complete (manual fusion from UI)
+         */
+        socket.on('streamalchemy:fusion_complete', (data) => {
+            console.log('Fusion complete:', data);
+            // Show crafting animation first, then discovery popup
+            if (data.itemA && data.itemB) {
+                showCraftingAnimation(data.itemA, data.itemB);
+                setTimeout(() => {
+                    completeCraftingAnimation(data.craftedItem);
+                }, 100);
+            } else {
+                // Just show discovery popup for the new item
+                queueAnimation(() => {
+                    showDiscoveryPopup(data.craftedItem);
+                });
+            }
+        });
+
+        /**
+         * Handle item upgrade
+         */
+        socket.on('streamalchemy:item_upgraded', (data) => {
+            console.log('Item upgraded:', data);
+            queueAnimation(() => {
+                showUpgradeAnimation(data);
+            });
+        });
+
+        /**
+         * Show upgrade animation
+         */
+        function showUpgradeAnimation(data) {
+            const popup = document.getElementById('discoveryPopup');
+            const image = document.getElementById('discoveryImage');
+            const title = document.getElementById('discoveryTitle');
+            const text = document.getElementById('discoveryText');
+            const itemName = document.getElementById('discoveryItemName');
+            const rarity = document.getElementById('discoveryRarity');
+            
+            // Set content
+            image.src = data.upgradedItem?.imageURL || '/assets/placeholder-item.png';
+            title.textContent = '🎉 Upgrade!';
+            text.textContent = `${data.previousItem?.name || 'Item'} wurde aufgewertet zu`;
+            itemName.textContent = data.upgradedItem?.name || 'Upgraded Item';
+            rarity.textContent = `${data.newTierName || 'Stufe ' + data.newTier}`;
+            
+            // Set tier class based on new tier
+            popup.className = 'discovery-popup';
+            popup.classList.add(`tier-${data.newTier}`);
+            
+            // Show popup
+            popup.classList.remove('hidden');
+            popup.classList.add('animate-in');
+            
+            // Generate particles
+            generateParticles(document.querySelector('.discovery-particles'), data.upgradedItem?.rarity || 'Legendary');
+            
+            // Hide after duration
+            setTimeout(() => {
+                popup.classList.remove('animate-in');
+                popup.classList.add('animate-out');
+                
+                setTimeout(() => {
+                    popup.classList.add('hidden');
+                    popup.classList.remove('animate-out');
+                    isAnimating = false;
+                    processQueue();
+                }, 1000);
+            }, 5000);
+        }
+
+        /**
          * Connection status
          */
         socket.on('connect', () => {

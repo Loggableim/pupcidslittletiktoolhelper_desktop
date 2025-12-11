@@ -16,6 +16,51 @@ module.exports = {
     CRAFTING_WINDOW_MS: 6000, // 6 seconds
     
     /**
+     * Fusion mode settings
+     */
+    FUSION_MODE: {
+        AUTO_FUSION_ENABLED: false, // Enable automatic fusion when 2 different gifts sent
+        MANUAL_FUSION_ENABLED: true, // Enable manual fusion from UI
+        DEFAULT_STYLE: 'rpg', // Default style for fusion
+        PREFER_LIGHTX: true // Prefer LightX API over DALL-E
+    },
+    
+    /**
+     * LightX API settings
+     */
+    LIGHTX_CONFIG: {
+        BASE_URL: 'https://api.lightxeditor.com/external/api/v1',
+        TIMEOUT: 60000, // 60 seconds
+        IMAGE_STRENGTH: 0.7, // How much the base image influences the result
+        STYLE_STRENGTH: 0.5 // How much the style image influences the result
+    },
+    
+    /**
+     * Tier/Frame system settings
+     */
+    TIER_SYSTEM: {
+        ENABLED: true,
+        TIERS: [
+            { level: 1, name: 'Bronze', color: '#CD7F32', itemsToUpgrade: 3 },
+            { level: 2, name: 'Silver', color: '#C0C0C0', itemsToUpgrade: 5 },
+            { level: 3, name: 'Gold', color: '#FFD700', itemsToUpgrade: 7 },
+            { level: 4, name: 'Platinum', color: '#E5E4E2', itemsToUpgrade: 10 },
+            { level: 5, name: 'Diamond', color: '#B9F2FF', itemsToUpgrade: null } // Max tier
+        ],
+        AUTO_UPGRADE: false, // Automatically upgrade when enough items collected
+        SHOW_UPGRADE_ANIMATION: true
+    },
+    
+    /**
+     * Available style presets
+     */
+    STYLE_PRESETS: [
+        'rpg', 'fantasy', 'comic', 'pixel', 'anime', 
+        'cyberpunk', 'minimalist', '3d_render', 'retro', 
+        'rainbow', 'cartoon', 'dark_fantasy'
+    ]
+    
+    /**
      * Rarity tier thresholds based on combined coin values
      * When two items are combined, their coin values are summed
      * and the total determines the crafted item's rarity
