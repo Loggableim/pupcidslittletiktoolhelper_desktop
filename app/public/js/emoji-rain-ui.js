@@ -784,18 +784,27 @@ async function startBenchmark() {
             const checkInterval = setInterval(() => {
                 checkCount++;
                 
-                // Check if window is loaded and ready
-                if (benchmarkPreviewWindow && !benchmarkPreviewWindow.closed && 
-                    benchmarkPreviewWindow.document && benchmarkPreviewWindow.document.readyState === 'complete') {
-                    clearInterval(checkInterval);
-                    resolve();
-                } else if (checkCount >= maxChecks) {
-                    clearInterval(checkInterval);
-                    // Proceed anyway after timeout
-                    resolve();
-                } else if (!benchmarkPreviewWindow || benchmarkPreviewWindow.closed) {
-                    clearInterval(checkInterval);
-                    reject(new Error('Preview window was closed'));
+                try {
+                    // Check if window is loaded and ready
+                    // Note: This may throw on cross-origin access, so wrap in try-catch
+                    if (benchmarkPreviewWindow && !benchmarkPreviewWindow.closed && 
+                        benchmarkPreviewWindow.document && benchmarkPreviewWindow.document.readyState === 'complete') {
+                        clearInterval(checkInterval);
+                        resolve();
+                    } else if (checkCount >= maxChecks) {
+                        clearInterval(checkInterval);
+                        // Proceed anyway after timeout
+                        resolve();
+                    } else if (!benchmarkPreviewWindow || benchmarkPreviewWindow.closed) {
+                        clearInterval(checkInterval);
+                        reject(new Error('Preview window was closed'));
+                    }
+                } catch (e) {
+                    // Cross-origin or other access error - assume window is loading
+                    if (checkCount >= maxChecks) {
+                        clearInterval(checkInterval);
+                        resolve(); // Proceed anyway after timeout
+                    }
                 }
             }, 100);
         });
