@@ -2518,14 +2518,18 @@ class QuizShowPlugin {
         const totalRoundsReached = this.config.totalRounds > 0 && this.gameState.currentRound >= this.config.totalRounds;
 
         // Auto mode - automatically start next round after delay (if autoRestartRound is enabled)
+        // The total delay is answerDisplayDuration + autoModeDelay to wait for answer display
         if (this.config.autoMode && this.config.autoRestartRound !== false && !totalRoundsReached) {
-            const delay = (this.config.autoModeDelay || 5) * 1000;
+            const answerDisplayDuration = (this.config.answerDisplayDuration || 5) * 1000;
+            const autoDelay = (this.config.autoModeDelay || 5) * 1000;
+            const totalDelay = answerDisplayDuration + autoDelay;
+            
             this.autoModeTimeout = setTimeout(() => {
                 this.autoModeTimeout = null;
                 this.startRound().catch(err => {
                     this.api.log('Error auto-starting next round: ' + err.message, 'error');
                 });
-            }, delay);
+            }, totalDelay);
         } else if (totalRoundsReached) {
             // Round limit reached - show final leaderboard and end game
             this.api.log(`Total rounds limit (${this.config.totalRounds}) reached - game ending`, 'info');

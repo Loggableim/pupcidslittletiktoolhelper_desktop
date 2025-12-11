@@ -631,7 +631,10 @@
                 updateJokerInfo(state.jokerEvents, state.giftJokerMappings || {});
             }
 
-            if (currentState === States.IDLE || currentState === States.WAIT_NEXT) {
+            // Transition to question intro if not already running
+            // This handles both fresh starts and auto-advance scenarios
+            if (currentState === States.IDLE || currentState === States.WAIT_NEXT || 
+                currentState === States.REVEAL_CORRECT || currentState === States.TIME_UP) {
                 transitionToState(States.QUESTION_INTRO);
             }
         }
