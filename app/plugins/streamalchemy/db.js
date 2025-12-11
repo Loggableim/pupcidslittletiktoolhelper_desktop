@@ -384,6 +384,168 @@ class AlchemyDatabase {
         }, 'global');
     }
 
+    // ==================== FUSION MAPPING OPERATIONS ====================
+
+    /**
+     * Save fusion key to item ID mapping for deterministic caching
+     * @param {string} fusionKey - Unique fusion key (sorted item IDs + style)
+     * @param {string} itemId - Generated item ID
+     * @returns {Object} Saved mapping
+     */
+    async saveFusionMapping(fusionKey, itemId) {
+        return this.queueWrite(async () => {
+            await this.init();
+            await this.inventoryGlobalDb.read();
+            
+            // Initialize fusion mappings if not exists
+            if (!this.inventoryGlobalDb.data.fusionMappings) {
+                this.inventoryGlobalDb.data.fusionMappings = [];
+            }
+            
+            // Check if mapping exists
+            const existingIndex = this.inventoryGlobalDb.data.fusionMappings.findIndex(
+                m => m.fusionKey === fusionKey
+            );
+            
+            const mapping = {
+                fusionKey,
+                itemId,
+                createdAt: new Date().toISOString()
+            };
+            
+            if (existingIndex >= 0) {
+                this.inventoryGlobalDb.data.fusionMappings[existingIndex] = mapping;
+            } else {
+                this.inventoryGlobalDb.data.fusionMappings.push(mapping);
+            }
+            
+            await this.inventoryGlobalDb.write();
+            this.logger.debug(`[ALCHEMY DB] Saved fusion mapping: ${fusionKey} -> ${itemId}`);
+            return mapping;
+        }, 'global');
+    }
+
+    /**
+     * Get fusion mapping by key
+     * @param {string} fusionKey - Fusion key to lookup
+     * @returns {Object|null} Mapping or null if not found
+     */
+    async getFusionMapping(fusionKey) {
+        await this.init();
+        await this.inventoryGlobalDb.read();
+        
+        if (!this.inventoryGlobalDb.data.fusionMappings) {
+            return null;
+        }
+        
+        return this.inventoryGlobalDb.data.fusionMappings.find(
+            m => m.fusionKey === fusionKey
+        ) || null;
+    }
+
+    /**
+     * Get all fusion mappings
+     * @returns {Array} All fusion mappings
+     */
+    async getAllFusionMappings() {
+        await this.init();
+        await this.inventoryGlobalDb.read();
+        return this.inventoryGlobalDb.data.fusionMappings || [];
+    }
+
+    // ==================== TIER/UPGRADE OPERATIONS ====================
+
+    /**
+     * Get upgraded version of an item
+     * @param {string} originalItemId - Original item ID
+     * @param {number} tier - Tier level
+     * @returns {Object|null} Upgraded item or null
+     */
+    async getUpgradedItem(originalItemId, tier) {
+        await this.init();
+        await this.inventoryGlobalDb.read();
+        
+        return this.inventoryGlobalDb.data.items.find(
+            item => item.originalItemId === originalItemId && item.tier === tier && item.isUpgraded
+        ) || null;
+    }
+
+    /**
+     * Get all items at a specific tier
+     * @param {number} tier - Tier level
+     * @returns {Array} Items at the specified tier
+     */
+    async getItemsByTier(tier) {
+        await this.init();
+        await this.inventoryGlobalDb.read();
+        
+        return this.inventoryGlobalDb.data.items.filter(
+            item => (item.tier || 1) === tier
+        );
+    }
+
+    /**
+     * Get fusion items (items created from fusion)
+     * @returns {Array} Fusion items
+     */
+    async getFusionItems() {
+        await this.init();
+        await this.inventoryGlobalDb.read();
+        
+        return this.inventoryGlobalDb.data.items.filter(item => item.isFusion);
+    }
+
+    /**
+     * Get items by style
+     * @param {string} style - Style ID
+     * @returns {Array} Items with the specified style
+     */
+    async getItemsByStyle(style) {
+        await this.init();
+        await this.inventoryGlobalDb.read();
+        
+        return this.inventoryGlobalDb.data.items.filter(item => item.style === style);
+    }
+
+    // ==================== EXTENDED USER INVENTORY ====================
+
+    /**
+     * Decrement user item quantity (for upgrades)
+     * @param {string} userId - User ID
+     * @param {string} itemId - Item ID
+     * @param {number} quantity - Amount to remove
+     * @returns {Object} Updated inventory entry
+     */
+    async decrementUserInventory(userId, itemId, quantity) {
+        return this.updateUserInventory(userId, itemId, -Math.abs(quantity));
+    }
+
+    /**
+     * Get user items grouped by tier
+     * @param {string} userId - User ID
+     * @returns {Object} Items grouped by tier
+     */
+    async getUserInventoryByTier(userId) {
+        const inventory = await this.getUserInventory(userId);
+        const grouped = {};
+        
+        for (const entry of inventory) {
+            const item = await this.getItemById(entry.itemId);
+            if (item) {
+                const tier = item.tier || 1;
+                if (!grouped[tier]) {
+                    grouped[tier] = [];
+                }
+                grouped[tier].push({
+                    ...entry,
+                    item
+                });
+            }
+        }
+        
+        return grouped;
+    }
+
     /**
      * Clean up database connections
      */

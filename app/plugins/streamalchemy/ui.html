@@ -376,6 +376,64 @@
         .modal-close:hover {
             color: var(--color-text-primary);
         }
+
+        /* Fusion UI Styles */
+        .item-preview {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--color-bg-secondary);
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+
+        .item-preview.hidden {
+            display: none;
+        }
+
+        .preview-image {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .preview-name {
+            font-weight: 600;
+        }
+
+        .fusion-item-select {
+            width: 100%;
+        }
+
+        #fusionResult .card {
+            border-left: 4px solid var(--color-accent-primary);
+        }
+
+        /* Rarity badges */
+        .rarity-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .rarity-Common { background: #CD7F32; color: white; }
+        .rarity-Rare { background: #C0C0C0; color: black; }
+        .rarity-Legendary { background: #FFD700; color: black; }
+        .rarity-Mythic { background: #9370DB; color: white; }
+
+        /* Tier config styles */
+        .tier-config-item {
+            transition: all 0.2s ease;
+        }
+
+        .tier-config-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -390,6 +448,8 @@
         <!-- Tabs -->
         <div class="tabs">
             <button class="tab active" data-tab="general">⚙️ Allgemein</button>
+            <button class="tab" data-tab="fusion">⚗️ Fusion</button>
+            <button class="tab" data-tab="tiers">🏆 Stufen</button>
             <button class="tab" data-tab="prompts">✨ Custom Prompts</button>
             <button class="tab" data-tab="items">🎁 Item Management</button>
             <button class="tab" data-tab="rarity">💎 Seltenheitsstufen</button>
@@ -443,11 +503,208 @@
                         <input type="password" id="openaiApiKey" name="openaiApiKey" placeholder="sk-...">
                     </div>
 
+                    <div class="config-group">
+                        <label class="config-label" for="lightxApiKey">LightX API Key</label>
+                        <div class="config-description">Für Bild-Fusion (Image-to-Image). Optional.</div>
+                        <input type="password" id="lightxApiKey" name="lightxApiKey" placeholder="lx-...">
+                    </div>
+
+                    <div class="config-group">
+                        <label class="config-label" for="siliconFlowApiKey">Silicon Flow API Key</label>
+                        <div class="config-description">Für FLUX.1-schnell Bildgenerierung (sehr schnell, 1-4 Schritte). <a href="https://siliconflow.cn" target="_blank">API Key erhalten</a></div>
+                        <input type="password" id="siliconFlowApiKey" name="siliconFlowApiKey" placeholder="sf-...">
+                    </div>
+
                     <div class="btn-group">
                         <button type="submit" class="btn btn-primary">Einstellungen speichern</button>
                         <button type="button" class="btn btn-secondary" id="resetGeneralBtn">Zurücksetzen</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Tab: Fusion Settings -->
+        <div class="tab-content" data-tab-content="fusion">
+            <div class="card">
+                <div class="card-title">⚗️ Manuelle Fusion</div>
+                <div class="info">
+                    Wähle zwei Items aus dem Katalog aus und fusioniere sie zu einem neuen Item.
+                </div>
+                
+                <div class="config-grid">
+                    <div class="config-group">
+                        <label class="config-label">Item 1</label>
+                        <select id="fusionItemA" class="fusion-item-select">
+                            <option value="">-- Item wählen --</option>
+                        </select>
+                        <div id="fusionItemAPreview" class="item-preview hidden">
+                            <img src="" alt="Item A" class="preview-image">
+                            <span class="preview-name"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="config-group">
+                        <label class="config-label">Item 2</label>
+                        <select id="fusionItemB" class="fusion-item-select">
+                            <option value="">-- Item wählen --</option>
+                        </select>
+                        <div id="fusionItemBPreview" class="item-preview hidden">
+                            <img src="" alt="Item B" class="preview-image">
+                            <span class="preview-name"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-group">
+                    <label class="config-label" for="fusionStyle">Bild-Stil</label>
+                    <div class="config-description">Wähle den visuellen Stil für das fusionierte Item</div>
+                    <select id="fusionStyle" name="fusionStyle">
+                        <option value="rpg">RPG (Standard)</option>
+                        <option value="fantasy">Fantasy</option>
+                        <option value="comic">Comic</option>
+                        <option value="pixel">Pixel Art</option>
+                        <option value="anime">Anime</option>
+                        <option value="cyberpunk">Cyberpunk</option>
+                        <option value="minimalist">Minimalistisch</option>
+                        <option value="3d_render">3D Render</option>
+                        <option value="retro">Retro</option>
+                        <option value="rainbow">Regenbogen</option>
+                        <option value="cartoon">Cartoon</option>
+                        <option value="dark_fantasy">Dark Fantasy</option>
+                    </select>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="performFusionBtn" disabled>⚗️ Fusionieren</button>
+                </div>
+                
+                <div id="fusionResult" class="hidden" style="margin-top: 20px;">
+                    <div class="card" style="background: var(--color-bg-secondary);">
+                        <div class="card-title">Fusion-Ergebnis</div>
+                        <div id="fusionResultContent"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Fusion-Einstellungen</div>
+                <form id="fusion-config-form">
+                    <div class="config-grid">
+                        <div class="config-group">
+                            <label class="config-label">Auto-Fusion</label>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="autoFusionEnabled" name="autoFusionEnabled">
+                                <label for="autoFusionEnabled">Automatische Fusion wenn Viewer 2 verschiedene Gifts sendet</label>
+                            </div>
+                        </div>
+
+                        <div class="config-group">
+                            <label class="config-label" for="preferredGenerator">Bevorzugter Bild-Generator</label>
+                            <div class="config-description">Wähle den primären Dienst für Bildgenerierung</div>
+                            <select id="preferredGenerator" name="preferredGenerator">
+                                <option value="siliconflow">🚀 Silicon Flow (FLUX.1-schnell) - Sehr schnell</option>
+                                <option value="lightx">🎨 LightX - Image-to-Image Fusion</option>
+                                <option value="dalle">🖼️ DALL-E 3 - Höchste Qualität</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <label class="config-label" for="defaultStyle">Standard-Stil</label>
+                        <div class="config-description">Wird für Auto-Fusion und wenn kein Stil gewählt wurde verwendet</div>
+                        <select id="defaultStyle" name="defaultStyle">
+                            <option value="rpg">RPG</option>
+                            <option value="fantasy">Fantasy</option>
+                            <option value="comic">Comic</option>
+                            <option value="pixel">Pixel Art</option>
+                            <option value="anime">Anime</option>
+                            <option value="cyberpunk">Cyberpunk</option>
+                        </select>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn btn-primary">Fusion-Einstellungen speichern</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Fusion-Statistiken</div>
+                <div class="stats-grid" id="fusion-stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Gesamt Fusionen</div>
+                        <div class="stat-value" id="stat-total-fusions">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Manuelle Fusionen</div>
+                        <div class="stat-value" id="stat-manual-fusions">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Auto-Fusionen</div>
+                        <div class="stat-value" id="stat-auto-fusions">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Cache-Treffer</div>
+                        <div class="stat-value" id="stat-cache-hits">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🚀 Silicon Flow</div>
+                        <div class="stat-value" id="stat-siliconflow-generations">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🎨 LightX</div>
+                        <div class="stat-value" id="stat-lightx-generations">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🖼️ DALL-E</div>
+                        <div class="stat-value" id="stat-dalle-generations">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Tier System -->
+        <div class="tab-content" data-tab-content="tiers">
+            <div class="card">
+                <div class="card-title">🏆 Stufen-System (Tier/Rahmen)</div>
+                <div class="info">
+                    Items können aufgewertet werden! Sammle mehrere gleiche Items und upgrade sie zu höheren Stufen mit besseren Rahmen.
+                </div>
+
+                <form id="tiers-form">
+                    <div class="config-group">
+                        <label class="config-label">Stufen-System aktiviert</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="tierSystemEnabled" name="tierSystemEnabled" checked>
+                            <label for="tierSystemEnabled">Item-Stufen und Upgrade-System aktivieren</label>
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <label class="config-label">Auto-Upgrade</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="autoUpgrade" name="autoUpgrade">
+                            <label for="autoUpgrade">Automatisch upgraden wenn genug Items vorhanden</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Stufen-Konfiguration</div>
+                <div id="tiers-config-container">
+                    <!-- Tier configs will be dynamically generated -->
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="saveTiersBtn">Stufen-Einstellungen speichern</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Rahmen-Vorschau</div>
+                <div class="config-grid" id="frame-preview-container">
+                    <!-- Frame previews will be dynamically generated -->
+                </div>
             </div>
         </div>
 
@@ -799,6 +1056,10 @@
                     loadStats();
                 } else if (tabName === 'items') {
                     loadItems();
+                } else if (tabName === 'fusion') {
+                    loadFusionData();
+                } else if (tabName === 'tiers') {
+                    loadTiersData();
                 }
             });
         });
@@ -826,6 +1087,32 @@
             document.getElementById('itemGenerationMode').value = config.itemGenerationMode || 'auto';
             document.getElementById('craftingWindowMs').value = config.craftingWindowMs || 6000;
             document.getElementById('openaiApiKey').value = config.openaiApiKey || '';
+            
+            // LightX API key
+            const lightxInput = document.getElementById('lightxApiKey');
+            if (lightxInput) {
+                lightxInput.value = config.lightxApiKey || '';
+            }
+
+            // Fusion settings
+            const autoFusionEl = document.getElementById('autoFusionEnabled');
+            if (autoFusionEl) {
+                autoFusionEl.checked = config.autoFusionEnabled === true;
+            }
+            const preferredGeneratorEl = document.getElementById('preferredGenerator');
+            if (preferredGeneratorEl && config.preferredGenerator) {
+                preferredGeneratorEl.value = config.preferredGenerator;
+            }
+            const defaultStyleEl = document.getElementById('defaultStyle');
+            if (defaultStyleEl && config.defaultStyle) {
+                defaultStyleEl.value = config.defaultStyle;
+            }
+
+            // Silicon Flow API key
+            const siliconFlowInput = document.getElementById('siliconFlowApiKey');
+            if (siliconFlowInput) {
+                siliconFlowInput.value = config.siliconFlowApiKey || '';
+            }
 
             // Custom prompts
             if (config.customPrompts) {
@@ -840,6 +1127,14 @@
                 document.getElementById('counterBounceDuration').value = config.animations.COUNTER_BOUNCE || 500;
                 document.getElementById('particleDuration').value = config.animations.PARTICLE_DURATION || 2000;
             }
+
+            // Tier settings
+            if (config.tierConfig) {
+                const tierEnabledEl = document.getElementById('tierSystemEnabled');
+                if (tierEnabledEl) {
+                    tierEnabledEl.checked = config.tierConfig.enabled !== false;
+                }
+            }
         }
 
         // General form submission
@@ -852,7 +1147,9 @@
                 autoCrafting: formData.get('autoCrafting') === 'on',
                 itemGenerationMode: formData.get('itemGenerationMode'),
                 craftingWindowMs: parseInt(formData.get('craftingWindowMs')),
-                openaiApiKey: formData.get('openaiApiKey')
+                openaiApiKey: formData.get('openaiApiKey'),
+                lightxApiKey: formData.get('lightxApiKey'),
+                siliconFlowApiKey: formData.get('siliconFlowApiKey')
             };
 
             await saveConfig(updates);
@@ -1236,6 +1533,354 @@
         document.getElementById('refreshItemsBtn').addEventListener('click', loadItems);
         document.getElementById('closeCreateItemModalBtn').addEventListener('click', closeCreateItemModal);
         document.getElementById('cancelCreateItemBtn').addEventListener('click', closeCreateItemModal);
+
+        // ==================== FUSION FUNCTIONS ====================
+
+        // Load fusion data (items for selection, stats)
+        async function loadFusionData() {
+            try {
+                // Load items for fusion selection
+                const itemsResponse = await fetch('/api/streamalchemy/items');
+                const itemsData = await itemsResponse.json();
+                
+                if (itemsData.success) {
+                    populateFusionSelects(itemsData.items);
+                }
+
+                // Load fusion config
+                const configResponse = await fetch('/api/streamalchemy/fusion/config');
+                const configData = await configResponse.json();
+                
+                if (configData.success) {
+                    const autoFusionEl = document.getElementById('autoFusionEnabled');
+                    if (autoFusionEl) autoFusionEl.checked = configData.config.autoFusionEnabled;
+                    
+                    const preferredGeneratorEl = document.getElementById('preferredGenerator');
+                    if (preferredGeneratorEl && configData.config.preferredGenerator) {
+                        preferredGeneratorEl.value = configData.config.preferredGenerator;
+                    }
+                    
+                    const defaultStyleEl = document.getElementById('defaultStyle');
+                    if (defaultStyleEl && configData.config.defaultStyle) {
+                        defaultStyleEl.value = configData.config.defaultStyle;
+                    }
+                }
+
+                // Load fusion stats
+                loadFusionStats();
+            } catch (error) {
+                console.error('Failed to load fusion data:', error);
+            }
+        }
+
+        // Populate fusion item selects
+        function populateFusionSelects(items) {
+            const selectA = document.getElementById('fusionItemA');
+            const selectB = document.getElementById('fusionItemB');
+            
+            if (!selectA || !selectB) return;
+
+            // Clear existing options (keep the first placeholder)
+            selectA.innerHTML = '<option value="">-- Item wählen --</option>';
+            selectB.innerHTML = '<option value="">-- Item wählen --</option>';
+
+            // Add items
+            items.forEach(item => {
+                const optionA = document.createElement('option');
+                optionA.value = item.itemId;
+                optionA.textContent = `${item.name} (${item.rarity})`;
+                selectA.appendChild(optionA);
+
+                const optionB = document.createElement('option');
+                optionB.value = item.itemId;
+                optionB.textContent = `${item.name} (${item.rarity})`;
+                selectB.appendChild(optionB);
+            });
+
+            // Store items for preview
+            window.fusionItems = items;
+        }
+
+        // Handle fusion item selection change
+        document.getElementById('fusionItemA')?.addEventListener('change', function() {
+            updateFusionPreview('A', this.value);
+            updateFusionButton();
+        });
+
+        document.getElementById('fusionItemB')?.addEventListener('change', function() {
+            updateFusionPreview('B', this.value);
+            updateFusionButton();
+        });
+
+        function updateFusionPreview(side, itemId) {
+            const previewEl = document.getElementById(`fusionItem${side}Preview`);
+            if (!previewEl) return;
+
+            if (!itemId) {
+                previewEl.classList.add('hidden');
+                return;
+            }
+
+            const item = window.fusionItems?.find(i => i.itemId === itemId);
+            if (item) {
+                const img = previewEl.querySelector('.preview-image');
+                const name = previewEl.querySelector('.preview-name');
+                
+                if (img) img.src = item.imageURL || '/assets/placeholder-item.png';
+                if (name) name.textContent = item.name;
+                
+                previewEl.classList.remove('hidden');
+            }
+        }
+
+        function updateFusionButton() {
+            const itemA = document.getElementById('fusionItemA')?.value;
+            const itemB = document.getElementById('fusionItemB')?.value;
+            const btn = document.getElementById('performFusionBtn');
+            
+            if (btn) {
+                btn.disabled = !itemA || !itemB || itemA === itemB;
+            }
+        }
+
+        // Perform fusion
+        document.getElementById('performFusionBtn')?.addEventListener('click', async function() {
+            const itemAId = document.getElementById('fusionItemA')?.value;
+            const itemBId = document.getElementById('fusionItemB')?.value;
+            const style = document.getElementById('fusionStyle')?.value || 'rpg';
+
+            if (!itemAId || !itemBId) {
+                showMessage('Bitte wähle zwei Items aus', 'error');
+                return;
+            }
+
+            if (itemAId === itemBId) {
+                showMessage('Gleiche Items können nicht fusioniert werden', 'error');
+                return;
+            }
+
+            this.disabled = true;
+            this.textContent = '⏳ Fusioniere...';
+
+            try {
+                const response = await fetch('/api/streamalchemy/fusion/perform', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        itemAId,
+                        itemBId,
+                        style,
+                        userId: 'manual_ui_fusion'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(`✅ Fusion erfolgreich! ${data.item.name} erstellt.`, 'success');
+                    
+                    // Show result
+                    const resultEl = document.getElementById('fusionResult');
+                    const contentEl = document.getElementById('fusionResultContent');
+                    
+                    if (resultEl && contentEl) {
+                        contentEl.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 16px;">
+                                <img src="${escapeHtml(data.item.imageURL || '/assets/placeholder-item.png')}" 
+                                     alt="${escapeHtml(data.item.name)}" 
+                                     style="width: 100px; height: 100px; object-fit: contain; border-radius: 8px;">
+                                <div>
+                                    <h4>${escapeHtml(data.item.name)}</h4>
+                                    <p>Seltenheit: <span class="rarity-badge rarity-${data.item.rarity}">${data.item.rarity}</span></p>
+                                    <p>Stil: ${escapeHtml(data.item.style || 'rpg')}</p>
+                                    ${data.fromCache ? '<p><em>Aus Cache geladen</em></p>' : ''}
+                                </div>
+                            </div>
+                        `;
+                        resultEl.classList.remove('hidden');
+                    }
+
+                    // Refresh stats
+                    loadFusionStats();
+                    loadFusionData();
+                } else {
+                    showMessage(`❌ Fusion fehlgeschlagen: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Fusion error:', error);
+                showMessage('❌ Fusion fehlgeschlagen', 'error');
+            } finally {
+                this.disabled = false;
+                this.textContent = '⚗️ Fusionieren';
+                updateFusionButton();
+            }
+        });
+
+        // Load fusion stats
+        async function loadFusionStats() {
+            try {
+                const response = await fetch('/api/streamalchemy/fusion/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const s = data.stats;
+                    document.getElementById('stat-total-fusions').textContent = s.totalFusions || 0;
+                    document.getElementById('stat-manual-fusions').textContent = s.manualFusions || 0;
+                    document.getElementById('stat-auto-fusions').textContent = s.autoFusions || 0;
+                    document.getElementById('stat-cache-hits').textContent = s.cacheHits || 0;
+                    document.getElementById('stat-siliconflow-generations').textContent = s.siliconFlowGenerations || 0;
+                    document.getElementById('stat-lightx-generations').textContent = s.lightxGenerations || 0;
+                    document.getElementById('stat-dalle-generations').textContent = s.dalleGenerations || 0;
+                }
+            } catch (error) {
+                console.error('Failed to load fusion stats:', error);
+            }
+        }
+
+        // Fusion config form submission
+        document.getElementById('fusion-config-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const updates = {
+                autoFusionEnabled: document.getElementById('autoFusionEnabled')?.checked || false,
+                preferredGenerator: document.getElementById('preferredGenerator')?.value || 'siliconflow',
+                defaultStyle: document.getElementById('defaultStyle')?.value || 'rpg'
+            };
+
+            try {
+                const response = await fetch('/api/streamalchemy/fusion/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('✅ Fusion-Einstellungen gespeichert!', 'success');
+                } else {
+                    showMessage('❌ Fehler beim Speichern', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to save fusion config:', error);
+                showMessage('❌ Fehler beim Speichern', 'error');
+            }
+        });
+
+        // ==================== TIERS FUNCTIONS ====================
+
+        let tiersConfig = null;
+
+        async function loadTiersData() {
+            try {
+                const response = await fetch('/api/streamalchemy/tiers/config');
+                const data = await response.json();
+                
+                if (data.success) {
+                    tiersConfig = data.config;
+                    
+                    // Update enabled checkbox
+                    const tierEnabledEl = document.getElementById('tierSystemEnabled');
+                    if (tierEnabledEl) {
+                        tierEnabledEl.checked = tiersConfig.enabled !== false;
+                    }
+                    
+                    // Render tier configs
+                    renderTiersConfig();
+                    renderFramePreviews();
+                }
+            } catch (error) {
+                console.error('Failed to load tiers data:', error);
+            }
+        }
+
+        function renderTiersConfig() {
+            const container = document.getElementById('tiers-config-container');
+            if (!container || !tiersConfig?.tiers) return;
+
+            container.innerHTML = tiersConfig.tiers.map((tier, index) => `
+                <div class="config-group tier-config-item" style="padding: 16px; background: var(--color-bg-secondary); border-radius: 8px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                        <span style="width: 24px; height: 24px; border-radius: 50%; background: ${escapeHtml(tier.color)}; display: inline-block;"></span>
+                        <strong>Stufe ${tier.level}: ${escapeHtml(tier.name)}</strong>
+                    </div>
+                    <div class="config-grid">
+                        <div>
+                            <label>Name:</label>
+                            <input type="text" data-tier="${tier.level}" data-field="name" value="${escapeHtml(tier.name)}" style="width: 100%;">
+                        </div>
+                        <div>
+                            <label>Farbe:</label>
+                            <input type="color" data-tier="${tier.level}" data-field="color" value="${tier.color}" style="width: 100%; height: 36px;">
+                        </div>
+                        <div>
+                            <label>Items für Upgrade:</label>
+                            <input type="number" data-tier="${tier.level}" data-field="itemsToUpgrade" 
+                                   value="${tier.itemsToUpgrade || ''}" 
+                                   placeholder="${tier.itemsToUpgrade === null ? 'Max Stufe' : ''}"
+                                   ${tier.itemsToUpgrade === null ? 'disabled' : ''}
+                                   min="1" max="100" style="width: 100%;">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderFramePreviews() {
+            const container = document.getElementById('frame-preview-container');
+            if (!container || !tiersConfig?.tiers) return;
+
+            container.innerHTML = tiersConfig.tiers.map(tier => `
+                <div class="config-group" style="text-align: center;">
+                    <div style="width: 80px; height: 80px; margin: 0 auto 8px; border: 3px solid ${tier.color}; border-radius: 8px; box-shadow: 0 0 10px ${tier.glowColor || tier.color}; display: flex; align-items: center; justify-content: center; background: var(--color-bg-secondary);">
+                        <span style="font-size: 24px;">📦</span>
+                    </div>
+                    <div style="font-weight: bold;">${escapeHtml(tier.name)}</div>
+                    <div style="color: var(--color-text-secondary); font-size: 12px;">Stufe ${tier.level}</div>
+                </div>
+            `).join('');
+        }
+
+        // Save tiers config
+        document.getElementById('saveTiersBtn')?.addEventListener('click', async () => {
+            if (!tiersConfig) return;
+
+            // Collect updated values
+            const updatedTiers = tiersConfig.tiers.map(tier => {
+                const nameInput = document.querySelector(`[data-tier="${tier.level}"][data-field="name"]`);
+                const colorInput = document.querySelector(`[data-tier="${tier.level}"][data-field="color"]`);
+                const upgradeInput = document.querySelector(`[data-tier="${tier.level}"][data-field="itemsToUpgrade"]`);
+
+                return {
+                    ...tier,
+                    name: nameInput?.value || tier.name,
+                    color: colorInput?.value || tier.color,
+                    itemsToUpgrade: upgradeInput?.value ? parseInt(upgradeInput.value) : tier.itemsToUpgrade
+                };
+            });
+
+            try {
+                const response = await fetch('/api/streamalchemy/tiers/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        enabled: document.getElementById('tierSystemEnabled')?.checked,
+                        tiers: updatedTiers
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('✅ Stufen-Einstellungen gespeichert!', 'success');
+                    tiersConfig = data.config;
+                    renderFramePreviews();
+                } else {
+                    showMessage('❌ Fehler beim Speichern', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to save tiers config:', error);
+                showMessage('❌ Fehler beim Speichern', 'error');
+            }
+        });
 
         // Initialize
         loadConfig();
