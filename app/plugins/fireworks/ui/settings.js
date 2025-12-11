@@ -7,6 +7,15 @@
 let config = {};
 let socket = null;
 
+// Benchmark configuration constants
+const BENCHMARK_CONFIG = {
+    WINDOW_LOAD_DELAY: 2000,      // Wait 2s for overlay window to fully load
+    TEST_DURATION: 10000,          // Each preset tested for 10 seconds
+    FIREWORK_INTERVAL: 500,        // Trigger firework every 500ms
+    FPS_SAMPLE_INTERVAL: 1000,     // Sample FPS every second
+    INTER_TEST_DELAY: 1000         // Wait 1s between different preset tests
+};
+
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
@@ -994,7 +1003,7 @@ async function startBenchmark() {
     }
     
     // Wait for window to load
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, BENCHMARK_CONFIG.WINDOW_LOAD_DELAY));
     
     // Run benchmark for each preset
     const presets = ['ultra', 'high', 'medium', 'low', 'toaster', 'potato'];
@@ -1013,7 +1022,7 @@ async function startBenchmark() {
         benchmarkResults.push(result);
         
         // Wait between tests
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, BENCHMARK_CONFIG.INTER_TEST_DELAY));
     }
     
     // Close benchmark window
@@ -1074,8 +1083,8 @@ async function runBenchmarkTest(presetName) {
 
 async function measureFPS() {
     // Trigger multiple fireworks to stress test
-    const testDuration = 10000; // 10 seconds
-    const fireworkInterval = 500; // Every 500ms
+    const testDuration = BENCHMARK_CONFIG.TEST_DURATION;
+    const fireworkInterval = BENCHMARK_CONFIG.FIREWORK_INTERVAL;
     
     let fpsReadings = [];
     
@@ -1106,7 +1115,7 @@ async function measureFPS() {
         } catch (e) {
             console.error('Failed to read FPS:', e);
         }
-    }, 1000);
+    }, BENCHMARK_CONFIG.FPS_SAMPLE_INTERVAL);
     
     // Wait for test duration
     await new Promise(resolve => setTimeout(resolve, testDuration));
@@ -1186,14 +1195,18 @@ function displayBenchmarkResults() {
         const msg = window.i18n ? window.i18n.t('fireworks.benchmark.no_good_presets') : 'No preset reaches 30 FPS. We recommend the "Potato" preset for your system.';
         const applyText = window.i18n ? window.i18n.t('fireworks.presets.apply') : 'Apply';
         
-        recommendationsDiv.innerHTML = `
-            <p class="text-yellow-300">
-                ⚠️ ${msg}
-            </p>
-            <button class="w-full mt-4 bg-green-500 hover:bg-green-600 py-3 rounded-lg font-bold transition" onclick="applyPreset('potato')">
-                🥔 Potato ${applyText}
-            </button>
-        `;
+        const btn = document.createElement('button');
+        btn.className = 'w-full mt-4 bg-green-500 hover:bg-green-600 py-3 rounded-lg font-bold transition';
+        btn.dataset.preset = 'potato';
+        btn.textContent = `🥔 Potato ${applyText}`;
+        btn.addEventListener('click', () => applyPreset('potato'));
+        
+        const para = document.createElement('p');
+        para.className = 'text-yellow-300';
+        para.textContent = `⚠️ ${msg}`;
+        
+        recommendationsDiv.appendChild(para);
+        recommendationsDiv.appendChild(btn);
     } else {
         recommendations.forEach((rec, index) => {
             const recDiv = document.createElement('div');
@@ -1205,15 +1218,21 @@ function displayBenchmarkResults() {
             
             const rank = index === 0 ? `🥇 ${bestChoice}` : `🥈 ${alternative}`;
             
-            recDiv.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <span class="font-bold">${rank}: ${rec.preset.toUpperCase()}</span>
-                    <span class="text-green-300 font-bold">${rec.avgFps.toFixed(1)} FPS</span>
-                </div>
-                <button class="w-full bg-green-500 hover:bg-green-600 py-2 rounded-lg font-bold transition" onclick="applyPreset('${rec.preset}')">
-                    ${applyText}
-                </button>
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'flex items-center justify-between mb-2';
+            headerDiv.innerHTML = `
+                <span class="font-bold">${rank}: ${rec.preset.toUpperCase()}</span>
+                <span class="text-green-300 font-bold">${rec.avgFps.toFixed(1)} FPS</span>
             `;
+            
+            const btn = document.createElement('button');
+            btn.className = 'w-full bg-green-500 hover:bg-green-600 py-2 rounded-lg font-bold transition';
+            btn.dataset.preset = rec.preset;
+            btn.textContent = applyText;
+            btn.addEventListener('click', () => applyPreset(rec.preset));
+            
+            recDiv.appendChild(headerDiv);
+            recDiv.appendChild(btn);
             
             recommendationsDiv.appendChild(recDiv);
         });
@@ -1241,6 +1260,3 @@ function loadBenchmarkResults() {
         console.error('Failed to load benchmark results:', e);
     }
 }
-
-// Make applyPreset available globally for onclick handlers
-window.applyPreset = applyPreset;

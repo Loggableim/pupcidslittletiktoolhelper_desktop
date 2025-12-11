@@ -1187,7 +1187,7 @@ class FireworksPlugin {
         // Remove socket event handler to prevent memory leaks
         if (this.fpsUpdateHandler) {
             const io = this.api.getSocketIO();
-            io.removeListener('connection', this.fpsUpdateHandler);
+            io.off('connection', this.fpsUpdateHandler);
             this.fpsUpdateHandler = null;
         }
         
