@@ -304,6 +304,42 @@ async function loadConfig() {
             }
         }
         
+        // Update safety settings UI
+        if (config.globalLimits) {
+            const maxIntEl = document.getElementById('globalMaxIntensity');
+            const maxIntValEl = document.getElementById('globalMaxIntensityValue');
+            const maxDurEl = document.getElementById('globalMaxDuration');
+            const maxDurValEl = document.getElementById('globalMaxDurationValue');
+            const maxCmdEl = document.getElementById('globalMaxCommandsPerMin');
+            
+            if (maxIntEl) maxIntEl.value = config.globalLimits.maxIntensity || 80;
+            if (maxIntValEl) maxIntValEl.textContent = config.globalLimits.maxIntensity || 80;
+            if (maxDurEl) maxDurEl.value = config.globalLimits.maxDuration || 5000;
+            if (maxDurValEl) maxDurValEl.textContent = config.globalLimits.maxDuration || 5000;
+            if (maxCmdEl) maxCmdEl.value = config.globalLimits.maxCommandsPerMinute || 30;
+        }
+        
+        if (config.defaultCooldowns) {
+            const globalCooldownEl = document.getElementById('globalCooldown');
+            if (globalCooldownEl) globalCooldownEl.value = config.defaultCooldowns.global || 500;
+        }
+        
+        if (config.userLimits) {
+            const minFollowerAgeEl = document.getElementById('minFollowerAge');
+            const maxCommandsEl = document.getElementById('maxCommandsPerUser');
+            const minPermLevelEl = document.getElementById('minPermissionLevel');
+            const reqSuperfanEl = document.getElementById('requireSuperfan');
+            const whitelistEl = document.getElementById('whitelist');
+            const blacklistEl = document.getElementById('blacklist');
+            
+            if (minFollowerAgeEl) minFollowerAgeEl.value = config.userLimits.minFollowerAge || 0;
+            if (maxCommandsEl) maxCommandsEl.value = config.userLimits.maxCommandsPerUser || 10;
+            if (minPermLevelEl) minPermLevelEl.value = config.userLimits.minPermissionLevel || 'all';
+            if (reqSuperfanEl) reqSuperfanEl.checked = config.userLimits.requireSuperfan || false;
+            if (whitelistEl) whitelistEl.value = (config.userLimits.whitelist || []).join(', ');
+            if (blacklistEl) blacklistEl.value = (config.userLimits.blacklist || []).join(', ');
+        }
+        
         // Update emergency stop button state
         updateEmergencyStopButtons(config?.emergencyStop?.enabled || false);
 
@@ -2174,17 +2210,50 @@ async function loadSafetyConfig() {
 }
 
 async function saveSafetyConfig() {
-    const safety = {
-        maxIntensity: parseInt(document.getElementById('safety-max-intensity').value),
-        maxDuration: parseInt(document.getElementById('safety-max-duration').value),
-        cooldown: parseInt(document.getElementById('safety-cooldown').value)
+    // Gather global limits
+    const globalLimits = {
+        maxIntensity: parseInt(document.getElementById('globalMaxIntensity')?.value || 80),
+        maxDuration: parseInt(document.getElementById('globalMaxDuration')?.value || 5000),
+        maxCommandsPerMinute: parseInt(document.getElementById('globalMaxCommandsPerMin')?.value || 30)
+    };
+    
+    // Gather default cooldowns
+    const defaultCooldowns = {
+        global: parseInt(document.getElementById('globalCooldown')?.value || 500),
+        perDevice: 3000, // Keep existing perDevice cooldown
+        perUser: 10000   // Keep existing perUser cooldown
+    };
+    
+    // Gather user limits
+    const minPermissionLevel = document.getElementById('minPermissionLevel')?.value || 'all';
+    const requireSuperfan = document.getElementById('requireSuperfan')?.checked || false;
+    const minFollowerAge = parseInt(document.getElementById('minFollowerAge')?.value || 0);
+    const maxCommandsPerUser = parseInt(document.getElementById('maxCommandsPerUser')?.value || 10);
+    
+    // Parse whitelist and blacklist
+    const whitelistInput = document.getElementById('whitelist')?.value || '';
+    const blacklistInput = document.getElementById('blacklist')?.value || '';
+    const whitelist = whitelistInput.split(',').map(u => u.trim()).filter(u => u.length > 0);
+    const blacklist = blacklistInput.split(',').map(u => u.trim()).filter(u => u.length > 0);
+    
+    const userLimits = {
+        minFollowerAge,
+        maxCommandsPerUser,
+        minPermissionLevel,
+        requireSuperfan,
+        whitelist,
+        blacklist
     };
 
     try {
         const response = await fetch('/api/openshock/safety', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(safety)
+            body: JSON.stringify({
+                globalLimits,
+                defaultCooldowns,
+                userLimits
+            })
         });
 
         if (!response.ok) throw new Error('Failed to save safety config');

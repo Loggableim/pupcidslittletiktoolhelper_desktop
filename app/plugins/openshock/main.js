@@ -2064,6 +2064,7 @@ class OpenShockPlugin {
                 intensity: item.intensity,
                 duration: item.duration,
                 userId: item.userId,
+                userData: item.userData || item.sourceData, // Pass full user data for permission checking
                 source: item.source
             });
 

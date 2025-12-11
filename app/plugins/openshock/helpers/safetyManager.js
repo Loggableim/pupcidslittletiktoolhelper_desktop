@@ -26,6 +26,8 @@ class SafetyManager {
       userLimits: {
         minFollowerAge: 7,
         maxCommandsPerUser: 10,
+        minPermissionLevel: 'all',
+        requireSuperfan: false,
         whitelist: [],
         blacklist: []
       },
@@ -112,14 +114,15 @@ class SafetyManager {
    * @param {number} params.intensity - Intensity (1-100)
    * @param {number} params.duration - Duration in milliseconds
    * @param {string} params.userId - User ID
+   * @param {Object} [params.userData] - Full user data object with permissions
    * @param {string} [params.source] - Command source (for logging)
    * @returns {Object} { allowed: boolean, reason: string, adjustedIntensity: number, adjustedDuration: number }
    */
   validateCommand(params) {
-    const { deviceId, type, intensity, duration, userId, source } = params;
+    const { deviceId, type, intensity, duration, userId, userData, source } = params;
     
     const command = { type, intensity, duration, source };
-    const result = this.checkCommand(command, userId, deviceId);
+    const result = this.checkCommand(command, userId, deviceId, userData);
     
     // If allowed, extract adjusted values from modifiedCommand
     if (result.allowed && result.modifiedCommand) {
@@ -145,9 +148,10 @@ class SafetyManager {
    * @param {Object} command - Command object { type, intensity, duration }
    * @param {string} userId - User ID
    * @param {string} deviceId - Device ID
+   * @param {Object} [userData] - Full user data object with permissions
    * @returns {Object} { allowed: boolean, reason: string, modifiedCommand: Object }
    */
-  checkCommand(command, userId, deviceId) {
+  checkCommand(command, userId, deviceId, userData = null) {
     // Emergency stop check
     if (this.isEmergencyStopActive()) {
       return {
@@ -170,6 +174,30 @@ class SafetyManager {
     // User limits check (skip for whitelisted users)
     const whitelisted = this.checkWhitelist(userId);
     if (!whitelisted) {
+      // Permission level check
+      if (userData && this.config.userLimits.minPermissionLevel && this.config.userLimits.minPermissionLevel !== 'all') {
+        const permissionCheck = this.checkPermissionLevel(userData);
+        if (!permissionCheck.allowed) {
+          return {
+            allowed: false,
+            reason: permissionCheck.reason,
+            modifiedCommand: null
+          };
+        }
+      }
+      
+      // Superfan check
+      if (userData && this.config.userLimits.requireSuperfan) {
+        const superfanCheck = this.checkSuperfan(userData);
+        if (!superfanCheck.allowed) {
+          return {
+            allowed: false,
+            reason: superfanCheck.reason,
+            modifiedCommand: null
+          };
+        }
+      }
+      
       const userLimitsCheck = this.checkUserLimits(userId);
       if (!userLimitsCheck.allowed) {
         return {
@@ -388,6 +416,75 @@ class SafetyManager {
   checkWhitelist(userId) {
     const whitelist = this.config.userLimits.whitelist || [];
     return whitelist.includes(userId);
+  }
+
+  /**
+   * Check user permission level (integrates with GCCE permission system)
+   * @param {Object} userData - User data object
+   * @returns {Object} { allowed: boolean, reason: string }
+   */
+  checkPermissionLevel(userData) {
+    const requiredLevel = this.config.userLimits.minPermissionLevel || 'all';
+    
+    if (requiredLevel === 'all') {
+      return { allowed: true, reason: 'No permission requirement' };
+    }
+    
+    // Permission hierarchy (same as GCCE)
+    const PERMISSION_HIERARCHY = ['all', 'subscriber', 'vip', 'moderator', 'broadcaster'];
+    
+    // Determine user role from TikTok data
+    let userRole = 'all';
+    
+    if (userData.isBroadcaster || userData.isHost) {
+      userRole = 'broadcaster';
+    } else if (userData.isModerator || userData.teamMemberLevel > 0) {
+      userRole = 'moderator';
+    } else if (userData.isSubscriber) {
+      userRole = 'subscriber';
+    } else if (userData.isFollower) {
+      userRole = 'vip';
+    }
+    
+    const userLevel = PERMISSION_HIERARCHY.indexOf(userRole);
+    const requiredLevelIndex = PERMISSION_HIERARCHY.indexOf(requiredLevel);
+    
+    if (userLevel === -1 || requiredLevelIndex === -1) {
+      this.logger.warn(`[SafetyManager] Unknown permission level: ${userRole}/${requiredLevel}`);
+      return { allowed: userRole === requiredLevel, reason: 'Unknown permission level' };
+    }
+    
+    if (userLevel >= requiredLevelIndex) {
+      return { allowed: true, reason: 'Permission granted' };
+    }
+    
+    return {
+      allowed: false,
+      reason: `Insufficient permissions. Required: ${requiredLevel}, User: ${userRole}`
+    };
+  }
+
+  /**
+   * Check if user is a superfan
+   * @param {Object} userData - User data object
+   * @returns {Object} { allowed: boolean, reason: string }
+   */
+  checkSuperfan(userData) {
+    if (!this.config.userLimits.requireSuperfan) {
+      return { allowed: true, reason: 'Superfan not required' };
+    }
+    
+    // Check for superfan badge or top gifter status
+    const isSuperfan = userData.isSuperfan || userData.topGifter || userData.isSuperFan;
+    
+    if (isSuperfan) {
+      return { allowed: true, reason: 'User is a superfan' };
+    }
+    
+    return {
+      allowed: false,
+      reason: 'Superfan status required'
+    };
   }
 
   /**
