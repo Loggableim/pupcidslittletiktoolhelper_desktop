@@ -39,10 +39,13 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
 
     /**
      * GET /api/plugins - Liste aller Plugins
+     * Query parameters:
+     *   - locale: Language code for descriptions (en, de, es, fr) - default: en
      */
     app.get('/api/plugins', limiter, (req, res) => {
         try {
-            const plugins = pluginLoader.getAllPlugins();
+            const locale = req.query.locale || 'en';
+            const plugins = pluginLoader.getAllPlugins(locale);
 
             // Zusätzlich auch disabled Plugins aus dem State laden
             const pluginsDir = pluginLoader.pluginsDir;
@@ -82,10 +85,15 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
                             if (!exists) {
                                 // Plugin ist nicht geladen - Status aus State-Datei lesen
                                 const state = pluginLoader.state[manifest.id] || {};
+                                
+                                // Get localized description
+                                const description = pluginLoader.getLocalizedDescription(manifest, locale);
+                                
                                 allPlugins.push({
                                     id: manifest.id,
                                     name: manifest.name,
-                                    description: manifest.description,
+                                    description: description,
+                                    descriptions: manifest.descriptions, // Include all descriptions
                                     version: manifest.version,
                                     author: manifest.author,
                                     type: manifest.type,
@@ -116,10 +124,13 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
 
     /**
      * GET /api/plugins/:id - Plugin-Details
+     * Query parameters:
+     *   - locale: Language code for descriptions (en, de, es, fr) - default: en
      */
     app.get('/api/plugins/:id', limiter, (req, res) => {
         try {
             const { id } = req.params;
+            const locale = req.query.locale || 'en';
             const plugin = pluginLoader.getPlugin(id);
 
             if (!plugin) {
@@ -134,7 +145,8 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
                 plugin: {
                     id: plugin.manifest.id,
                     name: plugin.manifest.name,
-                    description: plugin.manifest.description,
+                    description: pluginLoader.getLocalizedDescription(plugin.manifest, locale),
+                    descriptions: plugin.manifest.descriptions, // Include all descriptions
                     version: plugin.manifest.version,
                     author: plugin.manifest.author,
                     type: plugin.manifest.type,
