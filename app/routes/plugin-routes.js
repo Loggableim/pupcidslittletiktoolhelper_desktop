@@ -95,7 +95,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
                             }
                         } catch (error) {
                             // Skip plugins with invalid or malformed plugin.json
-                            logger.warn(`Skipping plugin ${entry.name}: ${error.message}`);
+                            logger.warn(`Skipping plugin ${entry.name} due to malformed plugin.json: ${error.message}`);
                         }
                     }
                 }

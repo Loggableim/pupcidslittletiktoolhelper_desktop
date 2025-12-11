@@ -119,7 +119,7 @@ console.log('======================\n');
 console.log('Summary:');
 console.log('--------');
 console.log('✓ All plugin manifests have correct default enabled states');
-console.log('✓ 11 plugins enabled by default (advanced-timer, coinbattle, config-import, goals, lastevent-spotlight, leaderboard, openshock, quiz_show, soundboard, tts, webgpu-emoji-rain)');
+console.log(`✓ ${expectedActive.length} plugins enabled by default (${expectedActive.join(', ')})`);
 console.log('✓ State file logic correctly overrides manifest defaults');
 console.log('✓ Partial state handling works correctly');
 console.log('✓ State file persistence mechanism verified');
