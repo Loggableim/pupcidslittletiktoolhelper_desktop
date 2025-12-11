@@ -373,19 +373,12 @@ class ChatangoPlugin {
         const config = this.generateEmbedCode(type, theme);
         const id = `cid${Date.now()}`;
         
-        // Sanitize dimensions
-        const sanitizeSize = (val, defaultVal) => {
-            if (typeof val === 'number') return Math.max(0, Math.min(1000, val));
-            if (typeof val === 'string' && /^[\d]+(%|px)?$/.test(val)) return val;
-            return defaultVal;
-        };
-        
         const width = type === 'widget' 
-            ? `${sanitizeSize(config.width, 200)}px` 
-            : sanitizeSize(config.width, '100%');
+            ? this.sanitizeSize(config.width, '200px')
+            : this.sanitizeSize(config.width, '100%');
         const height = type === 'widget' 
-            ? `${sanitizeSize(config.height, 300)}px` 
-            : sanitizeSize(config.height, '100%');
+            ? this.sanitizeSize(config.height, '300px')
+            : this.sanitizeSize(config.height, '100%');
         const styleAttr = `width: ${width};height: ${height};`;
 
         // Sanitize handle to prevent injection
@@ -424,6 +417,23 @@ class ChatangoPlugin {
     }
 
     /**
+     * Validate and sanitize dimensions for safe use in styles
+     * @param {*} val - Value to sanitize
+     * @param {string|number} defaultVal - Default value if validation fails
+     * @returns {string} Sanitized dimension value
+     */
+    sanitizeSize(val, defaultVal = '100%') {
+        if (typeof val === 'number') {
+            const clamped = Math.max(0, Math.min(1000, val));
+            return `${clamped}px`;
+        }
+        if (typeof val === 'string' && /^[\d]+(%|px)?$/.test(val)) {
+            return val;
+        }
+        return defaultVal;
+    }
+
+    /**
      * Generate complete HTML document with Chatango embed
      * This is used by iframe-based embedding to avoid CSP issues with dynamic script injection
      * @param {string} type - 'dashboard' or 'widget'
@@ -434,15 +444,12 @@ class ChatangoPlugin {
         const embedConfig = this.generateEmbedCode(type, theme);
         const scriptTag = this.generateScriptTag(type, theme);
         
-        // Sanitize dimensions for inline style (already validated in generateEmbedCode)
-        const sanitizeSize = (val) => {
-            if (typeof val === 'number') return `${Math.max(0, Math.min(1000, val))}px`;
-            if (typeof val === 'string' && /^[\d]+(%|px)?$/.test(val)) return val;
-            return '100%';
-        };
-        
-        const width = type === 'widget' ? sanitizeSize(embedConfig.width) : '100%';
-        const height = type === 'widget' ? sanitizeSize(embedConfig.height) : '100%';
+        const width = type === 'widget' 
+            ? this.sanitizeSize(embedConfig.width, '200px')
+            : this.sanitizeSize(embedConfig.width, '100%');
+        const height = type === 'widget' 
+            ? this.sanitizeSize(embedConfig.height, '300px')
+            : this.sanitizeSize(embedConfig.height, '100%');
         
         return `<!DOCTYPE html>
 <html lang="en">

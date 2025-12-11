@@ -330,15 +330,29 @@ class ChatangoThemeAdapter {
         iframe.id = this.generateUniqueId('chatango-widget-iframe');
         iframe.src = `/chatango/embed/widget?theme=${encodeURIComponent(theme)}`;
         
-        // Widget has fixed dimensions from config
+        // Widget has fixed dimensions from config - sanitize to prevent CSS injection
         const config = this.pluginConfig || this.getDefaultConfig();
-        iframe.style.width = `${config.widgetWidth || 200}px`;
-        iframe.style.height = `${config.widgetHeight || 300}px`;
+        const sanitizeDimension = (val, defaultVal) => {
+            // Only allow positive integers
+            const parsed = parseInt(val, 10);
+            if (isNaN(parsed) || parsed < 50 || parsed > 1000) {
+                return defaultVal;
+            }
+            return parsed;
+        };
+        
+        const widgetWidth = sanitizeDimension(config.widgetWidth, 200);
+        const widgetHeight = sanitizeDimension(config.widgetHeight, 300);
+        
+        iframe.style.width = `${widgetWidth}px`;
+        iframe.style.height = `${widgetHeight}px`;
         iframe.style.border = 'none';
         iframe.style.position = 'fixed';
         
-        // Position the widget based on config
-        const position = config.widgetPosition || 'br';
+        // Position the widget based on config - validate position value
+        const validPositions = ['br', 'bl', 'tr', 'tl'];
+        const position = validPositions.includes(config.widgetPosition) ? config.widgetPosition : 'br';
+        
         if (position === 'br') {
             iframe.style.bottom = '10px';
             iframe.style.right = '10px';
