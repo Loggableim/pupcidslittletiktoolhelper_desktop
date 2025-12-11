@@ -1,6 +1,7 @@
 let socket = null;
 let goals = [];
 let editingGoalId = null;
+let previewUpdateTimer = null;
 
 // Initialize
 function init() {
@@ -49,6 +50,9 @@ function init() {
         document.getElementById('increment-amount-group').style.display =
             e.target.value === 'increment' ? 'block' : 'none';
     });
+
+    // Setup preview update listeners
+    setupPreviewListeners();
 }
 
 function renderGoals() {
@@ -122,8 +126,9 @@ function openCreateModal() {
     document.getElementById('goal-form').reset();
     document.getElementById('goal-modal').classList.add('active');
     
-    // Focus the first input field after a brief delay to ensure modal is visible
+    // Update preview with default values
     setTimeout(() => {
+        updatePreview();
         const firstInput = document.getElementById('goal-name');
         if (firstInput) {
             firstInput.focus();
@@ -154,8 +159,9 @@ function editGoal(id) {
 
     document.getElementById('goal-modal').classList.add('active');
     
-    // Focus the first input field after a brief delay to ensure modal is visible
+    // Update preview with current goal values
     setTimeout(() => {
+        updatePreview();
         const firstInput = document.getElementById('goal-name');
         if (firstInput) {
             firstInput.focus();
@@ -318,4 +324,147 @@ document.getElementById('cancel-goal-btn').addEventListener('click', closeModal)
 const initialCreateBtn = document.getElementById('create-first-goal-initial-btn');
 if (initialCreateBtn) {
     initialCreateBtn.addEventListener('click', openCreateModal);
+}
+
+// ============================================================================
+// PREVIEW FUNCTIONALITY
+// ============================================================================
+
+/**
+ * Setup event listeners for preview updates
+ */
+function setupPreviewListeners() {
+    const fieldsToWatch = [
+        'goal-name',
+        'goal-type',
+        'goal-template',
+        'goal-start',
+        'goal-target'
+    ];
+
+    fieldsToWatch.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('input', updatePreviewDebounced);
+            field.addEventListener('change', updatePreviewDebounced);
+        }
+    });
+}
+
+/**
+ * Debounced preview update to avoid excessive rendering
+ */
+function updatePreviewDebounced() {
+    if (previewUpdateTimer) {
+        clearTimeout(previewUpdateTimer);
+    }
+    previewUpdateTimer = setTimeout(updatePreview, 150);
+}
+
+/**
+ * Update the live preview with current form values
+ */
+function updatePreview() {
+    const previewFrame = document.getElementById('goal-preview-frame');
+    if (!previewFrame) return;
+
+    // Get current form values
+    const name = document.getElementById('goal-name').value || 'Sample Goal';
+    const goalType = document.getElementById('goal-type').value || 'coin';
+    const templateId = document.getElementById('goal-template').value || 'compact-bar';
+    const startValue = parseInt(document.getElementById('goal-start').value) || 0;
+    const targetValue = parseInt(document.getElementById('goal-target').value) || 1000;
+
+    // Create mock goal object for preview
+    const mockGoal = {
+        id: 'preview',
+        name: name,
+        goal_type: goalType,
+        template_id: templateId,
+        current_value: Math.floor(startValue + (targetValue - startValue) * 0.65), // Show 65% progress
+        target_value: targetValue,
+        start_value: startValue
+    };
+
+    // Get the template
+    const template = getTemplate(templateId);
+    if (!template) {
+        previewFrame.innerHTML = '<div class="preview-loading">Template not found</div>';
+        return;
+    }
+
+    // Get default theme
+    const theme = getDefaultTheme(goalType);
+
+    // Render the preview
+    try {
+        const html = template.render(mockGoal, theme);
+        const styles = template.getStyles(theme);
+
+        previewFrame.innerHTML = `
+            <style>${styles}</style>
+            ${html}
+        `;
+    } catch (error) {
+        console.error('Preview render error:', error);
+        previewFrame.innerHTML = '<div class="preview-loading">Error rendering preview</div>';
+    }
+}
+
+/**
+ * Get default theme colors based on goal type
+ */
+function getDefaultTheme(goalType) {
+    const themes = {
+        coin: {
+            primaryColor: '#fbbf24',
+            secondaryColor: '#f59e0b',
+            textColor: '#ffffff',
+            bgColor: 'rgba(15, 23, 42, 0.95)'
+        },
+        likes: {
+            primaryColor: '#f87171',
+            secondaryColor: '#ef4444',
+            textColor: '#ffffff',
+            bgColor: 'rgba(15, 23, 42, 0.95)'
+        },
+        follower: {
+            primaryColor: '#60a5fa',
+            secondaryColor: '#3b82f6',
+            textColor: '#ffffff',
+            bgColor: 'rgba(15, 23, 42, 0.95)'
+        },
+        custom: {
+            primaryColor: '#a78bfa',
+            secondaryColor: '#8b5cf6',
+            textColor: '#ffffff',
+            bgColor: 'rgba(15, 23, 42, 0.95)'
+        }
+    };
+
+    return themes[goalType] || themes.custom;
+}
+
+/**
+ * Get template by ID (uses shared templates from templates-shared.js)
+ */
+function getTemplate(id) {
+    if (!window.GoalTemplates) {
+        console.error('GoalTemplates not loaded');
+        return null;
+    }
+
+    const templateMap = {
+        'compact-bar': window.GoalTemplates.CompactBarTemplate,
+        'full-width': window.GoalTemplates.FullWidthTemplate,
+        'minimal-counter': window.GoalTemplates.MinimalCounterTemplate,
+        'circular-progress': window.GoalTemplates.CircularProgressTemplate,
+        'floating-pill': window.GoalTemplates.FloatingPillTemplate,
+        'vertical-meter': window.GoalTemplates.VerticalMeterTemplate,
+        'neon-glow': window.GoalTemplates.NeonGlowTemplate,
+        'hexagon-progress': window.GoalTemplates.HexagonProgressTemplate,
+        'glassy-card': window.GoalTemplates.GlassyCardTemplate
+    };
+
+    return templateMap[id] || templateMap['compact-bar'];
 }
