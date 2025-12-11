@@ -11,5 +11,11 @@
     "routes",
     "tiktok-events",
     "database"
-  ]
+  ],
+  "descriptions": {
+    "en": "Customizable HUD overlay system with text and image display via chat commands. Integrated with Global Chat Command Engine for dynamic content control.",
+    "de": "Anpassbares HUD-Overlay-System mit Text- und Bildanzeige über Chat-Befehle. Integriert mit Global Chat Command Engine für dynamische Inhaltssteuerung.",
+    "es": "Sistema de overlay HUD personalizable con visualización de texto e imágenes mediante comandos de chat. Integrado con Global Chat Command Engine para control de contenido dinámico.",
+    "fr": "Système d'overlay HUD personnalisable avec affichage de texte et images via commandes de chat. Intégré avec Global Chat Command Engine pour contrôle de contenu dynamique."
+  }
 }

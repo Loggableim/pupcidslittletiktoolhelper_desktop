@@ -7,7 +7,10 @@
   "entry": "main.js",
   "enabled": true,
   "type": "core",
-  "dependencies": ["axios", "franc-min"],
+  "dependencies": [
+    "axios",
+    "franc-min"
+  ],
   "permissions": [
     "socket.io",
     "routes",
@@ -35,7 +38,7 @@
     "defaultEngine": "tiktok",
     "defaultVoice": "en_us_ghostface",
     "volume": 80,
-    "speed": 1.0,
+    "speed": 1,
     "teamMinLevel": 0,
     "rateLimit": 3,
     "rateLimitWindow": 60,
@@ -44,5 +47,11 @@
     "profanityFilter": "moderate",
     "duckOtherAudio": false,
     "duckVolume": 0.3
+  },
+  "descriptions": {
+    "en": "Enterprise-grade TTS plugin with multi-engine support (TikTok, Google Cloud, Speechify, ElevenLabs), permission system, language detection, caching, and queue management.",
+    "de": "Enterprise-Grade-TTS-Plugin mit Multi-Engine-Unterstützung (TikTok, Google Cloud, Speechify, ElevenLabs), Berechtigungssystem, Spracherkennung, Caching und Queue-Management.",
+    "es": "Plugin TTS de nivel empresarial con soporte multi-motor (TikTok, Google Cloud, Speechify, ElevenLabs), sistema de permisos, detección de idioma, almacenamiento en caché y gestión de colas.",
+    "fr": "Plugin TTS de niveau entreprise avec support multi-moteur (TikTok, Google Cloud, Speechify, ElevenLabs), système de permissions, détection de langue, mise en cache et gestion de file d'attente."
   }
 }
