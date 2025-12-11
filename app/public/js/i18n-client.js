@@ -405,13 +405,18 @@ const handleLanguageChange = async (data, fromPostMessage = false) => {
                 const iframes = document.querySelectorAll('iframe');
                 iframes.forEach(iframe => {
                     try {
-                        iframe.contentWindow.postMessage({
-                            type: 'language-changed',
-                            locale: newLocale
-                        }, window.location.origin);
+                        // Check if iframe is accessible (same origin)
+                        // This will throw if cross-origin
+                        const iframeWindow = iframe.contentWindow;
+                        if (iframeWindow) {
+                            iframeWindow.postMessage({
+                                type: 'language-changed',
+                                locale: newLocale
+                            }, window.location.origin);
+                        }
                     } catch (e) {
-                        // Cross-origin iframe, skip
-                        console.debug('[i18n] Could not send language change to iframe (cross-origin):', e);
+                        // Iframe not accessible (cross-origin, not loaded, security restrictions, etc.)
+                        console.debug('[i18n] Could not send language change to iframe:', e.message);
                     }
                 });
             }
