@@ -153,6 +153,11 @@ class QuizShowPlugin {
         // Register TikTok event handlers
         this.registerTikTokEvents();
 
+        // Register GCCE commands if enabled
+        if (this.config.useGCCE) {
+            this.registerGCCECommands();
+        }
+
         this.api.log('Quiz Show Plugin initialized successfully', 'info');
     }
 
@@ -2948,7 +2953,23 @@ class QuizShowPlugin {
             return; // Not a valid joker command
         }
         
-        const jokerSuffix = command.substring(prefix.length);
+        let jokerSuffix = command.substring(prefix.length).trim();
+        
+        // If no suffix provided (just "!joker"), automatically select first available joker
+        if (jokerSuffix === '' || jokerSuffix === 's') { // Handle "!joker" or "!jokers"
+            // Priority order: 50 -> time -> info -> 25
+            if (this.config.joker50Enabled && this.gameState.jokersUsed['50'] === 0) {
+                jokerSuffix = '50';
+            } else if (this.config.jokerTimeEnabled && this.gameState.jokersUsed['time'] === 0) {
+                jokerSuffix = 'time';
+            } else if (this.config.jokerInfoEnabled && this.gameState.jokersUsed['info'] === 0) {
+                jokerSuffix = 'info';
+            } else if (this.config.joker25Enabled && this.gameState.jokersUsed['25'] === 0) {
+                jokerSuffix = '25';
+            } else {
+                return; // No jokers available
+            }
+        }
 
         if (jokerSuffix === '25' && this.config.joker25Enabled && this.gameState.jokersUsed['25'] === 0) {
             // 25% Joker - removes 1 wrong answer
@@ -3447,6 +3468,11 @@ class QuizShowPlugin {
             clearInterval(this.timerInterval);
         }
 
+        // Unregister GCCE commands
+        if (this.config.useGCCE) {
+            this.unregisterGCCECommands();
+        }
+
         // Close database connection
         if (this.db) {
             this.db.close();
@@ -3455,6 +3481,152 @@ class QuizShowPlugin {
         await this.saveConfig();
 
         this.api.log('Quiz Show Plugin destroyed', 'info');
+    }
+    
+    /**
+     * Register GCCE commands for quiz jokers
+     */
+    registerGCCECommands() {
+        const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
+        if (!gccePlugin?.instance) {
+            this.api.log('GCCE plugin not found - skipping command registration', 'warn');
+            return;
+        }
+
+        const gcce = gccePlugin.instance;
+        
+        const commands = [
+            {
+                name: 'joker',
+                description: 'Aktiviert einen Joker (50, 25, time, info)',
+                syntax: '/joker [type]',
+                permission: this.config.jokerSuperfanOnly ? 'subscriber' : 'all',
+                enabled: true,
+                minArgs: 0,
+                maxArgs: 1,
+                category: 'Quiz',
+                handler: async (args, context) => {
+                    // Check if quiz is running
+                    if (!this.gameState.isRunning) {
+                        return {
+                            success: false,
+                            message: 'Kein Quiz aktiv',
+                            responseType: 'silent'
+                        };
+                    }
+                    
+                    // Build joker command
+                    const jokerType = args[0] || ''; // Empty string for auto-select
+                    const command = `${this.config.jokerCommandPrefix}${jokerType}`;
+                    
+                    // Call handleJokerCommand
+                    this.handleJokerCommand(context.userId, context.username, command, false);
+                    
+                    return {
+                        success: true,
+                        message: `Joker aktiviert!`,
+                        responseType: 'chat'
+                    };
+                }
+            },
+            {
+                name: 'joker50',
+                description: 'Aktiviert den 50:50 Joker',
+                syntax: '/joker50',
+                permission: this.config.jokerSuperfanOnly ? 'subscriber' : 'all',
+                enabled: this.config.joker50Enabled,
+                minArgs: 0,
+                maxArgs: 0,
+                category: 'Quiz',
+                handler: async (args, context) => {
+                    if (!this.gameState.isRunning) {
+                        return { success: false, message: 'Kein Quiz aktiv', responseType: 'silent' };
+                    }
+                    this.handleJokerCommand(context.userId, context.username, `${this.config.jokerCommandPrefix}50`, false);
+                    return { success: true, message: '50:50 Joker aktiviert!', responseType: 'chat' };
+                }
+            },
+            {
+                name: 'joker25',
+                description: 'Aktiviert den 25% Joker',
+                syntax: '/joker25',
+                permission: this.config.jokerSuperfanOnly ? 'subscriber' : 'all',
+                enabled: this.config.joker25Enabled,
+                minArgs: 0,
+                maxArgs: 0,
+                category: 'Quiz',
+                handler: async (args, context) => {
+                    if (!this.gameState.isRunning) {
+                        return { success: false, message: 'Kein Quiz aktiv', responseType: 'silent' };
+                    }
+                    this.handleJokerCommand(context.userId, context.username, `${this.config.jokerCommandPrefix}25`, false);
+                    return { success: true, message: '25% Joker aktiviert!', responseType: 'chat' };
+                }
+            },
+            {
+                name: 'jokertime',
+                description: 'Aktiviert den Zeit Joker',
+                syntax: '/jokertime',
+                permission: this.config.jokerSuperfanOnly ? 'subscriber' : 'all',
+                enabled: this.config.jokerTimeEnabled,
+                minArgs: 0,
+                maxArgs: 0,
+                category: 'Quiz',
+                handler: async (args, context) => {
+                    if (!this.gameState.isRunning) {
+                        return { success: false, message: 'Kein Quiz aktiv', responseType: 'silent' };
+                    }
+                    this.handleJokerCommand(context.userId, context.username, `${this.config.jokerCommandPrefix}time`, false);
+                    return { success: true, message: 'Zeit Joker aktiviert!', responseType: 'chat' };
+                }
+            },
+            {
+                name: 'jokerinfo',
+                description: 'Aktiviert den Info Joker',
+                syntax: '/jokerinfo',
+                permission: this.config.jokerSuperfanOnly ? 'subscriber' : 'all',
+                enabled: this.config.jokerInfoEnabled,
+                minArgs: 0,
+                maxArgs: 0,
+                category: 'Quiz',
+                handler: async (args, context) => {
+                    if (!this.gameState.isRunning) {
+                        return { success: false, message: 'Kein Quiz aktiv', responseType: 'silent' };
+                    }
+                    this.handleJokerCommand(context.userId, context.username, `${this.config.jokerCommandPrefix}info`, false);
+                    return { success: true, message: 'Info Joker aktiviert!', responseType: 'chat' };
+                }
+            }
+        ];
+
+        try {
+            const result = gcce.registerCommandsForPlugin('quiz_show', commands);
+            
+            if (result.registered.length > 0) {
+                this.api.log(`✅ Registered ${result.registered.length} Quiz Show commands with GCCE: ${result.registered.join(', ')}`, 'info');
+            }
+            
+            if (result.failed.length > 0) {
+                this.api.log(`⚠️ Failed to register ${result.failed.length} commands: ${result.failed.join(', ')}`, 'warn');
+            }
+        } catch (error) {
+            this.api.log('Error registering GCCE commands: ' + error.message, 'error');
+        }
+    }
+    
+    /**
+     * Unregister GCCE commands
+     */
+    unregisterGCCECommands() {
+        const gccePlugin = this.api.pluginLoader?.loadedPlugins?.get('gcce');
+        if (gccePlugin?.instance) {
+            try {
+                gccePlugin.instance.unregisterCommandsForPlugin('quiz_show');
+                this.api.log('Quiz Show commands unregistered from GCCE', 'debug');
+            } catch (error) {
+                this.api.log('Error unregistering GCCE commands: ' + error.message, 'error');
+            }
+        }
     }
 }
 
