@@ -405,8 +405,9 @@ const handleLanguageChange = async (data, fromPostMessage = false) => {
                 const iframes = document.querySelectorAll('iframe');
                 iframes.forEach(iframe => {
                     try {
-                        // Access contentWindow - will succeed for same-origin iframes
-                        // but posting the message may still fail for security reasons
+                        // Note: contentWindow is accessible even for cross-origin iframes,
+                        // but postMessage will succeed/fail based on actual permissions.
+                        // The try-catch handles all failure scenarios (cross-origin, security, etc.)
                         const iframeWindow = iframe.contentWindow;
                         if (iframeWindow) {
                             iframeWindow.postMessage({
@@ -447,6 +448,9 @@ if (typeof io !== 'undefined') {
 // Listen for postMessage from parent window (for iframe language sync)
 window.addEventListener('message', (event) => {
     // Accept messages from same origin for security
+    // Note: Exact origin matching is intentional. All plugin UIs are served from
+    // the same origin (the app server), so subdomain/parent domain matching is
+    // unnecessary and would reduce security.
     if (event.origin !== window.location.origin) {
         return;
     }
