@@ -10,9 +10,10 @@
 ## 📑 Navigation
 
 ### Erste Schritte
-- **[[Installation & Setup]]** - Systemanforderungen, Installation und erste Schritte
+- **[[Getting-Started]]** - Schnelleinstieg in 5 Minuten
+- **[[Installation-&-Setup]]** - Systemanforderungen, Installation und erste Schritte
 - **[[Konfiguration]]** - Einstellungen, Config-Dateien und Umgebungsvariablen
-- **[[FAQ & Troubleshooting]]** - Häufige Probleme, Lösungen und Debug-Tipps
+- **[[FAQ-&-Troubleshooting]]** - Häufige Probleme, Lösungen und Debug-Tipps
 
 ### Entwickler-Ressourcen
 - **[[Architektur]]** - Technische Architektur, Module und Datenflüsse
