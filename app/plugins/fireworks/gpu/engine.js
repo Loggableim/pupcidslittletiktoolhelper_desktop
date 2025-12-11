@@ -25,6 +25,9 @@
 // CONFIGURATION
 // ============================================================================
 
+// Debug flag - set to true to enable console.log statements
+const DEBUG = false;
+
 const CONFIG = {
     maxFireworks: 100,
     maxParticlesPerExplosion: 200,
@@ -272,7 +275,8 @@ class Firework {
             tier: 'medium',
             combo: 1,
             skipRocket: false, // Skip rocket animation for high combos
-            instantExplode: false // Explode immediately without delay
+            instantExplode: false, // Explode immediately without delay
+            engineFps: 60 // Current engine FPS for performance-based decisions
         };
         
         Object.assign(this, defaults, args);
@@ -402,10 +406,10 @@ class Firework {
         
         // Play explosion sound if callback is set
         if (this.onExplodeSound) {
-            console.log('[Fireworks] Explosion callback triggered - playing explosion sound');
+            if (DEBUG) console.log('[Fireworks] Explosion callback triggered - playing explosion sound');
             this.onExplodeSound(this.intensity);
         } else {
-            console.log('[Fireworks] Explosion occurred but no audio callback set');
+            if (DEBUG) console.log('[Fireworks] Explosion occurred but no audio callback set');
         }
         
         // For instant explode, use the position from constructor
@@ -423,8 +427,11 @@ class Firework {
         const comboMult = 1 + (this.combo - 1) * 0.2;
         
         // Reduce particles for high combos to improve performance
+        // Aggressive combo reduction for better FPS
         let baseParticles = 40 + Math.random() * 60;
-        if (this.combo >= 10) {
+        if (this.combo >= 20) {
+            baseParticles *= 0.2; // 80% reduction for combo >= 20
+        } else if (this.combo >= 10) {
             baseParticles *= 0.5; // 50% particles for combo >= 10
         } else if (this.combo >= 5) {
             baseParticles *= 0.7; // 70% particles for combo >= 5
@@ -490,8 +497,9 @@ class Firework {
             this.particles.push(particle);
             
             // Chance for secondary explosion (only for non-image particles to avoid lag)
-            // Disable for high combos to improve performance
-            if (this.combo < 5 && Math.random() < CONFIG.secondaryExplosionChance && !isSparkle && particleType === 'circle') {
+            // Disable for high combos or low FPS to improve performance
+            // Only allow secondary explosions when combo < 5 AND fps > 40
+            if (this.combo < 5 && this.engineFps > 40 && Math.random() < CONFIG.secondaryExplosionChance && !isSparkle && particleType === 'circle') {
                 particle.willExplode = true;
                 particle.explosionDelay = 20 + Math.floor(Math.random() * 30);
             }
@@ -955,7 +963,7 @@ class AudioManager {
 
     async init() {
         this.initialized = true;
-        console.log('[Fireworks Audio] Audio manager ready');
+        if (DEBUG) console.log('[Fireworks Audio] Audio manager ready');
     }
 
     async ensureAudioContext() {
@@ -972,7 +980,7 @@ class AudioManager {
                 }
                 this.pendingSounds.clear();
                 
-                console.log('[Fireworks Audio] AudioContext created');
+                if (DEBUG) console.log('[Fireworks Audio] AudioContext created');
             } catch (e) {
                 console.warn('[Fireworks Audio] AudioContext not available:', e.message);
             }
@@ -997,7 +1005,7 @@ class AudioManager {
             const arrayBuffer = await response.arrayBuffer();
             const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             this.sounds.set(name, audioBuffer);
-            console.log(`[Fireworks Audio] Loaded: ${name}`);
+            if (DEBUG) console.log(`[Fireworks Audio] Loaded: ${name}`);
         } catch (e) {
             console.info(`[Fireworks Audio] Could not load ${url}:`, e.message, '(add audio files to enable sounds)');
         }
@@ -1090,7 +1098,7 @@ class AudioManager {
             source.stop(fadeEndTime + 0.1);
             
             if (CONFIG.debugMode) {
-                console.log(`[Fireworks Audio] Playing ${name} with fade-out: duration=${duration}s, fade=${fadeOutDuration}s`);
+                if (DEBUG) console.log(`[Fireworks Audio] Playing ${name} with fade-out: duration=${duration}s, fade=${fadeOutDuration}s`);
             }
         } catch (e) {
             console.warn('[Fireworks Audio] Fade-out playback error:', e.message);
@@ -1312,7 +1320,7 @@ class FireworksEngine {
         this.running = true;
         this.render();
 
-        console.log('[Fireworks Engine] Initialized with Canvas 2D');
+        if (DEBUG) console.log('[Fireworks Engine] Initialized with Canvas 2D');
     }
 
     resize() {
@@ -1331,7 +1339,7 @@ class FireworksEngine {
         this.width = targetResolution.width;
         this.height = targetResolution.height;
         
-        console.log(`[Fireworks] Canvas resolution: ${this.canvas.width}x${this.canvas.height} (${resolutionPreset}, ${orientation})`);
+        if (DEBUG) console.log(`[Fireworks] Canvas resolution: ${this.canvas.width}x${this.canvas.height} (${resolutionPreset}, ${orientation})`);
     }
     
     getResolutionFromPreset(preset, orientation) {
@@ -1357,7 +1365,7 @@ class FireworksEngine {
             });
 
             this.socket.on('connect', () => {
-                console.log('[Fireworks Engine] Connected to server');
+                if (DEBUG) console.log('[Fireworks Engine] Connected to server');
             });
 
             this.socket.on('fireworks:trigger', (data) => {
@@ -1406,12 +1414,12 @@ class FireworksEngine {
                         this.resize();
                     }
                     
-                    console.log('[Fireworks] Config updated:', data.config);
+                    if (DEBUG) console.log('[Fireworks] Config updated:', data.config);
                 }
             });
 
             this.socket.on('disconnect', () => {
-                console.log('[Fireworks Engine] Disconnected from server');
+                if (DEBUG) console.log('[Fireworks Engine] Disconnected from server');
             });
         } catch (e) {
             console.error('[Fireworks Engine] Socket connection error:', e);
@@ -1532,7 +1540,7 @@ class FireworksEngine {
         
         // Skip if triggered too quickly (except for first trigger)
         if (this.lastComboTriggerTime > 0 && timeSinceLastTrigger < minInterval) {
-            console.log('[Fireworks] Combo throttled (too fast)');
+            if (DEBUG) console.log('[Fireworks] Combo throttled (too fast)');
             return;
         }
         
@@ -1543,9 +1551,9 @@ class FireworksEngine {
         const instantExplode = combo >= CONFIG.comboInstantExplodeThreshold;
         
         if (instantExplode) {
-            console.log(`[Fireworks] Instant explosion mode (combo: ${combo})`);
+            if (DEBUG) console.log(`[Fireworks] Instant explosion mode (combo: ${combo})`);
         } else if (skipRockets) {
-            console.log(`[Fireworks] Skipping rocket animation (combo: ${combo})`);
+            if (DEBUG) console.log(`[Fireworks] Skipping rocket animation (combo: ${combo})`);
         }
 
         // Launch position at bottom, target at specified position
@@ -1573,7 +1581,8 @@ class FireworksEngine {
             tier: tier,
             combo: combo,
             skipRocket: skipRockets, // Pass flag to Firework class
-            instantExplode: instantExplode // Explode immediately without any delay
+            instantExplode: instantExplode, // Explode immediately without any delay
+            engineFps: this.fps // Pass current FPS for performance-based decisions
         });
         
         // Calculate expected rocket flight time for audio synchronization
@@ -1585,20 +1594,20 @@ class FireworksEngine {
                 CONFIG.rocketSpeed,
                 -CONFIG.rocketAcceleration
             );
-            console.log(`[Fireworks] Calculated flight time: ${expectedFlightTime.toFixed(2)}s for targetY: ${targetY}`);
+            if (DEBUG) console.log(`[Fireworks] Calculated flight time: ${expectedFlightTime.toFixed(2)}s for targetY: ${targetY}`);
         }
         
         // Audio selection and playback with synchronization
         if (playSound && this.audioManager.enabled) {
             const audioConfig = this.audioManager.selectAudio(tier, combo, instantExplode, expectedFlightTime);
             
-            console.log(`[Fireworks] Audio strategy: ${audioConfig.useCombinedAudio ? 'Combined' : 'Callback'}`);
+            if (DEBUG) console.log(`[Fireworks] Audio strategy: ${audioConfig.useCombinedAudio ? 'Combined' : 'Callback'}`);
             
             if (audioConfig.useCombinedAudio) {
                 // COMBINED AUDIO PLAYBACK
                 // Single file contains both launch and explosion (pre-synchronized)
                 if (audioConfig.combinedSound && !skipRockets) {
-                    console.log(`[Fireworks] Combined audio: ${audioConfig.combinedSound}`);
+                    if (DEBUG) console.log(`[Fireworks] Combined audio: ${audioConfig.combinedSound}`);
                     this.audioManager.play(audioConfig.combinedSound, this.audioManager.COMBINED_AUDIO_VOLUME);
                 }
                 
@@ -1606,7 +1615,7 @@ class FireworksEngine {
                 // CALLBACK AUDIO PLAYBACK
                 // Launch plays immediately, explosion/crackling trigger via callback when visual explodes
                 if (audioConfig.launchSound && !skipRockets) {
-                    console.log(`[Fireworks] Launch: ${audioConfig.launchSound}`);
+                    if (DEBUG) console.log(`[Fireworks] Launch: ${audioConfig.launchSound}`);
                     this.audioManager.play(audioConfig.launchSound, this.audioManager.LAUNCH_AUDIO_VOLUME);
                 }
                 
@@ -1616,15 +1625,15 @@ class FireworksEngine {
                     : this.audioManager.NORMAL_EXPLOSION_VOLUME;
                     
                 if (audioConfig.explosionSound) {
-                    console.log(`[Fireworks] Setting explosion callback: ${audioConfig.explosionSound}`);
+                    if (DEBUG) console.log(`[Fireworks] Setting explosion callback: ${audioConfig.explosionSound}`);
                     firework.onExplodeSound = (intensity) => {
-                        console.log(`[Fireworks] Explosion callback triggered: ${audioConfig.explosionSound}`);
+                        if (DEBUG) console.log(`[Fireworks] Explosion callback triggered: ${audioConfig.explosionSound}`);
                         this.audioManager.play(audioConfig.explosionSound, intensity * soundVolume);
                         
                         // Add crackling layer with explosion for perfect sync
                         // Use fade-out to match visual particle lifetime (typical: 0.8-1.4s)
                         if (audioConfig.cracklingSound) {
-                            console.log(`[Fireworks] Crackling with explosion: ${audioConfig.cracklingSound}`);
+                            if (DEBUG) console.log(`[Fireworks] Crackling with explosion: ${audioConfig.cracklingSound}`);
                             // Duration based on tier: bigger fireworks = longer crackling
                             const cracklingDuration = tier === 'massive' ? 2.0 : 
                                                     tier === 'big' ? 1.5 : 
@@ -1644,7 +1653,7 @@ class FireworksEngine {
                         firework.onSecondaryExplosionSound = () => {
                             // Play crackling sound for secondary burst/spiral with fade-out
                             const cracklingSound = Math.random() < 0.5 ? 'crackling-medium' : 'crackling-long';
-                            console.log(`[Fireworks] Secondary explosion crackling: ${cracklingSound}`);
+                            if (DEBUG) console.log(`[Fireworks] Secondary explosion crackling: ${cracklingSound}`);
                             // Secondary crackling is shorter and quieter
                             this.audioManager.playWithFadeOut(
                                 cracklingSound, 
@@ -1655,7 +1664,7 @@ class FireworksEngine {
                         };
                     }
                 } else if (instantExplode) {
-                    console.log('[Fireworks] Instant explode - no launch sound needed');
+                    if (DEBUG) console.log('[Fireworks] Instant explode - no launch sound needed');
                 }
             }
         }
@@ -1856,6 +1865,15 @@ class FireworksEngine {
             // Calculate average FPS over last 5 seconds
             const avgFps = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
             
+            // Adaptive Trail-Length based on FPS
+            if (avgFps > 50) {
+                CONFIG.trailLength = 15;
+            } else if (avgFps > 35) {
+                CONFIG.trailLength = 8;
+            } else {
+                CONFIG.trailLength = 3;
+            }
+            
             // Adaptive performance mode
             const targetFps = this.config.targetFps || CONFIG.targetFps;
             const minFps = this.config.minFps || CONFIG.minFps;
@@ -1865,21 +1883,21 @@ class FireworksEngine {
                 if (this.performanceMode !== 'minimal') {
                     this.performanceMode = 'minimal';
                     this.applyPerformanceMode();
-                    console.log('[Fireworks] Adaptive Performance: MINIMAL mode (FPS:', avgFps.toFixed(1), ')');
+                    if (DEBUG) console.log('[Fireworks] Adaptive Performance: MINIMAL mode (FPS:', avgFps.toFixed(1), ')');
                 }
             } else if (avgFps < targetFps * 0.8) {
                 // Performance is degraded - enter reduced mode
                 if (this.performanceMode !== 'reduced') {
                     this.performanceMode = 'reduced';
                     this.applyPerformanceMode();
-                    console.log('[Fireworks] Adaptive Performance: REDUCED mode (FPS:', avgFps.toFixed(1), ')');
+                    if (DEBUG) console.log('[Fireworks] Adaptive Performance: REDUCED mode (FPS:', avgFps.toFixed(1), ')');
                 }
             } else if (avgFps >= targetFps * 0.95) {
                 // Performance is good - return to normal mode
                 if (this.performanceMode !== 'normal') {
                     this.performanceMode = 'normal';
                     this.applyPerformanceMode();
-                    console.log('[Fireworks] Adaptive Performance: NORMAL mode (FPS:', avgFps.toFixed(1), ')');
+                    if (DEBUG) console.log('[Fireworks] Adaptive Performance: NORMAL mode (FPS:', avgFps.toFixed(1), ')');
                 }
             }
             
@@ -1994,6 +2012,12 @@ class FireworksEngine {
 
     renderParticle(p) {
         const ctx = this.ctx;
+        
+        // Viewport Culling - skip particles outside viewport with margin
+        const margin = 100; // Allow particles slightly outside to maintain smooth transitions
+        if (p.x < -margin || p.x > this.width + margin || p.y < -margin || p.y > this.height + margin) {
+            return; // Skip rendering particles outside viewport
+        }
         
         // Render trail
         if (this.config.trailsEnabled && p.trail.length > 1) {
@@ -2158,7 +2182,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    console.log('[Fireworks] Advanced engine ready');
+    if (DEBUG) console.log('[Fireworks] Advanced engine ready');
 });
 
 // Only expose engine after initialization

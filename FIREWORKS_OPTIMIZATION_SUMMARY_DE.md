@@ -73,29 +73,29 @@ if (p.alpha < 0.01) return; // Skip rendering
 ```
 **Impact:** +8-12% FPS | **Zeit:** 5 Min
 
-### 2. Viewport Culling
+### 2. Viewport Culling ✅
 ```javascript
 if (p.x < -margin || p.x > width + margin) return;
 ```
-**Impact:** +10-15% FPS | **Zeit:** 10 Min
+**Impact:** +10-15% FPS | **Zeit:** 10 Min | **Status:** ✅ Erledigt
 
-### 3. Adaptive Trail-Length
+### 3. Adaptive Trail-Length ✅
 ```javascript
 CONFIG.trailLength = fps > 50 ? 15 : fps > 35 ? 8 : 3;
 ```
-**Impact:** +15-20% FPS | **Zeit:** 15 Min
+**Impact:** +15-20% FPS | **Zeit:** 15 Min | **Status:** ✅ Erledigt
 
-### 4. Aggressive Combo-Reduktion
+### 4. Aggressive Combo-Reduktion ✅
 ```javascript
 if (combo >= 20) baseParticles *= 0.2; // 80% weniger
 ```
-**Impact:** +15-20% FPS | **Zeit:** 10 Min
+**Impact:** +15-20% FPS | **Zeit:** 10 Min | **Status:** ✅ Erledigt
 
-### 5. Secondary Explosions bei niedrigen FPS aus
+### 5. Secondary Explosions bei niedrigen FPS aus ✅
 ```javascript
 if (combo < 5 && fps > 40) { /* allow secondary */ }
 ```
-**Impact:** +10-15% FPS | **Zeit:** 5 Min
+**Impact:** +10-15% FPS | **Zeit:** 5 Min | **Status:** ✅ Erledigt
 
 ### 6. Array.length Caching
 ```javascript
@@ -110,11 +110,11 @@ this.frameTimestamp = performance.now(); // Einmal pro Frame
 ```
 **Impact:** +1-2% FPS | **Zeit:** 5 Min
 
-### 8. Console.log Guards
+### 8. Console.log Guards ✅
 ```javascript
 if (DEBUG) console.log(...); // Nur wenn Debug aktiv
 ```
-**Impact:** +2-3% FPS | **Zeit:** 10 Min
+**Impact:** +2-3% FPS | **Zeit:** 10 Min | **Status:** ✅ Erledigt
 
 ### 9. Lazy Trail-Updates
 ```javascript
