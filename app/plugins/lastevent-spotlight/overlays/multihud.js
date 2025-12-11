@@ -170,12 +170,9 @@ async function showCurrentEvent() {
 
   console.log(`Showing event ${currentEventIndex + 1}/${selectedEvents.length}: ${eventType}`, userData);
 
-  if (userData) {
-    await updateDisplay(userData);
-  } else if (settings.hideOnNullUser !== false) {
-    // Hide display if no data and hideOnNullUser is enabled (default)
-    container.innerHTML = '';
-  }
+  // Always call updateDisplay to let TemplateRenderer handle null userData
+  // The renderer will respect hideOnNullUser setting
+  await updateDisplay(userData);
 }
 
 // Update display with animation

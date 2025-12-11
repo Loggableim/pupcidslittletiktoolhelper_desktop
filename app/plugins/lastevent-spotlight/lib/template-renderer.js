@@ -178,6 +178,8 @@ class TemplateRenderer {
       this.container.style.display = 'none';
       return;
     } else if (!userData) {
+      // Show container with placeholder message
+      this.container.style.display = '';
       this.container.innerHTML = '<div class="no-data">Waiting for event...</div>';
       return;
     }
