@@ -51,6 +51,14 @@ function init() {
             e.target.value === 'increment' ? 'block' : 'none';
     });
 
+    // Update color pickers when goal type changes
+    document.getElementById('goal-type').addEventListener('change', (e) => {
+        const theme = getDefaultTheme(e.target.value);
+        document.getElementById('goal-primary-color').value = theme.primaryColor;
+        document.getElementById('goal-secondary-color').value = theme.secondaryColor;
+        // Text and bg colors stay the same
+    });
+
     // Setup preview update listeners
     setupPreviewListeners();
 }
@@ -124,6 +132,16 @@ function openCreateModal() {
     editingGoalId = null;
     document.querySelector('.modal-header').textContent = 'Create New Goal';
     document.getElementById('goal-form').reset();
+    
+    // Set default colors based on coin type (will update when type changes)
+    const defaultTheme = getDefaultTheme('coin');
+    document.getElementById('goal-primary-color').value = defaultTheme.primaryColor;
+    document.getElementById('goal-secondary-color').value = defaultTheme.secondaryColor;
+    document.getElementById('goal-text-color').value = defaultTheme.textColor;
+    document.getElementById('goal-bg-color').value = '#0f172a'; // Default bg in hex
+    document.getElementById('goal-font-family').value = "'Impact', 'Haettenschweiler', 'Arial Narrow Bold', sans-serif";
+    document.getElementById('goal-font-size').value = '20';
+    
     document.getElementById('goal-modal').classList.add('active');
     
     // Update preview with default values
@@ -339,7 +357,15 @@ function setupPreviewListeners() {
         'goal-type',
         'goal-template',
         'goal-start',
-        'goal-target'
+        'goal-target',
+        'goal-width',
+        'goal-height',
+        'goal-primary-color',
+        'goal-secondary-color',
+        'goal-text-color',
+        'goal-bg-color',
+        'goal-font-family',
+        'goal-font-size'
     ];
 
     fieldsToWatch.forEach(fieldId => {
@@ -366,7 +392,8 @@ function updatePreviewDebounced() {
  */
 function updatePreview() {
     const previewFrame = document.getElementById('goal-preview-frame');
-    if (!previewFrame) return;
+    const previewContainer = document.getElementById('goal-preview-container');
+    if (!previewFrame || !previewContainer) return;
 
     // Get current form values
     const name = document.getElementById('goal-name').value || 'Sample Goal';
@@ -374,6 +401,16 @@ function updatePreview() {
     const templateId = document.getElementById('goal-template').value || 'compact-bar';
     const startValue = parseInt(document.getElementById('goal-start').value) || 0;
     const targetValue = parseInt(document.getElementById('goal-target').value) || 1000;
+    const overlayWidth = parseInt(document.getElementById('goal-width').value) || 500;
+    const overlayHeight = parseInt(document.getElementById('goal-height').value) || 100;
+
+    // Get custom style values
+    const primaryColor = document.getElementById('goal-primary-color')?.value;
+    const secondaryColor = document.getElementById('goal-secondary-color')?.value;
+    const textColor = document.getElementById('goal-text-color')?.value;
+    const bgColor = document.getElementById('goal-bg-color')?.value;
+    const fontFamily = document.getElementById('goal-font-family')?.value;
+    const fontSize = document.getElementById('goal-font-size')?.value;
 
     // Create mock goal object for preview
     const mockGoal = {
@@ -393,8 +430,42 @@ function updatePreview() {
         return;
     }
 
-    // Get default theme
-    const theme = getDefaultTheme(goalType);
+    // Get theme (default or custom)
+    let theme = getDefaultTheme(goalType);
+    
+    // Apply custom colors if set
+    if (primaryColor) theme.primaryColor = primaryColor;
+    if (secondaryColor) theme.secondaryColor = secondaryColor;
+    if (textColor) theme.textColor = textColor;
+    if (bgColor) {
+        // Convert hex to rgba with opacity
+        const hex = bgColor.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        theme.bgColor = `rgba(${r}, ${g}, ${b}, 0.95)`;
+    }
+    if (fontFamily) theme.fontFamily = fontFamily;
+    if (fontSize) theme.fontSize = parseInt(fontSize);
+
+    // Calculate scale to fit preview while maintaining aspect ratio
+    const containerWidth = previewContainer.clientWidth - 40; // Account for padding
+    const containerHeight = 300; // Fixed preview height
+    const aspectRatio = overlayWidth / overlayHeight;
+    
+    let previewWidth, previewHeight, scale;
+    
+    if (aspectRatio > containerWidth / containerHeight) {
+        // Width is the limiting factor
+        previewWidth = Math.min(containerWidth, overlayWidth);
+        previewHeight = previewWidth / aspectRatio;
+        scale = previewWidth / overlayWidth;
+    } else {
+        // Height is the limiting factor
+        previewHeight = Math.min(containerHeight, overlayHeight);
+        previewWidth = previewHeight * aspectRatio;
+        scale = previewHeight / overlayHeight;
+    }
 
     // Render the preview
     try {
@@ -405,6 +476,11 @@ function updatePreview() {
             <style>${styles}</style>
             ${html}
         `;
+        
+        // Apply size and scaling
+        previewFrame.style.width = overlayWidth + 'px';
+        previewFrame.style.height = overlayHeight + 'px';
+        previewFrame.style.transform = `scale(${scale})`;
     } catch (error) {
         console.error('Preview render error:', error);
         previewFrame.innerHTML = '<div class="preview-loading">Error rendering preview</div>';
