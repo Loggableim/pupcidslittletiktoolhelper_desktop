@@ -51,6 +51,8 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
             const allPlugins = [];
 
             // Geladene Plugins hinzufügen
+            // Note: Plugin loader already filters out disabled plugins during load,
+            // so loaded plugins never have disabled=true
             for (const plugin of plugins) {
                 allPlugins.push({
                     ...plugin,
@@ -65,25 +67,35 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
                     const manifestPath = path.join(pluginPath, 'plugin.json');
 
                     if (fs.existsSync(manifestPath)) {
-                        const manifestData = fs.readFileSync(manifestPath, 'utf8');
-                        const manifest = JSON.parse(manifestData);
+                        try {
+                            const manifestData = fs.readFileSync(manifestPath, 'utf8');
+                            const manifest = JSON.parse(manifestData);
 
-                        // Ist das Plugin bereits in der Liste?
-                        const exists = allPlugins.find(p => p.id === manifest.id);
+                            // Skip plugins that are marked as disabled in plugin.json
+                            if (manifest.disabled === true) {
+                                continue;
+                            }
 
-                        if (!exists) {
-                            // Plugin ist nicht geladen - Status aus State-Datei lesen
-                            const state = pluginLoader.state[manifest.id] || {};
-                            allPlugins.push({
-                                id: manifest.id,
-                                name: manifest.name,
-                                description: manifest.description,
-                                version: manifest.version,
-                                author: manifest.author,
-                                type: manifest.type,
-                                enabled: state.enabled === true,
-                                loadedAt: null
-                            });
+                            // Ist das Plugin bereits in der Liste?
+                            const exists = allPlugins.find(p => p.id === manifest.id);
+
+                            if (!exists) {
+                                // Plugin ist nicht geladen - Status aus State-Datei lesen
+                                const state = pluginLoader.state[manifest.id] || {};
+                                allPlugins.push({
+                                    id: manifest.id,
+                                    name: manifest.name,
+                                    description: manifest.description,
+                                    version: manifest.version,
+                                    author: manifest.author,
+                                    type: manifest.type,
+                                    enabled: state.enabled === true,
+                                    loadedAt: null
+                                });
+                            }
+                        } catch (error) {
+                            // Skip plugins with invalid or malformed plugin.json
+                            logger.warn(`Skipping plugin ${entry.name} due to malformed plugin.json: ${error.message}`);
                         }
                     }
                 }
