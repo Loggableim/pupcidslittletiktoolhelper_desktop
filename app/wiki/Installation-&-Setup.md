@@ -24,27 +24,31 @@
 | Komponente | Anforderung |
 |------------|-------------|
 | **Betriebssystem** | Windows 10/11, Linux (Ubuntu 20.04+, Debian 11+), macOS 10.15+ |
-| **Node.js** | Version 18.0.0 bis 23.x (LTS empfohlen) |
-| **npm** | Version 8.0.0 oder höher |
-| **RAM** | Mindestens 512 MB verfügbar |
-| **Speicherplatz** | Mindestens 200 MB frei |
-| **Browser** | Chrome, Firefox, Edge oder Safari (modern) |
+| **Node.js** | Version 18.0.0 bis <25.0.0 (LTS 20.x empfohlen) |
+| **npm** | Version 9.0.0 oder höher |
+| **RAM** | Mindestens 1 GB verfügbar |
+| **Speicherplatz** | Mindestens 500 MB frei |
+| **Browser** | Chrome 113+, Firefox 115+, Edge 113+ (WebGPU-Support empfohlen) |
 | **Netzwerk** | Internetverbindung für TikTok LIVE |
 
 ### Empfohlene Anforderungen
 
 | Komponente | Empfehlung |
 |------------|------------|
-| **RAM** | 1 GB verfügbar |
-| **CPU** | Dual-Core 2.0 GHz oder besser |
-| **Speicherplatz** | 500 MB frei |
-| **OBS Studio** | Version 28.0 oder höher (für Overlays) |
+| **RAM** | 2 GB verfügbar |
+| **CPU** | Quad-Core 2.5 GHz oder besser |
+| **GPU** | WebGPU-kompatibel (für beste Performance) |
+| **Speicherplatz** | 1 GB frei |
+| **OBS Studio** | Version 29.0 oder höher (für Overlays) |
+| **Electron** | Version 33.0+ (für Desktop App) |
 
 ### Optionale Software
 
-- **OBS Studio** (Version 28+) - Für Browser Source Overlays
+- **OBS Studio** (Version 29+) - Für Browser Source Overlays
 - **VRChat** - Für OSC-Integration (Avatar-Steuerung)
+- **Eulerstream Account** - Für TikTok LIVE-Verbindung (erforderlich)
 - **Google Cloud Account** - Für Google TTS-Stimmen (optional)
+- **OpenShock API** - Für OpenShock-Integration (optional)
 
 ---
 
@@ -81,14 +85,14 @@ npm --version
 ```bash
 # PowerShell oder CMD öffnen
 cd C:\Users\DeinName\Documents
-git clone https://github.com/yourusername/pupcidslittletiktokhelper.git
-cd pupcidslittletiktokhelper
+git clone https://github.com/Loggableim/pupcidslittletiktoolhelper_desktop.git
+cd pupcidslittletiktoolhelper_desktop
 ```
 
 **Option B: ZIP-Download**
-1. Gehe zu GitHub-Repository
+1. Gehe zu [GitHub-Repository](https://github.com/Loggableim/pupcidslittletiktoolhelper_desktop)
 2. Klicke "Code" → "Download ZIP"
-3. Entpacke die ZIP-Datei nach `C:\Users\DeinName\Documents\pupcidslittletiktokhelper`
+3. Entpacke die ZIP-Datei nach `C:\Users\DeinName\Documents\pupcidslittletiktoolhelper_desktop`
 4. Öffne PowerShell/CMD in diesem Ordner
 
 ### Schritt 4: Dependencies installieren
@@ -685,4 +689,5 @@ Nach erfolgreicher Installation:
 
 ---
 
-*Letzte Aktualisierung: 2025-11-11*
+*Letzte Aktualisierung: 2025-12-11*
+*Version: 1.2.1*

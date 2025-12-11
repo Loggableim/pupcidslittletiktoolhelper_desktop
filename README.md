@@ -3,7 +3,7 @@
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Node.js](https://img.shields.io/badge/Node.js-18.0.0+-green.svg)](https://nodejs.org/)
 [![Electron](https://img.shields.io/badge/Electron-33.0.0+-blue.svg)](https://www.electronjs.org/)
-[![Version](https://img.shields.io/badge/Version-1.2.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-1.2.1-blue.svg)](CHANGELOG.md)
 
 Professional TikTok-compatible LIVE streaming tool with overlays, alerts, Text-to-Speech, automation, and an extensive plugin ecosystem. Built with Node.js, Express.js, Socket.IO, and Electron.
 
@@ -57,7 +57,31 @@ Dieses Tool wird von mir als Solo-Entwickler zusammen mit Claude AI entwickelt. 
 ### 🔌 Plugin-System
 - Modulare plugin-basierte Architektur
 - Einfach erweiterbar mit eigener Funktionalität
-- 20+ eingebaute Plugins
+- **31 eingebaute Plugins** (6 Early Beta, 10 Beta, 8 Alpha, 7 Final)
+- WebGPU-Engine für GPU-beschleunigte Effekte
+- Global Chat Command Engine (GCCE)
+
+---
+
+## 📚 Dokumentation
+
+**Vollständige Wiki-Dokumentation:** [`app/wiki/`](app/wiki/)
+
+### Schnellzugriff
+
+- **[Wiki-Index](app/wiki/Wiki-Index.md)** - Vollständige Übersicht aller Dokumentationsseiten
+- **[Getting Started](app/wiki/Getting-Started.md)** - 5-Minuten-Schnelleinstieg
+- **[Plugin-Liste](app/wiki/Plugin-Liste.md)** - Alle 31 Plugins mit Details
+- **[Overlays & Alerts](app/wiki/Overlays-&-Alerts.md)** - 25+ OBS-Overlays
+- **[Advanced Features](app/wiki/Advanced-Features.md)** - WebGPU, GCCE, Performance
+- **[FAQ & Troubleshooting](app/wiki/FAQ-&-Troubleshooting.md)** - Probleme lösen
+
+### Für Entwickler
+
+- **[Entwickler-Leitfaden](app/wiki/Entwickler-Leitfaden.md)** - Coding-Standards
+- **[Plugin-Dokumentation](app/wiki/Plugin-Dokumentation.md)** - Plugin-Entwicklung
+- **[API-Reference](app/wiki/API-Reference.md)** - REST-API & WebSocket
+- **[Architektur](app/wiki/Architektur.md)** - System-Architektur
 
 ---
 
