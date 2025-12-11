@@ -115,7 +115,7 @@
       "maxCommandsPerMinute": 30
     },
     "defaultCooldowns": {
-      "global": 5000,
+      "global": 500,
       "perDevice": 3000,
       "perUser": 10000
     },

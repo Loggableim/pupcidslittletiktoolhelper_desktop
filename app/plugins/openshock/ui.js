@@ -303,6 +303,9 @@ async function loadConfig() {
                 apiKeyInput.value = config.apiKey.substring(0, 8) + '...' + config.apiKey.substring(config.apiKey.length - 4);
             }
         }
+        
+        // Update emergency stop button state
+        updateEmergencyStopButtons(config?.emergencyStop?.enabled || false);
 
         return config;
     } catch (error) {
@@ -1261,12 +1264,11 @@ function renderPatternSteps() {
                 <span>Dauer: ${step.duration}ms</span>
             </div>
             <div class="pattern-step-actions">
-                <button data-step-index="${index}" class="btn btn-sm btn-secondary edit-pattern-step-btn" title="Bearbeiten">
-                    ✏️
-                </button>
-                <button data-step-index="${index}" class="btn btn-sm btn-danger remove-pattern-step-btn" title="Löschen">
-                    🗑️
-                </button>
+                ${index > 0 ? `<button data-step-index="${index}" class="btn btn-sm btn-secondary move-up-btn" title="Nach oben">⬆️</button>` : ''}
+                ${index < currentPatternSteps.length - 1 ? `<button data-step-index="${index}" class="btn btn-sm btn-secondary move-down-btn" title="Nach unten">⬇️</button>` : ''}
+                <button data-step-index="${index}" class="btn btn-sm btn-secondary duplicate-step-btn" title="Duplizieren">📋</button>
+                <button data-step-index="${index}" class="btn btn-sm btn-secondary edit-pattern-step-btn" title="Bearbeiten">✏️</button>
+                <button data-step-index="${index}" class="btn btn-sm btn-danger remove-pattern-step-btn" title="Löschen">🗑️</button>
             </div>
         </div>
     `).join('');
@@ -1350,6 +1352,51 @@ function removePatternStep(index) {
     if (stepCountLabel) {
         stepCountLabel.textContent = currentPatternSteps.length;
     }
+}
+
+function duplicatePatternStep(index) {
+    const step = currentPatternSteps[index];
+    if (!step) return;
+    
+    // Create a deep copy of the step
+    const duplicatedStep = JSON.parse(JSON.stringify(step));
+    
+    // Insert the duplicated step right after the original
+    currentPatternSteps.splice(index + 1, 0, duplicatedStep);
+    renderPatternSteps();
+    
+    // Update step count label
+    const stepCountLabel = document.getElementById('stepCountLabel');
+    if (stepCountLabel) {
+        stepCountLabel.textContent = currentPatternSteps.length;
+    }
+    
+    showNotification(`Schritt ${index + 1} dupliziert`, 'success');
+    addDebugLog('info', `Duplicated step ${index + 1}: ${step.type}`);
+}
+
+function movePatternStepUp(index) {
+    if (index <= 0 || index >= currentPatternSteps.length) return;
+    
+    // Swap with previous step
+    const temp = currentPatternSteps[index];
+    currentPatternSteps[index] = currentPatternSteps[index - 1];
+    currentPatternSteps[index - 1] = temp;
+    
+    renderPatternSteps();
+    addDebugLog('info', `Moved step ${index + 1} up`);
+}
+
+function movePatternStepDown(index) {
+    if (index < 0 || index >= currentPatternSteps.length - 1) return;
+    
+    // Swap with next step
+    const temp = currentPatternSteps[index];
+    currentPatternSteps[index] = currentPatternSteps[index + 1];
+    currentPatternSteps[index + 1] = temp;
+    
+    renderPatternSteps();
+    addDebugLog('info', `Moved step ${index + 1} down`);
 }
 
 function editPatternStep(index) {
@@ -2151,18 +2198,90 @@ async function saveSafetyConfig() {
 }
 
 async function triggerEmergencyStop() {
-    // Emergency stop should execute immediately without confirmation
-    try {
-        const response = await fetch('/api/openshock/emergency-stop', {
-            method: 'POST'
-        });
+    // Check current emergency stop state
+    const isCurrentlyActive = config?.emergencyStop?.enabled || false;
+    
+    if (isCurrentlyActive) {
+        // If active, clear it (toggle off)
+        try {
+            const response = await fetch('/api/openshock/emergency-clear', {
+                method: 'POST'
+            });
 
-        if (!response.ok) throw new Error('Failed to trigger emergency stop');
+            if (!response.ok) throw new Error('Failed to clear emergency stop');
 
-        showNotification('🛑 EMERGENCY STOP ACTIVATED', 'error');
-    } catch (error) {
-        console.error('[OpenShock] Error triggering emergency stop:', error);
-        showNotification('Error triggering emergency stop', 'error');
+            showNotification('✅ Emergency stop cleared - System reactivated', 'success');
+            
+            // Update config locally
+            if (config && config.emergencyStop) {
+                config.emergencyStop.enabled = false;
+            }
+            
+            // Update button text
+            updateEmergencyStopButtons(false);
+        } catch (error) {
+            console.error('[OpenShock] Error clearing emergency stop:', error);
+            showNotification('Error clearing emergency stop', 'error');
+        }
+    } else {
+        // If not active, activate it (toggle on)
+        try {
+            const response = await fetch('/api/openshock/emergency-stop', {
+                method: 'POST'
+            });
+
+            if (!response.ok) throw new Error('Failed to trigger emergency stop');
+
+            showNotification('🛑 EMERGENCY STOP ACTIVATED', 'error');
+            
+            // Update config locally
+            if (config && config.emergencyStop) {
+                config.emergencyStop.enabled = true;
+            }
+            
+            // Update button text
+            updateEmergencyStopButtons(true);
+        } catch (error) {
+            console.error('[OpenShock] Error triggering emergency stop:', error);
+            showNotification('Error triggering emergency stop', 'error');
+        }
+    }
+}
+
+/**
+ * Update emergency stop button text and style based on state
+ * @param {boolean} isActive - Whether emergency stop is active
+ */
+function updateEmergencyStopButtons(isActive) {
+    const headerBtn = document.getElementById('headerEmergencyStop');
+    const safetyTabBtn = document.getElementById('emergencyStop');
+    
+    if (isActive) {
+        // Emergency stop is active - show "Gestoppt" and allow reactivation
+        if (headerBtn) {
+            headerBtn.textContent = '✅ Gestoppt';
+            headerBtn.classList.remove('btn-danger');
+            headerBtn.classList.add('btn-success');
+            headerBtn.title = 'Click to reactivate system';
+        }
+        if (safetyTabBtn) {
+            safetyTabBtn.textContent = '✅ Gestoppt';
+            safetyTabBtn.classList.remove('btn-danger');
+            safetyTabBtn.classList.add('btn-success');
+        }
+    } else {
+        // Emergency stop is not active - show "EMERGENCY STOP"
+        if (headerBtn) {
+            headerBtn.textContent = '🛑 EMERGENCY STOP';
+            headerBtn.classList.remove('btn-success');
+            headerBtn.classList.add('btn-danger');
+            headerBtn.title = 'Emergency Stop - Immediately stops all shocks and disables further commands';
+        }
+        if (safetyTabBtn) {
+            safetyTabBtn.textContent = '🛑 EMERGENCY STOP';
+            safetyTabBtn.classList.remove('btn-success');
+            safetyTabBtn.classList.add('btn-danger');
+        }
     }
 }
 
@@ -3331,6 +3450,30 @@ function initializeEventDelegation() {
             const button = e.target.closest('.edit-pattern-step-btn');
             const stepIndex = parseInt(button.dataset.stepIndex);
             editPatternStep(stepIndex);
+        }
+        
+        // Duplicate pattern step button
+        if (e.target.closest('.duplicate-step-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.duplicate-step-btn');
+            const stepIndex = parseInt(button.dataset.stepIndex);
+            duplicatePatternStep(stepIndex);
+        }
+        
+        // Move pattern step up
+        if (e.target.closest('.move-up-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.move-up-btn');
+            const stepIndex = parseInt(button.dataset.stepIndex);
+            movePatternStepUp(stepIndex);
+        }
+        
+        // Move pattern step down
+        if (e.target.closest('.move-down-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.move-down-btn');
+            const stepIndex = parseInt(button.dataset.stepIndex);
+            movePatternStepDown(stepIndex);
         }
 
         // Test connection button (static button in settings)

@@ -41,7 +41,7 @@ class OpenShockPlugin {
                 maxCommandsPerMinute: 30
             },
             defaultCooldowns: {
-                global: 5000,
+                global: 500,
                 perDevice: 3000,
                 perUser: 10000
             },
@@ -398,6 +398,12 @@ class OpenShockPlugin {
         this.api.registerRoute('get', '/openshock/overlay', (req, res) => {
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.sendFile(path.join(pluginDir, 'overlay', 'openshock_overlay.html'));
+        });
+
+        // ZappieHell Overlay
+        this.api.registerRoute('get', '/openshock/zappiehell/overlay', (req, res) => {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.sendFile(path.join(pluginDir, 'overlay', 'zappiehell-overlay.html'));
         });
 
         // CSS
