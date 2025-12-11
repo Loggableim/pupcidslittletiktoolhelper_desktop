@@ -753,8 +753,11 @@ async function startBenchmark() {
         const left = (screen.width - previewWidth) / 2;
         const top = (screen.height - previewHeight) / 2;
         
+        // Note: Preview window shows overlay.html which must be from same origin
+        const overlayUrl = '/plugins/emoji-rain/overlay.html';
+        
         benchmarkPreviewWindow = window.open(
-            '/plugins/emoji-rain/overlay.html',
+            overlayUrl,
             'EmojiRainBenchmarkPreview',
             `width=${previewWidth},height=${previewHeight},left=${left},top=${top},resizable=yes,scrollbars=no,status=no,menubar=no,toolbar=no,location=no`
         );
@@ -772,22 +775,44 @@ async function startBenchmark() {
         benchmarkActive = true;
         benchmarkResults = null;
         
-        // Wait a bit for preview window to load before starting benchmark
-        setTimeout(async () => {
-            // Start benchmark via API
-            const response = await fetch('/api/emoji-rain/benchmark/start', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetFPS })
-            });
+        // Wait for preview window to load before starting benchmark
+        // Use a promise-based approach to detect when window is ready
+        await new Promise((resolve, reject) => {
+            let checkCount = 0;
+            const maxChecks = 20; // 2 seconds max wait
             
-            const data = await response.json();
-            if (!data.success) {
-                throw new Error(data.error || 'Benchmark start failed');
-            }
-            
-            showNotification('Benchmark gestartet - Fortschritt im Preview-Fenster sichtbar', false);
-        }, 1000);
+            const checkInterval = setInterval(() => {
+                checkCount++;
+                
+                // Check if window is loaded and ready
+                if (benchmarkPreviewWindow && !benchmarkPreviewWindow.closed && 
+                    benchmarkPreviewWindow.document && benchmarkPreviewWindow.document.readyState === 'complete') {
+                    clearInterval(checkInterval);
+                    resolve();
+                } else if (checkCount >= maxChecks) {
+                    clearInterval(checkInterval);
+                    // Proceed anyway after timeout
+                    resolve();
+                } else if (!benchmarkPreviewWindow || benchmarkPreviewWindow.closed) {
+                    clearInterval(checkInterval);
+                    reject(new Error('Preview window was closed'));
+                }
+            }, 100);
+        });
+        
+        // Start benchmark via API
+        const response = await fetch('/api/emoji-rain/benchmark/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetFPS })
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Benchmark start failed');
+        }
+        
+        showNotification('Benchmark gestartet - Fortschritt im Preview-Fenster sichtbar', false);
         
     } catch (error) {
         console.error('Error starting benchmark:', error);
@@ -1078,11 +1103,11 @@ function displayBenchmarkResults(data) {
                                  result.reliability === 'medium' ? '🟡' : '🔴';
         const reliabilityText = `${reliabilityEmoji} ±${result.stdDev}`;
         
-        // Make rows clickable with hover effect
-        const rowStyle = `${rowColor} cursor: pointer; transition: opacity 0.2s;`;
+        // Make rows clickable with hover effect (no inline handlers)
+        const rowStyle = `${rowColor} cursor: pointer;`;
         const rowClass = 'benchmark-result-row';
         
-        html += `<tr style="border-bottom: 1px solid var(--color-border); ${rowStyle}" class="${rowClass}" data-preset="${result.name}" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">`;
+        html += `<tr style="border-bottom: 1px solid var(--color-border); ${rowStyle}" class="${rowClass}" data-preset="${result.name}">`;
         html += `<td style="padding: 8px;"><strong>${result.name}</strong></td>`;
         html += `<td style="text-align: center; padding: 8px;"><strong style="font-size: 1.1em;">${result.avgFPS}</strong></td>`;
         html += `<td style="text-align: center; padding: 8px;">${result.minFPS}</td>`;
@@ -1104,11 +1129,20 @@ function displayBenchmarkResults(data) {
     
     contentDiv.innerHTML = html;
     
-    // Add click handlers to result rows
+    // Add click and hover handlers to result rows (CSP-compliant)
     document.querySelectorAll('.benchmark-result-row').forEach(row => {
+        // Click handler
         row.addEventListener('click', function() {
             const presetName = this.getAttribute('data-preset');
             applyBenchmarkPreset(presetName);
+        });
+        
+        // Hover effect using CSS-in-JS (better than inline handlers)
+        row.addEventListener('mouseenter', function() {
+            this.style.opacity = '0.7';
+        });
+        row.addEventListener('mouseleave', function() {
+            this.style.opacity = '1';
         });
     });
     

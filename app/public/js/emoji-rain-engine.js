@@ -924,10 +924,12 @@ function averageRunResults() {
     
     const test = BENCHMARK_TESTS[benchmarkCurrentTest];
     
-    // Calculate averages across all runs
+    // Calculate average FPS across all runs
     const avgFPS = Math.round(benchmarkRunResults.reduce((sum, r) => sum + r.avgFPS, 0) / benchmarkRunResults.length);
-    const minFPS = Math.round(benchmarkRunResults.reduce((sum, r) => sum + r.minFPS, 0) / benchmarkRunResults.length);
-    const maxFPS = Math.round(benchmarkRunResults.reduce((sum, r) => sum + r.maxFPS, 0) / benchmarkRunResults.length);
+    
+    // Min should be the lowest minFPS from all runs, Max should be highest maxFPS
+    const minFPS = Math.min(...benchmarkRunResults.map(r => r.minFPS));
+    const maxFPS = Math.max(...benchmarkRunResults.map(r => r.maxFPS));
     
     // Calculate standard deviation for reliability metric
     const avgVariance = benchmarkRunResults.reduce((sum, r) => sum + Math.pow(r.avgFPS - avgFPS, 2), 0) / benchmarkRunResults.length;
