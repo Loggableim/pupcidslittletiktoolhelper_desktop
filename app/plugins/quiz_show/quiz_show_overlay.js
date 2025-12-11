@@ -588,6 +588,13 @@
                 }
             };
 
+            // Hide leaderboard and show quiz sections when new question arrives
+            const leaderboardOverlay = document.getElementById('leaderboardOverlay');
+            if (leaderboardOverlay) {
+                leaderboardOverlay.classList.add('hidden');
+            }
+            showQuizSections();
+
             displayQuestion(gameData.question);
             displayAnswers(gameData.answers);
             
