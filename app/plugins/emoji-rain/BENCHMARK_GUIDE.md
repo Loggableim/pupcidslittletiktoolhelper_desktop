@@ -2,12 +2,17 @@
 
 ## Überblick
 
-Das Emoji Rain Plugin enthält jetzt ein automatisches Benchmarking-Tool, das die FPS (Frames Per Second) misst und die Einstellungen automatisch auf die gewünschte Ziel-FPS optimiert.
+Das Emoji Rain Plugin enthält jetzt ein verbessertes automatisches Benchmarking-Tool mit Preview-Fenster, das die FPS (Frames Per Second) über mehrere Testläufe misst und die Einstellungen automatisch auf die gewünschte Ziel-FPS optimiert.
 
-## Features
+## Neue Features (Version 2.0)
 
+- **Preview-Fenster**: Sehe den Benchmark live während er läuft
+- **Mehrfach-Tests**: Jede Qualitätsstufe wird 3x getestet für genauere Ergebnisse
+- **Zuverlässigkeits-Metrik**: Misst FPS-Varianz zwischen Läufen (grün/gelb/rot)
 - **Automatische FPS-Messung**: Testet 5 verschiedene Qualitätsstufen
 - **Intelligente Optimierung**: Findet die beste Einstellung für deine Ziel-FPS
+- **Interaktive Ergebnisse**: Klicke auf jede Zeile um die Einstellung direkt anzuwenden
+- **Warnungen**: Automatische Warnungen bei suboptimalen oder instabilen Einstellungen
 - **Einfache Bedienung**: Ein Klick zum Starten, automatische Empfehlungen
 - **Performance-Stufen**: Von Maximum Quality bis Minimal Quality
 
@@ -25,8 +30,9 @@ Das Emoji Rain Plugin enthält jetzt ein automatisches Benchmarking-Tool, das di
 ### 2. Benchmark starten
 
 1. Klicke auf "🔬 Benchmark starten"
-2. Der Benchmark läuft etwa 25 Sekunden
-3. Es werden 5 verschiedene Qualitätsstufen getestet:
+2. Ein Preview-Fenster öffnet sich automatisch - hier siehst du den Test live!
+3. Der Benchmark läuft etwa 75 Sekunden (5 Presets × 3 Läufe × 5 Sekunden)
+4. Es werden 5 verschiedene Qualitätsstufen getestet, jeweils 3 Mal:
    - **Maximum Quality**: 200 Emojis, alle Effekte
    - **High Quality**: 150 Emojis, reduzierte Effekte
    - **Medium Quality**: 100 Emojis, Basiseffekte
@@ -36,16 +42,35 @@ Das Emoji Rain Plugin enthält jetzt ein automatisches Benchmarking-Tool, das di
 ### 3. Ergebnisse ansehen
 
 Nach Abschluss des Benchmarks siehst du:
-- Eine Tabelle mit FPS-Werten für jede Qualitätsstufe
-- Durchschnittliche FPS, minimale FPS, maximale FPS
-- Markierung, welche Einstellungen die Ziel-FPS erreichen ✅
+- Eine detaillierte Tabelle mit FPS-Werten für jede Qualitätsstufe
+- **Ø FPS**: Durchschnittliche FPS über 3 Testläufe
+- **Min/Max**: Niedrigste und höchste gemessene FPS
+- **Zuverlässigkeit**: 
+  - 🟢 Hohe Zuverlässigkeit (±<5 FPS) - Sehr stabil
+  - 🟡 Mittlere Zuverlässigkeit (±5-10 FPS) - Relativ stabil
+  - 🔴 Niedrige Zuverlässigkeit (±>10 FPS) - Instabil, Vorsicht!
+- **Status**:
+  - ✅ Ziel erreicht (grün hinterlegt)
+  - ⚠️ Fast erreicht (gelb hinterlegt)
+  - ❌ Zu langsam (rot hinterlegt)
 
-### 4. Optimierte Einstellungen anwenden
+### 4. Einstellungen anwenden
 
-1. Überprüfe die empfohlenen Einstellungen
+Du hast zwei Optionen:
+
+#### Option A: Empfohlene Einstellung verwenden
+1. Überprüfe die empfohlenen Einstellungen im grünen Kasten
 2. Klicke auf "✨ Optimierte Einstellungen anwenden"
-3. Die Einstellungen werden automatisch übernommen
-4. Das Overlay wird mit den neuen Einstellungen aktualisiert
+3. Bei suboptimalen Einstellungen erscheint eine Warnung
+4. Bestätige die Warnung, wenn du fortfahren möchtest
+
+#### Option B: Eigene Einstellung wählen
+1. Klicke direkt auf eine Zeile in der Ergebnis-Tabelle
+2. Die Einstellung dieser Zeile wird angewendet
+3. Bei suboptimalen oder instabilen Einstellungen erfolgt eine Warnung:
+   - **Performance-Warnung**: Wenn die Einstellung nicht die Ziel-FPS erreicht
+   - **Stabilitäts-Warnung**: Wenn die Einstellung hohe FPS-Schwankungen zeigt
+4. Bestätige die Warnung(en), um fortzufahren
 
 ## Qualitätsstufen im Detail
 
@@ -90,9 +115,11 @@ Nach Abschluss des Benchmarks siehst du:
 ## Tipps für beste Ergebnisse
 
 1. **Während des Streamings testen**: Führe den Benchmark aus, während dein System unter normaler Streaming-Last läuft
-2. **OBS geschlossen**: Schließe andere ressourcenintensive Programme während des Tests
-3. **Mehrmals testen**: Führe den Test 2-3 Mal aus für konsistente Ergebnisse
-4. **Realistisch bleiben**: Wenn dein PC nur 30 FPS schafft, stelle die Ziel-FPS auf 30 statt 60
+2. **Preview-Fenster beobachten**: Achte auf das Preview-Fenster um zu sehen, wie die verschiedenen Einstellungen aussehen
+3. **Pop-ups erlauben**: Stelle sicher, dass dein Browser Pop-ups für diese Seite erlaubt (für das Preview-Fenster)
+4. **OBS laufen lassen**: Teste mit OBS geöffnet für realistische Bedingungen
+5. **Realistische Ziele**: Wenn dein PC nur 30 FPS schafft, stelle die Ziel-FPS auf 30 statt 60
+6. **Zuverlässigkeit beachten**: Eine Einstellung mit 🟢 (stabil) ist besser als eine mit 🔴 (instabil), auch bei gleichen FPS
 
 ## Benchmark manuell stoppen
 
