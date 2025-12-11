@@ -2297,23 +2297,31 @@ class QuizShowPlugin {
             }
         };
 
+        // TTS announcement if enabled - START 2 SECONDS BEFORE showing question
+        if (this.config.ttsEnabled) {
+            const ttsText = `Neue Frage: ${selectedQuestion.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
+            const voiceConfig = this.config.ttsVoice || 'default';
+            
+            // Start TTS immediately (it will play 2 seconds before question appears)
+            this.playTTS(selectedQuestion.id, ttsText, voiceConfig).catch(error => {
+                this.api.log(`TTS error: ${error.message}`, 'error');
+            });
+            
+            // Wait 2 seconds before showing question to let TTS start
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
         // Start timer
         this.startTimer();
 
         // Play timer start sound
         this.playSound('timer_start');
 
-        // TTS announcement if enabled - use new playTTS method
+        // Broadcast to overlay and UI (question becomes visible now)
+        this.broadcastGameState();
+
+        // Pre-generate TTS for the next question in background (if TTS enabled)
         if (this.config.ttsEnabled) {
-            const ttsText = `Neue Frage: ${selectedQuestion.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
-            const voiceConfig = this.config.ttsVoice || 'default';
-            
-            // Play TTS (will use pre-generated audio if available)
-            this.playTTS(selectedQuestion.id, ttsText, voiceConfig).catch(error => {
-                this.api.log(`TTS error: ${error.message}`, 'error');
-            });
-            
-            // Pre-generate TTS for the next question in background
             const nextQuestion = this.getNextQuestion();
             if (nextQuestion) {
                 this.preGenerateTTS(nextQuestion).catch(error => {
@@ -2321,9 +2329,6 @@ class QuizShowPlugin {
                 });
             }
         }
-
-        // Broadcast to overlay and UI
-        this.broadcastGameState();
 
         this.api.log(`Round started with question: ${selectedQuestion.question}`, 'info');
     }
@@ -2528,15 +2533,33 @@ class QuizShowPlugin {
             }, (this.config.answerDisplayDuration || 5) * 1000); // Show after answer display duration
         }
 
-        // Auto mode - automatically start next round after delay
+        // Auto mode - automatically start next round after ALL displays complete
         if (this.config.autoMode) {
-            const delay = (this.config.autoModeDelay || 5) * 1000;
+            // Calculate total delay for autoplay:
+            // 1. Answer display duration (default 5s)
+            const answerDuration = (this.config.answerDisplayDuration || 5) * 1000;
+            
+            // 2. Leaderboard rotation (3 types × rotation duration)
+            // Assuming Round, Season, Lifetime = 3 leaderboards
+            const rotationDuration = (this.config.leaderboardRotationDuration || 6) * 1000;
+            const totalLeaderboardTime = 3 * rotationDuration; // 18 seconds by default
+            
+            // 3. Countdown timer (if enabled)
+            const countdownDuration = this.config.showNextQuestionCountdown 
+                ? (this.config.nextQuestionCountdownDuration || 5) * 1000 
+                : 0;
+            
+            // Total delay = answer + leaderboards + countdown + small buffer
+            const totalDelay = answerDuration + totalLeaderboardTime + countdownDuration + 1000; // +1s buffer
+            
             this.autoModeTimeout = setTimeout(() => {
                 this.autoModeTimeout = null;
                 this.startRound().catch(err => {
                     this.api.log('Error auto-starting next round: ' + err.message, 'error');
                 });
-            }, delay);
+            }, totalDelay);
+            
+            this.api.log(`Auto mode: next round in ${Math.round(totalDelay / 1000)}s`, 'debug');
         }
     }
 
