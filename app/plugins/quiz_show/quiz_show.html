@@ -670,6 +670,12 @@
                             <input type="number" id="ttsVolume" class="form-control" min="0" max="100" value="80">
                             <div class="help-text small">Steuert die Lautstärke der automatischen Sprachausgabe</div>
                         </div>
+
+                        <div class="form-group">
+                            <label title="Verzögerung in Sekunden bevor Frage angezeigt wird">TTS Startzeit vor Frage (Sekunden):</label>
+                            <input type="number" id="ttsStartDelay" class="form-control" min="0" max="10" value="2">
+                            <div class="help-text small">Wie lange TTS spricht bevor die Frage angezeigt wird (Synchronisierung)</div>
+                        </div>
                     </div>
                 </div>
 
@@ -698,6 +704,14 @@
                                 <input type="checkbox" id="autoMode">
                                 <span>Auto Modus aktiviert (Automatisch zur nächsten Frage)</span>
                             </label>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="autoRestartRound" checked>
+                                <span>Automatischer Neustart nach Rundenende</span>
+                            </label>
+                            <div class="help-text small">Wenn deaktiviert, pausiert das Quiz nach jeder Runde und zeigt das Leaderboard</div>
                         </div>
 
                         <div class="form-group">

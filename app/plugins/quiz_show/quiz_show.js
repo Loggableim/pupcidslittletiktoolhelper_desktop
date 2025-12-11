@@ -474,11 +474,13 @@
             ttsEnabled: document.getElementById('ttsEnabled').checked,
             ttsVoice: document.getElementById('ttsVoice').value,
             ttsVolume: parseInt(document.getElementById('ttsVolume').value),
+            ttsStartDelay: parseInt(document.getElementById('ttsStartDelay').value),
             marathonLength: parseInt(document.getElementById('marathonLength').value),
             gameMode: document.getElementById('gameModeSelect').value,
             categoryFilter: document.getElementById('categoryFilter').value,
             autoMode: document.getElementById('autoMode').checked,
             autoModeDelay: parseInt(document.getElementById('autoModeDelay').value),
+            autoRestartRound: document.getElementById('autoRestartRound').checked,
             answerDisplayDuration: parseInt(document.getElementById('answerDisplayDuration').value),
             // Voter Icons Settings
             voterIconsEnabled: document.getElementById('voterIconsEnabled').checked,
@@ -720,11 +722,13 @@
         document.getElementById('ttsEnabled').checked = config.ttsEnabled || false;
         document.getElementById('ttsVoice').value = config.ttsVoice || 'default';
         document.getElementById('ttsVolume').value = config.ttsVolume || 80;
+        document.getElementById('ttsStartDelay').value = config.ttsStartDelay || 2;
         document.getElementById('marathonLength').value = config.marathonLength || 15;
         document.getElementById('gameModeSelect').value = config.gameMode || 'classic';
         document.getElementById('categoryFilter').value = config.categoryFilter || 'Alle';
         document.getElementById('autoMode').checked = config.autoMode || false;
         document.getElementById('autoModeDelay').value = config.autoModeDelay || 5;
+        document.getElementById('autoRestartRound').checked = config.autoRestartRound !== false;
         document.getElementById('answerDisplayDuration').value = config.answerDisplayDuration || 5;
         
         // Voter Icons Settings

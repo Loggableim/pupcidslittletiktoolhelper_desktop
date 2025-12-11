@@ -38,8 +38,10 @@ class QuizShowPlugin {
             ttsEnabled: false,
             ttsVoice: 'default',
             ttsVolume: 80, // NEW: TTS volume (0-100%)
+            ttsStartDelay: 2, // Seconds to wait for TTS before showing question
             autoMode: false, // Auto advance to next question
             autoModeDelay: 5, // Seconds to wait before auto-advancing
+            autoRestartRound: true, // Auto-restart a new round after the current round ends
             answerDisplayDuration: 5, // Seconds to display the correct answer (including info text)
             // Voter Icons Configuration
             voterIconsEnabled: true,
@@ -2275,21 +2277,21 @@ class QuizShowPlugin {
             }
         };
 
-        // Start timer
-        this.startTimer();
-
-        // Play timer start sound
-        this.playSound('timer_start');
-
-        // TTS announcement if enabled - use new playTTS method
+        // TTS announcement if enabled - generate and wait before showing question
         if (this.config.ttsEnabled) {
             const ttsText = `Neue Frage: ${selectedQuestion.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
             const voiceConfig = this.config.ttsVoice || 'default';
             
-            // Play TTS (will use pre-generated audio if available)
+            // Start TTS playback first (will use pre-generated audio if available)
+            const ttsStartDelay = (this.config.ttsStartDelay || 2) * 1000;
+            
+            // Start TTS immediately
             this.playTTS(selectedQuestion.id, ttsText, voiceConfig).catch(error => {
                 this.api.log(`TTS error: ${error.message}`, 'error');
             });
+            
+            // Wait for TTS to start before showing question
+            await new Promise(resolve => setTimeout(resolve, ttsStartDelay));
             
             // Pre-generate TTS for the next question in background
             const nextQuestion = this.getNextQuestion();
@@ -2299,6 +2301,12 @@ class QuizShowPlugin {
                 });
             }
         }
+
+        // Start timer (after TTS delay if enabled)
+        this.startTimer();
+
+        // Play timer start sound
+        this.playSound('timer_start');
 
         // Broadcast to overlay and UI
         this.broadcastGameState();
@@ -2506,8 +2514,11 @@ class QuizShowPlugin {
             }, (this.config.answerDisplayDuration || 5) * 1000); // Show after answer display duration
         }
 
-        // Auto mode - automatically start next round after delay
-        if (this.config.autoMode) {
+        // Check if we've reached the total rounds limit
+        const totalRoundsReached = this.config.totalRounds > 0 && this.gameState.currentRound >= this.config.totalRounds;
+
+        // Auto mode - automatically start next round after delay (if autoRestartRound is enabled)
+        if (this.config.autoMode && this.config.autoRestartRound !== false && !totalRoundsReached) {
             const delay = (this.config.autoModeDelay || 5) * 1000;
             this.autoModeTimeout = setTimeout(() => {
                 this.autoModeTimeout = null;
@@ -2515,6 +2526,12 @@ class QuizShowPlugin {
                     this.api.log('Error auto-starting next round: ' + err.message, 'error');
                 });
             }, delay);
+        } else if (totalRoundsReached) {
+            // Round limit reached - show final leaderboard and end game
+            this.api.log(`Total rounds limit (${this.config.totalRounds}) reached - game ending`, 'info');
+            await this.showLeaderboardAtEnd();
+            const mvp = this.getMVPPlayer();
+            this.api.emit('quiz-show:quiz-ended', { mvp });
         }
     }
 
@@ -2970,6 +2987,21 @@ class QuizShowPlugin {
             jokerType = 'time';
             jokerData = this.activateTimeJoker();
             this.gameState.jokersUsed['time']++;
+        } else if (jokerSuffix === '' || jokerSuffix.trim() === '') {
+            // No specific joker type - auto-select first available with priority: 50:50 → 25% → time
+            if (this.config.joker50Enabled && this.gameState.jokersUsed['50'] === 0) {
+                jokerType = '50';
+                jokerData = this.activate5050Joker();
+                this.gameState.jokersUsed['50']++;
+            } else if (this.config.joker25Enabled && this.gameState.jokersUsed['25'] === 0) {
+                jokerType = '25';
+                jokerData = this.activate25Joker();
+                this.gameState.jokersUsed['25']++;
+            } else if (this.config.jokerTimeEnabled && this.gameState.jokersUsed['time'] === 0) {
+                jokerType = 'time';
+                jokerData = this.activateTimeJoker();
+                this.gameState.jokersUsed['time']++;
+            }
         }
 
         if (jokerType) {
