@@ -407,7 +407,7 @@ const handleLanguageChange = async (data) => {
                         iframe.contentWindow.postMessage({
                             type: 'language-changed',
                             locale: newLocale
-                        }, '*');
+                        }, window.location.origin);
                     } catch (e) {
                         // Cross-origin iframe, skip
                         console.debug('[i18n] Could not send language change to iframe (cross-origin):', e);
