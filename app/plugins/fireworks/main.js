@@ -174,9 +174,9 @@ class FireworksPlugin {
             
             // Explosion shapes
             shapesEnabled: true,
-            defaultShape: 'burst', // burst, heart, star, spiral, ring, paws, fountain, willow
-            randomShapeEnabled: true, // Enable random shape selection from active shapes
-            activeShapes: ['burst', 'heart', 'star', 'spiral', 'ring', 'paws'], // Array of active shapes for random selection
+            defaultShape: 'burst', // burst, heart, star, spiral, ring, custom
+            randomShapeEnabled: false, // Enable random shape selection from active shapes
+            activeShapes: ['burst'], // Array of active shapes for random selection
             giftShapeMappings: {}, // giftId -> shape
             
             // User avatar integration
@@ -199,7 +199,7 @@ class FireworksPlugin {
             goalFinaleDuration: 5000, // ms
             
             // Follower fireworks
-            followerFireworksEnabled: true, // Enable fireworks for new followers
+            followerFireworksEnabled: false, // Enable fireworks for new followers
             followerRocketCount: 3, // Number of rockets per follower (1-10)
             followerShowAnimation: true, // Show thank you animation
             followerShowProfilePicture: true, // Show follower's profile picture

@@ -25,11 +25,5 @@
     "interactive-triggers",
     "random-generator",
     "api-hooks"
-  ],
-  "descriptions": {
-    "en": "GPU-accelerated fireworks effects with gift-specific displays, combo systems, and interactive triggers. Features WebGL/WebGPU rendering with Canvas fallback for broad compatibility.",
-    "de": "GPU-beschleunigte Feuerwerk-Effekte mit geschenkspezifischen Anzeigen, Combo-Systemen und interaktiven Triggern. Bietet WebGL/WebGPU-Rendering mit Canvas-Fallback für breite Kompatibilität.",
-    "es": "Efectos de fuegos artificiales acelerados por GPU con pantallas específicas de regalos, sistemas de combo y activadores interactivos. Presenta renderizado WebGL/WebGPU con respaldo Canvas para amplia compatibilidad.",
-    "fr": "Effets de feux d'artifice accélérés GPU avec affichages spécifiques aux cadeaux, systèmes de combo et déclencheurs interactifs. Utilise le rendu WebGL/WebGPU avec repli Canvas pour large compatibilité."
-  }
+  ]
 }

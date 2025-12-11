@@ -1255,14 +1255,9 @@ class AudioManager {
 // ============================================================================
 
 class FireworksEngine {
-    constructor(canvasId, options = {}) {
+    constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
-        
-        // Multithreading & GPU support configuration
-        this.useWorker = options.useWorker !== false; // Enable by default
-        this.worker = null;
-        this.offscreenCanvas = null;
-        this.workerMode = false;
+        this.ctx = this.canvas.getContext('2d');
         
         this.fireworks = [];
         this.audioManager = new AudioManager();
@@ -1290,10 +1285,7 @@ class FireworksEngine {
             orientation: CONFIG.orientation,
             targetFps: CONFIG.targetFps,
             minFps: CONFIG.minFps,
-            giftPopupPosition: CONFIG.giftPopupPosition,
-            gpuEnabled: true,  // GPU acceleration enabled by default
-            workerEnabled: true,  // Multithreading enabled by default
-            workerCount: 'auto'  // Auto-select worker count
+            giftPopupPosition: CONFIG.giftPopupPosition
         };
         
         this.running = false;
@@ -1306,167 +1298,40 @@ class FireworksEngine {
     }
 
     async init() {
-        // Setup canvas FIRST before trying to transfer control
+        // Setup canvas
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
-        // Check if multithreading is enabled in config
-        const workerEnabled = this.config.workerEnabled !== false;
-        const gpuEnabled = this.config.gpuEnabled !== false;
-
-        // Now try to initialize worker AFTER canvas is configured (if enabled)
-        if (workerEnabled && this.useWorker && typeof OffscreenCanvas !== 'undefined' && typeof Worker !== 'undefined') {
-            try {
-                this.offscreenCanvas = this.canvas.transferControlToOffscreen();
-                this.worker = new Worker('/plugins/fireworks/gpu/fireworks-worker.js');
-                this.workerMode = true;
-                console.log(`[Fireworks Engine] ✅ Multithreading enabled: OffscreenCanvas + Web Worker (Currently using 1 thread, count config: ${this.config.workerCount || 'auto'})`);
-            } catch (error) {
-                console.warn('[Fireworks Engine] ⚠️ Worker initialization failed, falling back to main thread:', error);
-                this.workerMode = false;
-                this.offscreenCanvas = null;
-                this.worker = null;
-            }
-        } else {
-            if (!workerEnabled) {
-                console.log('[Fireworks Engine] Multithreading disabled by user configuration');
-            }
-        }
-        
-        // Initialize context for main thread mode if worker mode failed or disabled
-        if (!this.workerMode) {
-            const contextOptions = {
-                alpha: true,
-                willReadFrequently: false
-            };
-            
-            // Only enable desynchronized if GPU is enabled
-            if (gpuEnabled) {
-                contextOptions.desynchronized = true;
-                console.log('[Fireworks Engine] ✅ GPU acceleration enabled (main thread mode)');
-            } else {
-                console.log('[Fireworks Engine] GPU acceleration disabled by user configuration (CPU-only mode)');
-            }
-            
-            this.ctx = this.canvas.getContext('2d', contextOptions);
-        }
-
         // Initialize audio
         await this.audioManager.init();
-
-        // Initialize worker if in worker mode
-        if (this.workerMode) {
-            await this.initWorker();
-        }
 
         // Connect to Socket.io
         this.connectSocket();
 
         // Start render loop
         this.running = true;
-        if (!this.workerMode) {
-            this.render(); // Main thread rendering
-        }
+        this.render();
 
-        const mode = this.workerMode ? 'Multithreaded (OffscreenCanvas + Web Worker)' : 'Main Thread (GPU-accelerated)';
-        console.log(`[Fireworks Engine] Initialized with ${mode}`);
-    }
-    
-    async initWorker() {
-        return new Promise((resolve, reject) => {
-            // Set up worker message handler
-            this.worker.onmessage = (e) => {
-                const { type } = e.data;
-                
-                switch (type) {
-                    case 'initialized':
-                        if (e.data.success) {
-                            console.log('[Fireworks Engine] Worker initialized successfully');
-                            resolve();
-                        } else {
-                            console.error('[Fireworks Engine] Worker initialization failed:', e.data.error);
-                            reject(new Error(e.data.error || 'Unknown error'));
-                        }
-                        break;
-                        
-                    case 'stats':
-                        // Update stats from worker
-                        this.fps = e.data.fps || 0;
-                        if (this.debugMode) {
-                            const fpsEl = document.getElementById('fps');
-                            const particleEl = document.getElementById('particle-count');
-                            const rendererEl = document.getElementById('renderer-type');
-                            if (fpsEl) fpsEl.textContent = e.data.fps || 0;
-                            if (particleEl) particleEl.textContent = e.data.particleCount || 0;
-                            if (rendererEl) rendererEl.textContent = 'Multithreaded';
-                        }
-                        break;
-                        
-                    case 'firework-triggered':
-                    case 'cleared':
-                        // Acknowledgments from worker
-                        break;
-                        
-                    default:
-                        console.log('[Fireworks Engine] Worker message:', type, e.data);
-                }
-            };
-            
-            this.worker.onerror = (error) => {
-                console.error('[Fireworks Engine] Worker error:', error);
-                reject(error);
-            };
-            
-            // Get resolution from preset
-            const resolutionPreset = this.config.resolutionPreset || '1080p';
-            const orientation = this.config.orientation || 'landscape';
-            const targetResolution = this.getResolutionFromPreset(resolutionPreset, orientation);
-            
-            // Transfer OffscreenCanvas to worker
-            this.worker.postMessage({
-                type: 'init',
-                data: {
-                    canvas: this.offscreenCanvas,
-                    config: this.config,
-                    width: targetResolution.width,
-                    height: targetResolution.height
-                }
-            }, [this.offscreenCanvas]);
-            
-            // Start worker rendering
-            setTimeout(() => {
-                this.worker.postMessage({ type: 'start' });
-            }, 100);
-        });
+        console.log('[Fireworks Engine] Initialized with Canvas 2D');
     }
 
     resize() {
         const dpr = window.devicePixelRatio || 1;
+        const rect = this.canvas.getBoundingClientRect();
         
         // Get resolution from preset
         const resolutionPreset = this.config.resolutionPreset || '1080p';
         const orientation = this.config.orientation || 'landscape';
         const targetResolution = this.getResolutionFromPreset(resolutionPreset, orientation);
         
+        // Apply target resolution
+        this.canvas.width = targetResolution.width;
+        this.canvas.height = targetResolution.height;
+        
         this.width = targetResolution.width;
         this.height = targetResolution.height;
         
-        if (this.workerMode) {
-            // Notify worker of resize
-            this.worker.postMessage({
-                type: 'resize',
-                data: {
-                    width: targetResolution.width,
-                    height: targetResolution.height
-                }
-            });
-        } else {
-            // Apply target resolution to canvas
-            this.canvas.width = targetResolution.width;
-            this.canvas.height = targetResolution.height;
-        }
-        
-        console.log(`[Fireworks] Canvas resolution: ${targetResolution.width}x${targetResolution.height} (${resolutionPreset}, ${orientation})`);
+        console.log(`[Fireworks] Canvas resolution: ${this.canvas.width}x${this.canvas.height} (${resolutionPreset}, ${orientation})`);
     }
     
     getResolutionFromPreset(preset, orientation) {
@@ -1795,26 +1660,7 @@ class FireworksEngine {
             }
         }
 
-        // Add firework to engine (or send to worker)
-        if (this.workerMode) {
-            // Send firework data to worker thread
-            this.worker.postMessage({
-                type: 'trigger',
-                data: {
-                    x: startX,
-                    y: skipRockets ? targetY : this.height,
-                    targetY: targetY,
-                    color: colors[0] || '#ff0000',
-                    shape: shape,
-                    intensity: intensity,
-                    tier: tier,
-                    combo: combo
-                }
-            });
-        } else {
-            // Main thread mode - add to local array
-            this.fireworks.push(firework);
-        }
+        this.fireworks.push(firework);
 
         // Show gift popup (always show, even for instant explosions)
         if (username && coins > 0) {
@@ -1972,9 +1818,6 @@ class FireworksEngine {
     }
 
     render() {
-        // Worker mode: rendering happens on worker thread, nothing to do here
-        if (this.workerMode) return;
-        
         if (!this.running) return;
 
         const now = performance.now();

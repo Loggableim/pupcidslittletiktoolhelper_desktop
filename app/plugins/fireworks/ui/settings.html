@@ -534,68 +534,6 @@
                     <h2 class="section-title text-xl font-bold mb-4">⚡ Performance & Resolution</h2>
                     
                     <div class="space-y-4">
-                        <!-- GPU Acceleration Toggle -->
-                        <div class="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4">
-                            <div class="flex items-center justify-between mb-2">
-                                <label for="gpu-toggle"><strong>🎮 GPU Acceleration</strong></label>
-                                <div id="gpu-toggle" class="toggle-switch active" data-config="gpuEnabled"></div>
-                            </div>
-                            <p class="text-xs text-gray-400">
-                                Enable hardware-accelerated rendering for better performance. Disable if you experience rendering issues.
-                            </p>
-                            <div class="mt-2 space-y-1 text-xs text-gray-300">
-                                <div>• <strong>Enabled:</strong> GPU-accelerated canvas rendering (desynchronized mode)</div>
-                                <div>• <strong>Disabled:</strong> CPU-only rendering (fallback mode)</div>
-                            </div>
-                        </div>
-
-                        <!-- Multithreading Configuration -->
-                        <div class="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4">
-                            <div class="flex items-center justify-between mb-2">
-                                <label for="worker-toggle"><strong>⚙️ Multithreading (Web Workers)</strong></label>
-                                <div id="worker-toggle" class="toggle-switch active" data-config="workerEnabled"></div>
-                            </div>
-                            <p class="text-xs text-gray-400 mb-3">
-                                Offload particle calculations to separate CPU cores for maximum performance.
-                            </p>
-                            
-                            <div id="worker-config" class="space-y-3">
-                                <div>
-                                    <label class="block mb-2 text-sm"><strong>Number of Worker Threads</strong></label>
-                                    <select id="worker-count" class="w-full bg-black/30 rounded-lg px-4 py-2" data-config="workerCount">
-                                        <option value="auto" selected>Auto (Recommended)</option>
-                                        <option value="1">1 Thread</option>
-                                        <option value="2">2 Threads (Experimental)</option>
-                                        <option value="4">4 Threads (Experimental)</option>
-                                        <option value="8">8 Threads (Experimental)</option>
-                                    </select>
-                                    <p class="text-xs text-gray-400 mt-1">
-                                        Current implementation uses 1 worker thread. Multiple workers are planned for future updates.
-                                    </p>
-                                </div>
-                                
-                                <div class="bg-black/30 rounded-lg p-3 text-xs">
-                                    <div class="text-green-400 font-bold mb-1">✓ When enabled:</div>
-                                    <div class="space-y-1 text-gray-300">
-                                        <div>• Particle physics run on separate CPU core</div>
-                                        <div>• Main thread remains responsive (&lt;5% usage)</div>
-                                        <div>• Canvas rendering offloaded to worker</div>
-                                        <div>• True parallel processing</div>
-                                    </div>
-                                    <div class="text-yellow-400 font-bold mt-2 mb-1">⚠ Requires:</div>
-                                    <div class="space-y-1 text-gray-300">
-                                        <div>• Modern browser (Chrome 69+, Firefox 105+, Safari 16.4+)</div>
-                                        <div>• OffscreenCanvas support</div>
-                                        <div>• Auto-fallback to main thread if unsupported</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div id="worker-disabled-msg" class="hidden bg-black/30 rounded-lg p-3 text-xs text-gray-400">
-                                Multithreading disabled. All rendering happens on main thread with GPU acceleration.
-                            </div>
-                        </div>
-
                         <div>
                             <label class="block mb-2"><strong>OBS Overlay Resolution</strong></label>
                             <select id="resolution-preset" class="w-full bg-black/30 rounded-lg px-4 py-2" data-config="resolutionPreset">
