@@ -2,14 +2,27 @@
  * StreamAlchemy LightX Service
  * 
  * Handles image generation via LightX API for fusion items.
- * Supports both Image-to-Image (merging) and Text-to-Image generation.
+ * Based on official LightX API documentation and SDK:
+ * https://docs.lightxeditor.com/
+ * https://github.com/lightXapi/AIStack-Integrator
  * 
  * Features:
- * - Image-to-Image merging with style transfer
+ * - Image-to-Image transformation with style transfer
  * - Text-to-Image generation as fallback
+ * - Async order status polling
  * - Request queue for rate limiting
  * - Error handling and retries
- * - Timeout protection
+ * 
+ * API Endpoints used:
+ * - POST /v1/image2image - Transform images with prompts/styles
+ * - POST /v1/text2image - Generate images from text
+ * - POST /v1/order-status - Poll for generation completion
+ * 
+ * Response format:
+ * - statusCode: 2000 = success
+ * - body.orderId: Order ID for polling
+ * - body.status: 'init' (processing), 'active' (completed), 'failed'
+ * - body.output: Final image URL when completed
  */
 
 const https = require('https');
@@ -24,9 +37,13 @@ class LightXService {
         this.logger = logger;
         this.apiKey = apiKey;
         
-        // API Configuration
-        this.baseUrl = 'https://api.lightxeditor.com/external/api/v1';
-        this.timeout = 60000; // 60 seconds
+        // API Configuration - based on official LightX SDK
+        this.baseUrl = 'https://api.lightxeditor.com/external/api';
+        this.timeout = 120000; // 120 seconds (generation can take time)
+        
+        // Polling configuration
+        this.maxRetries = 30; // Max polling attempts
+        this.retryInterval = 3000; // 3 seconds between polls
         
         // Request queue for rate limiting
         this.queue = [];
@@ -62,7 +79,7 @@ class LightXService {
 
     /**
      * Generate fusion image using Image-to-Image API
-     * Merges two source images with a style prompt
+     * Uses LightX /v1/image2image endpoint
      * 
      * @param {string} imageUrl1 - First source image URL
      * @param {string} imageUrl2 - Second source image URL (used as style reference)
@@ -93,12 +110,12 @@ class LightXService {
         }
 
         this.stats.imageToImageRequests++;
-        return this.queueRequest('/image2image', payload);
+        return this.queueRequest('/v1/image2image', payload);
     }
 
     /**
      * Generate image using Text-to-Image API
-     * Creates a new image from a text description
+     * Uses LightX /v1/text2image endpoint
      * 
      * @param {string} prompt - Text prompt for image generation
      * @param {Object} options - Additional options
@@ -114,7 +131,7 @@ class LightXService {
         };
 
         this.stats.textToImageRequests++;
-        return this.queueRequest('/text2image', payload);
+        return this.queueRequest('/v1/text2image', payload);
     }
 
     /**
@@ -216,13 +233,120 @@ class LightXService {
 
     /**
      * Make HTTP request to LightX API
-     * @param {string} endpoint - API endpoint
+     * Based on official LightX API structure:
+     * - statusCode: 2000 = success
+     * - body contains orderId for async polling
+     * 
+     * @param {string} endpoint - API endpoint (e.g., '/v1/image2image')
      * @param {Object} payload - Request payload
      * @returns {Promise<string>} Image URL from response
      */
     async makeRequest(endpoint, payload) {
         const url = `${this.baseUrl}${endpoint}`;
         
+        this.logger.info(`[LIGHTX SERVICE] Making request to ${url}`);
+        
+        try {
+            // Step 1: Submit the generation request
+            const initialResponse = await this.httpPost(url, payload);
+            
+            // Check for LightX API success status code (2000)
+            if (initialResponse.statusCode !== 2000) {
+                throw new Error(`LightX API error: ${initialResponse.message || 'Unknown error'} (code: ${initialResponse.statusCode})`);
+            }
+            
+            const orderInfo = initialResponse.body;
+            
+            if (!orderInfo || !orderInfo.orderId) {
+                throw new Error('No orderId in response');
+            }
+            
+            this.logger.info(`[LIGHTX SERVICE] Order created: ${orderInfo.orderId}, status: ${orderInfo.status}`);
+            this.logger.debug(`[LIGHTX SERVICE] Max retries: ${orderInfo.maxRetriesAllowed}, avg time: ${orderInfo.avgResponseTimeInSec}s`);
+            
+            // Step 2: Poll for completion
+            const result = await this.pollForCompletion(orderInfo.orderId);
+            
+            if (!result.output) {
+                throw new Error('No output URL in completed result');
+            }
+            
+            this.logger.info('[LIGHTX SERVICE] Image generated successfully');
+            return result.output;
+            
+        } catch (error) {
+            this.logger.error(`[LIGHTX SERVICE] Request error: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Poll for order completion using official LightX order-status endpoint
+     * Status values: 'init' (processing), 'active' (completed), 'failed'
+     * 
+     * @param {string} orderId - Order ID from initial request
+     * @returns {Promise<Object>} Completed order with output URL
+     */
+    async pollForCompletion(orderId) {
+        const statusUrl = `${this.baseUrl}/v1/order-status`;
+        
+        for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+            // Wait before checking (except first attempt)
+            if (attempt > 0) {
+                await this.sleep(this.retryInterval);
+            }
+            
+            try {
+                this.logger.debug(`[LIGHTX SERVICE] Polling attempt ${attempt + 1}/${this.maxRetries} for order ${orderId}`);
+                
+                const response = await this.httpPost(statusUrl, { orderId });
+                
+                if (response.statusCode !== 2000) {
+                    this.logger.warn(`[LIGHTX SERVICE] Status check failed: ${response.message}`);
+                    continue;
+                }
+                
+                const status = response.body;
+                this.logger.debug(`[LIGHTX SERVICE] Order status: ${status.status}`);
+                
+                switch (status.status) {
+                    case 'active':
+                        // Generation completed successfully
+                        this.logger.info(`[LIGHTX SERVICE] Generation completed for order ${orderId}`);
+                        return status;
+                        
+                    case 'failed':
+                        throw new Error(`Generation failed for order ${orderId}`);
+                        
+                    case 'init':
+                        // Still processing, continue polling
+                        this.logger.debug(`[LIGHTX SERVICE] Order ${orderId} still processing...`);
+                        break;
+                        
+                    default:
+                        this.logger.warn(`[LIGHTX SERVICE] Unknown status: ${status.status}`);
+                        break;
+                }
+                
+            } catch (error) {
+                this.logger.warn(`[LIGHTX SERVICE] Poll attempt ${attempt + 1} failed: ${error.message}`);
+                // Continue polling unless it's a definitive failure
+                if (error.message.includes('Generation failed')) {
+                    throw error;
+                }
+            }
+        }
+        
+        throw new Error(`Timeout waiting for order ${orderId} completion after ${this.maxRetries} attempts`);
+    }
+
+    /**
+     * Make HTTP POST request
+     * @param {string} url - Full URL
+     * @param {Object} payload - Request payload
+     * @returns {Promise<Object>} Parsed JSON response
+     */
+    async httpPost(url, payload) {
         return new Promise((resolve, reject) => {
             const urlObj = new URL(url);
             const isHttps = urlObj.protocol === 'https:';
@@ -243,8 +367,6 @@ class LightXService {
                 timeout: this.timeout
             };
 
-            this.logger.debug(`[LIGHTX SERVICE] Making request to ${url}`);
-
             const req = httpModule.request(options, (res) => {
                 let responseData = '';
 
@@ -255,35 +377,7 @@ class LightXService {
                 res.on('end', () => {
                     try {
                         const json = JSON.parse(responseData);
-                        
-                        if (res.statusCode >= 200 && res.statusCode < 300) {
-                            // Extract image URL from response
-                            // LightX API typically returns { output: { imageUrl: "..." } } or similar
-                            const imageUrl = json.output?.imageUrl || 
-                                            json.output?.url || 
-                                            json.imageUrl || 
-                                            json.url ||
-                                            json.result?.imageUrl ||
-                                            json.result?.url;
-                            
-                            if (imageUrl) {
-                                this.logger.info('[LIGHTX SERVICE] Image generated successfully');
-                                resolve(imageUrl);
-                            } else {
-                                // Check if response is async (orderId for polling)
-                                if (json.orderId) {
-                                    // Poll for result
-                                    this.pollForResult(json.orderId)
-                                        .then(resolve)
-                                        .catch(reject);
-                                } else {
-                                    reject(new Error('No image URL in response'));
-                                }
-                            }
-                        } else {
-                            const errorMsg = json.error || json.message || `HTTP ${res.statusCode}`;
-                            reject(new Error(`LightX API error: ${errorMsg}`));
-                        }
+                        resolve(json);
                     } catch (parseError) {
                         reject(new Error(`Failed to parse response: ${parseError.message}`));
                     }
@@ -291,103 +385,12 @@ class LightXService {
             });
 
             req.on('error', (error) => {
-                reject(new Error(`Request error: ${error.message}`));
+                reject(new Error(`HTTP request error: ${error.message}`));
             });
 
             req.on('timeout', () => {
                 req.destroy();
                 reject(new Error('Request timeout'));
-            });
-
-            req.write(data);
-            req.end();
-        });
-    }
-
-    /**
-     * Poll for async result using orderId
-     * @param {string} orderId - Order ID from initial request
-     * @returns {Promise<string>} Image URL
-     */
-    async pollForResult(orderId) {
-        const maxAttempts = 30;
-        const pollInterval = 2000; // 2 seconds
-
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            await this.sleep(pollInterval);
-            
-            try {
-                const result = await this.checkOrderStatus(orderId);
-                if (result.status === 'completed' && result.imageUrl) {
-                    return result.imageUrl;
-                } else if (result.status === 'failed') {
-                    throw new Error(result.error || 'Generation failed');
-                }
-                // Status is 'processing' - continue polling
-            } catch (error) {
-                this.logger.warn(`[LIGHTX SERVICE] Poll attempt ${attempt + 1} failed: ${error.message}`);
-            }
-        }
-
-        throw new Error('Timeout waiting for image generation');
-    }
-
-    /**
-     * Check order status
-     * @param {string} orderId - Order ID
-     * @returns {Promise<Object>} Order status
-     */
-    async checkOrderStatus(orderId) {
-        const url = `${this.baseUrl}/order-status`;
-        
-        return new Promise((resolve, reject) => {
-            const urlObj = new URL(url);
-            const isHttps = urlObj.protocol === 'https:';
-            const httpModule = isHttps ? https : http;
-
-            const data = JSON.stringify({ orderId });
-            
-            const options = {
-                hostname: urlObj.hostname,
-                port: urlObj.port || (isHttps ? 443 : 80),
-                path: urlObj.pathname,
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Content-Length': Buffer.byteLength(data),
-                    'x-api-key': this.apiKey
-                },
-                timeout: 10000
-            };
-
-            const req = httpModule.request(options, (res) => {
-                let responseData = '';
-
-                res.on('data', (chunk) => {
-                    responseData += chunk;
-                });
-
-                res.on('end', () => {
-                    try {
-                        const json = JSON.parse(responseData);
-                        resolve({
-                            status: json.status || 'unknown',
-                            imageUrl: json.output?.imageUrl || json.imageUrl,
-                            error: json.error
-                        });
-                    } catch (parseError) {
-                        reject(new Error(`Failed to parse status response: ${parseError.message}`));
-                    }
-                });
-            });
-
-            req.on('error', (error) => {
-                reject(new Error(`Status check error: ${error.message}`));
-            });
-
-            req.on('timeout', () => {
-                req.destroy();
-                reject(new Error('Status check timeout'));
             });
 
             req.write(data);

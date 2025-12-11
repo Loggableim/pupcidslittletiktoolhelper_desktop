@@ -58,7 +58,7 @@ module.exports = {
         'rpg', 'fantasy', 'comic', 'pixel', 'anime', 
         'cyberpunk', 'minimalist', '3d_render', 'retro', 
         'rainbow', 'cartoon', 'dark_fantasy'
-    ]
+    ],
     
     /**
      * Rarity tier thresholds based on combined coin values

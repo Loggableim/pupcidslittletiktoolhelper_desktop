@@ -575,7 +575,7 @@ class StreamAlchemyPlugin {
                 
                 // Validate style if provided
                 if (updates.defaultStyle) {
-                    const validStyles = config.STYLE_PRESETS;
+                    const validStyles = Object.keys(PromptGenerator.STYLE_PRESETS);
                     if (!validStyles.includes(updates.defaultStyle)) {
                         return res.status(400).json({
                             success: false,

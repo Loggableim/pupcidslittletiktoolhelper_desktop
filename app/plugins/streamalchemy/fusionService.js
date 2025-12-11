@@ -14,6 +14,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 const PromptGenerator = require('./promptGenerator');
+const { STYLE_PRESETS } = require('./promptGenerator');
 const LightXService = require('./lightxService');
 
 class FusionService {
@@ -32,7 +33,7 @@ class FusionService {
             autoFusionEnabled: false, // Auto-fuse when 2 different gifts sent
             preferLightX: true, // Prefer LightX over DALL-E
             defaultStyle: 'rpg',
-            allowedStyles: Object.keys(require('./promptGenerator').STYLE_PRESETS),
+            allowedStyles: Object.keys(STYLE_PRESETS),
             fusionWindowMs: 6000, // Time window for auto-fusion
             ...config
         };
