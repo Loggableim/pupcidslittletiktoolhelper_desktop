@@ -7,11 +7,12 @@
  * - Multi-stage firework rockets with realistic physics
  * - Secondary explosions and sparkle effects
  * - Advanced color palettes with smooth gradients
- * - Efficient particle management (no object pooling to reduce complexity)
+ * - High-performance particle management with object pooling
  * - Custom explosion shapes with mathematical precision
- * - Trail effects with motion blur
+ * - Trail effects with Path2D optimization
  * - Gift image integration with proper blending and XSS protection
  * - HSB color mode for vibrant displays
+ * - Batch rendering for maximum FPS
  * - Efficient Canvas 2D rendering optimized for OBS
  * - Configurable toaster mode for low-end systems
  * 
@@ -108,6 +109,68 @@ function hexToRgb(hex) {
         b: parseInt(result[3], 16)
     } : { r: 255, g: 255, b: 255 };
 }
+
+// ============================================================================
+// OBJECT POOLING - High-performance particle reuse system
+// ============================================================================
+
+class ParticlePool {
+    constructor(initialSize = 5000) {
+        this.pool = [];
+        this.active = [];
+        
+        // Pre-allocate particles
+        for (let i = 0; i < initialSize; i++) {
+            this.pool.push(new Particle());
+        }
+        
+        if (DEBUG) console.log(`[ParticlePool] Initialized with ${initialSize} particles`);
+    }
+    
+    acquire(args) {
+        let particle;
+        if (this.pool.length > 0) {
+            particle = this.pool.pop();
+            particle.reset(args);
+        } else {
+            // Pool exhausted, create new particle
+            particle = new Particle(args);
+        }
+        this.active.push(particle);
+        return particle;
+    }
+    
+    release(particle) {
+        const idx = this.active.indexOf(particle);
+        if (idx > -1) {
+            this.active.splice(idx, 1);
+            particle.reset();
+            this.pool.push(particle);
+        }
+    }
+    
+    releaseAll(particles) {
+        for (const particle of particles) {
+            const idx = this.active.indexOf(particle);
+            if (idx > -1) {
+                this.active.splice(idx, 1);
+                particle.reset();
+                this.pool.push(particle);
+            }
+        }
+    }
+    
+    getStats() {
+        return {
+            pooled: this.pool.length,
+            active: this.active.length,
+            total: this.pool.length + this.active.length
+        };
+    }
+}
+
+// Global particle pool instance
+let globalParticlePool = null;
 
 // ============================================================================
 // PARTICLE CLASS - Advanced physics-based particle
@@ -251,6 +314,95 @@ class Particle {
         if (!this.isDespawning) {
             this.isDespawning = true;
             this.despawnStartTime = performance.now();
+        }
+    }
+    
+    /**
+     * Reset particle to default state for object pooling
+     * Can optionally reinitialize with new args
+     */
+    reset(args = null) {
+        if (args) {
+            // Reinitialize with new values
+            const defaults = {
+                x: 0,
+                y: 0,
+                vx: 0,
+                vy: -10,
+                ax: 0,
+                ay: 0,
+                mass: 1,
+                drag: CONFIG.airResistance,
+                gravity: CONFIG.gravity,
+                size: 3,
+                hue: 360,
+                saturation: 100,
+                brightness: 100,
+                alpha: 1.0,
+                lifespan: 1.0,
+                decay: 0.01,
+                isSeed: true,
+                isSparkle: false,
+                color: '#ffffff',
+                image: null,
+                type: 'circle',
+                rotation: 0,
+                rotationSpeed: 0,
+                isDespawning: false,
+                despawnStartTime: 0,
+                willBurst: false,
+                burstDelay: 0,
+                burstTime: 0,
+                hasBurst: false,
+                willSpiral: false,
+                spiralDelay: 0,
+                hasSpiraled: false
+            };
+            Object.assign(this, defaults, args);
+            this.maxLifespan = this.lifespan;
+            this.trail.length = 0; // Clear trail array without reallocating
+            this.age = 0;
+            
+            if (this.willBurst || this.willSpiral) {
+                this.burstTime = performance.now();
+            }
+        } else {
+            // Just clear to defaults
+            this.x = 0;
+            this.y = 0;
+            this.vx = 0;
+            this.vy = -10;
+            this.ax = 0;
+            this.ay = 0;
+            this.mass = 1;
+            this.drag = CONFIG.airResistance;
+            this.gravity = CONFIG.gravity;
+            this.size = 3;
+            this.hue = 360;
+            this.saturation = 100;
+            this.brightness = 100;
+            this.alpha = 1.0;
+            this.lifespan = 1.0;
+            this.maxLifespan = 1.0;
+            this.decay = 0.01;
+            this.isSeed = true;
+            this.isSparkle = false;
+            this.color = '#ffffff';
+            this.image = null;
+            this.type = 'circle';
+            this.rotation = 0;
+            this.rotationSpeed = 0;
+            this.isDespawning = false;
+            this.despawnStartTime = 0;
+            this.willBurst = false;
+            this.burstDelay = 0;
+            this.burstTime = 0;
+            this.hasBurst = false;
+            this.willSpiral = false;
+            this.spiralDelay = 0;
+            this.hasSpiraled = false;
+            this.trail.length = 0;
+            this.age = 0;
         }
     }
 }
@@ -467,7 +619,32 @@ class Firework {
                 particleImage = this.userAvatar;
             }
             
-            const particle = new Particle({
+            const particle = globalParticlePool ? globalParticlePool.acquire({
+                x: explosionX,
+                y: explosionY,
+                vx: vel.vx,
+                vy: vel.vy,
+                size: isSparkle ? 2 + Math.random() * 2 : (particleType === 'image' ? 4 + Math.random() * 4 : 3 + Math.random() * 4),
+                hue: hue,
+                saturation: isSparkle ? 100 : 90,
+                brightness: isSparkle ? 100 : 95,
+                lifespan: isSparkle ? 0.6 + Math.random() * 0.4 : 0.8 + Math.random() * 0.6,
+                decay: isSparkle ? 0.015 : 0.008,
+                isSeed: false,
+                isSparkle: isSparkle,
+                type: particleType,
+                image: particleImage,
+                mass: isSparkle ? 0.5 : 1,
+                drag: isSparkle ? 0.97 : 0.98,
+                gravity: isSparkle ? CONFIG.gravity * 0.8 : CONFIG.gravity,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.1,
+                // Pass through secondary explosion properties from velocity data
+                willBurst: vel.willBurst || false,
+                burstDelay: vel.burstDelay || 0,
+                willSpiral: vel.willSpiral || false,
+                spiralDelay: vel.spiralDelay || 0
+            }) : new Particle({
                 x: explosionX,
                 y: explosionY,
                 vx: vel.vx,
@@ -560,6 +737,9 @@ class Firework {
             
             // Remove dead particles
             if (p.isDone()) {
+                if (globalParticlePool) {
+                    globalParticlePool.release(p);
+                }
                 this.particles.splice(i, 1);
             }
         }
@@ -571,6 +751,9 @@ class Firework {
             p.update();
             
             if (p.isDone()) {
+                if (globalParticlePool) {
+                    globalParticlePool.release(p);
+                }
                 this.secondaryExplosions.splice(i, 1);
             }
         }
@@ -583,7 +766,23 @@ class Firework {
             const angle = (Math.PI * 2 * i) / count;
             const speed = 1 + Math.random() * 2;
             
-            const particle = new Particle({
+            const particle = globalParticlePool ? globalParticlePool.acquire({
+                x: sourceParticle.x,
+                y: sourceParticle.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: 1 + Math.random() * 2,
+                hue: sourceParticle.hue + (Math.random() - 0.5) * 30,
+                saturation: 100,
+                brightness: 100,
+                lifespan: 0.4 + Math.random() * 0.3,
+                decay: 0.02,
+                isSeed: false,
+                isSparkle: true,
+                mass: 0.3,
+                drag: 0.96,
+                gravity: CONFIG.gravity * 0.6
+            }) : new Particle({
                 x: sourceParticle.x,
                 y: sourceParticle.y,
                 vx: Math.cos(angle) * speed,
@@ -613,7 +812,23 @@ class Firework {
             const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
             const speed = 0.8 + Math.random() * 1.2;
             
-            const particle = new Particle({
+            const particle = globalParticlePool ? globalParticlePool.acquire({
+                x: sourceParticle.x,
+                y: sourceParticle.y,
+                vx: sourceParticle.vx * 0.3 + Math.cos(angle) * speed,
+                vy: sourceParticle.vy * 0.3 + Math.sin(angle) * speed,
+                size: 1 + Math.random() * 1.5,
+                hue: sourceParticle.hue + (Math.random() - 0.5) * 20,
+                saturation: 90,
+                brightness: 95,
+                lifespan: 0.3 + Math.random() * 0.2,
+                decay: 0.025,
+                isSeed: false,
+                isSparkle: true,
+                mass: 0.2,
+                drag: 0.95,
+                gravity: CONFIG.gravity * 0.5
+            }) : new Particle({
                 x: sourceParticle.x,
                 y: sourceParticle.y,
                 vx: sourceParticle.vx * 0.3 + Math.cos(angle) * speed,
@@ -645,7 +860,25 @@ class Firework {
             const radius = 0.5 + (i / count) * 0.8;
             const speed = 1.0 + Math.random() * 0.8;
             
-            const particle = new Particle({
+            const particle = globalParticlePool ? globalParticlePool.acquire({
+                x: sourceParticle.x,
+                y: sourceParticle.y,
+                vx: sourceParticle.vx * 0.2 + Math.cos(t) * radius * speed,
+                vy: sourceParticle.vy * 0.2 + Math.sin(t) * radius * speed,
+                size: 1.2 + Math.random() * 1.5,
+                hue: sourceParticle.hue + (Math.random() - 0.5) * 25,
+                saturation: 85,
+                brightness: 90,
+                lifespan: 0.35 + Math.random() * 0.25,
+                decay: 0.022,
+                isSeed: false,
+                isSparkle: true,
+                mass: 0.25,
+                drag: 0.94,
+                gravity: CONFIG.gravity * 0.4,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.15
+            }) : new Particle({
                 x: sourceParticle.x,
                 y: sourceParticle.y,
                 vx: sourceParticle.vx * 0.2 + Math.cos(t) * radius * speed,
@@ -1270,6 +1503,12 @@ class FireworksEngine {
         this.fireworks = [];
         this.audioManager = new AudioManager();
         
+        // Initialize particle pool for high performance
+        if (!globalParticlePool) {
+            globalParticlePool = new ParticlePool(5000);
+        }
+        this.particlePool = globalParticlePool;
+        
         this.lastTime = performance.now();
         this.frameCount = 0;
         this.fps = 0;
@@ -1736,13 +1975,31 @@ class FireworksEngine {
         return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
-            img.onload = () => {
+            img.onload = async () => {
+                // Use async image decoding for better performance
+                try {
+                    if (img.decode) {
+                        await img.decode();
+                    }
+                } catch (error) {
+                    if (DEBUG) console.warn('[Fireworks] Image decode failed, using fallback:', error);
+                }
                 this.imageCache.set(url, img);
                 resolve(img);
             };
             img.onerror = () => resolve(null);
             img.src = url;
         });
+    }
+    
+    /**
+     * Preload multiple images for better performance
+     * @param {Array<string>} urls - Array of image URLs to preload
+     */
+    async preloadImages(urls) {
+        const promises = urls.map(url => this.loadImage(url));
+        await Promise.all(promises);
+        if (DEBUG) console.log(`[Fireworks] Preloaded ${urls.length} images`);
     }
 
     showGiftPopup(x, y, username, coins, combo, giftImage) {
@@ -1865,13 +2122,17 @@ class FireworksEngine {
             // Calculate average FPS over last 5 seconds
             const avgFps = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
             
-            // Adaptive Trail-Length based on FPS
+            // Adaptive Trail-Length based on FPS (Enhanced)
             if (avgFps > 50) {
-                CONFIG.trailLength = 15;
-            } else if (avgFps > 35) {
-                CONFIG.trailLength = 8;
+                CONFIG.trailLength = 20; // Full quality
+            } else if (avgFps > 40) {
+                CONFIG.trailLength = 12; // Good performance
+            } else if (avgFps > 30) {
+                CONFIG.trailLength = 8; // Medium performance
+            } else if (avgFps > 25) {
+                CONFIG.trailLength = 5; // Low performance
             } else {
-                CONFIG.trailLength = 3;
+                CONFIG.trailLength = 3; // Minimal performance
             }
             
             // Adaptive performance mode
@@ -1994,80 +2255,106 @@ class FireworksEngine {
     renderFirework(firework) {
         const ctx = this.ctx;
         
-        // Render rocket (seed particle)
-        if (!firework.exploded) {
-            this.renderParticle(firework.rocket);
+        // Collect particles by type for batch rendering
+        const circles = [];
+        const images = [];
+        const hearts = [];
+        const paws = [];
+        
+        // Add rocket if not exploded
+        if (!firework.exploded && firework.rocket) {
+            const p = firework.rocket;
+            if (this.isParticleVisible(p)) {
+                if (p.type === 'image' && p.image) {
+                    images.push(p);
+                } else {
+                    circles.push(p);
+                }
+            }
         }
         
-        // Render explosion particles
-        for (const particle of firework.particles) {
-            this.renderParticle(particle);
+        // Collect explosion particles
+        for (const p of firework.particles) {
+            if (!this.isParticleVisible(p)) continue;
+            
+            if (p.type === 'image' && p.image) {
+                images.push(p);
+            } else if (p.type === 'heart') {
+                hearts.push(p);
+            } else if (p.type === 'paw') {
+                paws.push(p);
+            } else {
+                circles.push(p);
+            }
         }
         
-        // Render secondary explosions
-        for (const particle of firework.secondaryExplosions) {
-            this.renderParticle(particle);
+        // Collect secondary explosions
+        for (const p of firework.secondaryExplosions) {
+            if (!this.isParticleVisible(p)) continue;
+            circles.push(p); // Secondary explosions are always circles
+        }
+        
+        // Batch render circles (most common type)
+        if (circles.length > 0) {
+            this.batchRenderCircles(circles);
+        }
+        
+        // Batch render images
+        if (images.length > 0) {
+            this.batchRenderImages(images);
+        }
+        
+        // Batch render hearts
+        if (hearts.length > 0) {
+            this.batchRenderHearts(hearts);
+        }
+        
+        // Batch render paws
+        if (paws.length > 0) {
+            this.batchRenderPaws(paws);
         }
     }
-
-    renderParticle(p) {
+    
+    isParticleVisible(p) {
+        // Viewport Culling - skip particles outside viewport with margin
+        const margin = 100;
+        return !(p.x < -margin || p.x > this.width + margin || p.y < -margin || p.y > this.height + margin);
+    }
+    
+    batchRenderCircles(particles) {
         const ctx = this.ctx;
         
-        // Viewport Culling - skip particles outside viewport with margin
-        const margin = 100; // Allow particles slightly outside to maintain smooth transitions
-        if (p.x < -margin || p.x > this.width + margin || p.y < -margin || p.y > this.height + margin) {
-            return; // Skip rendering particles outside viewport
-        }
-        
-        // Render trail
-        if (this.config.trailsEnabled && p.trail.length > 1) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(p.trail[0].x, p.trail[0].y);
-            
-            for (let i = 1; i < p.trail.length; i++) {
-                ctx.lineTo(p.trail[i].x, p.trail[i].y);
+        // Render all trails in one batch with Path2D
+        if (this.config.trailsEnabled) {
+            for (const p of particles) {
+                if (p.trail.length > 1) {
+                    const trailPath = new Path2D();
+                    trailPath.moveTo(p.trail[0].x, p.trail[0].y);
+                    
+                    for (let i = 1; i < p.trail.length; i++) {
+                        trailPath.lineTo(p.trail[i].x, p.trail[i].y);
+                    }
+                    
+                    const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
+                    ctx.save();
+                    ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha * 0.3})`;
+                    ctx.lineWidth = p.size * 0.5;
+                    ctx.lineCap = 'round';
+                    ctx.stroke(trailPath);
+                    ctx.restore();
+                }
             }
-            
-            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
-            ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha * 0.3})`;
-            ctx.lineWidth = p.size * 0.5;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-            ctx.restore();
         }
         
-        // Render particle
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rotation);
-        ctx.globalAlpha = p.alpha;
-        
-        if (p.type === 'image' && p.image) {
-            // Render image particle
-            const size = p.size * 3;
-            ctx.drawImage(p.image, -size/2, -size/2, size, size);
-        } else if (p.type === 'heart') {
-            // Render heart-shaped particle using Unicode heart symbol
-            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
-            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`;
-            ctx.font = `${p.size * 4}px Arial`; // Hearts are bigger
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('❤', 0, 0);
-        } else if (p.type === 'paw') {
-            // Render paw-shaped particle using paw emoji
-            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
-            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`;
-            ctx.font = `${p.size * 4}px Arial`; // Paws are bigger
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('🐾', 0, 0);
-        } else {
-            // Render colored particle with glow (standard circle)
-            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
-            
-            if (this.config.glowEnabled) {
+        // Render all glows in one batch (if enabled)
+        if (this.config.glowEnabled) {
+            for (const p of particles) {
+                const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rotation);
+                ctx.globalAlpha = p.alpha;
+                
                 const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size * 2);
                 gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`);
                 gradient.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha * 0.5})`);
@@ -2076,16 +2363,73 @@ class FireworksEngine {
                 ctx.beginPath();
                 ctx.arc(0, 0, p.size * 2, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.restore();
             }
-            
-            // Core particle
+        }
+        
+        // Render all core particles in one batch
+        for (const p of particles) {
+            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation);
+            ctx.globalAlpha = p.alpha;
             ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`;
             ctx.beginPath();
             ctx.arc(0, 0, p.size, 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
         }
+    }
+    
+    batchRenderImages(particles) {
+        const ctx = this.ctx;
         
-        ctx.restore();
+        for (const p of particles) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation);
+            ctx.globalAlpha = p.alpha;
+            const size = p.size * 3;
+            ctx.drawImage(p.image, -size/2, -size/2, size, size);
+            ctx.restore();
+        }
+    }
+    
+    batchRenderHearts(particles) {
+        const ctx = this.ctx;
+        
+        for (const p of particles) {
+            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation);
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`;
+            ctx.font = `${p.size * 4}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('❤', 0, 0);
+            ctx.restore();
+        }
+    }
+    
+    batchRenderPaws(particles) {
+        const ctx = this.ctx;
+        
+        for (const p of particles) {
+            const rgb = hslToRgb(p.hue, p.saturation, p.brightness);
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation);
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`;
+            ctx.font = `${p.size * 4}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🐾', 0, 0);
+            ctx.restore();
+        }
     }
 
     getTotalParticles() {
