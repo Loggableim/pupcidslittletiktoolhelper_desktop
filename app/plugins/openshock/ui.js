@@ -303,6 +303,45 @@ async function loadConfig() {
                 apiKeyInput.value = config.apiKey.substring(0, 8) + '...' + config.apiKey.substring(config.apiKey.length - 4);
             }
         }
+        
+        // Update safety settings UI
+        if (config.globalLimits) {
+            const maxIntEl = document.getElementById('globalMaxIntensity');
+            const maxIntValEl = document.getElementById('globalMaxIntensityValue');
+            const maxDurEl = document.getElementById('globalMaxDuration');
+            const maxDurValEl = document.getElementById('globalMaxDurationValue');
+            const maxCmdEl = document.getElementById('globalMaxCommandsPerMin');
+            
+            if (maxIntEl) maxIntEl.value = config.globalLimits.maxIntensity || 80;
+            if (maxIntValEl) maxIntValEl.textContent = config.globalLimits.maxIntensity || 80;
+            if (maxDurEl) maxDurEl.value = config.globalLimits.maxDuration || 5000;
+            if (maxDurValEl) maxDurValEl.textContent = config.globalLimits.maxDuration || 5000;
+            if (maxCmdEl) maxCmdEl.value = config.globalLimits.maxCommandsPerMinute || 30;
+        }
+        
+        if (config.defaultCooldowns) {
+            const globalCooldownEl = document.getElementById('globalCooldown');
+            if (globalCooldownEl) globalCooldownEl.value = config.defaultCooldowns.global || 500;
+        }
+        
+        if (config.userLimits) {
+            const minFollowerAgeEl = document.getElementById('minFollowerAge');
+            const maxCommandsEl = document.getElementById('maxCommandsPerUser');
+            const minPermLevelEl = document.getElementById('minPermissionLevel');
+            const reqSuperfanEl = document.getElementById('requireSuperfan');
+            const whitelistEl = document.getElementById('whitelist');
+            const blacklistEl = document.getElementById('blacklist');
+            
+            if (minFollowerAgeEl) minFollowerAgeEl.value = config.userLimits.minFollowerAge || 0;
+            if (maxCommandsEl) maxCommandsEl.value = config.userLimits.maxCommandsPerUser || 10;
+            if (minPermLevelEl) minPermLevelEl.value = config.userLimits.minPermissionLevel || 'all';
+            if (reqSuperfanEl) reqSuperfanEl.checked = config.userLimits.requireSuperfan || false;
+            if (whitelistEl) whitelistEl.value = (config.userLimits.whitelist || []).join(', ');
+            if (blacklistEl) blacklistEl.value = (config.userLimits.blacklist || []).join(', ');
+        }
+        
+        // Update emergency stop button state
+        updateEmergencyStopButtons(config?.emergencyStop?.enabled || false);
 
         return config;
     } catch (error) {
@@ -1261,12 +1300,11 @@ function renderPatternSteps() {
                 <span>Dauer: ${step.duration}ms</span>
             </div>
             <div class="pattern-step-actions">
-                <button data-step-index="${index}" class="btn btn-sm btn-secondary edit-pattern-step-btn" title="Bearbeiten">
-                    ✏️
-                </button>
-                <button data-step-index="${index}" class="btn btn-sm btn-danger remove-pattern-step-btn" title="Löschen">
-                    🗑️
-                </button>
+                ${index > 0 ? `<button data-step-index="${index}" class="btn btn-sm btn-secondary move-up-btn" title="Nach oben">⬆️</button>` : ''}
+                ${index < currentPatternSteps.length - 1 ? `<button data-step-index="${index}" class="btn btn-sm btn-secondary move-down-btn" title="Nach unten">⬇️</button>` : ''}
+                <button data-step-index="${index}" class="btn btn-sm btn-secondary duplicate-step-btn" title="Duplizieren">📋</button>
+                <button data-step-index="${index}" class="btn btn-sm btn-secondary edit-pattern-step-btn" title="Bearbeiten">✏️</button>
+                <button data-step-index="${index}" class="btn btn-sm btn-danger remove-pattern-step-btn" title="Löschen">🗑️</button>
             </div>
         </div>
     `).join('');
@@ -1350,6 +1388,51 @@ function removePatternStep(index) {
     if (stepCountLabel) {
         stepCountLabel.textContent = currentPatternSteps.length;
     }
+}
+
+function duplicatePatternStep(index) {
+    const step = currentPatternSteps[index];
+    if (!step) return;
+    
+    // Create a deep copy of the step
+    const duplicatedStep = JSON.parse(JSON.stringify(step));
+    
+    // Insert the duplicated step right after the original
+    currentPatternSteps.splice(index + 1, 0, duplicatedStep);
+    renderPatternSteps();
+    
+    // Update step count label
+    const stepCountLabel = document.getElementById('stepCountLabel');
+    if (stepCountLabel) {
+        stepCountLabel.textContent = currentPatternSteps.length;
+    }
+    
+    showNotification(`Schritt ${index + 1} dupliziert`, 'success');
+    addDebugLog('info', `Duplicated step ${index + 1}: ${step.type}`);
+}
+
+function movePatternStepUp(index) {
+    if (index <= 0 || index >= currentPatternSteps.length) return;
+    
+    // Swap with previous step
+    const temp = currentPatternSteps[index];
+    currentPatternSteps[index] = currentPatternSteps[index - 1];
+    currentPatternSteps[index - 1] = temp;
+    
+    renderPatternSteps();
+    addDebugLog('info', `Moved step ${index + 1} up`);
+}
+
+function movePatternStepDown(index) {
+    if (index < 0 || index >= currentPatternSteps.length - 1) return;
+    
+    // Swap with next step
+    const temp = currentPatternSteps[index];
+    currentPatternSteps[index] = currentPatternSteps[index + 1];
+    currentPatternSteps[index + 1] = temp;
+    
+    renderPatternSteps();
+    addDebugLog('info', `Moved step ${index + 1} down`);
 }
 
 function editPatternStep(index) {
@@ -2127,17 +2210,50 @@ async function loadSafetyConfig() {
 }
 
 async function saveSafetyConfig() {
-    const safety = {
-        maxIntensity: parseInt(document.getElementById('safety-max-intensity').value),
-        maxDuration: parseInt(document.getElementById('safety-max-duration').value),
-        cooldown: parseInt(document.getElementById('safety-cooldown').value)
+    // Gather global limits
+    const globalLimits = {
+        maxIntensity: parseInt(document.getElementById('globalMaxIntensity')?.value || 80),
+        maxDuration: parseInt(document.getElementById('globalMaxDuration')?.value || 5000),
+        maxCommandsPerMinute: parseInt(document.getElementById('globalMaxCommandsPerMin')?.value || 30)
+    };
+    
+    // Gather default cooldowns
+    const defaultCooldowns = {
+        global: parseInt(document.getElementById('globalCooldown')?.value || 500),
+        perDevice: 3000, // Keep existing perDevice cooldown
+        perUser: 10000   // Keep existing perUser cooldown
+    };
+    
+    // Gather user limits
+    const minPermissionLevel = document.getElementById('minPermissionLevel')?.value || 'all';
+    const requireSuperfan = document.getElementById('requireSuperfan')?.checked || false;
+    const minFollowerAge = parseInt(document.getElementById('minFollowerAge')?.value || 0);
+    const maxCommandsPerUser = parseInt(document.getElementById('maxCommandsPerUser')?.value || 10);
+    
+    // Parse whitelist and blacklist
+    const whitelistInput = document.getElementById('whitelist')?.value || '';
+    const blacklistInput = document.getElementById('blacklist')?.value || '';
+    const whitelist = whitelistInput.split(',').map(u => u.trim()).filter(u => u.length > 0);
+    const blacklist = blacklistInput.split(',').map(u => u.trim()).filter(u => u.length > 0);
+    
+    const userLimits = {
+        minFollowerAge,
+        maxCommandsPerUser,
+        minPermissionLevel,
+        requireSuperfan,
+        whitelist,
+        blacklist
     };
 
     try {
         const response = await fetch('/api/openshock/safety', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(safety)
+            body: JSON.stringify({
+                globalLimits,
+                defaultCooldowns,
+                userLimits
+            })
         });
 
         if (!response.ok) throw new Error('Failed to save safety config');
@@ -2151,18 +2267,90 @@ async function saveSafetyConfig() {
 }
 
 async function triggerEmergencyStop() {
-    // Emergency stop should execute immediately without confirmation
-    try {
-        const response = await fetch('/api/openshock/emergency-stop', {
-            method: 'POST'
-        });
+    // Check current emergency stop state
+    const isCurrentlyActive = config?.emergencyStop?.enabled || false;
+    
+    if (isCurrentlyActive) {
+        // If active, clear it (toggle off)
+        try {
+            const response = await fetch('/api/openshock/emergency-clear', {
+                method: 'POST'
+            });
 
-        if (!response.ok) throw new Error('Failed to trigger emergency stop');
+            if (!response.ok) throw new Error('Failed to clear emergency stop');
 
-        showNotification('🛑 EMERGENCY STOP ACTIVATED', 'error');
-    } catch (error) {
-        console.error('[OpenShock] Error triggering emergency stop:', error);
-        showNotification('Error triggering emergency stop', 'error');
+            showNotification('✅ Emergency stop cleared - System reactivated', 'success');
+            
+            // Update config locally
+            if (config && config.emergencyStop) {
+                config.emergencyStop.enabled = false;
+            }
+            
+            // Update button text
+            updateEmergencyStopButtons(false);
+        } catch (error) {
+            console.error('[OpenShock] Error clearing emergency stop:', error);
+            showNotification('Error clearing emergency stop', 'error');
+        }
+    } else {
+        // If not active, activate it (toggle on)
+        try {
+            const response = await fetch('/api/openshock/emergency-stop', {
+                method: 'POST'
+            });
+
+            if (!response.ok) throw new Error('Failed to trigger emergency stop');
+
+            showNotification('🛑 EMERGENCY STOP ACTIVATED', 'error');
+            
+            // Update config locally
+            if (config && config.emergencyStop) {
+                config.emergencyStop.enabled = true;
+            }
+            
+            // Update button text
+            updateEmergencyStopButtons(true);
+        } catch (error) {
+            console.error('[OpenShock] Error triggering emergency stop:', error);
+            showNotification('Error triggering emergency stop', 'error');
+        }
+    }
+}
+
+/**
+ * Update emergency stop button text and style based on state
+ * @param {boolean} isActive - Whether emergency stop is active
+ */
+function updateEmergencyStopButtons(isActive) {
+    const headerBtn = document.getElementById('headerEmergencyStop');
+    const safetyTabBtn = document.getElementById('emergencyStop');
+    
+    if (isActive) {
+        // Emergency stop is active - show "Gestoppt" and allow reactivation
+        if (headerBtn) {
+            headerBtn.textContent = '✅ Gestoppt';
+            headerBtn.classList.remove('btn-danger');
+            headerBtn.classList.add('btn-success');
+            headerBtn.title = 'Click to reactivate system';
+        }
+        if (safetyTabBtn) {
+            safetyTabBtn.textContent = '✅ Gestoppt';
+            safetyTabBtn.classList.remove('btn-danger');
+            safetyTabBtn.classList.add('btn-success');
+        }
+    } else {
+        // Emergency stop is not active - show "EMERGENCY STOP"
+        if (headerBtn) {
+            headerBtn.textContent = '🛑 EMERGENCY STOP';
+            headerBtn.classList.remove('btn-success');
+            headerBtn.classList.add('btn-danger');
+            headerBtn.title = 'Emergency Stop - Immediately stops all shocks and disables further commands';
+        }
+        if (safetyTabBtn) {
+            safetyTabBtn.textContent = '🛑 EMERGENCY STOP';
+            safetyTabBtn.classList.remove('btn-success');
+            safetyTabBtn.classList.add('btn-danger');
+        }
     }
 }
 
@@ -3332,6 +3520,30 @@ function initializeEventDelegation() {
             const stepIndex = parseInt(button.dataset.stepIndex);
             editPatternStep(stepIndex);
         }
+        
+        // Duplicate pattern step button
+        if (e.target.closest('.duplicate-step-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.duplicate-step-btn');
+            const stepIndex = parseInt(button.dataset.stepIndex);
+            duplicatePatternStep(stepIndex);
+        }
+        
+        // Move pattern step up
+        if (e.target.closest('.move-up-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.move-up-btn');
+            const stepIndex = parseInt(button.dataset.stepIndex);
+            movePatternStepUp(stepIndex);
+        }
+        
+        // Move pattern step down
+        if (e.target.closest('.move-down-btn')) {
+            e.preventDefault();
+            const button = e.target.closest('.move-down-btn');
+            const stepIndex = parseInt(button.dataset.stepIndex);
+            movePatternStepDown(stepIndex);
+        }
 
         // Test connection button (static button in settings)
         if (e.target.closest('.test-connection-btn')) {
@@ -3665,7 +3877,7 @@ function initZappieHellTab() {
     // Set overlay URL
     const overlayUrlInput = document.getElementById('zappiehellOverlayUrl');
     if (overlayUrlInput) {
-        const overlayUrl = `${window.location.origin}/openshock/overlay/zappiehell-overlay.html`;
+        const overlayUrl = `${window.location.origin}/openshock/zappiehell/overlay`;
         overlayUrlInput.value = overlayUrl;
     }
 
