@@ -389,7 +389,7 @@ if (document.readyState === 'loading') {
 window.i18n = i18n;
 
 // Shared handler for language change events
-const handleLanguageChange = async (data) => {
+const handleLanguageChange = async (data, fromPostMessage = false) => {
     const newLocale = data.locale;
     console.log(`[i18n] Received language change event: ${newLocale}`);
     
@@ -399,8 +399,9 @@ const handleLanguageChange = async (data) => {
             i18n.updateDOM();
             console.log(`[i18n] Language updated to: ${newLocale} (via event)`);
             
-            // If this is the parent window, propagate to all iframes
-            if (window === window.top) {
+            // Only propagate to iframes if this is the parent window AND
+            // the change didn't originate from a postMessage (prevents infinite loops)
+            if (window === window.top && !fromPostMessage) {
                 const iframes = document.querySelectorAll('iframe');
                 iframes.forEach(iframe => {
                     try {
@@ -446,6 +447,8 @@ window.addEventListener('message', (event) => {
     }
     
     if (event.data && event.data.type === 'language-changed') {
-        handleLanguageChange({ locale: event.data.locale });
+        // Pass true as second parameter to indicate this came from postMessage
+        // This prevents infinite propagation loops
+        handleLanguageChange({ locale: event.data.locale }, true);
     }
 });
