@@ -57,6 +57,9 @@ class QuizShowPlugin {
             leaderboardEndGameDisplayType: 'season', // 'round', 'season'
             leaderboardAutoHideDelay: 10, // seconds
             leaderboardAnimationStyle: 'fade', // 'fade', 'slide', 'zoom'
+            leaderboardRotationDuration: 6, // seconds per leaderboard type in rotation
+            showNextQuestionCountdown: true, // Show countdown timer for next question
+            nextQuestionCountdownDuration: 5, // seconds
             // NEW: Gift-Joker Integration
             giftJokersEnabled: true,
             giftJokerMappings: {}, // { giftId: jokerType } - loaded from database

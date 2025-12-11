@@ -412,6 +412,20 @@ body {
     line-height: 1.6;
     color: var(--text-primary);
     text-shadow: var(--shadow-sm);
+    /* Better handling for long questions */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    max-height: none;
+    display: block;
+    /* Allow up to 3 lines for very long questions */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: visible;
+    /* Use CSS transform for horizontal compression when needed */
+    transform-origin: center center;
+    transition: transform 0.3s ease;
 }
 
 /* ============================================

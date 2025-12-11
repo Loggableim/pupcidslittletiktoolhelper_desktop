@@ -711,14 +711,25 @@
         const questionElement = document.getElementById('questionText');
         questionElement.textContent = questionText;
 
-        // Dynamic font sizing
+        // Dynamic font sizing and compression for long questions
         const length = questionText.length;
-        if (length > 150) {
-            questionElement.style.fontSize = '1.5rem';
+        
+        // Reset styles
+        questionElement.style.fontSize = hudConfig.fonts?.sizeQuestion || '2.2rem';
+        questionElement.style.transform = 'scaleX(1)';
+        questionElement.style.webkitLineClamp = '3';
+        
+        if (length > 200) {
+            // Very long: reduce font size and apply horizontal compression
+            questionElement.style.fontSize = '1.4rem';
+            questionElement.style.transform = 'scaleX(0.9)'; // Slight compression
+        } else if (length > 150) {
+            // Long: reduce font size moderately
+            questionElement.style.fontSize = '1.6rem';
+            questionElement.style.transform = 'scaleX(0.95)';
         } else if (length > 100) {
-            questionElement.style.fontSize = '1.8rem';
-        } else {
-            questionElement.style.fontSize = hudConfig.fonts.sizeQuestion;
+            // Medium-long: slight reduction
+            questionElement.style.fontSize = '1.9rem';
         }
     }
 
