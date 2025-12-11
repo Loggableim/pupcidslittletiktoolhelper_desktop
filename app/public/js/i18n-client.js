@@ -388,22 +388,38 @@ if (document.readyState === 'loading') {
 // Make available globally
 window.i18n = i18n;
 
-// Listen for language changes via socket.io (for real-time sync across tabs/plugins)
-if (typeof io !== 'undefined') {
-    // Shared handler for language change events
-    const handleLanguageChange = async (data) => {
-        const newLocale = data.locale;
-        console.log(`[i18n] Received language change event: ${newLocale}`);
-        
-        if (i18n.currentLocale !== newLocale) {
-            const success = await i18n.changeLanguage(newLocale);
-            if (success) {
-                i18n.updateDOM();
-                console.log(`[i18n] Language updated to: ${newLocale} (via socket.io)`);
+// Shared handler for language change events
+const handleLanguageChange = async (data) => {
+    const newLocale = data.locale;
+    console.log(`[i18n] Received language change event: ${newLocale}`);
+    
+    if (i18n.currentLocale !== newLocale) {
+        const success = await i18n.changeLanguage(newLocale);
+        if (success) {
+            i18n.updateDOM();
+            console.log(`[i18n] Language updated to: ${newLocale} (via event)`);
+            
+            // If this is the parent window, propagate to all iframes
+            if (window === window.top) {
+                const iframes = document.querySelectorAll('iframe');
+                iframes.forEach(iframe => {
+                    try {
+                        iframe.contentWindow.postMessage({
+                            type: 'language-changed',
+                            locale: newLocale
+                        }, '*');
+                    } catch (e) {
+                        // Cross-origin iframe, skip
+                        console.debug('[i18n] Could not send language change to iframe (cross-origin):', e);
+                    }
+                });
             }
         }
-    };
-    
+    }
+};
+
+// Listen for language changes via socket.io (for real-time sync across tabs/plugins)
+if (typeof io !== 'undefined') {
     // Wait for socket.io to be ready
     const setupSocketListener = () => {
         if (window.socket) {
@@ -421,3 +437,15 @@ if (typeof io !== 'undefined') {
     // Start trying to setup the listener
     setupSocketListener();
 }
+
+// Listen for postMessage from parent window (for iframe language sync)
+window.addEventListener('message', (event) => {
+    // Accept messages from same origin for security
+    if (event.origin !== window.location.origin) {
+        return;
+    }
+    
+    if (event.data && event.data.type === 'language-changed') {
+        handleLanguageChange({ locale: event.data.locale });
+    }
+});
