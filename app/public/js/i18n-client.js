@@ -388,22 +388,45 @@ if (document.readyState === 'loading') {
 // Make available globally
 window.i18n = i18n;
 
-// Listen for language changes via socket.io (for real-time sync across tabs/plugins)
-if (typeof io !== 'undefined') {
-    // Shared handler for language change events
-    const handleLanguageChange = async (data) => {
-        const newLocale = data.locale;
-        console.log(`[i18n] Received language change event: ${newLocale}`);
-        
-        if (i18n.currentLocale !== newLocale) {
-            const success = await i18n.changeLanguage(newLocale);
-            if (success) {
-                i18n.updateDOM();
-                console.log(`[i18n] Language updated to: ${newLocale} (via socket.io)`);
+// Shared handler for language change events
+const handleLanguageChange = async (data, fromPostMessage = false) => {
+    const newLocale = data.locale;
+    console.log(`[i18n] Received language change event: ${newLocale}`);
+    
+    if (i18n.currentLocale !== newLocale) {
+        const success = await i18n.changeLanguage(newLocale);
+        if (success) {
+            i18n.updateDOM();
+            console.log(`[i18n] Language updated to: ${newLocale} (via event)`);
+            
+            // Only propagate to iframes if this is the parent window AND
+            // the change didn't originate from a postMessage (prevents infinite loops)
+            if (window === window.top && !fromPostMessage) {
+                const iframes = document.querySelectorAll('iframe');
+                iframes.forEach(iframe => {
+                    try {
+                        // Note: contentWindow is accessible even for cross-origin iframes,
+                        // but postMessage will succeed/fail based on actual permissions.
+                        // The try-catch handles all failure scenarios (cross-origin, security, etc.)
+                        const iframeWindow = iframe.contentWindow;
+                        if (iframeWindow) {
+                            iframeWindow.postMessage({
+                                type: 'language-changed',
+                                locale: newLocale
+                            }, window.location.origin);
+                        }
+                    } catch (e) {
+                        // Expected for cross-origin iframes or iframes with security restrictions
+                        console.debug('[i18n] Skipping language change for iframe (not accessible):', e.message);
+                    }
+                });
             }
         }
-    };
-    
+    }
+};
+
+// Listen for language changes via socket.io (for real-time sync across tabs/plugins)
+if (typeof io !== 'undefined') {
     // Wait for socket.io to be ready
     const setupSocketListener = () => {
         if (window.socket) {
@@ -421,3 +444,20 @@ if (typeof io !== 'undefined') {
     // Start trying to setup the listener
     setupSocketListener();
 }
+
+// Listen for postMessage from parent window (for iframe language sync)
+window.addEventListener('message', (event) => {
+    // Accept messages from same origin for security
+    // Note: Exact origin matching is intentional. All plugin UIs are served from
+    // the same origin (the app server), so subdomain/parent domain matching is
+    // unnecessary and would reduce security.
+    if (event.origin !== window.location.origin) {
+        return;
+    }
+    
+    if (event.data && event.data.type === 'language-changed') {
+        // Pass true as second parameter to indicate this came from postMessage
+        // This prevents infinite propagation loops
+        handleLanguageChange({ locale: event.data.locale }, true);
+    }
+});
