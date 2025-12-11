@@ -2,7 +2,7 @@
   "id": "fireworks",
   "name": "Fireworks Superplugin",
   "version": "1.0.0",
-  "description": "GPU-accelerated fireworks effects with gift-specific displays, combo systems, and interactive triggers. Features WebGL/WebGPU rendering with Canvas fallback.",
+  "description": "Canvas 2D fireworks effects with gift-specific displays, combo systems, and interactive triggers. Optimized for OBS streaming.",
   "author": "Pup Cid",
   "entry": "main.js",
   "enabled": false,
@@ -18,7 +18,7 @@
     "gift-triggered-fireworks",
     "combo-streak-system",
     "escalation-system",
-    "gpu-particle-engine",
+    "canvas2d-particle-engine",
     "custom-shapes",
     "audio-effects",
     "goal-finales",
@@ -27,9 +27,9 @@
     "api-hooks"
   ],
   "descriptions": {
-    "en": "GPU-accelerated fireworks effects with gift-specific displays, combo systems, and interactive triggers. Features WebGL/WebGPU rendering with Canvas fallback for broad compatibility.",
-    "de": "GPU-beschleunigte Feuerwerk-Effekte mit geschenkspezifischen Anzeigen, Combo-Systemen und interaktiven Triggern. Bietet WebGL/WebGPU-Rendering mit Canvas-Fallback für breite Kompatibilität.",
-    "es": "Efectos de fuegos artificiales acelerados por GPU con pantallas específicas de regalos, sistemas de combo y activadores interactivos. Presenta renderizado WebGL/WebGPU con respaldo Canvas para amplia compatibilidad.",
-    "fr": "Effets de feux d'artifice accélérés GPU avec affichages spécifiques aux cadeaux, systèmes de combo et déclencheurs interactifs. Utilise le rendu WebGL/WebGPU avec repli Canvas pour large compatibilité."
+    "en": "Canvas 2D fireworks effects with gift-specific displays, combo systems, and interactive triggers. Optimized rendering for OBS streaming with broad compatibility.",
+    "de": "Canvas 2D Feuerwerk-Effekte mit geschenkspezifischen Anzeigen, Combo-Systemen und interaktiven Triggern. Optimiertes Rendering für OBS-Streaming mit breiter Kompatibilität.",
+    "es": "Efectos de fuegos artificiales Canvas 2D con pantallas específicas de regalos, sistemas de combo y activadores interactivos. Renderizado optimizado para streaming OBS con amplia compatibilidad.",
+    "fr": "Effets de feux d'artifice Canvas 2D avec affichages spécifiques aux cadeaux, systèmes de combo et déclencheurs interactifs. Rendu optimisé pour streaming OBS avec large compatibilité."
   }
 }

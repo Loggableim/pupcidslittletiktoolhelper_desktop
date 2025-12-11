@@ -1,14 +1,14 @@
 /**
  * Fireworks Superplugin - Main Entry Point
  * 
- * GPU-accelerated fireworks effects with gift-specific displays, combo systems,
- * and interactive triggers. Features WebGL/WebGPU rendering with Canvas fallback.
+ * Canvas 2D fireworks effects with gift-specific displays, combo systems,
+ * and interactive triggers. Optimized for OBS streaming.
  * 
  * Features:
  * - Gift-triggered fireworks with GiftCatalogue integration
  * - Combo streak system (consecutive gifts trigger bigger effects)
  * - Gift escalation system (Small → Big → Massive)
- * - GPU particle engine (WebGL with Canvas fallback)
+ * - Canvas 2D particle engine optimized for performance
  * - Custom explosion shapes (Heart, Star, Spiral, etc.)
  * - Gift-based particles using gift images
  * - Audio effects for rockets/explosions
@@ -141,7 +141,7 @@ class FireworksPlugin {
         this.config = savedConfig || {
             // Global settings
             enabled: true,
-            renderer: 'webgl', // 'webgl', 'canvas', 'auto'
+            renderer: 'canvas2d', // Canvas 2D renderer (only option available)
             maxParticles: 1000,
             targetFps: 60,
             
@@ -224,8 +224,7 @@ class FireworksPlugin {
             randomMaxIntensity: 1.5,
             
             // Performance
-            gpuAcceleration: true,
-            toasterMode: false, // When enabled, uses Canvas 2D instead of WebGL for better compatibility
+            toasterMode: false, // When enabled, reduces particle count and effects for low-end systems
             particleSizeRange: [4, 12],
             trailsEnabled: true,
             trailLength: 10,

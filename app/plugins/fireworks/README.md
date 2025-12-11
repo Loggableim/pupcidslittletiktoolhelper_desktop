@@ -1,6 +1,6 @@
 # Fireworks Superplugin
 
-🎆 GPU-accelerated fireworks effects for TikTok LIVE streams with gift-specific displays, combo systems, and interactive triggers.
+🎆 Canvas 2D fireworks effects for TikTok LIVE streams with gift-specific displays, combo systems, and interactive triggers.
 
 ## Features
 
@@ -8,7 +8,7 @@
 - **Gift-Triggered Fireworks**: Automatic fireworks when viewers send gifts
 - **Combo Streak System**: Consecutive gifts from the same user create bigger effects
 - **Gift Escalation**: Small → Medium → Big → Massive tiers based on coin value
-- **GPU Particle Engine**: WebGL 2.0 rendering with Canvas 2D fallback
+- **Canvas 2D Particle Engine**: High-performance rendering optimized for OBS
 - **Custom Explosion Shapes**: Burst, Heart, Star, Ring, Spiral
 
 ### Visual Effects
