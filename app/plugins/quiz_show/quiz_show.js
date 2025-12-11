@@ -474,6 +474,7 @@
             ttsEnabled: document.getElementById('ttsEnabled').checked,
             ttsVoice: document.getElementById('ttsVoice').value,
             ttsVolume: parseInt(document.getElementById('ttsVolume').value),
+            ttsSpeed: parseFloat(document.getElementById('ttsSpeed').value),
             ttsStartDelay: parseInt(document.getElementById('ttsStartDelay').value),
             marathonLength: parseInt(document.getElementById('marathonLength').value),
             gameMode: document.getElementById('gameModeSelect').value,
@@ -722,6 +723,7 @@
         document.getElementById('ttsEnabled').checked = config.ttsEnabled || false;
         document.getElementById('ttsVoice').value = config.ttsVoice || 'default';
         document.getElementById('ttsVolume').value = config.ttsVolume || 80;
+        document.getElementById('ttsSpeed').value = config.ttsSpeed || 1.0;
         document.getElementById('ttsStartDelay').value = config.ttsStartDelay || 2;
         document.getElementById('marathonLength').value = config.marathonLength || 15;
         document.getElementById('gameModeSelect').value = config.gameMode || 'classic';

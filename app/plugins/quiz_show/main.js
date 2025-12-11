@@ -38,6 +38,7 @@ class QuizShowPlugin {
             ttsEnabled: false,
             ttsVoice: 'default',
             ttsVolume: 80, // NEW: TTS volume (0-100%)
+            ttsSpeed: 1.0, // NEW: TTS speed (0.5-2.0, 1.0 = normal)
             ttsStartDelay: 2, // Seconds to wait for TTS before showing question
             autoMode: false, // Auto advance to next question
             autoModeDelay: 5, // Seconds to wait before auto-advancing
@@ -2469,6 +2470,7 @@ class QuizShowPlugin {
                     username: 'Quiz Show',
                     voiceId: voiceId,
                     engine: engine,
+                    speed: this.config.ttsSpeed || 1.0,
                     source: 'quiz-show'
                 });
             } catch (error) {
@@ -3248,6 +3250,7 @@ class QuizShowPlugin {
                 username: 'Quiz Show',
                 voiceId: voiceId,
                 engine: engine,
+                speed: this.config.ttsSpeed || 1.0,
                 source: 'quiz-show',
                 preload: true // Flag to indicate this is for pre-loading
             });
@@ -3311,6 +3314,7 @@ class QuizShowPlugin {
                     username: 'Quiz Show',
                     voiceId: voiceId,
                     engine: engine,
+                    speed: this.config.ttsSpeed || 1.0,
                     source: 'quiz-show'
                 });
             }

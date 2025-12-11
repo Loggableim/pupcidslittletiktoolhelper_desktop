@@ -677,8 +677,17 @@
             }, 500); // Small delay to sync with TTS
         }
 
+        // Handle state transitions based on current state
+        // If already in TIME_UP or later, we need to update correct answer display
         if (currentState === States.RUNNING || currentState === States.TIME_LOW) {
             transitionToState(States.TIME_UP);
+        } else if (currentState === States.TIME_UP) {
+            // Already in TIME_UP, update the correct answer and transition manually
+            revealCorrectAnswer();
+            transitionToState(States.REVEAL_CORRECT);
+        } else if (currentState === States.REVEAL_CORRECT) {
+            // Already revealing, just update the display with correct info
+            revealCorrectAnswer();
         }
     }
 
