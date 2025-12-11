@@ -2519,6 +2519,9 @@ class QuizShowPlugin {
         // Check if we've reached the total rounds limit
         const totalRoundsReached = this.config.totalRounds > 0 && this.gameState.currentRound >= this.config.totalRounds;
 
+        // Debug logging for auto mode
+        this.api.log(`Auto mode check: autoMode=${this.config.autoMode}, autoRestartRound=${this.config.autoRestartRound}, totalRoundsReached=${totalRoundsReached}, currentRound=${this.gameState.currentRound}, totalRounds=${this.config.totalRounds}`, 'debug');
+
         // Auto mode - automatically start next round after delay (if autoRestartRound is enabled)
         // The total delay is answerDisplayDuration + autoModeDelay to wait for answer display
         if (this.config.autoMode && this.config.autoRestartRound !== false && !totalRoundsReached) {
@@ -2526,8 +2529,11 @@ class QuizShowPlugin {
             const autoDelay = (this.config.autoModeDelay || 5) * 1000;
             const totalDelay = answerDisplayDuration + autoDelay;
             
+            this.api.log(`Auto mode: scheduling next round in ${totalDelay}ms (answerDisplay: ${answerDisplayDuration}ms + autoDelay: ${autoDelay}ms)`, 'info');
+            
             this.autoModeTimeout = setTimeout(() => {
                 this.autoModeTimeout = null;
+                this.api.log('Auto mode: starting next round now', 'info');
                 this.startRound().catch(err => {
                     this.api.log('Error auto-starting next round: ' + err.message, 'error');
                 });
@@ -2538,6 +2544,8 @@ class QuizShowPlugin {
             await this.showLeaderboardAtEnd();
             const mvp = this.getMVPPlayer();
             this.api.emit('quiz-show:quiz-ended', { mvp });
+        } else {
+            this.api.log(`Auto mode not triggered: autoMode=${this.config.autoMode}`, 'debug');
         }
     }
 
