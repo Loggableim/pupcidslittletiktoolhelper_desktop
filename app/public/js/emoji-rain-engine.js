@@ -155,9 +155,12 @@ let toasterModeActive = false;
 let benchmarkActive = false;
 let benchmarkResults = [];
 let benchmarkCurrentTest = 0;
+let benchmarkCurrentRun = 0;
+let benchmarkRunResults = []; // Results for current preset across multiple runs
 let benchmarkStartTime = 0;
 let benchmarkTargetFPS = 60;
 let benchmarkCallback = null;
+const BENCHMARK_RUNS_PER_PRESET = 3; // Run each preset 3 times for accuracy
 
 // Benchmark test configurations
 const BENCHMARK_TESTS = [
@@ -789,11 +792,13 @@ function startBenchmark(targetFPS = 60, callback = null) {
         return;
     }
 
-    console.log(`🔬 Starting FPS benchmark (Target: ${targetFPS} FPS)`);
+    console.log(`🔬 Starting FPS benchmark (Target: ${targetFPS} FPS) with ${BENCHMARK_RUNS_PER_PRESET} runs per preset`);
     
     benchmarkActive = true;
     benchmarkResults = [];
     benchmarkCurrentTest = 0;
+    benchmarkCurrentRun = 0;
+    benchmarkRunResults = [];
     benchmarkTargetFPS = targetFPS;
     benchmarkCallback = callback;
     
@@ -823,7 +828,10 @@ function runBenchmarkTest() {
     }
 
     const test = BENCHMARK_TESTS[benchmarkCurrentTest];
-    console.log(`🔬 Running benchmark test ${benchmarkCurrentTest + 1}/${BENCHMARK_TESTS.length}: ${test.name}`);
+    const totalTests = BENCHMARK_TESTS.length * BENCHMARK_RUNS_PER_PRESET;
+    const currentTestNumber = benchmarkCurrentTest * BENCHMARK_RUNS_PER_PRESET + benchmarkCurrentRun + 1;
+    
+    console.log(`🔬 Running benchmark test ${currentTestNumber}/${totalTests}: ${test.name} (Run ${benchmarkCurrentRun + 1}/${BENCHMARK_RUNS_PER_PRESET})`);
     
     // Apply test settings
     Object.assign(config, test.settings);
@@ -855,9 +863,9 @@ function runBenchmarkTest() {
     if (benchmarkCallback) {
         benchmarkCallback({
             type: 'progress',
-            test: benchmarkCurrentTest + 1,
-            total: BENCHMARK_TESTS.length,
-            name: test.name
+            test: currentTestNumber,
+            total: totalTests,
+            name: `${test.name} (Lauf ${benchmarkCurrentRun + 1}/${BENCHMARK_RUNS_PER_PRESET})`
         });
     }
     
@@ -866,7 +874,16 @@ function runBenchmarkTest() {
         if (!benchmarkActive) return;
         
         recordBenchmarkResult();
-        benchmarkCurrentTest++;
+        
+        // Move to next run or next test
+        benchmarkCurrentRun++;
+        if (benchmarkCurrentRun >= BENCHMARK_RUNS_PER_PRESET) {
+            // Average the results for this preset and move to next preset
+            averageRunResults();
+            benchmarkCurrentRun = 0;
+            benchmarkCurrentTest++;
+        }
+        
         runBenchmarkTest();
     }, 5000);
 }
@@ -886,17 +903,54 @@ function recordBenchmarkResult() {
     const maxFPS = Math.max(...fpsHistory);
     
     const result = {
-        name: test.name,
-        settings: { ...test.settings },
         avgFPS: Math.round(avgFPS),
         minFPS: Math.round(minFPS),
-        maxFPS: Math.round(maxFPS),
-        meetsTarget: avgFPS >= benchmarkTargetFPS * 0.95 // Within 5% of target
+        maxFPS: Math.round(maxFPS)
     };
     
-    benchmarkResults.push(result);
+    benchmarkRunResults.push(result);
     
-    console.log(`📊 Benchmark result: ${test.name} - Avg FPS: ${result.avgFPS}, Min: ${result.minFPS}, Max: ${result.maxFPS}`);
+    console.log(`📊 Benchmark run ${benchmarkCurrentRun + 1}/${BENCHMARK_RUNS_PER_PRESET} for ${test.name} - Avg FPS: ${result.avgFPS}, Min: ${result.minFPS}, Max: ${result.maxFPS}`);
+}
+
+/**
+ * Average the results from multiple runs of the same preset
+ */
+function averageRunResults() {
+    if (benchmarkRunResults.length === 0) {
+        console.warn('⚠️ No run results to average');
+        return;
+    }
+    
+    const test = BENCHMARK_TESTS[benchmarkCurrentTest];
+    
+    // Calculate average FPS across all runs
+    const avgFPS = Math.round(benchmarkRunResults.reduce((sum, r) => sum + r.avgFPS, 0) / benchmarkRunResults.length);
+    
+    // Min should be the lowest minFPS from all runs, Max should be highest maxFPS
+    const minFPS = Math.min(...benchmarkRunResults.map(r => r.minFPS));
+    const maxFPS = Math.max(...benchmarkRunResults.map(r => r.maxFPS));
+    
+    // Calculate standard deviation for reliability metric
+    const avgVariance = benchmarkRunResults.reduce((sum, r) => sum + Math.pow(r.avgFPS - avgFPS, 2), 0) / benchmarkRunResults.length;
+    const stdDev = Math.round(Math.sqrt(avgVariance));
+    
+    const averagedResult = {
+        name: test.name,
+        settings: { ...test.settings },
+        avgFPS: avgFPS,
+        minFPS: minFPS,
+        maxFPS: maxFPS,
+        stdDev: stdDev,
+        runs: benchmarkRunResults.length,
+        meetsTarget: avgFPS >= benchmarkTargetFPS * 0.95, // Within 5% of target
+        reliability: stdDev < 5 ? 'high' : stdDev < 10 ? 'medium' : 'low' // Reliability based on consistency
+    };
+    
+    benchmarkResults.push(averagedResult);
+    benchmarkRunResults = []; // Clear for next preset
+    
+    console.log(`📊 Averaged result for ${test.name}: Avg FPS: ${avgFPS} ±${stdDev}, Min: ${minFPS}, Max: ${maxFPS}, Reliability: ${averagedResult.reliability}`);
 }
 
 /**
