@@ -298,6 +298,14 @@ class StreamAlchemyPlugin {
                 if (updates.customPrompts) {
                     this.craftingService.updateCustomPrompts(updates.customPrompts);
                 }
+
+                // Update fusion service with API keys
+                if (updates.lightxApiKey || updates.siliconFlowApiKey) {
+                    this.fusionService.updateConfig({
+                        lightxApiKey: updates.lightxApiKey,
+                        siliconFlowApiKey: updates.siliconFlowApiKey
+                    });
+                }
                 
                 res.json({
                     success: true,
@@ -583,6 +591,17 @@ class StreamAlchemyPlugin {
                         });
                     }
                 }
+
+                // Validate preferred generator
+                if (updates.preferredGenerator) {
+                    const validGenerators = ['siliconflow', 'lightx', 'dalle'];
+                    if (!validGenerators.includes(updates.preferredGenerator)) {
+                        return res.status(400).json({
+                            success: false,
+                            error: `Invalid generator. Must be one of: ${validGenerators.join(', ')}`
+                        });
+                    }
+                }
                 
                 this.fusionService.updateConfig(updates);
                 
@@ -590,21 +609,31 @@ class StreamAlchemyPlugin {
                 if (updates.autoFusionEnabled !== undefined) {
                     this.pluginConfig.autoFusionEnabled = updates.autoFusionEnabled;
                 }
-                if (updates.preferLightX !== undefined) {
-                    this.pluginConfig.preferLightX = updates.preferLightX;
+                if (updates.preferredGenerator !== undefined) {
+                    this.pluginConfig.preferredGenerator = updates.preferredGenerator;
                 }
                 if (updates.defaultStyle) {
                     this.pluginConfig.defaultStyle = updates.defaultStyle;
                 }
                 
-                // Save LightX API key to global settings if provided
+                // Save API keys to global settings if provided
+                const db = this.api.getDatabase();
+                
                 if (updates.lightxApiKey && updates.lightxApiKey !== '***HIDDEN***') {
                     try {
-                        const db = this.api.getDatabase();
                         db.setSetting('streamalchemy_lightx_api_key', updates.lightxApiKey);
                         this.pluginConfig.lightxApiKey = updates.lightxApiKey;
                     } catch (error) {
                         this.api.log(`[STREAMALCHEMY] Failed to save LightX key: ${error.message}`, 'error');
+                    }
+                }
+
+                if (updates.siliconFlowApiKey && updates.siliconFlowApiKey !== '***HIDDEN***') {
+                    try {
+                        db.setSetting('streamalchemy_siliconflow_api_key', updates.siliconFlowApiKey);
+                        this.pluginConfig.siliconFlowApiKey = updates.siliconFlowApiKey;
+                    } catch (error) {
+                        this.api.log(`[STREAMALCHEMY] Failed to save Silicon Flow key: ${error.message}`, 'error');
                     }
                 }
                 

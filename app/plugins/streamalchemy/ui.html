@@ -505,8 +505,14 @@
 
                     <div class="config-group">
                         <label class="config-label" for="lightxApiKey">LightX API Key</label>
-                        <div class="config-description">Für Bild-Fusion (Image-to-Image). Optional - DALL-E wird als Fallback genutzt.</div>
+                        <div class="config-description">Für Bild-Fusion (Image-to-Image). Optional.</div>
                         <input type="password" id="lightxApiKey" name="lightxApiKey" placeholder="lx-...">
+                    </div>
+
+                    <div class="config-group">
+                        <label class="config-label" for="siliconFlowApiKey">Silicon Flow API Key</label>
+                        <div class="config-description">Für FLUX.1-schnell Bildgenerierung (sehr schnell, 1-4 Schritte). <a href="https://siliconflow.cn" target="_blank">API Key erhalten</a></div>
+                        <input type="password" id="siliconFlowApiKey" name="siliconFlowApiKey" placeholder="sf-...">
                     </div>
 
                     <div class="btn-group">
@@ -593,11 +599,13 @@
                         </div>
 
                         <div class="config-group">
-                            <label class="config-label">LightX bevorzugen</label>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="preferLightX" name="preferLightX" checked>
-                                <label for="preferLightX">LightX API für Image-to-Image Fusion nutzen (schneller)</label>
-                            </div>
+                            <label class="config-label" for="preferredGenerator">Bevorzugter Bild-Generator</label>
+                            <div class="config-description">Wähle den primären Dienst für Bildgenerierung</div>
+                            <select id="preferredGenerator" name="preferredGenerator">
+                                <option value="siliconflow">🚀 Silicon Flow (FLUX.1-schnell) - Sehr schnell</option>
+                                <option value="lightx">🎨 LightX - Image-to-Image Fusion</option>
+                                <option value="dalle">🖼️ DALL-E 3 - Höchste Qualität</option>
+                            </select>
                         </div>
                     </div>
 
@@ -640,11 +648,15 @@
                         <div class="stat-value" id="stat-cache-hits">-</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">LightX Generierungen</div>
+                        <div class="stat-label">🚀 Silicon Flow</div>
+                        <div class="stat-value" id="stat-siliconflow-generations">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">🎨 LightX</div>
                         <div class="stat-value" id="stat-lightx-generations">-</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">DALL-E Generierungen</div>
+                        <div class="stat-label">🖼️ DALL-E</div>
                         <div class="stat-value" id="stat-dalle-generations">-</div>
                     </div>
                 </div>
@@ -1087,13 +1099,19 @@
             if (autoFusionEl) {
                 autoFusionEl.checked = config.autoFusionEnabled === true;
             }
-            const preferLightXEl = document.getElementById('preferLightX');
-            if (preferLightXEl) {
-                preferLightXEl.checked = config.preferLightX !== false;
+            const preferredGeneratorEl = document.getElementById('preferredGenerator');
+            if (preferredGeneratorEl && config.preferredGenerator) {
+                preferredGeneratorEl.value = config.preferredGenerator;
             }
             const defaultStyleEl = document.getElementById('defaultStyle');
             if (defaultStyleEl && config.defaultStyle) {
                 defaultStyleEl.value = config.defaultStyle;
+            }
+
+            // Silicon Flow API key
+            const siliconFlowInput = document.getElementById('siliconFlowApiKey');
+            if (siliconFlowInput) {
+                siliconFlowInput.value = config.siliconFlowApiKey || '';
             }
 
             // Custom prompts
@@ -1130,7 +1148,8 @@
                 itemGenerationMode: formData.get('itemGenerationMode'),
                 craftingWindowMs: parseInt(formData.get('craftingWindowMs')),
                 openaiApiKey: formData.get('openaiApiKey'),
-                lightxApiKey: formData.get('lightxApiKey')
+                lightxApiKey: formData.get('lightxApiKey'),
+                siliconFlowApiKey: formData.get('siliconFlowApiKey')
             };
 
             await saveConfig(updates);
@@ -1536,8 +1555,10 @@
                     const autoFusionEl = document.getElementById('autoFusionEnabled');
                     if (autoFusionEl) autoFusionEl.checked = configData.config.autoFusionEnabled;
                     
-                    const preferLightXEl = document.getElementById('preferLightX');
-                    if (preferLightXEl) preferLightXEl.checked = configData.config.preferLightX;
+                    const preferredGeneratorEl = document.getElementById('preferredGenerator');
+                    if (preferredGeneratorEl && configData.config.preferredGenerator) {
+                        preferredGeneratorEl.value = configData.config.preferredGenerator;
+                    }
                     
                     const defaultStyleEl = document.getElementById('defaultStyle');
                     if (defaultStyleEl && configData.config.defaultStyle) {
@@ -1707,6 +1728,7 @@
                     document.getElementById('stat-manual-fusions').textContent = s.manualFusions || 0;
                     document.getElementById('stat-auto-fusions').textContent = s.autoFusions || 0;
                     document.getElementById('stat-cache-hits').textContent = s.cacheHits || 0;
+                    document.getElementById('stat-siliconflow-generations').textContent = s.siliconFlowGenerations || 0;
                     document.getElementById('stat-lightx-generations').textContent = s.lightxGenerations || 0;
                     document.getElementById('stat-dalle-generations').textContent = s.dalleGenerations || 0;
                 }
@@ -1721,7 +1743,7 @@
             
             const updates = {
                 autoFusionEnabled: document.getElementById('autoFusionEnabled')?.checked || false,
-                preferLightX: document.getElementById('preferLightX')?.checked || false,
+                preferredGenerator: document.getElementById('preferredGenerator')?.value || 'siliconflow',
                 defaultStyle: document.getElementById('defaultStyle')?.value || 'rpg'
             };
 

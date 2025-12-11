@@ -12,6 +12,7 @@
 
 const path = require('path');
 const fs = require('fs').promises;
+const { v4: uuidv4 } = require('uuid');
 
 /**
  * Default tier configuration

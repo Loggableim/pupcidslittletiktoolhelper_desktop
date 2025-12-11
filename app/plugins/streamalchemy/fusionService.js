@@ -16,6 +16,7 @@ const { v4: uuidv4 } = require('uuid');
 const PromptGenerator = require('./promptGenerator');
 const { STYLE_PRESETS } = require('./promptGenerator');
 const LightXService = require('./lightxService');
+const SiliconFlowService = require('./siliconFlowService');
 
 class FusionService {
     /**
@@ -31,7 +32,8 @@ class FusionService {
         this.config = {
             enabled: true,
             autoFusionEnabled: false, // Auto-fuse when 2 different gifts sent
-            preferLightX: true, // Prefer LightX over DALL-E
+            preferredGenerator: 'siliconflow', // 'siliconflow', 'lightx', or 'dalle'
+            preferLightX: true, // Legacy: Prefer LightX over DALL-E
             defaultStyle: 'rpg',
             allowedStyles: Object.keys(STYLE_PRESETS),
             fusionWindowMs: 6000, // Time window for auto-fusion
@@ -41,6 +43,7 @@ class FusionService {
         // Services
         this.promptGenerator = new PromptGenerator(logger, config.customPrompts);
         this.lightxService = new LightXService(logger, config.lightxApiKey);
+        this.siliconFlowService = new SiliconFlowService(logger, config.siliconFlowApiKey);
         
         // DALL-E fallback (from craftingService)
         this.dalleService = null;
@@ -61,6 +64,7 @@ class FusionService {
             autoFusions: 0,
             cacheHits: 0,
             lightxGenerations: 0,
+            siliconFlowGenerations: 0,
             dalleGenerations: 0,
             failedFusions: 0
         };
@@ -85,6 +89,10 @@ class FusionService {
             this.lightxService.setApiKey(config.lightxApiKey);
         }
         
+        if (config.siliconFlowApiKey) {
+            this.siliconFlowService.setApiKey(config.siliconFlowApiKey);
+        }
+        
         if (config.customPrompts) {
             this.promptGenerator.updateCustomPrompts(config.customPrompts);
         }
@@ -100,11 +108,13 @@ class FusionService {
         return {
             enabled: this.config.enabled,
             autoFusionEnabled: this.config.autoFusionEnabled,
+            preferredGenerator: this.config.preferredGenerator,
             preferLightX: this.config.preferLightX,
             defaultStyle: this.config.defaultStyle,
             allowedStyles: this.config.allowedStyles,
             fusionWindowMs: this.config.fusionWindowMs,
             hasLightXKey: this.lightxService.hasApiKey(),
+            hasSiliconFlowKey: this.siliconFlowService.hasApiKey(),
             hasDalleKey: !!this.dalleService?.apiKey
         };
     }
@@ -286,45 +296,86 @@ class FusionService {
 
     /**
      * Generate fusion image using available services
+     * Priority order based on config.preferredGenerator:
+     * 1. Preferred generator (siliconflow, lightx, or dalle)
+     * 2. Fallback to other available generators
      * @private
      */
     async generateFusionImage(itemA, itemB, promptResult) {
         const prompt = promptResult.prompt;
+        const negativePrompt = promptResult.negativePrompt;
+        const preferredGenerator = this.config.preferredGenerator || 'siliconflow';
 
-        // Try LightX first if preferred and available
-        if (this.config.preferLightX && this.lightxService.hasApiKey()) {
+        // Define generator attempts in priority order
+        const generators = this.getGeneratorPriorityOrder(preferredGenerator);
+
+        for (const generator of generators) {
             try {
-                this.logger.info('[FUSION SERVICE] Attempting LightX generation');
-                const imageURL = await this.lightxService.generateFusionImage(
-                    itemA,
-                    itemB,
-                    prompt,
-                    {
-                        strength: 0.7,
-                        styleStrength: 0.5
-                    }
-                );
-                this.stats.lightxGenerations++;
-                return imageURL;
-            } catch (lightxError) {
-                this.logger.warn(`[FUSION SERVICE] LightX failed: ${lightxError.message}, trying DALL-E fallback`);
+                switch (generator) {
+                    case 'siliconflow':
+                        if (this.siliconFlowService.hasApiKey()) {
+                            this.logger.info('[FUSION SERVICE] Attempting Silicon Flow (FLUX.1-schnell) generation');
+                            const imageURL = await this.siliconFlowService.generateFusionImage(
+                                itemA,
+                                itemB,
+                                prompt,
+                                { negativePrompt }
+                            );
+                            this.stats.siliconFlowGenerations++;
+                            return imageURL;
+                        }
+                        break;
+
+                    case 'lightx':
+                        if (this.lightxService.hasApiKey()) {
+                            this.logger.info('[FUSION SERVICE] Attempting LightX generation');
+                            const imageURL = await this.lightxService.generateFusionImage(
+                                itemA,
+                                itemB,
+                                prompt,
+                                {
+                                    strength: 0.7,
+                                    styleStrength: 0.5
+                                }
+                            );
+                            this.stats.lightxGenerations++;
+                            return imageURL;
+                        }
+                        break;
+
+                    case 'dalle':
+                        if (this.dalleService) {
+                            this.logger.info('[FUSION SERVICE] Using DALL-E for generation');
+                            const imageURL = await this.dalleService.queueAIGeneration(prompt);
+                            this.stats.dalleGenerations++;
+                            return imageURL;
+                        }
+                        break;
+                }
+            } catch (error) {
+                this.logger.warn(`[FUSION SERVICE] ${generator} failed: ${error.message}, trying next generator`);
             }
         }
 
-        // Fallback to DALL-E
-        if (this.dalleService) {
-            try {
-                this.logger.info('[FUSION SERVICE] Using DALL-E for generation');
-                const imageURL = await this.dalleService.queueAIGeneration(prompt);
-                this.stats.dalleGenerations++;
-                return imageURL;
-            } catch (dalleError) {
-                this.logger.error(`[FUSION SERVICE] DALL-E failed: ${dalleError.message}`);
-                throw dalleError;
-            }
-        }
+        throw new Error('No image generation service available or all generators failed');
+    }
 
-        throw new Error('No image generation service available');
+    /**
+     * Get generator priority order based on preferred generator
+     * @private
+     */
+    getGeneratorPriorityOrder(preferred) {
+        const allGenerators = ['siliconflow', 'lightx', 'dalle'];
+        
+        // Move preferred to front
+        const order = [preferred, ...allGenerators.filter(g => g !== preferred)];
+        
+        // Legacy support: if preferLightX is true and preferred is not set explicitly
+        if (this.config.preferLightX && !this.config.preferredGenerator) {
+            return ['lightx', 'siliconflow', 'dalle'];
+        }
+        
+        return order;
     }
 
     /**
@@ -405,7 +456,9 @@ class FusionService {
         };
 
         const prefixList = prefixes[rarity] || prefixes.Common;
-        const prefix = prefixList[Math.floor(Math.random() * prefixList.length)];
+        // Use deterministic selection based on item names for caching consistency
+        const combinedHash = (cleanA + cleanB).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const prefix = prefixList[combinedHash % prefixList.length];
 
         return `${prefix} ${cleanA}-${cleanB} Relic`;
     }
@@ -457,7 +510,8 @@ class FusionService {
             ...this.stats,
             cacheSize: this.fusionCache.size,
             queueLength: this.queue.length,
-            lightxStats: this.lightxService.getStats()
+            lightxStats: this.lightxService.getStats(),
+            siliconFlowStats: this.siliconFlowService.getStats()
         };
     }
 
@@ -478,6 +532,7 @@ class FusionService {
     async destroy() {
         this.fusionCache.clear();
         await this.lightxService.destroy();
+        await this.siliconFlowService.destroy();
         this.logger.info('[FUSION SERVICE] Service destroyed');
     }
 }
