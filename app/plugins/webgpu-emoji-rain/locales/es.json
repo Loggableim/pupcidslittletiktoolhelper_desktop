@@ -4,7 +4,7 @@
     "subtitle": "Overlays Interactivos de Emojis",
     "config": {
       "title": "Configuración",
-      "enabled": "Enable Emoji Rain",
+      "enabled": "Activar Lluvia de Emojis",
       "trigger_on_gift": "Activar con Regalo",
       "trigger_on_follow": "Activar con Seguimiento",
       "trigger_on_like": "Activar con Hito de Me Gusta",
@@ -21,12 +21,12 @@
       "enabled": "Activar Modo Tostadora",
       "help": "Optimizado para máximo rendimiento en sistemas débiles",
       "changes_title": "Qué cambia:",
-      "max_emojis": "Max Emojis: 200 → 50",
-      "target_fps": "Target FPS: 60 → 30",
-      "rotation": "Rotation: Disabled",
-      "wind": "Wind: Disabled",
-      "effects": "Rainbow/Pixel/Glow: Disabled",
-      "burst": "Burst Intensity: Reduced",
+      "max_emojis": "Emojis Máximos: 200 → 50",
+      "target_fps": "FPS Objetivo: 60 → 30",
+      "rotation": "Rotación: Desactivada",
+      "wind": "Viento: Desactivado",
+      "effects": "Arcoíris/Píxel/Brillo: Desactivados",
+      "burst": "Intensidad de Ráfaga: Reducida",
       "tip": "Usa el Modo Tostadora si tu PC se ralentiza durante el streaming o el uso de CPU es demasiado alto."
     },
     "overlay": {

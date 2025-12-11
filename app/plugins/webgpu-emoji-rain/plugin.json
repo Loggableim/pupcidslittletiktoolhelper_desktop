@@ -30,5 +30,11 @@
     "follow-triggered",
     "share-triggered",
     "persistent-storage"
-  ]
+  ],
+  "descriptions": {
+    "en": "GPU-accelerated emoji rain effect using WebGPU instanced rendering.",
+    "de": "GPU-beschleunigter Emoji-Regen-Effekt mit WebGPU Instanced Rendering.",
+    "es": "Efecto de lluvia de emojis acelerado por GPU usando renderizado instanciado WebGPU.",
+    "fr": "Effet de pluie d'émojis accéléré par GPU utilisant le rendu instancié WebGPU."
+  }
 }

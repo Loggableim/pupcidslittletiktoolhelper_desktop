@@ -4,7 +4,7 @@
     "subtitle": "Overlays Émojis Interactifs",
     "config": {
       "title": "Configuration",
-      "enabled": "Enable Emoji Rain",
+      "enabled": "Activer la Pluie d'Émojis",
       "trigger_on_gift": "Déclencher sur Cadeau",
       "trigger_on_follow": "Déclencher sur Suivi",
       "trigger_on_like": "Déclencher sur Jalon de J'aime",
@@ -21,12 +21,12 @@
       "enabled": "Activer le Mode Grille-Pain",
       "help": "Optimisé pour des performances maximales sur systèmes faibles",
       "changes_title": "Changements :",
-      "max_emojis": "Max Emojis: 200 → 50",
-      "target_fps": "Target FPS: 60 → 30",
-      "rotation": "Rotation: Disabled",
-      "wind": "Wind: Disabled",
-      "effects": "Rainbow/Pixel/Glow: Disabled",
-      "burst": "Burst Intensity: Reduced",
+      "max_emojis": "Émojis Maximum: 200 → 50",
+      "target_fps": "FPS Cible: 60 → 30",
+      "rotation": "Rotation: Désactivée",
+      "wind": "Vent: Désactivé",
+      "effects": "Arc-en-ciel/Pixel/Lueur: Désactivés",
+      "burst": "Intensité de Rafale: Réduite",
       "tip": "Utilisez le Mode Grille-Pain si votre PC ralentit pendant le streaming ou si l'utilisation du CPU est trop élevée."
     },
     "overlay": {
