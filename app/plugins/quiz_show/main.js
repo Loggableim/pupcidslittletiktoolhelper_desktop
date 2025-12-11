@@ -2356,21 +2356,13 @@ class QuizShowPlugin {
             }
         };
 
-        // Start timer
-        this.startTimer();
-
-        // Play timer start sound
-        this.playSound('timer_start');
-
-        // TTS announcement if enabled - use new playTTS method
+        // TTS generation and playback BEFORE displaying question
         if (this.config.ttsEnabled) {
             const ttsText = `Neue Frage: ${selectedQuestion.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
             const voiceConfig = this.config.ttsVoice || 'default';
             
-            // Play TTS (will use pre-generated audio if available)
-            this.playTTS(selectedQuestion.id, ttsText, voiceConfig).catch(error => {
-                this.api.log(`TTS error: ${error.message}`, 'error');
-            });
+            // Generate TTS first if not already pre-generated (wait for it to complete)
+            await this.generateAndCacheTTS(selectedQuestion.id, ttsText, voiceConfig);
             
             // Pre-generate TTS for the next question in background
             const nextQuestion = this.getNextQuestion();
@@ -2381,8 +2373,25 @@ class QuizShowPlugin {
             }
         }
 
-        // Broadcast to overlay and UI
+        // Start timer
+        this.startTimer();
+
+        // Play timer start sound
+        this.playSound('timer_start');
+
+        // Broadcast to overlay and UI (question is now displayed)
         this.broadcastGameState();
+
+        // Play TTS after question is displayed (TTS is already generated and ready)
+        if (this.config.ttsEnabled) {
+            const ttsText = `Neue Frage: ${selectedQuestion.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
+            const voiceConfig = this.config.ttsVoice || 'default';
+            
+            // Play immediately (already generated above)
+            this.playTTS(selectedQuestion.id, ttsText, voiceConfig).catch(error => {
+                this.api.log(`TTS error: ${error.message}`, 'error');
+            });
+        }
 
         this.api.log(`Round started with question: ${selectedQuestion.question}`, 'info');
     }
@@ -3376,6 +3385,60 @@ class QuizShowPlugin {
                 api_key: null,
                 model: 'gpt-5-mini'
             };
+        }
+    }
+
+    /**
+     * Generate and cache TTS for current question (wait for completion)
+     * This ensures TTS is ready before the question is displayed
+     * @param {number} questionId - The question ID
+     * @param {string} ttsText - The TTS text to generate
+     * @param {string} voiceConfig - Voice configuration
+     */
+    async generateAndCacheTTS(questionId, ttsText, voiceConfig) {
+        if (!this.config.ttsEnabled) return;
+
+        try {
+            // Check if we already have pre-generated TTS for this question
+            if (this.ttsCache.nextQuestionId === questionId && this.ttsCache.audioUrl) {
+                this.api.log('Using pre-generated TTS for current question', 'debug');
+                return; // Already cached, no need to generate again
+            }
+
+            // Parse voice format: "engine:voiceId" or "default"
+            let engine = null;
+            let voiceId = null;
+            
+            if (voiceConfig !== 'default' && voiceConfig.includes(':')) {
+                const parts = voiceConfig.split(':');
+                engine = parts[0];
+                voiceId = parts[1];
+            }
+            
+            // Generate TTS audio via HTTP API (wait for completion)
+            const port = process.env.PORT || 3000;
+            const response = await axios.post(`http://localhost:${port}/api/tts/generate`, {
+                text: ttsText,
+                userId: 'quiz-show',
+                username: 'Quiz Show',
+                voiceId: voiceId,
+                engine: engine,
+                source: 'quiz-show',
+                preload: false // This is for immediate use
+            });
+
+            // Cache the audio URL
+            if (response.data && response.data.success) {
+                this.ttsCache = {
+                    nextQuestionId: questionId,
+                    audioUrl: response.data.audioUrl,
+                    text: ttsText
+                };
+                this.api.log('TTS generated and cached for current question', 'debug');
+            }
+        } catch (error) {
+            this.api.log(`TTS generation error: ${error.message}`, 'error');
+            // Don't fail the quiz on TTS errors
         }
     }
 
