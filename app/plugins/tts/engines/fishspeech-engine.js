@@ -194,55 +194,85 @@ class FishSpeechEngine {
             voiceId = 'fishaudio-en-1';
         }
 
-        // Extract voice identifier from voiceId (e.g., 'fishaudio-en-1' -> 'en-1')
-        const voiceName = voiceId.replace('fishaudio-', '') || 'en-1';
+        // Extract voice identifier from voiceId
+        // Pattern: 'fishaudio-{lang}-{number}' -> '{lang}-{number}'
+        let voiceName = 'en-1'; // default
+        const match = voiceId.match(/^fishaudio-(.+)$/);
+        if (match) {
+            voiceName = match[1];
+        }
 
-        try {
-            this.logger.info(`Fish Speech TTS: Synthesizing with voice=${voiceName}, speed=${speed}`);
+        let lastError = null;
+        for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+            try {
+                if (attempt > 0) {
+                    // Exponential backoff: 1s, 2s, 4s...
+                    const delay = Math.pow(2, attempt - 1) * 1000;
+                    this.logger.info(`Fish Speech TTS: Retry attempt ${attempt}/${this.maxRetries} after ${delay}ms delay`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
 
-            const requestBody = {
-                model: this.model,
-                input: text,
-                voice: voiceName,
-                response_format: options.format || 'mp3',
-                speed: speed || 1.0
-            };
+                this.logger.info(`Fish Speech TTS: Synthesizing with voice=${voiceName}, speed=${speed} (attempt ${attempt + 1}/${this.maxRetries + 1})`);
 
-            const response = await axios.post(this.apiSynthesisUrl, requestBody, {
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                responseType: 'arraybuffer',
-                timeout: this.timeout
-            });
+                const requestBody = {
+                    model: this.model,
+                    input: text,
+                    voice: voiceName,
+                    response_format: options.format || 'mp3',
+                    speed: speed || 1.0
+                };
 
-            // Convert response to base64
-            const buffer = Buffer.from(response.data);
-            const base64Audio = buffer.toString('base64');
+                const response = await axios.post(this.apiSynthesisUrl, requestBody, {
+                    headers: {
+                        'Authorization': `Bearer ${this.apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    responseType: 'arraybuffer',
+                    timeout: this.timeout
+                });
 
-            this.logger.info(`Fish Speech TTS: Successfully synthesized ${buffer.length} bytes`);
-            return base64Audio;
+                // Convert response to base64
+                const buffer = Buffer.from(response.data);
+                const base64Audio = buffer.toString('base64');
 
-        } catch (error) {
-            if (error.response) {
-                // API error response
-                const errorMessage = error.response.data ? 
-                    (Buffer.isBuffer(error.response.data) ? 
-                        error.response.data.toString('utf-8') : 
-                        JSON.stringify(error.response.data)) : 
-                    'Unknown error';
-                this.logger.error(`Fish Speech TTS: API error (${error.response.status}): ${errorMessage}`);
-                throw new Error(`Fish Speech API error: ${errorMessage}`);
-            } else if (error.request) {
-                // Network error
-                this.logger.error(`Fish Speech TTS: Network error - ${error.message}`);
-                throw new Error(`Fish Speech network error: ${error.message}`);
-            } else {
-                // Other error
-                this.logger.error(`Fish Speech TTS: Synthesis failed - ${error.message}`);
-                throw error;
+                this.logger.info(`Fish Speech TTS: Successfully synthesized ${buffer.length} bytes`);
+                return base64Audio;
+
+            } catch (error) {
+                lastError = error;
+                
+                // Determine if error is retryable
+                const isRetryable = error.code === 'ECONNABORTED' || 
+                                   error.code === 'ETIMEDOUT' ||
+                                   (error.response && error.response.status >= 500);
+                
+                if (!isRetryable || attempt === this.maxRetries) {
+                    // Don't retry on client errors (4xx) or if max retries reached
+                    break;
+                }
+                
+                this.logger.warn(`Fish Speech TTS: Attempt ${attempt + 1} failed (retryable error), retrying...`);
             }
+        }
+
+        // All retries exhausted
+        if (lastError.response) {
+            // API error response
+            const errorMessage = lastError.response.data ? 
+                (Buffer.isBuffer(lastError.response.data) ? 
+                    lastError.response.data.toString('utf-8') : 
+                    JSON.stringify(lastError.response.data)) : 
+                'Unknown error';
+            this.logger.error(`Fish Speech TTS: API error (${lastError.response.status}): ${errorMessage}`);
+            throw new Error(`Fish Speech API error: ${errorMessage}`);
+        } else if (lastError.request) {
+            // Network error
+            this.logger.error(`Fish Speech TTS: Network error - ${lastError.message}`);
+            throw new Error(`Fish Speech network error: ${lastError.message}`);
+        } else {
+            // Other error
+            this.logger.error(`Fish Speech TTS: Synthesis failed - ${lastError.message}`);
+            throw lastError;
         }
     }
 
