@@ -12,7 +12,10 @@
     "sendPort": 9000,
     "receivePort": 9001,
     "verboseMode": false,
-    "allowedIPs": ["127.0.0.1", "::1"],
+    "allowedIPs": [
+      "127.0.0.1",
+      "::1"
+    ],
     "autoRetryOnError": true,
     "retryDelay": 5000,
     "maxPacketSize": 65536
@@ -22,5 +25,17 @@
     "events",
     "flows"
   ],
-  "tags": ["vrchat", "osc", "automation", "avatar", "integration"]
+  "tags": [
+    "vrchat",
+    "osc",
+    "automation",
+    "avatar",
+    "integration"
+  ],
+  "descriptions": {
+    "en": "Persistent OSC bridge for VRChat integration. Enables bidirectional communication between TikTok events and VRChat avatars via standardized OSC parameters.",
+    "de": "Dauerhafte OSC-Brücke für VRChat-Integration. Ermöglicht bidirektionale Kommunikation zwischen TikTok-Events und VRChat-Avataren über standardisierte OSC-Parameter.",
+    "es": "Puente OSC persistente para integración de VRChat. Permite comunicación bidireccional entre eventos de TikTok y avatares de VRChat mediante parámetros OSC estandarizados.",
+    "fr": "Pont OSC persistant pour intégration VRChat. Permet communication bidirectionnelle entre événements TikTok et avatars VRChat via paramètres OSC standardisés."
+  }
 }

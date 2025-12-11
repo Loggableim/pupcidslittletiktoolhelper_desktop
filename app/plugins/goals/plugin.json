@@ -12,5 +12,11 @@
     "tiktok-events",
     "database",
     "websocket-client"
-  ]
+  ],
+  "descriptions": {
+    "en": "Complete Live Goals system with Coin, Likes, Follower, and Custom goal types. Real-time tracking with Event API and customizable overlays for viewer engagement.",
+    "de": "Komplettes Live-Ziele-System mit Münz-, Likes-, Follower- und benutzerdefinierten Zieltypen. Echtzeit-Tracking mit Event-API und anpassbaren Overlays für Zuschauer-Engagement.",
+    "es": "Sistema completo de objetivos en vivo con tipos de objetivos de monedas, likes, seguidores y personalizados. Seguimiento en tiempo real con API de eventos y overlays personalizables para la participación del espectador.",
+    "fr": "Système complet d'objectifs en direct avec types d'objectifs Pièces, Likes, Abonnés et personnalisés. Suivi en temps réel avec API d'événements et overlays personnalisables pour l'engagement des spectateurs."
+  }
 }

@@ -5,6 +5,32 @@ All notable changes to PupCid's Little TikTool Helper will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Phase 4: Multilingual Plugin Descriptions**
+  - Added multilingual descriptions to all 30 plugin.json files
+  - Support for 4 languages: English (en), German (de), Spanish (es), French (fr)
+  - New `descriptions` object in plugin.json with language-specific descriptions
+  - Maintained backward compatibility with existing `description` field
+  - API support for localized descriptions via `locale` query parameter
+  - Updated plugin loader with `getLocalizedDescription()` helper function
+  - Updated `/api/plugins` and `/api/plugins/:id` routes to support locale selection
+  - All plugin descriptions include comprehensive feature details
+  - Automated test suite for validation and backward compatibility
+
+### Changed
+- **Plugin Loader Enhancement**
+  - `getAllPlugins()` now accepts optional `locale` parameter
+  - Plugin API responses now include both `description` (localized) and `descriptions` (all languages)
+  - Improved plugin metadata exposure for better internationalization support
+
+### Technical Details
+- 30 plugins updated with multilingual descriptions
+- JSON validation passed for all plugin.json files
+- Backward compatibility maintained for legacy plugins without `descriptions` object
+- Localization fallback: `descriptions[locale]` → `description` → empty string
+
 ## [1.2.1] - 2025-12-09
 
 ### Fixed

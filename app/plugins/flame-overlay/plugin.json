@@ -18,5 +18,11 @@
     "obs-transparent-overlay",
     "tiktok-format-presets",
     "configurable-frame-borders"
-  ]
+  ],
+  "descriptions": {
+    "en": "Configurable WebGL flame border overlay for TikTok livestreams. Features customizable colors, intensity, speed, and frame thickness with transparent background for OBS integration.",
+    "de": "Konfigurierbares WebGL-Flammen-Rahmen-Overlay für TikTok-Livestreams. Bietet anpassbare Farben, Intensität, Geschwindigkeit und Rahmenstärke mit transparentem Hintergrund für OBS-Integration.",
+    "es": "Overlay de marco de llamas WebGL configurable para transmisiones en vivo de TikTok. Presenta colores personalizables, intensidad, velocidad y grosor de marco con fondo transparente para integración OBS.",
+    "fr": "Overlay de cadre de flammes WebGL configurable pour les livestreams TikTok. Propose couleurs personnalisables, intensité, vitesse et épaisseur de cadre avec fond transparent pour intégration OBS."
+  }
 }

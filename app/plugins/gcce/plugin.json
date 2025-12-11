@@ -11,5 +11,11 @@
     "routes",
     "tiktok-events",
     "database"
-  ]
+  ],
+  "descriptions": {
+    "en": "Universal chat command interpreter and framework for all plugins. Provides centralized command parsing, permission management, and extensible command registration system.",
+    "de": "Universeller Chat-Befehls-Interpreter und Framework für alle Plugins. Bietet zentralisierte Befehlsanalyse, Berechtigungsverwaltung und erweiterbares Befehlsregistrierungssystem.",
+    "es": "Intérprete universal de comandos de chat y framework para todos los plugins. Proporciona análisis centralizado de comandos, gestión de permisos y sistema extensible de registro de comandos.",
+    "fr": "Interpréteur universel de commandes de chat et framework pour tous les plugins. Fournit analyse centralisée des commandes, gestion des permissions et système extensible d'enregistrement de commandes."
+  }
 }

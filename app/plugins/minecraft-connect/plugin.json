@@ -76,5 +76,11 @@
       "position": "top-right"
     },
     "mappings": []
+  },
+  "descriptions": {
+    "en": "Bidirectional real-time integration between TikTok Live events and Minecraft (Java Edition). WebSocket bridge server enables custom events, commands, and in-game interactions.",
+    "de": "Bidirektionale Echtzeit-Integration zwischen TikTok-Live-Events und Minecraft (Java Edition). WebSocket-Bridge-Server ermöglicht benutzerdefinierte Events, Befehle und In-Game-Interaktionen.",
+    "es": "Integración bidireccional en tiempo real entre eventos en vivo de TikTok y Minecraft (Java Edition). El servidor puente WebSocket permite eventos personalizados, comandos e interacciones en el juego.",
+    "fr": "Intégration bidirectionnelle en temps réel entre événements TikTok Live et Minecraft (Java Edition). Le serveur pont WebSocket permet événements personnalisés, commandes et interactions en jeu."
   }
 }

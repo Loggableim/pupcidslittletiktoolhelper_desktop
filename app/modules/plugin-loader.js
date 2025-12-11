@@ -979,16 +979,34 @@ class PluginLoader extends EventEmitter {
     }
 
     /**
-     * Gibt alle geladenen Plugins zurück
+     * Get localized description for a plugin manifest
+     * @param {Object} manifest - Plugin manifest
+     * @param {string} locale - Requested locale (e.g., 'en', 'de', 'es', 'fr')
+     * @returns {string} Localized description or fallback
      */
-    getAllPlugins() {
+    getLocalizedDescription(manifest, locale = 'en') {
+        // If descriptions object exists and has the requested locale, use it
+        if (manifest.descriptions && manifest.descriptions[locale]) {
+            return manifest.descriptions[locale];
+        }
+        
+        // Fallback to default description field
+        return manifest.description || '';
+    }
+
+    /**
+     * Gibt alle geladenen Plugins zurück
+     * @param {string} locale - Optional locale for descriptions (default: 'en')
+     */
+    getAllPlugins(locale = 'en') {
         const plugins = [];
 
         for (const [id, plugin] of this.plugins.entries()) {
             plugins.push({
                 id: plugin.manifest.id,
                 name: plugin.manifest.name,
-                description: plugin.manifest.description,
+                description: this.getLocalizedDescription(plugin.manifest, locale),
+                descriptions: plugin.manifest.descriptions, // Include all descriptions
                 version: plugin.manifest.version,
                 author: plugin.manifest.author,
                 type: plugin.manifest.type,

@@ -25,5 +25,11 @@
     "interactive-triggers",
     "random-generator",
     "api-hooks"
-  ]
+  ],
+  "descriptions": {
+    "en": "WebGPU-accelerated fireworks effects with gift-specific displays, combo systems, and interactive triggers. Features native WebGPU rendering with compute shaders for maximum performance.",
+    "de": "WebGPU-beschleunigte Feuerwerk-Effekte mit geschenkspezifischen Anzeigen, Combo-Systemen und interaktiven Triggern. Bietet natives WebGPU-Rendering mit Compute-Shadern für maximale Performance.",
+    "es": "Efectos de fuegos artificiales acelerados por WebGPU con pantallas específicas de regalos, sistemas de combo y activadores interactivos. Presenta renderizado WebGPU nativo con shaders de cómputo para máximo rendimiento.",
+    "fr": "Effets de feux d'artifice accélérés WebGPU avec affichages spécifiques aux cadeaux, systèmes de combo et déclencheurs interactifs. Utilise le rendu WebGPU natif avec shaders de calcul pour performance maximale."
+  }
 }

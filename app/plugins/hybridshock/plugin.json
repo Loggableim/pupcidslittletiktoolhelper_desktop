@@ -15,5 +15,11 @@
     "database",
     "network",
     "websocket-client"
-  ]
+  ],
+  "descriptions": {
+    "en": "Bidirectional bridge between TikTok Live events and HybridShock API (HTTP/WebSocket). Features flexible mapping system, action queue, rate limiting, and advanced debugging tools.",
+    "de": "Bidirektionale Brücke zwischen TikTok-Live-Events und HybridShock-API (HTTP/WebSocket). Bietet flexibles Mapping-System, Action-Queue, Rate-Limiting und erweiterte Debugging-Tools.",
+    "es": "Puente bidireccional entre eventos en vivo de TikTok y API de HybridShock (HTTP/WebSocket). Presenta sistema de mapeo flexible, cola de acciones, limitación de tasa y herramientas de depuración avanzadas.",
+    "fr": "Pont bidirectionnel entre événements TikTok Live et API HybridShock (HTTP/WebSocket). Comprend système de mappage flexible, file d'actions, limitation de débit et outils de débogage avancés."
+  }
 }
