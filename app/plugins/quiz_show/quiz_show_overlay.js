@@ -517,10 +517,12 @@
         switch (state) {
             case States.IDLE:
                 hideOverlay();
+                hideTimer();
                 break;
 
             case States.QUESTION_INTRO:
                 showOverlay();
+                showTimer();
                 animateQuestionIntro();
                 stateTimeout = setTimeout(() => {
                     transitionToState(States.RUNNING);
@@ -537,6 +539,7 @@
 
             case States.TIME_UP:
                 stopTimer();
+                hideTimer(); // Hide timer when time expires
                 animateTimeUp();
                 stateTimeout = setTimeout(() => {
                     transitionToState(States.REVEAL_CORRECT);
@@ -544,9 +547,10 @@
                 break;
 
             case States.REVEAL_CORRECT:
+                hideQuestionAndAnswers(); // Hide question and answers when revealing correct answer
                 revealCorrectAnswer();
-                // Use answerDisplayDuration from config (in milliseconds), fallback to 5000ms
-                const displayDuration = (gameData.answerDisplayDuration || 5) * 1000;
+                // Use 6 seconds for answer info display (fixed duration as per requirement)
+                const displayDuration = 6 * 1000; // Fixed 6 seconds
                 stateTimeout = setTimeout(() => {
                     transitionToState(States.WAIT_NEXT);
                 }, displayDuration / hudConfig.animationSpeed);
@@ -590,6 +594,9 @@
 
             displayQuestion(gameData.question);
             displayAnswers(gameData.answers);
+            
+            // Make sure question and answers are visible (in case they were hidden)
+            showQuestionAndAnswers();
             
             // Update round number display
             const roundNumberDisplay = document.getElementById('roundNumberDisplay');
@@ -705,6 +712,46 @@
     function hideOverlay() {
         const overlay = document.getElementById('overlay-container');
         overlay.classList.add('hidden');
+    }
+
+    function showTimer() {
+        const timerSection = document.getElementById('timerSection');
+        if (timerSection) {
+            timerSection.style.display = '';
+            timerSection.style.visibility = 'visible';
+        }
+    }
+
+    function hideTimer() {
+        const timerSection = document.getElementById('timerSection');
+        if (timerSection) {
+            timerSection.style.display = 'none';
+            timerSection.style.visibility = 'hidden';
+        }
+    }
+
+    function hideQuestionAndAnswers() {
+        const questionSection = document.getElementById('questionSection');
+        const answersSection = document.getElementById('answersSection');
+        
+        if (questionSection) {
+            questionSection.style.display = 'none';
+        }
+        if (answersSection) {
+            answersSection.style.display = 'none';
+        }
+    }
+
+    function showQuestionAndAnswers() {
+        const questionSection = document.getElementById('questionSection');
+        const answersSection = document.getElementById('answersSection');
+        
+        if (questionSection) {
+            questionSection.style.display = '';
+        }
+        if (answersSection) {
+            answersSection.style.display = '';
+        }
     }
 
     function displayQuestion(questionText) {
@@ -1351,31 +1398,9 @@
     // Animation configuration for leaderboard entries
     const LEADERBOARD_ANIMATION_DELAY = 0.1; // seconds per entry
 
-    // Helper function to hide main quiz sections
-    function hideQuizSections() {
-        const questionSection = document.getElementById('questionSection');
-        const answersSection = document.getElementById('answersSection');
-        const timerSection = document.getElementById('timerSection');
-        
-        if (questionSection) questionSection.style.display = 'none';
-        if (answersSection) answersSection.style.display = 'none';
-        if (timerSection) timerSection.style.display = 'none';
-    }
-
-    // Helper function to show main quiz sections
-    function showQuizSections() {
-        const questionSection = document.getElementById('questionSection');
-        const answersSection = document.getElementById('answersSection');
-        const timerSection = document.getElementById('timerSection');
-        
-        if (questionSection) questionSection.style.display = '';
-        if (answersSection) answersSection.style.display = '';
-        if (timerSection) timerSection.style.display = '';
-    }
-
     function handleShowLeaderboard(data) {
         try {
-            const { leaderboard, displayType, animationStyle } = data;
+            const { leaderboard, displayType, animationStyle, context, isRotating } = data;
             
             if (!leaderboard || leaderboard.length === 0) {
                 console.log('No leaderboard data to display');
@@ -1392,10 +1417,32 @@
             }
 
             // Hide question and answer sections to make room for leaderboard
-            hideQuizSections();
+            hideQuestionAndAnswers();
 
-            // Set display type
-            leaderboardType.textContent = displayType === 'round' ? 'Runde' : displayType === 'season' ? 'Season' : 'Runde + Season';
+            // Position leaderboard in the same location as question field
+            // Get question section position and size
+            const questionSection = document.getElementById('questionSection');
+            const answersSection = document.getElementById('answersSection');
+            
+            if (questionSection && answersSection) {
+                // Copy position and sizing from question + answers sections
+                const questionRect = questionSection.getBoundingClientRect();
+                const answersRect = answersSection.getBoundingClientRect();
+                
+                // Position leaderboard to cover both question and answer areas
+                leaderboardOverlay.style.position = 'fixed';
+                leaderboardOverlay.style.top = questionRect.top + 'px';
+                leaderboardOverlay.style.left = questionRect.left + 'px';
+                leaderboardOverlay.style.width = questionRect.width + 'px';
+                
+                // Height should span from question top to answer bottom
+                const totalHeight = (answersRect.bottom - questionRect.top);
+                leaderboardOverlay.style.height = totalHeight + 'px';
+            }
+
+            // Set display type text
+            let typeText = displayType === 'round' ? 'Runde' : displayType === 'season' ? 'Season' : displayType === 'lifetime' ? 'Gesamt' : 'Runde + Season';
+            leaderboardType.textContent = typeText;
 
             // Clear existing entries
             leaderboardList.innerHTML = '';
@@ -1428,11 +1475,18 @@
 
             // Set animation style
             leaderboardOverlay.setAttribute('data-animation', animationStyle || 'fade');
+            
+            // Mark as rotating if in rotation mode
+            if (isRotating) {
+                leaderboardOverlay.setAttribute('data-rotating', 'true');
+            } else {
+                leaderboardOverlay.removeAttribute('data-rotating');
+            }
 
             // Show leaderboard
             leaderboardOverlay.classList.remove('hidden');
 
-            console.log('Leaderboard displayed:', displayType);
+            console.log('Leaderboard displayed:', displayType, isRotating ? '(rotating)' : '');
         } catch (error) {
             console.error('Error displaying leaderboard:', error);
         }
@@ -1446,7 +1500,7 @@
             }
             
             // Restore question and answer sections
-            showQuizSections();
+            showQuestionAndAnswers();
             
             console.log('Leaderboard hidden');
         } catch (error) {

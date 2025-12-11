@@ -117,6 +117,9 @@ class QuizShowPlugin {
         // Auto mode timeout
         this.autoModeTimeout = null;
 
+        // Leaderboard rotation interval (for end-game rotation)
+        this.leaderboardRotationInterval = null;
+
         // TTS pre-generation cache
         this.ttsCache = {
             nextQuestionId: null,
@@ -2117,6 +2120,9 @@ class QuizShowPlugin {
     }
 
     async startRound() {
+        // Stop leaderboard rotation if running (from end-game state)
+        this.stopLeaderboardRotation();
+        
         // Get questions from database
         let questions;
         
@@ -2492,29 +2498,54 @@ class QuizShowPlugin {
 
         this.api.log(`Round ended. Correct answers: ${results.correctUsers.length}/${this.gameState.answers.size}`, 'info');
 
+        // Calculate total display time: answer info (6s) + leaderboard display
+        const answerInfoDuration = 6; // 6 seconds for answer info display
+        const leaderboardDisplayDuration = this.config.leaderboardAutoHideDelay || 10;
+        
         // Show leaderboard after question if configured
         if (this.config.leaderboardShowAfterQuestion) {
             setTimeout(() => {
                 this.showLeaderboardAfterQuestion();
-            }, (this.config.answerDisplayDuration || 5) * 1000); // Show after answer display duration
+            }, answerInfoDuration * 1000); // Show after answer info display (6 seconds)
         }
 
         // Show leaderboard after round if configured (only if not showing after question, to avoid duplication)
         if (this.config.leaderboardShowAfterRound && !this.config.leaderboardShowAfterQuestion) {
             setTimeout(() => {
                 this.showLeaderboardAfterRound();
-            }, (this.config.answerDisplayDuration || 5) * 1000); // Show after answer display duration
+            }, answerInfoDuration * 1000); // Show after answer info display (6 seconds)
         }
 
-        // Auto mode - automatically start next round after delay
-        if (this.config.autoMode) {
-            const delay = (this.config.autoModeDelay || 5) * 1000;
+        // Pre-generate TTS for next question 4 seconds before it displays (if not end of game)
+        const totalDelayBeforeNextQuestion = answerInfoDuration + leaderboardDisplayDuration;
+        const ttsPreGenTime = totalDelayBeforeNextQuestion - 4; // 4 seconds before next question
+        
+        if (this.config.ttsEnabled && ttsPreGenTime > 0 && this.gameState.currentRound > 0) {
+            setTimeout(() => {
+                const nextQuestion = this.getNextQuestion();
+                if (nextQuestion) {
+                    this.preGenerateTTS(nextQuestion).catch(error => {
+                        this.api.log(`TTS pre-generation error: ${error.message}`, 'warn');
+                    });
+                }
+            }, ttsPreGenTime * 1000);
+        }
+
+        // Auto mode - automatically start next round after delay (but not at end of game)
+        // Check if this is NOT the final round based on totalRounds config
+        const isGameEnding = this.config.totalRounds > 0 && this.gameState.currentRound >= this.config.totalRounds;
+        
+        if (this.config.autoMode && !isGameEnding) {
+            const delay = totalDelayBeforeNextQuestion * 1000;
             this.autoModeTimeout = setTimeout(() => {
                 this.autoModeTimeout = null;
                 this.startRound().catch(err => {
                     this.api.log('Error auto-starting next round: ' + err.message, 'error');
                 });
             }, delay);
+        } else if (isGameEnding) {
+            // At end of game, show rotating leaderboards until manual start
+            this.startLeaderboardRotation();
         }
     }
 
@@ -2660,6 +2691,100 @@ class QuizShowPlugin {
             });
         } catch (error) {
             this.api.log('Error showing end game leaderboard: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * Start rotating leaderboard display at end of game
+     * Rotates between Round/Season/Lifetime every 6 seconds
+     */
+    startLeaderboardRotation() {
+        // Clear any existing rotation interval
+        if (this.leaderboardRotationInterval) {
+            clearInterval(this.leaderboardRotationInterval);
+        }
+
+        const rotationTypes = ['round', 'season', 'lifetime'];
+        let currentRotationIndex = 0;
+
+        const rotateLeaderboard = () => {
+            try {
+                const displayType = rotationTypes[currentRotationIndex];
+                const animationStyle = this.config.leaderboardAnimationStyle || 'fade';
+                let leaderboard = [];
+
+                if (displayType === 'round') {
+                    // Show last round results
+                    const results = this.calculateResults();
+                    leaderboard = results.correctUsers.map((user, index) => ({
+                        username: user.username,
+                        points: index === 0 ? this.config.pointsFirstCorrect : this.config.pointsOtherCorrect,
+                        rank: index + 1
+                    }));
+                } else if (displayType === 'season') {
+                    // Get season leaderboard
+                    const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                    if (activeSeason) {
+                        const seasonLeaderboard = this.mainDb.prepare(
+                            'SELECT user_id, username, points FROM quiz_leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
+                        ).all(activeSeason.id);
+                        
+                        leaderboard = seasonLeaderboard.map((entry, index) => ({
+                            username: entry.username,
+                            points: entry.points,
+                            rank: index + 1
+                        }));
+                    }
+                } else if (displayType === 'lifetime') {
+                    // Get all-time leaderboard (across all seasons)
+                    const lifetimeLeaderboard = this.mainDb.prepare(`
+                        SELECT user_id, username, SUM(points) as points 
+                        FROM quiz_leaderboard_entries 
+                        GROUP BY user_id 
+                        ORDER BY points DESC 
+                        LIMIT 10
+                    `).all();
+                    
+                    leaderboard = lifetimeLeaderboard.map((entry, index) => ({
+                        username: entry.username,
+                        points: entry.points,
+                        rank: index + 1
+                    }));
+                }
+
+                // Emit leaderboard display event with rotation context
+                this.api.emit('quiz-show:show-leaderboard', {
+                    leaderboard,
+                    displayType,
+                    animationStyle,
+                    context: 'end-game-rotation',
+                    isRotating: true
+                });
+
+                // Move to next rotation type
+                currentRotationIndex = (currentRotationIndex + 1) % rotationTypes.length;
+            } catch (error) {
+                this.api.log('Error rotating leaderboard: ' + error.message, 'error');
+            }
+        };
+
+        // Show first leaderboard immediately
+        rotateLeaderboard();
+
+        // Set up rotation interval (every 6 seconds)
+        this.leaderboardRotationInterval = setInterval(rotateLeaderboard, 6000);
+        
+        this.api.log('Leaderboard rotation started (Round/Season/Lifetime every 6 seconds)', 'info');
+    }
+
+    /**
+     * Stop leaderboard rotation (when quiz restarts)
+     */
+    stopLeaderboardRotation() {
+        if (this.leaderboardRotationInterval) {
+            clearInterval(this.leaderboardRotationInterval);
+            this.leaderboardRotationInterval = null;
+            this.api.log('Leaderboard rotation stopped', 'info');
         }
     }
 
@@ -2948,7 +3073,24 @@ class QuizShowPlugin {
             return; // Not a valid joker command
         }
         
-        const jokerSuffix = command.substring(prefix.length);
+        let jokerSuffix = command.substring(prefix.length).trim();
+        
+        // If no specific joker type provided (e.g., just "!joker"), select first available
+        if (jokerSuffix === '' || jokerSuffix === 's') { // "!joker" or "!jokers"
+            // Priority order: 25% -> 50:50 -> info -> time
+            if (this.config.joker25Enabled && this.gameState.jokersUsed['25'] === 0) {
+                jokerSuffix = '25';
+            } else if (this.config.joker50Enabled && this.gameState.jokersUsed['50'] === 0) {
+                jokerSuffix = '50';
+            } else if (this.config.jokerInfoEnabled && this.gameState.jokersUsed['info'] === 0) {
+                jokerSuffix = 'info';
+            } else if (this.config.jokerTimeEnabled && this.gameState.jokersUsed['time'] === 0) {
+                jokerSuffix = 'time';
+            } else {
+                // No jokers available
+                return;
+            }
+        }
 
         if (jokerSuffix === '25' && this.config.joker25Enabled && this.gameState.jokersUsed['25'] === 0) {
             // 25% Joker - removes 1 wrong answer
