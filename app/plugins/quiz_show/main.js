@@ -2364,6 +2364,15 @@ class QuizShowPlugin {
             // Generate TTS first if not already pre-generated (wait for it to complete)
             await this.generateAndCacheTTS(selectedQuestion.id, ttsText, voiceConfig);
             
+            // START playing TTS (don't wait for completion - let it run in background)
+            this.playTTS(selectedQuestion.id, ttsText, voiceConfig).catch(error => {
+                this.api.log(`TTS error: ${error.message}`, 'error');
+            });
+            
+            // Wait a short moment for TTS to actually start speaking "Neue Frage"
+            // This ensures TTS has begun before the question appears on screen
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             // Pre-generate TTS for the next question in background
             const nextQuestion = this.getNextQuestion();
             if (nextQuestion) {
@@ -2379,19 +2388,8 @@ class QuizShowPlugin {
         // Play timer start sound
         this.playSound('timer_start');
 
-        // Broadcast to overlay and UI (question is now displayed)
+        // Broadcast to overlay and UI (question is now displayed AFTER TTS started)
         this.broadcastGameState();
-
-        // Play TTS after question is displayed (TTS is already generated and ready)
-        if (this.config.ttsEnabled) {
-            const ttsText = `Neue Frage: ${selectedQuestion.question}. Antworten: A: ${answers[0]}, B: ${answers[1]}, C: ${answers[2]}, D: ${answers[3]}`;
-            const voiceConfig = this.config.ttsVoice || 'default';
-            
-            // Play immediately (already generated above)
-            this.playTTS(selectedQuestion.id, ttsText, voiceConfig).catch(error => {
-                this.api.log(`TTS error: ${error.message}`, 'error');
-            });
-        }
 
         this.api.log(`Round started with question: ${selectedQuestion.question}`, 'info');
     }
@@ -2699,6 +2697,11 @@ class QuizShowPlugin {
                     points: index === 0 ? this.config.pointsFirstCorrect : this.config.pointsOtherCorrect,
                     rank: index + 1
                 }));
+                
+                // Use mock data if no real data
+                if (leaderboard.length === 0) {
+                    leaderboard = this.generateMockLeaderboard('round');
+                }
             }
 
             if (displayType === 'season' || displayType === 'both') {
@@ -2714,6 +2717,11 @@ class QuizShowPlugin {
                         points: entry.points,
                         rank: index + 1
                     }));
+                }
+                
+                // Use mock data if no real data
+                if (leaderboard.length === 0) {
+                    leaderboard = this.generateMockLeaderboard('season');
                 }
             }
 
@@ -2757,6 +2765,11 @@ class QuizShowPlugin {
                         rank: index + 1
                     }));
                 }
+                
+                // Use mock data if no real data
+                if (leaderboard.length === 0) {
+                    leaderboard = this.generateMockLeaderboard('season');
+                }
             } else {
                 // Show last round results
                 const results = this.calculateResults();
@@ -2765,6 +2778,11 @@ class QuizShowPlugin {
                     points: index === 0 ? this.config.pointsFirstCorrect : this.config.pointsOtherCorrect,
                     rank: index + 1
                 }));
+                
+                // Use mock data if no real data
+                if (leaderboard.length === 0) {
+                    leaderboard = this.generateMockLeaderboard('round');
+                }
             }
 
             // Emit leaderboard display event
@@ -2805,6 +2823,11 @@ class QuizShowPlugin {
                         points: index === 0 ? this.config.pointsFirstCorrect : this.config.pointsOtherCorrect,
                         rank: index + 1
                     }));
+                    
+                    // Use mock data if no real data
+                    if (leaderboard.length === 0) {
+                        leaderboard = this.generateMockLeaderboard('round');
+                    }
                 } else if (displayType === 'season') {
                     // Get season leaderboard
                     const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
@@ -2818,6 +2841,11 @@ class QuizShowPlugin {
                             points: entry.points,
                             rank: index + 1
                         }));
+                    }
+                    
+                    // Use mock data if no real data
+                    if (leaderboard.length === 0) {
+                        leaderboard = this.generateMockLeaderboard('season');
                     }
                 } else if (displayType === 'lifetime') {
                     // Get all-time leaderboard (across all seasons)
@@ -2834,6 +2862,11 @@ class QuizShowPlugin {
                         points: entry.points,
                         rank: index + 1
                     }));
+                    
+                    // Use mock data if no real data
+                    if (leaderboard.length === 0) {
+                        leaderboard = this.generateMockLeaderboard('lifetime');
+                    }
                 }
 
                 // Emit leaderboard display event with rotation context
@@ -2870,6 +2903,44 @@ class QuizShowPlugin {
             this.leaderboardRotationInterval = null;
             this.api.log('Leaderboard rotation stopped', 'info');
         }
+    }
+
+    /**
+     * Generate mock leaderboard data when no real data is available
+     * @param {string} type - Type of leaderboard (round, season, lifetime)
+     * @returns {Array} Mock leaderboard entries
+     */
+    generateMockLeaderboard(type = 'season') {
+        const mockNames = [
+            'TikTokFan123', 'QuizMaster', 'BrainGamer', 
+            'SmartViewer', 'ThinkFast', 'QuickAnswer',
+            'CleverOne', 'WisePanda', 'GenieUser', 'TopPlayer'
+        ];
+
+        const mockLeaderboard = [];
+        const entryCount = Math.min(10, mockNames.length);
+
+        for (let i = 0; i < entryCount; i++) {
+            let points;
+            if (type === 'round') {
+                // Round points: 100 for first, 50 for others
+                points = i === 0 ? 100 : 50;
+            } else if (type === 'season') {
+                // Season points: descending from 5000
+                points = 5000 - (i * 500);
+            } else {
+                // Lifetime points: descending from 50000
+                points = 50000 - (i * 5000);
+            }
+
+            mockLeaderboard.push({
+                username: mockNames[i],
+                points: points,
+                rank: i + 1
+            });
+        }
+
+        return mockLeaderboard;
     }
 
     calculateResults() {
