@@ -50,8 +50,22 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
 
             const allPlugins = [];
 
-            // Geladene Plugins hinzufügen
+            // Geladene Plugins hinzufügen (skip disabled ones)
             for (const plugin of plugins) {
+                // Read the plugin.json to check if it's disabled
+                const pluginPath = path.join(pluginsDir, plugin.id);
+                const manifestPath = path.join(pluginPath, 'plugin.json');
+                
+                if (fs.existsSync(manifestPath)) {
+                    const manifestData = fs.readFileSync(manifestPath, 'utf8');
+                    const manifest = JSON.parse(manifestData);
+                    
+                    // Skip plugins that are marked as disabled in plugin.json
+                    if (manifest.disabled === true) {
+                        continue;
+                    }
+                }
+                
                 allPlugins.push({
                     ...plugin,
                     enabled: true
@@ -67,6 +81,11 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
                     if (fs.existsSync(manifestPath)) {
                         const manifestData = fs.readFileSync(manifestPath, 'utf8');
                         const manifest = JSON.parse(manifestData);
+
+                        // Skip plugins that are marked as disabled in plugin.json
+                        if (manifest.disabled === true) {
+                            continue;
+                        }
 
                         // Ist das Plugin bereits in der Liste?
                         const exists = allPlugins.find(p => p.id === manifest.id);
