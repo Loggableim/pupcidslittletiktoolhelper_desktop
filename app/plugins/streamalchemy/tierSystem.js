@@ -256,7 +256,6 @@ class TierSystem {
      * @returns {Object} Upgraded item
      */
     async createUpgradedItem(originalItem, newTier) {
-        const { v4: uuidv4 } = require('uuid');
         const tierInfo = this.getTier(newTier);
 
         // Check if upgraded version already exists

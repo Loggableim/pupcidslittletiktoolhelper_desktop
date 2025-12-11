@@ -28,6 +28,9 @@
 const https = require('https');
 const http = require('http');
 
+// LightX API Constants
+const LIGHTX_SUCCESS_CODE = 2000;
+
 class LightXService {
     /**
      * @param {Object} logger - Logger instance
@@ -250,8 +253,8 @@ class LightXService {
             // Step 1: Submit the generation request
             const initialResponse = await this.httpPost(url, payload);
             
-            // Check for LightX API success status code (2000)
-            if (initialResponse.statusCode !== 2000) {
+            // Check for LightX API success status code
+            if (initialResponse.statusCode !== LIGHTX_SUCCESS_CODE) {
                 throw new Error(`LightX API error: ${initialResponse.message || 'Unknown error'} (code: ${initialResponse.statusCode})`);
             }
             
@@ -301,7 +304,7 @@ class LightXService {
                 
                 const response = await this.httpPost(statusUrl, { orderId });
                 
-                if (response.statusCode !== 2000) {
+                if (response.statusCode !== LIGHTX_SUCCESS_CODE) {
                     this.logger.warn(`[LIGHTX SERVICE] Status check failed: ${response.message}`);
                     continue;
                 }
