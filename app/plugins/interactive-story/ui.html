@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Story Generator - Admin Panel</title>
+  <style>
+    /* Reset and base styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.5;
+    }
+    
+    /* Container */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    /* Typography */
+    h1, h2, h3, h4, h5, h6 {
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.75rem; }
+    h3 { font-size: 1.5rem; }
+    h4 { font-size: 1.25rem; }
+    h5 { font-size: 1.1rem; }
+    h6 { font-size: 1rem; }
+    
+    /* Utility classes */
+    .mb-1 { margin-bottom: 0.25rem; }
+    .mb-2 { margin-bottom: 0.5rem; }
+    .mb-3 { margin-bottom: 1rem; }
+    .mb-4 { margin-bottom: 1.5rem; }
+    .mt-3 { margin-top: 1rem; }
+    .mt-4 { margin-top: 1.5rem; }
+    .d-flex { display: flex; }
+    .d-block { display: block; }
+    .d-inline-block { display: inline-block; }
+    .justify-content-between { justify-content: space-between; }
+    .align-items-center { align-items: center; }
+    .float-end { float: right; }
+    .text-muted { color: #6c757d; }
+    .w-100 { width: 100%; }
+    
+    /* Grid system */
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      margin: 0 -10px;
+    }
+    .col-md-2, .col-md-3, .col-md-4, .col-md-6, .col-md-8, .col-md-12 {
+      padding: 0 10px;
+      margin-bottom: 15px;
+    }
+    .col-md-2 { flex: 0 0 16.666%; max-width: 16.666%; }
+    .col-md-3 { flex: 0 0 25%; max-width: 25%; }
+    .col-md-4 { flex: 0 0 33.333%; max-width: 33.333%; }
+    .col-md-6 { flex: 0 0 50%; max-width: 50%; }
+    .col-md-8 { flex: 0 0 66.666%; max-width: 66.666%; }
+    .col-md-12 { flex: 0 0 100%; max-width: 100%; }
+    
+    /* Cards */
+    .card {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: #0f3460;
+      border-bottom: 1px solid #e94560;
+      font-weight: bold;
+      padding: 15px 20px;
+      font-size: 1.1rem;
+    }
+    .card-body {
+      padding: 20px;
+    }
+    
+    /* Forms */
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    .form-control, .form-select {
+      display: block;
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      line-height: 1.5;
+      background: #1a1a2e;
+      color: #eee;
+      border: 1px solid #0f3460;
+      border-radius: 4px;
+      transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    .form-control:focus, .form-select:focus {
+      background: #1a1a2e;
+      color: #eee;
+      border-color: #e94560;
+      outline: 0;
+      box-shadow: 0 0 0 0.2rem rgba(233, 69, 96, 0.25);
+    }
+    .form-select {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23eee' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 16px 12px;
+      padding-right: 2.25rem;
+    }
+    textarea.form-control {
+      min-height: 80px;
+      resize: vertical;
+    }
+    .form-check {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    .form-check-input {
+      width: 1.25em;
+      height: 1.25em;
+      margin-top: 0.125em;
+      margin-right: 0.5em;
+      vertical-align: top;
+      background-color: #1a1a2e;
+      border: 1px solid #0f3460;
+      border-radius: 0.25em;
+      cursor: pointer;
+    }
+    .form-check-input:checked {
+      background-color: #e94560;
+      border-color: #e94560;
+    }
+    .form-check-label {
+      cursor: pointer;
+    }
+    
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      font-weight: 400;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: middle;
+      user-select: none;
+      border: 1px solid transparent;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      line-height: 1.5;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease-in-out;
+      text-decoration: none;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      color: #fff;
+      background: #e94560;
+      border-color: #e94560;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #c73a52;
+      border-color: #c73a52;
+    }
+    .btn-success {
+      color: #fff;
+      background: #28a745;
+      border-color: #28a745;
+    }
+    .btn-success:hover:not(:disabled) {
+      background: #218838;
+      border-color: #218838;
+    }
+    .btn-danger {
+      color: #fff;
+      background: #dc3545;
+      border-color: #dc3545;
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: #c82333;
+      border-color: #c82333;
+    }
+    .btn-secondary {
+      color: #fff;
+      background: #6c757d;
+      border-color: #6c757d;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: #5a6268;
+      border-color: #5a6268;
+    }
+    .btn-outline-light {
+      color: #eee;
+      border-color: #eee;
+      background: transparent;
+    }
+    .btn-outline-light:hover:not(:disabled) {
+      color: #1a1a2e;
+      background: #eee;
+    }
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.875rem;
+      border-radius: 0.2rem;
+    }
+    
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 0.35em 0.65em;
+      font-size: 0.85em;
+      font-weight: 600;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: baseline;
+      border-radius: 0.25rem;
+    }
+    .bg-success { background-color: #28a745; color: #fff; }
+    .bg-warning { background-color: #ffc107; color: #000; }
+    .bg-danger { background-color: #dc3545; color: #fff; }
+    .bg-info { background-color: #17a2b8; color: #fff; }
+    .bg-primary { background-color: #e94560; color: #fff; }
+    .bg-secondary { background-color: #6c757d; color: #fff; }
+    
+    /* Alerts */
+    .alert {
+      padding: 0.75rem 1.25rem;
+      margin-bottom: 1rem;
+      border: 1px solid transparent;
+      border-radius: 0.25rem;
+    }
+    .alert-info {
+      color: #0c5460;
+      background-color: #d1ecf1;
+      border-color: #bee5eb;
+    }
+    .alert-success {
+      color: #155724;
+      background-color: #d4edda;
+      border-color: #c3e6cb;
+    }
+    
+    /* Custom styles */
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+    }
+    .status-active {
+      background: #28a745;
+      box-shadow: 0 0 8px #28a745;
+    }
+    .status-inactive {
+      background: #6c757d;
+    }
+    .chapter-preview {
+      background: #0f3460;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 10px 0;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .choice-item {
+      background: #1a1a2e;
+      padding: 10px;
+      margin: 5px 0;
+      border-left: 3px solid #e94560;
+      border-radius: 3px;
+    }
+    .vote-bar {
+      height: 20px;
+      background: linear-gradient(90deg, #e94560, #c73a52);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+    .memory-tag {
+      display: inline-block;
+      background: #0f3460;
+      padding: 5px 10px;
+      margin: 3px;
+      border-radius: 15px;
+      font-size: 0.85em;
+    }
+    #storyImage {
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .theme-card {
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .theme-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 20px rgba(233, 69, 96, 0.3);
+    }
+    .theme-card.selected {
+      border: 2px solid #e94560;
+      box-shadow: 0 0 15px rgba(233, 69, 96, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="mb-4">
+      📖 Interactive Story Generator
+    </h1>
+
+    <!-- Status Card -->
+    <div class="card">
+      <div class="card-header">
+        ℹ️ Status
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3">
+            <strong>Plugin Status:</strong><br>
+            <span id="pluginStatus">
+              <span class="status-indicator status-inactive"></span> Loading...
+            </span>
+          </div>
+          <div class="col-md-3">
+            <strong>Active Session:</strong><br>
+            <span id="sessionStatus">None</span>
+          </div>
+          <div class="col-md-3">
+            <strong>Current Chapter:</strong><br>
+            <span id="chapterStatus">-</span>
+          </div>
+          <div class="col-md-3">
+            <strong>Voting:</strong><br>
+            <span id="votingStatus">Inactive</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Configuration Card -->
+    <div class="card">
+      <div class="card-header">
+        ⚙️ Configuration
+      </div>
+      <div class="card-body">
+        <form id="configForm">
+          <div class="row">
+            <div class="col-md-12">
+              <div class="alert alert-info mb-3">
+                <strong>ℹ️ API Key Configuration</strong><br>
+                The SiliconFlow API key is now configured globally in <strong>Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)</strong>.<br>
+                This single API key is used for LLM chat completions, image generation, and TTS across all plugins.
+              </div>
+              
+              <div class="mb-4">
+                <button type="button" class="btn btn-primary" id="testApiKeyBtn" onclick="testApiKey()">
+                  🔍 Test API Key
+                </button>
+                <small class="form-text text-muted ml-2">Click to validate your SiliconFlow API key</small>
+                <div id="apiKeyTestResult" class="mt-2" style="display: none;"></div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Default LLM Model</label>
+                <select class="form-select" id="defaultModel">
+                  <option value="deepseek">DeepSeek V3</option>
+                  <option value="qwen">Qwen 2.5-7B</option>
+                  <option value="llama">Meta-Llama 3.1-8B</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Image Model</label>
+                <select class="form-select" id="defaultImageModel">
+                  <option value="flux-schnell">FLUX.1 Schnell</option>
+                  <option value="z-image-turbo">Z-Image Turbo</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Voting Duration (seconds)</label>
+                <input type="number" class="form-control" id="votingDuration" min="15" max="300" value="60">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Number of Choices</label>
+                <input type="number" class="form-control" id="numChoices" min="3" max="6" value="4">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3 form-check" style="margin-top: 35px;">
+                <input type="checkbox" class="form-check-input" id="autoGenerateImages">
+                <label class="form-check-label" for="autoGenerateImages">
+                  Auto-generate Images
+                </label>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3 form-check" style="margin-top: 35px;">
+                <input type="checkbox" class="form-check-input" id="autoGenerateTTS">
+                <label class="form-check-label" for="autoGenerateTTS">
+                  Auto-generate TTS
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-4">
+              <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="offlineMode">
+                <label class="form-check-label" for="offlineMode">
+                  <strong>Offline/Test Mode</strong>
+                </label>
+                <small class="d-block text-muted">Admin wählt Pfad (kein Live-Chat nötig)</small>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="debugLogging">
+                <label class="form-check-label" for="debugLogging">
+                  <strong>Debug Logging</strong>
+                </label>
+                <small class="d-block text-muted">Aktiviere detailliertes Logging & API-Diagnose</small>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="apiLogging">
+                <label class="form-check-label" for="apiLogging">
+                  <strong>API Request Logging</strong>
+                </label>
+                <small class="d-block text-muted">Zeige detaillierte API-Anfragen (nur für Debugging)</small>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            💾 Save Configuration
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- OBS Overlay Preview Card -->
+    <div class="card">
+      <div class="card-header">
+        📺 OBS Overlay
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Overlay URL für OBS Browser Source:</label>
+          <div class="input-group">
+            <input type="text" class="form-control" id="overlayUrl" readonly value="">
+            <button class="btn btn-outline-primary" onclick="copyOverlayUrl()">📋 Copy</button>
+            <button class="btn btn-primary" onclick="openOverlayInNewTab()">🔗 Open</button>
+          </div>
+          <small class="text-muted">
+            Füge diese URL in OBS als Browser Source hinzu (Empfohlene Größe: 1920x1080)
+          </small>
+        </div>
+        
+        <div class="mb-2">
+          <button class="btn btn-secondary btn-sm" onclick="toggleOverlayPreview()">
+            <span id="previewToggleIcon">▶️</span> <span id="previewToggleText">Vorschau anzeigen</span>
+          </button>
+        </div>
+        
+        <div id="overlayPreviewContainer" style="display: none;">
+          <div style="border: 2px solid #0f3460; border-radius: 8px; overflow: hidden; background: #000;">
+            <iframe 
+              id="overlayPreview" 
+              src="" 
+              style="width: 100%; height: 540px; border: none; display: block;"
+              title="OBS Overlay Preview"
+            ></iframe>
+          </div>
+          <small class="text-muted d-block mt-2">
+            ℹ️ Dies ist eine 50%-Skalierung der 1920x1080 Overlay-Ansicht
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Story Controls Card -->
+    <div class="card" id="storyControls">
+      <div class="card-header">
+        ▶️ Story Controls
+      </div>
+      <div class="card-body">
+        <div id="startStorySection">
+          <h5>Start New Story</h5>
+          <div class="row mb-3">
+            <div class="col-12">
+              <label class="form-label">Select Theme:</label>
+              <div class="row" id="themeSelector">
+                <!-- Themes will be populated here -->
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Custom Outline (optional)</label>
+            <textarea class="form-control" id="storyOutline" rows="3" placeholder="Leave blank for auto-generated outline"></textarea>
+          </div>
+
+          <button class="btn btn-success btn-lg" id="startStoryBtn">
+            🚀 Start Story
+          </button>
+        </div>
+
+        <div id="activeStorySection" style="display: none;">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5>Active Story</h5>
+            <button class="btn btn-danger" id="endStoryBtn">
+              ⏹️ End Story
+            </button>
+          </div>
+          
+          <div id="currentChapterDisplay"></div>
+          
+          <!-- Admin Choice Selection (Offline Mode) -->
+          <div id="adminChoiceSection" class="mt-3" style="display: none;">
+            <div class="alert alert-info">
+              👤 <strong>Offline/Test Mode:</strong> Wähle den nächsten Pfad selbst
+            </div>
+            <div id="adminChoiceButtons"></div>
+          </div>
+          
+          <div class="mt-3">
+            <button class="btn btn-primary" id="forceVoteEndBtn" style="display: none;">
+              ✓ Force Vote End
+            </button>
+            <button class="btn btn-secondary" id="regenerateImageBtn">
+              🖼️ Regenerate Image
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Debug Logging Card -->
+    <div class="card" id="debugLogCard" style="display: none;">
+      <div class="card-header">
+        🐛 Debug Logs
+        <button class="btn btn-sm btn-outline-light float-end" id="clearLogsBtn">
+          🗑️ Clear
+        </button>
+      </div>
+      <div class="card-body">
+        <div id="debugLogDisplay" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.85em;">
+          <div class="text-muted">Keine Logs verfügbar</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Story Memory Card -->
+    <div class="card" id="memoryCard" style="display: none;">
+      <div class="card-header">
+        🧠 Story Memory / Lore Database
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4">
+            <h6>👥 Characters</h6>
+            <div id="charactersList"></div>
+          </div>
+          <div class="col-md-4">
+            <h6>📍 Locations</h6>
+            <div id="locationsList"></div>
+          </div>
+          <div class="col-md-4">
+            <h6>💎 Items</h6>
+            <div id="itemsList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Voters Card -->
+    <div class="card" id="topVotersCard" style="display: none;">
+      <div class="card-header">
+        🏆 Top Voters
+      </div>
+      <div class="card-body">
+        <div id="topVotersList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let selectedTheme = null;
+    let currentStatus = null;
+
+    // Set overlay URL on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      const overlayUrl = `${window.location.protocol}//${window.location.host}/interactive-story/overlay`;
+      document.getElementById('overlayUrl').value = overlayUrl;
+      document.getElementById('overlayPreview').src = overlayUrl;
+    });
+
+    // Overlay preview functions
+    function copyOverlayUrl() {
+      const urlInput = document.getElementById('overlayUrl');
+      urlInput.select();
+      document.execCommand('copy');
+      alert('✅ Overlay URL kopiert!');
+    }
+
+    function openOverlayInNewTab() {
+      const url = document.getElementById('overlayUrl').value;
+      window.open(url, '_blank', 'width=1920,height=1080');
+    }
+
+    function toggleOverlayPreview() {
+      const container = document.getElementById('overlayPreviewContainer');
+      const toggleIcon = document.getElementById('previewToggleIcon');
+      const toggleText = document.getElementById('previewToggleText');
+      
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        toggleIcon.textContent = '⏸️';
+        toggleText.textContent = 'Vorschau ausblenden';
+      } else {
+        container.style.display = 'none';
+        toggleIcon.textContent = '▶️';
+        toggleText.textContent = 'Vorschau anzeigen';
+      }
+    }
+
+    // Test API key
+    async function testApiKey() {
+      console.log('[TEST API KEY] Button clicked');
+      const btn = document.getElementById('testApiKeyBtn');
+      const resultDiv = document.getElementById('apiKeyTestResult');
+      
+      if (!btn || !resultDiv) {
+        console.error('[TEST API KEY] Button or result div not found!', { btn, resultDiv });
+        alert('Error: UI elements not found. Please reload the page.');
+        return;
+      }
+      
+      console.log('[TEST API KEY] Starting validation...');
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Testing...';
+      resultDiv.style.display = 'none';
+      
+      try {
+        console.log('[TEST API KEY] Sending request to /api/interactive-story/validate-api-key');
+        const response = await fetch('/api/interactive-story/validate-api-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        console.log('[TEST API KEY] Response status:', response.status);
+        const result = await response.json();
+        console.log('[TEST API KEY] Response data:', result);
+        
+        resultDiv.style.display = 'block';
+        
+        if (result.valid) {
+          resultDiv.className = 'alert alert-success mt-2';
+          resultDiv.innerHTML = `
+            <strong>✅ ${result.message}</strong><br>
+            <small>
+              API Key Length: ${result.details.keyLength} characters<br>
+              Prefix: ${result.details.keyPrefix}<br>
+              Tested Model: ${result.details.testedModel}
+            </small>
+          `;
+        } else {
+          resultDiv.className = 'alert alert-danger mt-2';
+          let html = `<strong>❌ ${result.message}</strong><br>`;
+          
+          if (!result.configured) {
+            html += `<small>${result.error}</small>`;
+          } else {
+            html += `<small>Error: ${result.error}</small><br>`;
+            if (result.details) {
+              html += `<br><strong>Diagnostics:</strong><br>`;
+              html += `API Key Length: ${result.details.keyLength} characters`;
+              if (result.details.keyLength !== 64) {
+                html += ` <span style="color: #ffc107;">⚠️ Expected: ~64 characters</span>`;
+              }
+              html += `<br>Prefix: ${result.details.keyPrefix}<br>`;
+              html += `Status Code: ${result.details.statusCode}<br>`;
+              if (result.details.hasWhitespace) {
+                html += `<span style="color: #ffc107;">⚠️ API key contains whitespace!</span><br>`;
+              }
+            }
+            if (result.troubleshooting && result.troubleshooting.length > 0) {
+              html += `<br><strong>Troubleshooting Steps:</strong><ul style="margin-bottom: 0; padding-left: 20px;">`;
+              result.troubleshooting.forEach(tip => {
+                html += `<li style="margin-bottom: 5px;">${tip}</li>`;
+              });
+              html += `</ul>`;
+            }
+          }
+          
+          resultDiv.innerHTML = html;
+        }
+      } catch (error) {
+        console.error('[TEST API KEY] Error:', error);
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'alert alert-danger mt-2';
+        resultDiv.innerHTML = `
+          <strong>❌ Error testing API key</strong><br>
+          <small>${error.message}</small><br>
+          <small style="color: #6c757d;">Check browser console for details</small>
+        `;
+      } finally {
+        console.log('[TEST API KEY] Test complete, re-enabling button');
+        btn.disabled = false;
+        btn.innerHTML = '🔍 Test API Key';
+      }
+    }
+
+    // Load initial data
+    async function loadStatus() {
+      try {
+        const response = await fetch('/api/interactive-story/status');
+        currentStatus = await response.json();
+        updateStatusDisplay();
+      } catch (error) {
+        console.error('Error loading status:', error);
+      }
+    }
+
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/interactive-story/config');
+        const config = await response.json();
+        
+        // API key is now in global settings, not plugin config
+        document.getElementById('defaultModel').value = config.defaultModel || 'deepseek';
+        document.getElementById('defaultImageModel').value = config.defaultImageModel || 'flux-schnell';
+        document.getElementById('votingDuration').value = config.votingDuration || 60;
+        document.getElementById('numChoices').value = config.numChoices || 4;
+        document.getElementById('autoGenerateImages').checked = config.autoGenerateImages !== false;
+        document.getElementById('autoGenerateTTS').checked = config.autoGenerateTTS === true;
+        document.getElementById('offlineMode').checked = config.offlineMode === true;
+        document.getElementById('debugLogging').checked = config.debugLogging === true;
+        document.getElementById('apiLogging').checked = config.apiLogging === true;
+        
+        // Show/hide debug log card based on debug logging setting
+        document.getElementById('debugLogCard').style.display = config.debugLogging ? 'block' : 'none';
+      } catch (error) {
+        console.error('Error loading config:', error);
+      }
+    }
+
+    async function loadThemes() {
+      try {
+        const response = await fetch('/api/interactive-story/themes');
+        const themes = await response.json();
+        
+        const themeSelector = document.getElementById('themeSelector');
+        themeSelector.innerHTML = '';
+        
+        for (const [key, theme] of Object.entries(themes)) {
+          const col = document.createElement('div');
+          col.className = 'col-md-4 mb-3';
+          col.innerHTML = `
+            <div class="card theme-card" data-theme="${key}">
+              <div class="card-body text-center">
+                <h6>${theme.name}</h6>
+                <small class="text-muted">${theme.tone}</small>
+              </div>
+            </div>
+          `;
+          themeSelector.appendChild(col);
+        }
+        
+        // Add click handlers
+        document.querySelectorAll('.theme-card').forEach(card => {
+          card.addEventListener('click', () => {
+            document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedTheme = card.dataset.theme;
+          });
+        });
+      } catch (error) {
+        console.error('Error loading themes:', error);
+      }
+    }
+
+    function updateStatusDisplay() {
+      // Plugin status
+      const statusEl = document.getElementById('pluginStatus');
+      if (currentStatus.configured) {
+        statusEl.innerHTML = '<span class="status-indicator status-active"></span> Configured';
+      } else {
+        statusEl.innerHTML = '<span class="status-indicator status-inactive"></span> Not Configured';
+      }
+      
+      // Session status
+      document.getElementById('sessionStatus').textContent = currentStatus.session ? `#${currentStatus.session.id}` : 'None';
+      
+      // Chapter status
+      document.getElementById('chapterStatus').textContent = currentStatus.chapter 
+        ? `Chapter ${currentStatus.chapter.chapterNumber}` 
+        : '-';
+      
+      // Voting status
+      const votingEl = document.getElementById('votingStatus');
+      if (currentStatus.voting && currentStatus.voting.active) {
+        const timeLeft = Math.ceil(currentStatus.voting.timeRemaining);
+        votingEl.innerHTML = `<span class="status-indicator status-active"></span> Active (${timeLeft}s)`;
+        document.getElementById('forceVoteEndBtn').style.display = 'inline-block';
+      } else {
+        votingEl.innerHTML = '<span class="status-indicator status-inactive"></span> Inactive';
+        document.getElementById('forceVoteEndBtn').style.display = 'none';
+      }
+      
+      // Show/hide sections
+      if (currentStatus.session) {
+        document.getElementById('startStorySection').style.display = 'none';
+        document.getElementById('activeStorySection').style.display = 'block';
+        document.getElementById('memoryCard').style.display = 'block';
+        document.getElementById('topVotersCard').style.display = 'block';
+        
+        if (currentStatus.chapter) {
+          displayChapter(currentStatus.chapter);
+        }
+        
+        loadMemory();
+        loadTopVoters();
+      } else {
+        document.getElementById('startStorySection').style.display = 'block';
+        document.getElementById('activeStorySection').style.display = 'none';
+        document.getElementById('memoryCard').style.display = 'none';
+        document.getElementById('topVotersCard').style.display = 'none';
+      }
+    }
+
+    function displayChapter(chapter) {
+      const display = document.getElementById('currentChapterDisplay');
+      
+      let html = `<h4>${chapter.title}</h4>`;
+      
+      if (chapter.imagePath) {
+        const filename = chapter.imagePath.split('/').pop();
+        html += `<img id="storyImage" src="/api/interactive-story/image/${filename}" alt="Chapter Image">`;
+      }
+      
+      html += `<div class="chapter-preview">${chapter.content}</div>`;
+      
+      html += '<h5 class="mt-3">Choices:</h5>';
+      chapter.choices.forEach((choice, index) => {
+        const letter = String.fromCharCode(97 + index);
+        html += `<div class="choice-item"><strong>!${letter}</strong> - ${choice}</div>`;
+      });
+      
+      display.innerHTML = html;
+      
+      // Update admin choice buttons if in offline mode
+      updateAdminChoiceButtons(chapter);
+    }
+    
+    function updateAdminChoiceButtons(chapter) {
+      const config = currentStatus?.voting?.settings || {};
+      const offlineMode = document.getElementById('offlineMode').checked;
+      const adminChoiceSection = document.getElementById('adminChoiceSection');
+      const adminChoiceButtons = document.getElementById('adminChoiceButtons');
+      
+      if (offlineMode && chapter) {
+        adminChoiceSection.style.display = 'block';
+        
+        let html = '';
+        chapter.choices.forEach((choice, index) => {
+          const letter = String.fromCharCode(97 + index).toUpperCase();
+          html += `
+            <button class="btn btn-primary mb-2 w-100" onclick="selectAdminChoice(${index})">
+              ➡️ Option ${letter}: ${choice}
+            </button>
+          `;
+        });
+        
+        adminChoiceButtons.innerHTML = html;
+      } else {
+        adminChoiceSection.style.display = 'none';
+      }
+    }
+    
+    async function selectAdminChoice(choiceIndex) {
+      if (!confirm(`Bist du sicher, dass du Option ${String.fromCharCode(65 + choiceIndex)} wählen möchtest?`)) {
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/interactive-story/admin-choice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ choiceIndex })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Admin choice successful:', result);
+        } else {
+          const error = await response.json();
+          alert('Fehler: ' + error.error);
+        }
+      } catch (error) {
+        console.error('Error selecting admin choice:', error);
+        alert('Fehler beim Auswählen: ' + error.message);
+      }
+    }
+
+    async function loadMemory() {
+      try {
+        const response = await fetch('/api/interactive-story/memory');
+        const memory = await response.json();
+        
+        // Characters
+        const charList = document.getElementById('charactersList');
+        charList.innerHTML = memory.characters.map(char => 
+          `<div class="memory-tag">👤 ${char.name}</div>`
+        ).join('');
+        
+        // Locations
+        const locList = document.getElementById('locationsList');
+        locList.innerHTML = memory.locations.map(loc => 
+          `<div class="memory-tag">📍 ${loc.name}</div>`
+        ).join('');
+        
+        // Items
+        const itemList = document.getElementById('itemsList');
+        itemList.innerHTML = memory.items.map(item => 
+          `<div class="memory-tag">💎 ${item.name}</div>`
+        ).join('');
+      } catch (error) {
+        console.error('Error loading memory:', error);
+      }
+    }
+
+    async function loadTopVoters() {
+      try {
+        const response = await fetch('/api/interactive-story/top-voters');
+        const voters = await response.json();
+        
+        const votersList = document.getElementById('topVotersList');
+        votersList.innerHTML = voters.map((voter, index) => `
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span><strong>#${index + 1}</strong> ${voter.username}</span>
+            <span class="badge bg-primary">${voter.votes_cast} votes</span>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading top voters:', error);
+      }
+    }
+
+    // Event handlers
+    document.getElementById('configForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const config = {
+        // API key is now in global settings, not saved here
+        defaultModel: document.getElementById('defaultModel').value,
+        defaultImageModel: document.getElementById('defaultImageModel').value,
+        votingDuration: parseInt(document.getElementById('votingDuration').value),
+        numChoices: parseInt(document.getElementById('numChoices').value),
+        autoGenerateImages: document.getElementById('autoGenerateImages').checked,
+        autoGenerateTTS: document.getElementById('autoGenerateTTS').checked,
+        offlineMode: document.getElementById('offlineMode').checked,
+        debugLogging: document.getElementById('debugLogging').checked,
+        apiLogging: document.getElementById('apiLogging').checked
+      };
+      
+      try {
+        const response = await fetch('/api/interactive-story/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
+        
+        if (response.ok) {
+          alert('Configuration saved successfully!');
+          loadStatus();
+          loadConfig(); // Reload to update UI
+        }
+      } catch (error) {
+        alert('Error saving configuration: ' + error.message);
+      }
+    });
+
+    document.getElementById('startStoryBtn').addEventListener('click', async () => {
+      if (!selectedTheme) {
+        alert('Please select a theme first!');
+        return;
+      }
+      
+      const outline = document.getElementById('storyOutline').value;
+      const model = document.getElementById('defaultModel').value;
+      
+      try {
+        document.getElementById('startStoryBtn').disabled = true;
+        document.getElementById('startStoryBtn').innerHTML = '⏳ Generating...';
+        
+        const response = await fetch('/api/interactive-story/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ theme: selectedTheme, outline, model })
+        });
+        
+        if (response.ok) {
+          loadStatus();
+        } else {
+          const error = await response.json();
+          alert('Error starting story: ' + error.error);
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      } finally {
+        document.getElementById('startStoryBtn').disabled = false;
+        document.getElementById('startStoryBtn').innerHTML = '🚀 Start Story';
+      }
+    });
+
+    document.getElementById('endStoryBtn').addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to end the current story?')) {
+        return;
+      }
+      
+      try {
+        await fetch('/api/interactive-story/end', { method: 'POST' });
+        loadStatus();
+      } catch (error) {
+        alert('Error ending story: ' + error.message);
+      }
+    });
+
+    document.getElementById('forceVoteEndBtn').addEventListener('click', () => {
+      socket.emit('story:force-vote-end');
+    });
+
+    document.getElementById('regenerateImageBtn').addEventListener('click', () => {
+      socket.emit('story:regenerate-image', {});
+    });
+
+    // Socket.io event listeners
+    socket.on('story:chapter-ready', (chapter) => {
+      loadStatus();
+    });
+
+    socket.on('story:voting-started', () => {
+      loadStatus();
+    });
+
+    socket.on('story:voting-ended', (results) => {
+      loadStatus();
+      loadTopVoters();
+    });
+
+    socket.on('story:vote-update', () => {
+      loadTopVoters();
+    });
+
+    socket.on('story:image-updated', () => {
+      if (currentStatus && currentStatus.chapter) {
+        displayChapter(currentStatus.chapter);
+      }
+    });
+    
+    // Debug log handler
+    socket.on('story:debug-log', (logEntry) => {
+      addDebugLog(logEntry);
+    });
+    
+    // Debug log functions
+    async function loadDebugLogs() {
+      try {
+        const response = await fetch('/api/interactive-story/debug-logs');
+        const data = await response.json();
+        
+        const logDisplay = document.getElementById('debugLogDisplay');
+        if (data.logs && data.logs.length > 0) {
+          logDisplay.innerHTML = data.logs.map(log => formatLogEntry(log)).join('');
+        } else {
+          logDisplay.innerHTML = '<div class="text-muted">Keine Logs verfügbar</div>';
+        }
+      } catch (error) {
+        console.error('Error loading debug logs:', error);
+      }
+    }
+    
+    function addDebugLog(logEntry) {
+      const logDisplay = document.getElementById('debugLogDisplay');
+      
+      // Remove "no logs" message if present
+      if (logDisplay.querySelector('.text-muted')) {
+        logDisplay.innerHTML = '';
+      }
+      
+      // Add new log at the top
+      const logHtml = formatLogEntry(logEntry);
+      logDisplay.insertAdjacentHTML('afterbegin', logHtml);
+      
+      // Keep only last 100 entries
+      const entries = logDisplay.querySelectorAll('.log-entry');
+      if (entries.length > 100) {
+        entries[entries.length - 1].remove();
+      }
+    }
+    
+    function formatLogEntry(log) {
+      const levelColors = {
+        error: '#dc3545',
+        warn: '#ffc107',
+        info: '#17a2b8',
+        debug: '#6c757d'
+      };
+      
+      const color = levelColors[log.level] || '#6c757d';
+      const time = new Date(log.timestamp).toLocaleTimeString();
+      
+      let html = `
+        <div class="log-entry" style="border-left: 3px solid ${color}; padding: 5px 10px; margin-bottom: 5px; background: rgba(255,255,255,0.05);">
+          <div style="color: ${color};">
+            <strong>[${time}] ${log.level.toUpperCase()}</strong>
+          </div>
+          <div>${log.message}</div>
+      `;
+      
+      if (log.data) {
+        html += `<div style="color: #aaa; font-size: 0.8em; margin-top: 3px;">${JSON.stringify(log.data)}</div>`;
+      }
+      
+      html += '</div>';
+      return html;
+    }
+    
+    document.getElementById('clearLogsBtn').addEventListener('click', () => {
+      document.getElementById('debugLogDisplay').innerHTML = '<div class="text-muted">Keine Logs verfügbar</div>';
+    });
+
+    // Initialize
+    loadStatus();
+    loadConfig();
+    loadThemes();
+    loadDebugLogs();
+    
+    // Refresh status every 2 seconds
+    setInterval(loadStatus, 2000);
+    
+    // Refresh debug logs every 5 seconds when debug logging is enabled
+    setInterval(() => {
+      if (document.getElementById('debugLogging').checked) {
+        // Don't reload, just rely on socket updates
+      }
+    }, 5000);
+  </script>
+</body>
+</html>
