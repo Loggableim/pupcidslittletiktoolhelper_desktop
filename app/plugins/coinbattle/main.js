@@ -10,6 +10,8 @@ const KingOfTheHillMode = require('./engine/koth-mode');
 const FriendChallengeSystem = require('./engine/friend-challenges');
 const PlayerAvatarSystem = require('./backend/player-avatars');
 const OverlayTemplateManager = require('./overlay/template-manager');
+const TeamNamesManager = require('./backend/team-names');
+const LikesPointsSystem = require('./backend/likes-points');
 const path = require('path');
 
 class CoinBattlePlugin {
@@ -23,6 +25,8 @@ class CoinBattlePlugin {
     this.friendChallenges = null;
     this.avatarSystem = null;
     this.templateManager = null;
+    this.teamNamesManager = null;
+    this.likesPointsSystem = null;
     this.logger = {
       info: (msg) => this.api.log(msg, 'info'),
       error: (msg) => this.api.log(msg, 'error'),
@@ -69,6 +73,16 @@ class CoinBattlePlugin {
       // Initialize Template Manager
       this.templateManager = new OverlayTemplateManager(this.logger);
       this.api.log('✅ Overlay Template Manager initialized', 'info');
+
+      // Initialize Team Names Manager
+      this.teamNamesManager = new TeamNamesManager(rawDb, this.logger);
+      this.teamNamesManager.initializeTable();
+      this.api.log('✅ Team Names Manager initialized', 'info');
+
+      // Initialize Likes Points System
+      this.likesPointsSystem = new LikesPointsSystem(rawDb, this.logger);
+      this.likesPointsSystem.initializeTable();
+      this.api.log('✅ Likes Points System initialized', 'info');
 
       // Load configuration
       const config = this.loadConfiguration();
@@ -664,6 +678,155 @@ class CoinBattlePlugin {
       }
     });
 
+    // ==================== TEAM NAMES ROUTES ====================
+    
+    // Get team names
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/team-names', (req, res) => {
+      try {
+        const { matchId } = req.query;
+        const names = this.teamNamesManager.getTeamNames(matchId ? parseInt(matchId) : null);
+        res.json({ success: true, data: names });
+      } catch (error) {
+        this.api.log(`Error getting team names: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Set team name
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/team-names',
+      withRateLimit(moderateLimit, (req, res) => {
+        try {
+          const { team, name, matchId } = req.body;
+          const result = this.teamNamesManager.setTeamName(team, name, matchId);
+          res.json(result);
+        } catch (error) {
+          this.api.log(`Error setting team name: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Reset team names
+    this.api.registerRoute('DELETE', '/api/plugins/coinbattle/team-names',
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const { matchId } = req.query;
+          const result = this.teamNamesManager.resetTeamNames(matchId ? parseInt(matchId) : null);
+          res.json(result);
+        } catch (error) {
+          this.api.log(`Error resetting team names: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Get team name history
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/team-names/history', (req, res) => {
+      try {
+        const history = this.teamNamesManager.getTeamNameHistory();
+        res.json({ success: true, data: history });
+      } catch (error) {
+        this.api.log(`Error getting team name history: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // ==================== LIKES POINTS ROUTES ====================
+    
+    // Get likes points configuration
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/likes-points/config', (req, res) => {
+      try {
+        const config = this.likesPointsSystem.getConfig();
+        res.json({ success: true, data: config });
+      } catch (error) {
+        this.api.log(`Error getting likes points config: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Update likes points configuration
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/likes-points/config',
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const result = this.likesPointsSystem.updateConfig(req.body);
+          res.json(result);
+        } catch (error) {
+          this.api.log(`Error updating likes points config: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Get match statistics for likes points
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/likes-points/stats/:matchId', (req, res) => {
+      try {
+        const { matchId } = req.params;
+        const stats = this.likesPointsSystem.getMatchStatistics(parseInt(matchId));
+        res.json({ success: true, data: stats });
+      } catch (error) {
+        this.api.log(`Error getting likes points stats: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Get player points from likes/shares/etc
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/likes-points/player/:matchId/:userId', (req, res) => {
+      try {
+        const { matchId, userId } = req.params;
+        const points = this.likesPointsSystem.getPlayerPointsForMatch(parseInt(matchId), userId);
+        res.json({ success: true, data: points });
+      } catch (error) {
+        this.api.log(`Error getting player points: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // ==================== OVERLAY LAYOUT ROUTES ====================
+    
+    // Get all overlay layouts
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/overlay/layouts', (req, res) => {
+      try {
+        const config = this.api.getConfig('coinbattle_overlay_layouts') || {};
+        const layouts = Object.entries(config).map(([id, layout]) => ({ id, ...layout }));
+        res.json({ success: true, data: layouts });
+      } catch (error) {
+        this.api.log(`Error getting overlay layouts: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Save overlay layout
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/overlay/layouts',
+      withRateLimit(moderateLimit, (req, res) => {
+        try {
+          const layout = req.body;
+          const layouts = this.api.getConfig('coinbattle_overlay_layouts') || {};
+          layouts[layout.id] = layout;
+          this.api.setConfig('coinbattle_overlay_layouts', layouts);
+          res.json({ success: true });
+        } catch (error) {
+          this.api.log(`Error saving overlay layout: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Delete overlay layout
+    this.api.registerRoute('DELETE', '/api/plugins/coinbattle/overlay/layouts/:id',
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const { id } = req.params;
+          const layouts = this.api.getConfig('coinbattle_overlay_layouts') || {};
+          delete layouts[id];
+          this.api.setConfig('coinbattle_overlay_layouts', layouts);
+          res.json({ success: true });
+        } catch (error) {
+          this.api.log(`Error deleting overlay layout: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
     // Export match data (relaxed)
     this.api.registerRoute('GET', '/api/plugins/coinbattle/export/:matchId', (req, res) => {
       try {
@@ -819,9 +982,161 @@ class CoinBattlePlugin {
       }
     });
 
-    // Like event (optional - could be used for bonus points)
-    this.api.registerTikTokEvent('like', (data) => {
-      // Optional: implement like-based bonuses
+    // Like event - integrate with likes points system
+    this.api.registerTikTokEvent('like', async (data) => {
+      if (!this.engine.currentMatch) return;
+      
+      try {
+        // Process likes as points if enabled
+        const likesConfig = this.likesPointsSystem.getConfig();
+        if (likesConfig.enabled && data.likeCount) {
+          const result = this.likesPointsSystem.processLikeEvent(
+            this.engine.currentMatch.id,
+            data.userId,
+            data.likeCount
+          );
+          
+          if (result.success && result.points > 0) {
+            // Add points to player's score
+            const userData = {
+              userId: data.userId,
+              uniqueId: data.uniqueId,
+              nickname: data.nickname,
+              profilePictureUrl: data.profilePictureUrl
+            };
+            
+            const giftData = {
+              giftId: 0,
+              giftName: '❤️ Likes',
+              coins: result.points
+            };
+            
+            this.engine.processGift(giftData, userData);
+            
+            // Emit notification
+            this.io.emit('coinbattle:likes-points', {
+              userId: data.userId,
+              likes: data.likeCount,
+              points: result.points
+            });
+          }
+        }
+      } catch (error) {
+        this.api.log(`Error processing like event: ${error.message}`, 'error');
+      }
+    });
+
+    // Share event - integrate with likes points system
+    this.api.registerTikTokEvent('share', async (data) => {
+      if (!this.engine.currentMatch) return;
+      
+      try {
+        const likesConfig = this.likesPointsSystem.getConfig();
+        if (likesConfig.enabled) {
+          const result = this.likesPointsSystem.processShareEvent(
+            this.engine.currentMatch.id,
+            data.userId,
+            1
+          );
+          
+          if (result.success && result.points > 0) {
+            const userData = {
+              userId: data.userId,
+              uniqueId: data.uniqueId,
+              nickname: data.nickname,
+              profilePictureUrl: data.profilePictureUrl
+            };
+            
+            const giftData = {
+              giftId: 0,
+              giftName: '🔗 Share',
+              coins: result.points
+            };
+            
+            this.engine.processGift(giftData, userData);
+            
+            this.io.emit('coinbattle:share-points', {
+              userId: data.userId,
+              points: result.points
+            });
+          }
+        }
+      } catch (error) {
+        this.api.log(`Error processing share event: ${error.message}`, 'error');
+      }
+    });
+
+    // Follow event - integrate with likes points system
+    this.api.registerTikTokEvent('follow', async (data) => {
+      if (!this.engine.currentMatch) return;
+      
+      try {
+        const likesConfig = this.likesPointsSystem.getConfig();
+        if (likesConfig.enabled) {
+          const result = this.likesPointsSystem.processFollowEvent(
+            this.engine.currentMatch.id,
+            data.userId
+          );
+          
+          if (result.success && result.points > 0) {
+            const userData = {
+              userId: data.userId,
+              uniqueId: data.uniqueId,
+              nickname: data.nickname,
+              profilePictureUrl: data.profilePictureUrl
+            };
+            
+            const giftData = {
+              giftId: 0,
+              giftName: '➕ Follow',
+              coins: result.points
+            };
+            
+            this.engine.processGift(giftData, userData);
+            
+            this.io.emit('coinbattle:follow-points', {
+              userId: data.userId,
+              points: result.points
+            });
+          }
+        }
+      } catch (error) {
+        this.api.log(`Error processing follow event: ${error.message}`, 'error');
+      }
+    });
+
+    // Comment event - integrate with likes points system
+    this.api.registerTikTokEvent('chat', async (data) => {
+      if (!this.engine.currentMatch) return;
+      
+      try {
+        const likesConfig = this.likesPointsSystem.getConfig();
+        if (likesConfig.enabled) {
+          const result = this.likesPointsSystem.processCommentEvent(
+            this.engine.currentMatch.id,
+            data.userId
+          );
+          
+          if (result.success && result.points > 0) {
+            const userData = {
+              userId: data.userId,
+              uniqueId: data.uniqueId,
+              nickname: data.nickname,
+              profilePictureUrl: data.profilePictureUrl
+            };
+            
+            const giftData = {
+              giftId: 0,
+              giftName: '💬 Comment',
+              coins: result.points
+            };
+            
+            this.engine.processGift(giftData, userData);
+          }
+        }
+      } catch (error) {
+        this.api.log(`Error processing comment event: ${error.message}`, 'error');
+      }
     });
 
     this.api.log('CoinBattle TikTok events registered with performance optimization', 'info');
