@@ -5,6 +5,7 @@
  */
 
 const WebSocket = require('ws');
+const axios = require('axios');
 
 class OSCQueryClient {
     constructor(host = '127.0.0.1', port = 9001, logger = console) {
@@ -40,11 +41,8 @@ class OSCQueryClient {
             this.logger.info(`🔍 OSCQuery discovery starting on ${this.baseUrl}`);
 
             // Query host info
-            const hostInfoResponse = await fetch(`${this.baseUrl}/?HOST_INFO`);
-            if (!hostInfoResponse.ok) {
-                throw new Error(`OSCQuery not available at ${this.baseUrl}`);
-            }
-            this.hostInfo = await hostInfoResponse.json();
+            const hostInfoResponse = await axios.get(`${this.baseUrl}/?HOST_INFO`);
+            this.hostInfo = hostInfoResponse.data;
 
             // Discover avatar parameters
             this.parameters.clear();
@@ -76,12 +74,8 @@ class OSCQueryClient {
      */
     async _discoverNode(nodePath) {
         try {
-            const response = await fetch(`${this.baseUrl}${nodePath}`);
-            if (!response.ok) {
-                return;
-            }
-
-            const node = await response.json();
+            const response = await axios.get(`${this.baseUrl}${nodePath}`);
+            const node = response.data;
 
             // If node has CONTENTS, it's a container - recurse into children
             if (node.CONTENTS) {
@@ -192,19 +186,18 @@ class OSCQueryClient {
     async watchAvatarChange(callback) {
         try {
             // Poll /avatar/change endpoint
-            const response = await fetch(`${this.baseUrl}/avatar/change`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.VALUE !== this.avatarInfo?.id) {
-                    this.avatarInfo = { id: data.VALUE, changedAt: Date.now() };
-                    this.logger.info(`👤 Avatar changed: ${data.VALUE}`);
-                    
-                    // Re-discover parameters for new avatar
-                    await this.discover();
-                    
-                    if (callback) callback(this.avatarInfo);
-                    this._emit('avatar_changed', this.avatarInfo);
-                }
+            const response = await axios.get(`${this.baseUrl}/avatar/change`);
+            const data = response.data;
+            
+            if (data.VALUE !== this.avatarInfo?.id) {
+                this.avatarInfo = { id: data.VALUE, changedAt: Date.now() };
+                this.logger.info(`👤 Avatar changed: ${data.VALUE}`);
+                
+                // Re-discover parameters for new avatar
+                await this.discover();
+                
+                if (callback) callback(this.avatarInfo);
+                this._emit('avatar_changed', this.avatarInfo);
             }
         } catch (error) {
             this.logger.debug('Avatar change check failed:', error.message);
