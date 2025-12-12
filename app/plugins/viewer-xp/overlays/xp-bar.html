@@ -202,6 +202,19 @@
     let currentViewer = null;
     let displayTimeout = null;
 
+    // Connection status logging
+    socket.on('connect', () => {
+      console.log('✅ XP Bar: Socket.io connected');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('⚠️ XP Bar: Socket.io disconnected');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('❌ XP Bar: Socket.io connection error:', error);
+    });
+
     // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const autoHide = urlParams.get('autoHide') !== 'false';
@@ -279,6 +292,7 @@
 
     // Listen for XP updates
     socket.on('viewer-xp:update', (data) => {
+      console.log('📊 XP Bar: Received update event', data);
       if (data.profile) {
         updateDisplay(data.profile);
         showXPGain(data.amount, data.username);
@@ -287,6 +301,7 @@
 
     // Listen for level ups
     socket.on('viewer-xp:level-up', (data) => {
+      console.log('⬆️ XP Bar: Received level-up event', data);
       showLevelUp(data);
       // Request updated profile
       socket.emit('viewer-xp:get-profile', data.username);
@@ -294,6 +309,7 @@
 
     // Listen for profile updates
     socket.on('viewer-xp:profile', (profile) => {
+      console.log('👤 XP Bar: Received profile event', profile);
       if (profile) {
         updateDisplay(profile);
       }

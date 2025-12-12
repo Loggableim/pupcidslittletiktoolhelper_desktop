@@ -316,6 +316,19 @@
   <script>
     const socket = io();
     
+    // Connection status logging
+    socket.on('connect', () => {
+      console.log('✅ Leaderboard: Socket.io connected');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('⚠️ Leaderboard: Socket.io disconnected');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('❌ Leaderboard: Socket.io connection error:', error);
+    });
+    
     // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const limit = parseInt(urlParams.get('limit') || '10');
@@ -392,11 +405,13 @@
 
     // Listen for leaderboard updates
     socket.on('viewer-xp:leaderboard', (data) => {
+      console.log('📊 Leaderboard: Received leaderboard data', data);
       updateLeaderboard(data);
     });
 
     // Listen for XP updates to refresh leaderboard
     socket.on('viewer-xp:update', () => {
+      console.log('📊 Leaderboard: XP update detected, scheduling refresh...');
       // Debounce refresh
       clearTimeout(window.refreshDebounce);
       window.refreshDebounce = setTimeout(fetchLeaderboard, 2000);
@@ -404,6 +419,7 @@
 
     // Listen for level ups to refresh leaderboard
     socket.on('viewer-xp:level-up', () => {
+      console.log('📊 Leaderboard: Level up detected, refreshing...');
       fetchLeaderboard();
     });
 
