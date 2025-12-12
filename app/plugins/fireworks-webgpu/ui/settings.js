@@ -7,6 +7,15 @@
 let config = {};
 let socket = null;
 
+// Benchmark configuration constants
+const BENCHMARK_CONFIG = {
+    WINDOW_LOAD_DELAY: 2000,      // Wait 2s for overlay window to fully load
+    TEST_DURATION: 10000,          // Each preset tested for 10 seconds
+    FIREWORK_INTERVAL: 500,        // Trigger firework every 500ms
+    FPS_SAMPLE_INTERVAL: 1000,     // Sample FPS every second
+    INTER_TEST_DELAY: 1000         // Wait 1s between different preset tests
+};
+
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
@@ -31,6 +40,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Setup event listeners
     setupEventListeners();
+    
+    // Initialize tab system
+    initializeTabs();
+    
+    // Initialize presets
+    initializePresets();
+    
+    // Initialize benchmark
+    initializeBenchmark();
     
     console.log('[Fireworks Settings] Initialized');
 });
@@ -786,6 +804,486 @@ async function triggerTestAvatar() {
     } catch (e) {
         console.error('[Fireworks Settings] Failed to trigger avatar test:', e);
         showToast('Failed to trigger avatar test', 'error');
+    }
+}
+
+// ============================================================================
+// TAB SYSTEM
+// ============================================================================
+
+function initializeTabs() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const tabId = button.getAttribute('data-tab');
+            switchTab(tabId);
+        });
+    });
+}
+
+function switchTab(tabId) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-button').forEach(button => {
+        if (button.getAttribute('data-tab') === tabId) {
+            button.classList.add('active');
+        } else {
+            button.classList.remove('active');
+        }
+    });
+    
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(pane => {
+        if (pane.id === tabId) {
+            pane.classList.add('active');
+        } else {
+            pane.classList.remove('active');
+        }
+    });
+}
+
+// ============================================================================
+// PRESET SYSTEM
+// ============================================================================
+
+const PRESETS = {
+    ultra: {
+        resolutionPreset: '4k',
+        maxParticles: 3000,
+        targetFps: 60,
+        minFps: 45,
+        trailsEnabled: true,
+        glowEnabled: true,
+        toasterMode: false,
+        particleSizeMin: 3,
+        particleSizeMax: 10
+    },
+    high: {
+        resolutionPreset: '1440p',
+        maxParticles: 2000,
+        targetFps: 60,
+        minFps: 40,
+        trailsEnabled: true,
+        glowEnabled: true,
+        toasterMode: false,
+        particleSizeMin: 3,
+        particleSizeMax: 10
+    },
+    medium: {
+        resolutionPreset: '1080p',
+        maxParticles: 1500,
+        targetFps: 60,
+        minFps: 30,
+        trailsEnabled: true,
+        glowEnabled: true,
+        toasterMode: false,
+        particleSizeMin: 3,
+        particleSizeMax: 8
+    },
+    low: {
+        resolutionPreset: '720p',
+        maxParticles: 1000,
+        targetFps: 48,
+        minFps: 24,
+        trailsEnabled: true,
+        glowEnabled: false,
+        toasterMode: false,
+        particleSizeMin: 2,
+        particleSizeMax: 6
+    },
+    toaster: {
+        resolutionPreset: '540p',
+        maxParticles: 500,
+        targetFps: 30,
+        minFps: 24,
+        trailsEnabled: false,
+        glowEnabled: false,
+        toasterMode: true,
+        particleSizeMin: 2,
+        particleSizeMax: 5
+    },
+    potato: {
+        resolutionPreset: '360p',
+        maxParticles: 300,
+        targetFps: 24,
+        minFps: 15,
+        trailsEnabled: false,
+        glowEnabled: false,
+        toasterMode: true,
+        particleSizeMin: 1,
+        particleSizeMax: 4
+    }
+};
+
+function initializePresets() {
+    const presetCards = document.querySelectorAll('.preset-card');
+    
+    presetCards.forEach(card => {
+        const button = card.querySelector('button');
+        button.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const presetName = card.getAttribute('data-preset');
+            await applyPreset(presetName);
+        });
+    });
+}
+
+async function applyPreset(presetName) {
+    const preset = PRESETS[presetName];
+    if (!preset) {
+        const msg = window.i18n ? window.i18n.t('fireworks.presets.not_found') : 'Preset not found';
+        showToast(msg, 'error');
+        return;
+    }
+    
+    // Check if benchmark has recommended against this preset
+    const benchmarkResults = localStorage.getItem('fireworks-webgpu-benchmark-results');
+    if (benchmarkResults) {
+        try {
+            const results = JSON.parse(benchmarkResults);
+            const presetResult = results.find(r => r.preset === presetName);
+            
+            if (presetResult && presetResult.avgFps < 30) {
+                const warningTitle = window.i18n ? window.i18n.t('fireworks.presets.warning_title') : 'Warning: This preset might lag on your system!';
+                const warningFps = window.i18n ? window.i18n.t('fireworks.presets.warning_fps').replace('{fps}', presetResult.avgFps.toFixed(1)) : `The benchmark measured an average FPS of ${presetResult.avgFps.toFixed(1)}.`;
+                const warningConfirm = window.i18n ? window.i18n.t('fireworks.presets.warning_confirm') : 'Do you want to use this setting anyway?';
+                
+                const confirmed = confirm(
+                    `⚠️ ${warningTitle}\n\n${warningFps}\n\n${warningConfirm}`
+                );
+                
+                if (!confirmed) {
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to parse benchmark results:', e);
+        }
+    }
+    
+    // Apply preset to config
+    Object.assign(config, preset);
+    
+    // Update UI
+    updateUI();
+    
+    // Save config
+    await saveConfig();
+    
+    const msg = window.i18n ? window.i18n.t('fireworks.presets.applied') : 'Preset applied!';
+    showToast(`${msg} (${presetName.toUpperCase()})`, 'success');
+    
+    // Switch to settings tab to show changes
+    switchTab('settings');
+}
+
+// ============================================================================
+// BENCHMARK
+// ============================================================================
+
+let benchmarkWindow = null;
+let benchmarkRunning = false;
+let benchmarkResults = [];
+
+function initializeBenchmark() {
+    const startBtn = document.getElementById('start-benchmark');
+    const stopBtn = document.getElementById('stop-benchmark');
+    
+    if (startBtn) {
+        startBtn.addEventListener('click', startBenchmark);
+    }
+    
+    if (stopBtn) {
+        stopBtn.addEventListener('click', stopBenchmark);
+    }
+    
+    // Load previous benchmark results if available
+    loadBenchmarkResults();
+}
+
+async function startBenchmark() {
+    if (benchmarkRunning) return;
+    
+    benchmarkRunning = true;
+    benchmarkResults = [];
+    
+    const startBtn = document.getElementById('start-benchmark');
+    const stopBtn = document.getElementById('stop-benchmark');
+    const progressDiv = document.getElementById('benchmark-progress');
+    const resultsDiv = document.getElementById('benchmark-results');
+    
+    startBtn.style.display = 'none';
+    stopBtn.style.display = 'block';
+    progressDiv.style.display = 'block';
+    resultsDiv.style.display = 'none';
+    
+    // Open overlay window for benchmark
+    const overlayUrl = `${window.location.origin}/fireworks-webgpu/obs-overlay?benchmark=true`;
+    benchmarkWindow = window.open(overlayUrl, 'FireworksBenchmark', 'width=1920,height=1080');
+    
+    if (!benchmarkWindow) {
+        const msg = window.i18n ? window.i18n.t('fireworks.benchmark.popup_blocked') : 'Could not open benchmark window. Please allow pop-ups.';
+        showToast(msg, 'error');
+        stopBenchmark();
+        return;
+    }
+    
+    // Wait for window to load
+    await new Promise(resolve => setTimeout(resolve, BENCHMARK_CONFIG.WINDOW_LOAD_DELAY));
+    
+    // Run benchmark for each preset
+    const presets = ['ultra', 'high', 'medium', 'low', 'toaster', 'potato'];
+    const totalSteps = presets.length;
+    
+    document.getElementById('benchmark-total').textContent = totalSteps;
+    
+    for (let i = 0; i < presets.length && benchmarkRunning; i++) {
+        const presetName = presets[i];
+        
+        document.getElementById('current-test-name').textContent = presetName.toUpperCase();
+        document.getElementById('benchmark-step').textContent = i + 1;
+        document.getElementById('benchmark-progress-bar').style.width = `${((i + 1) / totalSteps) * 100}%`;
+        
+        const result = await runBenchmarkTest(presetName);
+        benchmarkResults.push(result);
+        
+        // Wait between tests
+        await new Promise(resolve => setTimeout(resolve, BENCHMARK_CONFIG.INTER_TEST_DELAY));
+    }
+    
+    // Close benchmark window
+    if (benchmarkWindow && !benchmarkWindow.closed) {
+        benchmarkWindow.close();
+    }
+    
+    // Show results
+    displayBenchmarkResults();
+    saveBenchmarkResults();
+    
+    benchmarkRunning = false;
+    startBtn.style.display = 'block';
+    stopBtn.style.display = 'none';
+    progressDiv.style.display = 'none';
+}
+
+function stopBenchmark() {
+    benchmarkRunning = false;
+    
+    if (benchmarkWindow && !benchmarkWindow.closed) {
+        benchmarkWindow.close();
+    }
+    
+    const startBtn = document.getElementById('start-benchmark');
+    const stopBtn = document.getElementById('stop-benchmark');
+    const progressDiv = document.getElementById('benchmark-progress');
+    
+    startBtn.style.display = 'block';
+    stopBtn.style.display = 'none';
+    progressDiv.style.display = 'none';
+    
+    const msg = window.i18n ? window.i18n.t('fireworks.benchmark.cancelled') : 'Benchmark cancelled';
+    showToast(msg, 'error');
+}
+
+async function runBenchmarkTest(presetName) {
+    const preset = PRESETS[presetName];
+    
+    // Apply preset temporarily via API
+    await fetch('/api/fireworks-webgpu/benchmark/set-preset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preset })
+    });
+    
+    // Trigger test fireworks and measure FPS
+    const fpsData = await measureFPS();
+    
+    return {
+        preset: presetName,
+        avgFps: fpsData.avgFps,
+        minFps: fpsData.minFps,
+        maxFps: fpsData.maxFps,
+        config: preset
+    };
+}
+
+async function measureFPS() {
+    // Trigger multiple fireworks to stress test
+    const testDuration = BENCHMARK_CONFIG.TEST_DURATION;
+    const fireworkInterval = BENCHMARK_CONFIG.FIREWORK_INTERVAL;
+    
+    let fpsReadings = [];
+    
+    // Start FPS measurement
+    const measureStart = Date.now();
+    
+    // Trigger fireworks periodically
+    const fireworkTimer = setInterval(async () => {
+        await fetch('/api/fireworks-webgpu/trigger', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                shape: 'burst',
+                intensity: 1.5,
+                position: { x: Math.random(), y: Math.random() * 0.5 + 0.25 }
+            })
+        });
+    }, fireworkInterval);
+    
+    // Collect FPS readings
+    const fpsTimer = setInterval(async () => {
+        try {
+            const response = await fetch('/api/fireworks-webgpu/benchmark/fps');
+            const data = await response.json();
+            if (data.success && data.fps) {
+                fpsReadings.push(data.fps);
+            }
+        } catch (e) {
+            console.error('Failed to read FPS:', e);
+        }
+    }, BENCHMARK_CONFIG.FPS_SAMPLE_INTERVAL);
+    
+    // Wait for test duration
+    await new Promise(resolve => setTimeout(resolve, testDuration));
+    
+    // Stop timers
+    clearInterval(fireworkTimer);
+    clearInterval(fpsTimer);
+    
+    // Calculate statistics
+    if (fpsReadings.length === 0) {
+        return { avgFps: 0, minFps: 0, maxFps: 0 };
+    }
+    
+    const avgFps = fpsReadings.reduce((a, b) => a + b, 0) / fpsReadings.length;
+    const minFps = Math.min(...fpsReadings);
+    const maxFps = Math.max(...fpsReadings);
+    
+    return { avgFps, minFps, maxFps };
+}
+
+function displayBenchmarkResults() {
+    const resultsDiv = document.getElementById('benchmark-results');
+    const resultsContainer = resultsDiv.querySelector('.grid');
+    const recommendationsDiv = document.getElementById('benchmark-recommendations');
+    
+    resultsDiv.style.display = 'block';
+    
+    // Clear previous results
+    resultsContainer.innerHTML = '';
+    
+    // Sort by avgFps descending
+    const sortedResults = [...benchmarkResults].sort((a, b) => b.avgFps - a.avgFps);
+    
+    // Display all results
+    sortedResults.forEach((result, index) => {
+        const resultCard = document.createElement('div');
+        resultCard.className = 'card rounded-xl p-4';
+        
+        let colorClass = 'text-gray-400';
+        let fpsIcon = '❌';
+        
+        if (result.avgFps >= 55) {
+            colorClass = 'text-green-400';
+            fpsIcon = '✅';
+        } else if (result.avgFps >= 40) {
+            colorClass = 'text-blue-400';
+            fpsIcon = '✔️';
+        } else if (result.avgFps >= 30) {
+            colorClass = 'text-yellow-400';
+            fpsIcon = '⚠️';
+        } else {
+            colorClass = 'text-red-400';
+            fpsIcon = '❌';
+        }
+        
+        resultCard.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <h4 class="font-bold text-lg ${colorClass}">${fpsIcon} ${result.preset.toUpperCase()}</h4>
+                <span class="text-2xl font-bold ${colorClass}">${result.avgFps.toFixed(1)} FPS</span>
+            </div>
+            <div class="text-sm text-gray-400 space-y-1">
+                <div>Min: ${result.minFps.toFixed(1)} FPS | Max: ${result.maxFps.toFixed(1)} FPS</div>
+                <div>Resolution: ${result.config.resolutionPreset} | Particles: ${result.config.maxParticles}</div>
+            </div>
+        `;
+        
+        resultsContainer.appendChild(resultCard);
+    });
+    
+    // Generate recommendations (top 2 presets with avgFps >= 30)
+    const goodPresets = sortedResults.filter(r => r.avgFps >= 30);
+    const recommendations = goodPresets.slice(0, 2);
+    
+    recommendationsDiv.innerHTML = '';
+    
+    if (recommendations.length === 0) {
+        const msg = window.i18n ? window.i18n.t('fireworks.benchmark.no_good_presets') : 'No preset reaches 30 FPS. We recommend the "Potato" preset for your system.';
+        const applyText = window.i18n ? window.i18n.t('fireworks.presets.apply') : 'Apply';
+        
+        const btn = document.createElement('button');
+        btn.className = 'w-full mt-4 bg-green-500 hover:bg-green-600 py-3 rounded-lg font-bold transition';
+        btn.dataset.preset = 'potato';
+        btn.textContent = `🥔 Potato ${applyText}`;
+        btn.addEventListener('click', () => applyPreset('potato'));
+        
+        const para = document.createElement('p');
+        para.className = 'text-yellow-300';
+        para.textContent = `⚠️ ${msg}`;
+        
+        recommendationsDiv.appendChild(para);
+        recommendationsDiv.appendChild(btn);
+    } else {
+        recommendations.forEach((rec, index) => {
+            const recDiv = document.createElement('div');
+            recDiv.className = 'mb-4';
+            
+            const bestChoice = window.i18n ? window.i18n.t('fireworks.benchmark.best_choice') : 'Best Choice';
+            const alternative = window.i18n ? window.i18n.t('fireworks.benchmark.alternative') : 'Alternative';
+            const applyText = window.i18n ? window.i18n.t('fireworks.presets.apply') : 'Apply';
+            
+            const rank = index === 0 ? `🥇 ${bestChoice}` : `🥈 ${alternative}`;
+            
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'flex items-center justify-between mb-2';
+            headerDiv.innerHTML = `
+                <span class="font-bold">${rank}: ${rec.preset.toUpperCase()}</span>
+                <span class="text-green-300 font-bold">${rec.avgFps.toFixed(1)} FPS</span>
+            `;
+            
+            const btn = document.createElement('button');
+            btn.className = 'w-full bg-green-500 hover:bg-green-600 py-2 rounded-lg font-bold transition';
+            btn.dataset.preset = rec.preset;
+            btn.textContent = applyText;
+            btn.addEventListener('click', () => applyPreset(rec.preset));
+            
+            recDiv.appendChild(headerDiv);
+            recDiv.appendChild(btn);
+            
+            recommendationsDiv.appendChild(recDiv);
+        });
+    }
+}
+
+function saveBenchmarkResults() {
+    try {
+        localStorage.setItem('fireworks-webgpu-benchmark-results', JSON.stringify(benchmarkResults));
+    } catch (e) {
+        console.error('Failed to save benchmark results:', e);
+    }
+}
+
+function loadBenchmarkResults() {
+    try {
+        const saved = localStorage.getItem('fireworks-webgpu-benchmark-results');
+        if (saved) {
+            benchmarkResults = JSON.parse(saved);
+            if (benchmarkResults.length > 0) {
+                displayBenchmarkResults();
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load benchmark results:', e);
     }
 }
 
