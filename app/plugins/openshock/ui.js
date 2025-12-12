@@ -1353,6 +1353,10 @@ function addPatternStep() {
 
     addDebugLog('debug', `${editingStepIndex !== null ? 'Updating' : 'Adding'} step: ${JSON.stringify(step)}`);
 
+    // Track whether we're editing for the notification message
+    const isEditing = editingStepIndex !== null;
+    const editedStepNumber = isEditing ? editingStepIndex + 1 : null;
+
     // Check if we're editing an existing step or adding a new one
     if (editingStepIndex !== null) {
         // Update the existing step
@@ -1398,7 +1402,12 @@ function addPatternStep() {
     const stepLabel = stepTypeLabels[step.type] || step.type;
     const intensityText = step.type !== 'pause' ? ` @ ${step.intensity}%` : '';
     
-    showNotification(`Schritt ${editingStepIndex !== null ? 'aktualisiert' : currentPatternSteps.length + ' hinzugefügt'}: ${stepLabel}${intensityText}`, 'success');
+    // Generate notification message based on whether we were editing
+    const message = isEditing 
+        ? `Schritt ${editedStepNumber} aktualisiert: ${stepLabel}${intensityText}`
+        : `Schritt ${currentPatternSteps.length} hinzugefügt: ${stepLabel}${intensityText}`;
+    
+    showNotification(message, 'success');
 }
 
 function removePatternStep(index) {
