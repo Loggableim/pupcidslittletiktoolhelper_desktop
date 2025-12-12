@@ -346,12 +346,14 @@ class EffectsEngine {
             vec4 renderParticles(vec2 uv, vec2 pixelPos, float edgeDist) {
                 vec4 color = vec4(0.0);
                 
-                // Create multiple layers of particles
-                for (int layer = 0; layer < 3; layer++) {
-                    float layerOffset = float(layer) * 0.333;
-                    float particleCount = 20.0 + float(layer) * 10.0;
+                // Create multiple layers of particles - optimized for performance
+                for (int layer = 0; layer < 2; layer++) {
+                    float layerOffset = float(layer) * 0.5;
+                    float particleCount = 12.0 + float(layer) * 6.0;
                     
-                    for (float i = 0.0; i < particleCount; i += 1.0) {
+                    for (float i = 0.0; i < 18.0; i += 1.0) {
+                        if (i >= particleCount) break;
+                        
                         // Particle position
                         float particleTime = uTime * uFlameSpeed + i * 0.1 + layerOffset;
                         float x = fract(random(vec2(i, layerOffset)) + particleTime * 0.05);
@@ -377,8 +379,8 @@ class EffectsEngine {
                                 random(vec2(i, particleTime))
                             );
                             
-                            color.rgb += particleColor * alpha * 0.3;
-                            color.a += alpha * 0.3;
+                            color.rgb += particleColor * alpha * 0.4;
+                            color.a += alpha * 0.4;
                         }
                     }
                 }
@@ -608,20 +610,21 @@ class EffectsEngine {
             vec4 renderLightning(vec2 uv, vec2 pixelPos, float edgeDist) {
                 vec4 color = vec4(0.0);
                 
-                // Electric arc effect
-                float boltCount = 5.0 + floor(uFlameIntensity * 10.0);
+                // Electric arc effect - optimized for performance
+                float boltCount = 3.0 + floor(uFlameIntensity * 4.0);
                 
-                for (float i = 0.0; i < 15.0; i += 1.0) {
+                for (float i = 0.0; i < 7.0; i += 1.0) {
                     if (i >= boltCount) break;
                     
                     float boltTime = uTime * uFlameSpeed + i * 0.3;
                     float boltX = fract(random(vec2(i, floor(boltTime))) + boltTime * 0.1);
                     
-                    // Lightning bolt path with jagged movement
-                    float boltY = 0.0;
-                    float segments = 10.0;
+                    // Lightning bolt path with jagged movement - reduced segments
+                    float segments = 6.0;
                     
-                    for (float s = 0.0; s < segments; s += 1.0) {
+                    for (float s = 0.0; s < 6.0; s += 1.0) {
+                        if (s >= segments) break;
+                        
                         float segmentProgress = s / segments;
                         float nextSegmentProgress = (s + 1.0) / segments;
                         
@@ -640,15 +643,15 @@ class EffectsEngine {
                                 // Flickering effect
                                 float flicker = 0.7 + 0.3 * sin(uTime * 20.0 + i);
                                 
-                                color.rgb += uFlameColor * intensity * flicker * 0.5;
-                                color.a += intensity * flicker * 0.5;
+                                color.rgb += uFlameColor * intensity * flicker * 0.6;
+                                color.a += intensity * flicker * 0.6;
                                 
                                 // Glow around bolt
                                 if (dist < 0.1) {
                                     float glow = 1.0 - (dist / 0.1);
                                     glow = pow(glow, 3.0);
-                                    color.rgb += uFlameColor * glow * 0.2;
-                                    color.a += glow * 0.1;
+                                    color.rgb += uFlameColor * glow * 0.25;
+                                    color.a += glow * 0.15;
                                 }
                             }
                         }
@@ -996,5 +999,6 @@ class EffectsEngine {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    const engine = new EffectsEngine('flameCanvas');
+    // Store engine instance globally for debugging and external control
+    window.effectsEngine = new EffectsEngine('flameCanvas');
 });
