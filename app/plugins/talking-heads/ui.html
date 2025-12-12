@@ -35,16 +35,48 @@
                                 </div>
                             </div>
                             <div class="col-md-3">
-                                <span id="apiStatus" class="badge bg-secondary">Unbekannt</span>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="debugLoggingSwitch">
+                                    <label class="form-check-label" for="debugLoggingSwitch">
+                                        <i class="bi bi-bug"></i> Debug-Logging
+                                    </label>
+                                </div>
                             </div>
                             <div class="col-md-3">
-                                <button class="btn btn-sm btn-primary" id="testApiBtn">
-                                    <i class="bi bi-check-circle"></i> API testen
-                                </button>
+                                <span id="apiStatus" class="badge bg-secondary">Unbekannt</span>
                             </div>
                             <div class="col-md-3">
                                 <span id="cacheStats" class="text-muted">Cache: 0 Avatare</span>
                             </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-12">
+                                <button class="btn btn-sm btn-primary" id="testApiBtn">
+                                    <i class="bi bi-check-circle"></i> API testen
+                                </button>
+                                <small class="text-muted ms-3">
+                                    <i class="bi bi-info-circle"></i> Debug-Logging schreibt detaillierte Informationen in die Log-Datei
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Log Viewer -->
+        <div class="row mb-4" id="debugLogSection" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-terminal"></i> Debug Log</h5>
+                        <button class="btn btn-sm btn-secondary" id="refreshLogBtn">
+                            <i class="bi bi-arrow-clockwise"></i> Aktualisieren
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="debugLogViewer" class="bg-dark text-light p-3" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.85rem;">
+                            <div class="text-muted">Debug-Logging aktivieren, um Logs zu sehen...</div>
                         </div>
                     </div>
                 </div>

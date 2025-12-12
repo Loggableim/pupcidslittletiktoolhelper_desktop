@@ -56,6 +56,7 @@ async function loadConfig() {
  */
 function populateForm(config) {
   document.getElementById('enabledSwitch').checked = config.enabled || false;
+  document.getElementById('debugLoggingSwitch').checked = config.debugLogging || false;
   document.getElementById('imageApiUrl').value = config.imageApiUrl || '';
   document.getElementById('imageApiKey').value = config.imageApiKey || '';
   document.getElementById('defaultStyle').value = config.defaultStyle || 'cartoon';
@@ -76,6 +77,9 @@ function populateForm(config) {
   
   // Show/hide team level input
   toggleTeamLevelInput(config.rolePermission);
+  
+  // Show/hide debug log section
+  toggleDebugLogSection(config.debugLogging);
 }
 
 /**
@@ -87,6 +91,14 @@ function setupEventListeners() {
   
   // Test API button
   document.getElementById('testApiBtn').addEventListener('click', testApi);
+  
+  // Debug logging toggle
+  document.getElementById('debugLoggingSwitch').addEventListener('change', (e) => {
+    toggleDebugLogSection(e.target.checked);
+    if (e.target.checked) {
+      showNotification('Debug-Logging aktiviert - Details werden in Log-Datei geschrieben', 'info');
+    }
+  });
   
   // Clear cache button
   document.getElementById('clearCacheBtn').addEventListener('click', clearCache);
@@ -109,6 +121,7 @@ async function saveConfig() {
   try {
     const config = {
       enabled: document.getElementById('enabledSwitch').checked,
+      debugLogging: document.getElementById('debugLoggingSwitch').checked,
       imageApiUrl: document.getElementById('imageApiUrl').value,
       imageApiKey: document.getElementById('imageApiKey').value,
       defaultStyle: document.getElementById('defaultStyle').value,
@@ -305,6 +318,27 @@ function showNotification(message, type = 'info') {
   document.body.appendChild(toast);
   
   setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}
+
+/**
+ * Toggle debug log section visibility
+ */
+function toggleDebugLogSection(show) {
+  const section = document.getElementById('debugLogSection');
+  if (section) {
+    section.style.display = show ? 'block' : 'none';
+  }
+}
+
+/**
+ * Toggle team level input visibility
+ */
+function toggleTeamLevelInput(permission) {
+  const wrapper = document.getElementById('minTeamLevelWrapper');
+  wrapper.style.display = permission === 'team' ? 'block' : 'none';
+}
     toast.remove();
   }, 3000);
 }

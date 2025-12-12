@@ -62,11 +62,41 @@ class TalkingHeadsPlugin {
       requireSubscriber: false,
       requireCustomVoice: false,
       avatarResolution: 1500,
-      spriteResolution: 512
+      spriteResolution: 512,
+      debugLogging: false // Enable/disable detailed logging
     };
 
     const savedConfig = this.api.getConfig('talking_heads_config');
     return savedConfig ? { ...defaultConfig, ...savedConfig } : defaultConfig;
+  }
+
+  /**
+   * Log message with debug level control
+   * @param {string} message - Log message
+   * @param {string} level - Log level (info, warn, error, debug)
+   * @param {object} data - Additional data to log
+   * @private
+   */
+  _log(message, level = 'info', data = null) {
+    const prefix = 'TalkingHeads:';
+    const fullMessage = `${prefix} ${message}`;
+    
+    // Always log errors and warnings
+    if (level === 'error' || level === 'warn') {
+      this.logger[level](fullMessage, data || '');
+      return;
+    }
+    
+    // Log info and debug based on debugLogging setting
+    if (level === 'debug' && !this.config.debugLogging) {
+      return; // Skip debug logs if debugging is disabled
+    }
+    
+    if (data) {
+      this.logger[level](fullMessage, data);
+    } else {
+      this.logger[level](fullMessage);
+    }
   }
 
   /**
@@ -75,9 +105,28 @@ class TalkingHeadsPlugin {
    * @private
    */
   _saveConfig(newConfig) {
+    const oldDebugLogging = this.config.debugLogging;
     this.config = { ...this.config, ...newConfig };
     this.api.setConfig('talking_heads_config', this.config);
-    this.logger.info('TalkingHeads: Configuration saved');
+    
+    // Log configuration change
+    this._log('Configuration saved', 'info');
+    
+    // If debug logging was toggled, log the change
+    if (oldDebugLogging !== this.config.debugLogging) {
+      this._log(`Debug logging ${this.config.debugLogging ? 'ENABLED' : 'DISABLED'}`, 'info');
+    }
+    
+    // Log other important config changes
+    if (this.config.debugLogging) {
+      this._log('Config updated', 'debug', {
+        enabled: this.config.enabled,
+        defaultStyle: this.config.defaultStyle,
+        rolePermission: this.config.rolePermission,
+        cacheEnabled: this.config.cacheEnabled,
+        debugLogging: this.config.debugLogging
+      });
+    }
   }
 
   /**
@@ -85,21 +134,28 @@ class TalkingHeadsPlugin {
    */
   async init() {
     try {
-      this.logger.info('TalkingHeads: Initializing plugin...');
+      this._log('Initializing plugin...', 'info');
+      this._log(`Debug logging: ${this.config.debugLogging ? 'ENABLED' : 'DISABLED'}`, 'info');
 
       // Ensure plugin data directory exists
       const pluginDataDir = this.api.getPluginDataDir();
+      this._log(`Plugin data directory: ${pluginDataDir}`, 'debug');
       await this.api.ensurePluginDataDir();
 
       // Initialize cache manager
+      this._log('Initializing cache manager...', 'debug');
       this.cacheManager = new CacheManager(pluginDataDir, this.db, this.logger, this.config);
       await this.cacheManager.init();
+      this._log('Cache manager initialized', 'debug');
 
       // Initialize role manager
+      this._log('Initializing role manager...', 'debug');
       this.roleManager = new RoleManager(this.config, this.logger);
+      this._log(`Role permission: ${this.config.rolePermission}`, 'debug');
 
       // Initialize avatar and sprite generators if API key is configured
       if (this.config.imageApiKey) {
+        this._log('Initializing AI engines...', 'debug');
         this.avatarGenerator = new AvatarGenerator(
           this.config.imageApiUrl,
           this.config.imageApiKey,
@@ -114,29 +170,35 @@ class TalkingHeadsPlugin {
           this.config
         );
 
-        this.logger.info('TalkingHeads: ✅ Avatar and sprite generators initialized');
+        this._log('✅ Avatar and sprite generators initialized', 'info');
       } else {
-        this.logger.warn('TalkingHeads: ⚠️  No API key configured - avatar generation disabled');
+        this._log('⚠️  No API key configured - avatar generation disabled', 'warn');
       }
 
       // Initialize animation controller
+      this._log('Initializing animation controller...', 'debug');
       this.animationController = new AnimationController(
         this.io,
         this.logger,
         this.config,
         null // OBS WebSocket integration can be added later
       );
+      this._log('Animation controller initialized', 'debug');
 
       // Register API routes
+      this._log('Registering API routes...', 'debug');
       this._registerRoutes();
 
       // Register socket events
+      this._log('Registering socket events...', 'debug');
       this._registerSocketEvents();
 
       // Register TTS event listener
+      this._log('Registering TTS event listeners...', 'debug');
       this._registerTTSEvents();
 
       // Load custom voice users from TTS plugin
+      this._log('Loading custom voice users...', 'debug');
       this._loadCustomVoiceUsers();
 
       // Start cache cleanup interval (once per day)
@@ -330,25 +392,32 @@ class TalkingHeadsPlugin {
   async _handleTTSEvent(data) {
     const { userId, username, text, duration, userData } = data;
 
+    this._log(`TTS event received for user: ${username}`, 'debug', { userId, duration });
+
     if (!userId || !username) {
-      this.logger.warn('TalkingHeads: Invalid TTS event data');
+      this._log('Invalid TTS event data - missing userId or username', 'warn');
       return;
     }
 
     // Check role permission
+    this._log(`Checking eligibility for user: ${username}`, 'debug');
     const eligibility = this.roleManager.checkEligibility(userData || {}, this.customVoiceUsers);
     
     if (!eligibility.eligible) {
-      this.logger.info(`TalkingHeads: User ${username} not eligible - ${eligibility.reason}`);
+      this._log(`User ${username} not eligible - ${eligibility.reason}`, 'info');
       return;
     }
 
+    this._log(`User ${username} is eligible for talking head`, 'debug');
+
     // Check cache first
+    this._log(`Checking cache for user ${username} with style ${this.config.defaultStyle}`, 'debug');
     let avatarData = this.cacheManager.getAvatar(userId, this.config.defaultStyle);
 
     if (!avatarData) {
       // Generate new avatar and sprites
-      this.logger.info(`TalkingHeads: Generating new avatar for ${username}`);
+      this._log(`Generating new avatar for ${username}`, 'info');
+      this._log(`Profile URL: ${userData?.profilePictureUrl || 'none'}`, 'debug');
       
       try {
         avatarData = await this._generateAvatarAndSprites(
@@ -357,13 +426,17 @@ class TalkingHeadsPlugin {
           userData?.profilePictureUrl || '',
           this.config.defaultStyle
         );
+        this._log(`Avatar generation completed for ${username}`, 'debug');
       } catch (error) {
-        this.logger.error(`TalkingHeads: Failed to generate avatar for ${username}`, error);
+        this._log(`Failed to generate avatar for ${username}: ${error.message}`, 'error');
         return;
       }
+    } else {
+      this._log(`Using cached avatar for ${username}`, 'debug');
     }
 
     // Start animation
+    this._log(`Starting animation for ${username} (duration: ${duration}ms)`, 'debug');
     this.animationController.startAnimation(
       userId,
       username,
