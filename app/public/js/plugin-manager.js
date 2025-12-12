@@ -500,7 +500,7 @@ class PluginManager {
 
         const statusConfig = {
             'working-beta': {
-                text: 'Working Beta - pls Report Bugs',
+                text: 'Working Beta - please Report Bugs',
                 background: 'rgba(34, 197, 94, 0.15)',
                 border: 'rgba(34, 197, 94, 0.4)',
                 color: '#22c55e'
@@ -529,13 +529,16 @@ class PluginManager {
      * Get background color based on development status
      */
     getDevStatusBackground(devStatus) {
-        const backgrounds = {
-            'working-beta': 'linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%), rgba(34, 197, 94, 0.05)',
-            'development-beta': 'linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%), rgba(251, 191, 36, 0.05)',
-            'early-version': 'linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%), rgba(239, 68, 68, 0.05)'
+        const baseGradient = 'linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%)';
+        
+        const tints = {
+            'working-beta': 'rgba(34, 197, 94, 0.05)',
+            'development-beta': 'rgba(251, 191, 36, 0.05)',
+            'early-version': 'rgba(239, 68, 68, 0.05)'
         };
 
-        return backgrounds[devStatus] || 'linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%)';
+        const tint = tints[devStatus];
+        return tint ? `${baseGradient}, ${tint}` : baseGradient;
     }
 
     /**
