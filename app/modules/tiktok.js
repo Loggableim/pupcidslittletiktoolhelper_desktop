@@ -1507,7 +1507,17 @@ class TikTokConnector extends EventEmitter {
             case 'gift':
                 if (data.giftId) components.push(data.giftId.toString());
                 if (data.giftName) components.push(data.giftName);
-                if (data.repeatCount) components.push(data.repeatCount.toString());
+                // For gift events, use coins instead of repeatCount to better handle streak updates
+                // Coins = diamondCount * repeatCount, so it's more unique
+                if (data.coins) components.push(data.coins.toString());
+                // Also include repeatCount as fallback if coins is not available
+                else if (data.repeatCount) components.push(data.repeatCount.toString());
+                // Include timestamp rounded to nearest second to catch near-duplicate events
+                // but allow legitimate streak updates
+                if (data.timestamp) {
+                    const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
+                    components.push(roundedTime.toString());
+                }
                 break;
             case 'like':
                 // Include likeCount and totalLikes to prevent incorrect deduplication
