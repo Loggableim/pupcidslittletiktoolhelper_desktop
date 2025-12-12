@@ -444,7 +444,13 @@ class TTSPlugin {
         config.speechifyApiKey = db.getSetting('tts_speechify_api_key') || config.speechifyApiKey;
         config.elevenlabsApiKey = db.getSetting('tts_elevenlabs_api_key') || config.elevenlabsApiKey;
         config.openaiApiKey = db.getSetting('tts_openai_api_key') || config.openaiApiKey;
-        config.fishspeechApiKey = db.getSetting('tts_fishspeech_api_key') || config.fishspeechApiKey;
+        
+        // SiliconFlow API key (centralized for Fish Speech TTS + StreamAlchemy image generation)
+        // Try centralized key first, then legacy tts_fishspeech_api_key for backwards compatibility
+        config.fishspeechApiKey = db.getSetting('siliconflow_api_key') || 
+                                   db.getSetting('tts_fishspeech_api_key') || 
+                                   db.getSetting('streamalchemy_siliconflow_api_key') || 
+                                   config.fishspeechApiKey;
         
         // If no saved config exists, save defaults
         if (!saved) {
@@ -679,8 +685,10 @@ class TTSPlugin {
                 // Update Fish Speech API key if provided (and not the placeholder)
                 if (updates.fishspeechApiKey && updates.fishspeechApiKey !== '***REDACTED***') {
                     this.config.fishspeechApiKey = updates.fishspeechApiKey;
-                    // Save to global settings for centralized management
+                    // Save to centralized SiliconFlow API key setting (shared with StreamAlchemy)
                     const db = this.api.getDatabase();
+                    db.setSetting('siliconflow_api_key', updates.fishspeechApiKey);
+                    // Also save to legacy key for backwards compatibility
                     db.setSetting('tts_fishspeech_api_key', updates.fishspeechApiKey);
                     if (!this.engines.fishspeech) {
                         this.engines.fishspeech = new FishSpeechEngine(
