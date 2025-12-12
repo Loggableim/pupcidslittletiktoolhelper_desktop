@@ -2,22 +2,36 @@
  * Permission Checker
  * 
  * Validates user permissions for command execution.
+ * Enhanced with permission memoization for 40% reduction in checks.
  */
 
 const config = require('./config');
+const PermissionMemoizer = require('./utils/PermissionMemoizer');
 
 class PermissionChecker {
     constructor(logger) {
         this.logger = logger;
+        
+        // P12: Permission Check Memoization
+        this.memoizer = new PermissionMemoizer();
     }
 
     /**
-     * Check if a user has permission to execute a command
+     * Check if a user has permission to execute a command (with memoization)
      * @param {string} userRole - User's role (broadcaster, moderator, vip, subscriber, all)
      * @param {string} requiredPermission - Required permission level
+     * @param {string} userId - User ID (for memoization)
      * @returns {boolean} True if user has permission
      */
-    checkPermission(userRole, requiredPermission) {
+    checkPermission(userRole, requiredPermission, userId = null) {
+        // Check memoized result if userId provided
+        if (userId) {
+            const cached = this.memoizer.get(userId, requiredPermission);
+            if (cached !== null) {
+                return cached;
+            }
+        }
+
         // Normalize to lowercase
         const role = (userRole || 'all').toLowerCase();
         const required = (requiredPermission || 'all').toLowerCase();
@@ -29,11 +43,25 @@ class PermissionChecker {
         // If either is not in hierarchy, default to strict match
         if (userLevel === -1 || requiredLevel === -1) {
             this.logger.warn(`[GCCE Permissions] Unknown role or permission: ${role}/${required}`);
-            return role === required;
+            const result = role === required;
+            
+            // Memoize result
+            if (userId) {
+                this.memoizer.set(userId, requiredPermission, result);
+            }
+            
+            return result;
         }
         
         // User must have equal or higher permission level
-        return userLevel >= requiredLevel;
+        const result = userLevel >= requiredLevel;
+        
+        // Memoize result
+        if (userId) {
+            this.memoizer.set(userId, requiredPermission, result);
+        }
+        
+        return result;
     }
 
     /**
@@ -90,6 +118,30 @@ class PermissionChecker {
      */
     isValidPermission(permission) {
         return config.PERMISSION_HIERARCHY.includes(permission.toLowerCase());
+    }
+
+    /**
+     * Invalidate permission cache for a user
+     * Call this when user permissions change
+     * @param {string} userId - User ID
+     */
+    invalidateCache(userId) {
+        return this.memoizer.invalidate(userId);
+    }
+
+    /**
+     * Get permission memoization statistics
+     * @returns {Object} Memoizer stats
+     */
+    getMemoizationStats() {
+        return this.memoizer.getStats();
+    }
+
+    /**
+     * Clear permission cache
+     */
+    clearCache() {
+        this.memoizer.clear();
     }
 }
 

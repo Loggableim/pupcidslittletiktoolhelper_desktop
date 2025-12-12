@@ -3,9 +3,13 @@
  * 
  * Parses chat messages, validates syntax, checks permissions,
  * and routes to appropriate handlers.
+ * Enhanced with token bucket rate limiting, cooldowns, and better error handling.
  */
 
 const config = require('./config');
+const TokenBucketRateLimiter = require('./utils/TokenBucketRateLimiter');
+const CommandCooldownManager = require('./utils/CommandCooldownManager');
+const ErrorHandler = require('./utils/ErrorHandler');
 
 class CommandParser {
     constructor(registry, permissionChecker, logger) {
@@ -13,9 +17,22 @@ class CommandParser {
         this.permissionChecker = permissionChecker;
         this.logger = logger;
         
-        // Rate limiting
-        this.userRateLimits = new Map(); // userId -> { count, resetTime }
-        this.globalRateLimit = { count: 0, resetTime: Date.now() + 60000 };
+        // P2: Token Bucket Rate Limiter (O(1) performance)
+        this.rateLimiter = new TokenBucketRateLimiter(
+            config.RATE_LIMIT.COMMANDS_PER_USER_PER_MINUTE,
+            config.RATE_LIMIT.COMMANDS_PER_USER_PER_MINUTE,
+            60000 // 1 minute refill interval
+        );
+
+        // F2: Command Cooldown Manager
+        this.cooldownManager = new CommandCooldownManager();
+
+        // V2: Enhanced Error Handler
+        this.errorHandler = new ErrorHandler();
+
+        // P3: Pre-compiled RegEx for parser optimization
+        this.whitespaceRegex = /\s+/g;
+        this.commandPrefixRegex = new RegExp(`^\\${config.COMMAND_PREFIX}`);
     }
 
     /**
@@ -31,50 +48,97 @@ class CommandParser {
                 return { isCommand: false };
             }
 
-            // Check rate limiting
-            const rateLimitResult = this.checkRateLimit(context.userId);
+            // P2: Check rate limiting with Token Bucket
+            const rateLimitResult = this.rateLimiter.tryConsume(context.userId);
             if (!rateLimitResult.allowed) {
+                const remainingSeconds = Math.ceil(rateLimitResult.retryAfter || 0);
+                const error = this.errorHandler.createError(
+                    rateLimitResult.reason === 'global_limit' 
+                        ? 'RATE_LIMIT_GLOBAL' 
+                        : 'RATE_LIMIT_USER',
+                    { remaining: remainingSeconds }
+                );
+                
                 return {
                     success: false,
-                    error: config.ERRORS.RATE_LIMIT_EXCEEDED,
-                    displayOverlay: true
+                    error: error.message,
+                    suggestion: error.suggestion,
+                    displayOverlay: true,
+                    errorCode: error.code
                 };
             }
 
-            // Parse command structure
+            // P3: Parse command structure (optimized)
             const parsed = this.parseCommandStructure(message);
             
-            // Look up command in registry
+            // Look up command in registry (with cache and alias support)
             const commandDef = this.registry.getCommand(parsed.command);
             
             if (!commandDef) {
+                const error = this.errorHandler.createError('COMMAND_NOT_FOUND', {
+                    command: parsed.command
+                });
+                
                 return {
                     success: false,
-                    error: config.ERRORS.COMMAND_NOT_FOUND,
-                    displayOverlay: true
+                    error: error.message,
+                    suggestion: error.suggestion,
+                    displayOverlay: true,
+                    errorCode: error.code
                 };
             }
 
             // Check if command is enabled
             if (!commandDef.enabled) {
+                const error = this.errorHandler.createError('COMMAND_DISABLED', {
+                    command: commandDef.name
+                });
+                
                 return {
                     success: false,
-                    error: config.ERRORS.COMMAND_DISABLED,
-                    displayOverlay: true
+                    error: error.message,
+                    displayOverlay: true,
+                    errorCode: error.code
+                };
+            }
+
+            // F2: Check command cooldown
+            const cooldownCheck = this.cooldownManager.checkCooldown(commandDef.name, context.userId);
+            if (cooldownCheck.onCooldown) {
+                const remainingSeconds = Math.ceil(cooldownCheck.remainingMs / 1000);
+                const error = this.errorHandler.createError('COMMAND_ON_COOLDOWN', {
+                    command: commandDef.name,
+                    remaining: remainingSeconds
+                });
+                
+                return {
+                    success: false,
+                    error: error.message,
+                    suggestion: error.suggestion,
+                    displayOverlay: true,
+                    errorCode: error.code
                 };
             }
 
             // Check permissions
             const hasPermission = this.permissionChecker.checkPermission(
                 context.userRole,
-                commandDef.permission
+                commandDef.permission,
+                context.userId
             );
             
             if (!hasPermission) {
+                const error = this.errorHandler.createError('PERMISSION_DENIED', {
+                    command: commandDef.name,
+                    required: this.permissionChecker.getPermissionName(commandDef.permission)
+                });
+                
                 return {
                     success: false,
-                    error: config.ERRORS.PERMISSION_DENIED,
-                    displayOverlay: true
+                    error: error.message,
+                    suggestion: error.suggestion,
+                    displayOverlay: true,
+                    errorCode: error.code
                 };
             }
 
@@ -84,8 +148,9 @@ class CommandParser {
                 return {
                     success: false,
                     error: validationResult.error,
+                    suggestion: validationResult.suggestion,
                     displayOverlay: true,
-                    suggestion: `Use /help ${parsed.command} for correct syntax`
+                    errorCode: 'VALIDATION_ERROR'
                 };
             }
 
@@ -93,16 +158,24 @@ class CommandParser {
             const result = await this.executeCommand(commandDef, parsed.args, context);
             
             // Record execution
-            this.registry.recordExecution(parsed.command, result.success);
+            this.registry.recordExecution(commandDef.name, result.success);
+            
+            // F2: Record cooldown usage if successful
+            if (result.success) {
+                this.cooldownManager.recordUsage(commandDef.name, context.userId);
+            }
             
             return result;
 
         } catch (error) {
             this.logger.error(`[GCCE Parser] Error parsing command: ${error.message}`);
+            const errorObj = this.errorHandler.createError('INTERNAL_ERROR');
+            
             return {
                 success: false,
-                error: 'An error occurred while processing your command.',
-                displayOverlay: true
+                error: errorObj.message,
+                displayOverlay: true,
+                errorCode: errorObj.code
             };
         }
     }
@@ -117,7 +190,7 @@ class CommandParser {
     }
 
     /**
-     * Parse command structure from message
+     * Parse command structure from message (P3: Optimized with pre-compiled regex)
      * @param {string} message - The command message
      * @returns {Object} Parsed structure { command, args, raw }
      */
@@ -127,43 +200,61 @@ class CommandParser {
             throw new Error('Command message is too long');
         }
         
-        // Remove prefix
-        const withoutPrefix = message.trim().substring(config.COMMAND_PREFIX.length);
+        // Fast path: check if message starts with prefix
+        const trimmed = message.trim();
+        if (!this.commandPrefixRegex.test(trimmed)) {
+            return null;
+        }
         
-        // Split into parts
-        const parts = withoutPrefix.trim().split(/\s+/);
+        // Remove prefix (single operation)
+        const withoutPrefix = trimmed.substring(config.COMMAND_PREFIX.length);
         
-        // Extract command and arguments
+        // Split into parts (using pre-compiled regex)
+        const parts = withoutPrefix.trim().split(this.whitespaceRegex);
+        
+        // Extract command and arguments (toLowerCase only once)
         const command = parts[0].toLowerCase();
         const args = parts.slice(1);
         
         return {
             command,
             args,
-            raw: message.trim()
+            raw: trimmed
         };
     }
 
     /**
-     * Validate command arguments
+     * Validate command arguments (enhanced with better error messages)
      * @param {Array} args - Arguments array
      * @param {Object} commandDef - Command definition
-     * @returns {Object} Validation result { valid, error? }
+     * @returns {Object} Validation result { valid, error?, suggestion? }
      */
     validateArguments(args, commandDef) {
         // Check minimum arguments
         if (args.length < commandDef.minArgs) {
+            const error = this.errorHandler.createError('MISSING_ARGUMENTS', {
+                command: commandDef.name,
+                syntax: commandDef.syntax
+            });
+            
             return {
                 valid: false,
-                error: `${config.ERRORS.MISSING_ARGUMENTS}\nSyntax: ${commandDef.syntax}`
+                error: error.message,
+                suggestion: error.suggestion
             };
         }
 
         // Check maximum arguments
         if (args.length > commandDef.maxArgs) {
+            const error = this.errorHandler.createError('TOO_MANY_ARGUMENTS', {
+                command: commandDef.name,
+                syntax: commandDef.syntax
+            });
+            
             return {
                 valid: false,
-                error: `Too many arguments.\nSyntax: ${commandDef.syntax}`
+                error: error.message,
+                suggestion: error.suggestion
             };
         }
 
@@ -175,9 +266,15 @@ class CommandParser {
                     return customValidation;
                 }
             } catch (error) {
+                const errorObj = this.errorHandler.createError('INVALID_ARGUMENT_VALUE', {
+                    command: commandDef.name,
+                    value: error.message
+                });
+                
                 return {
                     valid: false,
-                    error: `Invalid arguments: ${error.message}`
+                    error: errorObj.message,
+                    suggestion: errorObj.suggestion
                 };
             }
         }
@@ -186,7 +283,7 @@ class CommandParser {
     }
 
     /**
-     * Execute a command
+     * Execute a command (enhanced error handling)
      * @param {Object} commandDef - Command definition
      * @param {Array} args - Command arguments
      * @param {Object} context - Execution context
@@ -209,78 +306,54 @@ class CommandParser {
 
         } catch (error) {
             this.logger.error(`[GCCE Parser] Command execution failed: ${error.message}`);
+            
+            const errorObj = this.errorHandler.createError('EXECUTION_FAILED', {
+                command: commandDef.name,
+                error: error.message
+            });
+            
             return {
                 success: false,
-                error: `Command failed: ${error.message}`,
-                displayOverlay: true
+                error: errorObj.message,
+                displayOverlay: true,
+                errorCode: errorObj.code
             };
         }
     }
 
     /**
-     * Check rate limiting for a user
-     * @param {string} userId - User ID
-     * @returns {Object} { allowed, reason? }
+     * Clean up old rate limit entries and cooldowns
      */
-    checkRateLimit(userId) {
-        const now = Date.now();
-        
-        // Check global rate limit
-        if (now > this.globalRateLimit.resetTime) {
-            this.globalRateLimit = { count: 0, resetTime: now + 60000 };
-        }
-        
-        if (this.globalRateLimit.count >= config.RATE_LIMIT.GLOBAL_COMMANDS_PER_MINUTE) {
-            return { allowed: false, reason: 'global_limit' };
-        }
-        
-        // Check user rate limit
-        if (!this.userRateLimits.has(userId)) {
-            this.userRateLimits.set(userId, { count: 0, resetTime: now + 60000 });
-        }
-        
-        const userLimit = this.userRateLimits.get(userId);
-        
-        if (now > userLimit.resetTime) {
-            userLimit.count = 0;
-            userLimit.resetTime = now + 60000;
-        }
-        
-        if (userLimit.count >= config.RATE_LIMIT.COMMANDS_PER_USER_PER_MINUTE) {
-            return { allowed: false, reason: 'user_limit' };
-        }
-        
-        // Increment counters
-        userLimit.count++;
-        this.globalRateLimit.count++;
-        
-        return { allowed: true };
+    cleanupRateLimits() {
+        this.rateLimiter.cleanup();
+        this.cooldownManager.cleanup();
     }
 
     /**
-     * Clean up old rate limit entries
+     * Set cooldown for a command (F2: Command Cooldowns)
+     * @param {string} commandName - Command name
+     * @param {number} userCooldown - Per-user cooldown in ms
+     * @param {number} globalCooldown - Global cooldown in ms (optional)
      */
-    cleanupRateLimits() {
-        const now = Date.now();
-        const maxEntries = 1000; // Prevent unbounded growth
+    setCommandCooldown(commandName, userCooldown, globalCooldown = 0) {
+        this.cooldownManager.setCooldown(commandName, userCooldown, globalCooldown);
+        this.logger.info(`[GCCE Parser] Set cooldown for /${commandName}: user=${userCooldown}ms, global=${globalCooldown}ms`);
+    }
 
-        // Remove expired entries
-        for (const [userId, data] of this.userRateLimits.entries()) {
-            if (now > data.resetTime) {
-                this.userRateLimits.delete(userId);
-            }
-        }
-        
-        // If still too large, remove oldest entries (LRU)
-        if (this.userRateLimits.size > maxEntries) {
-            const entries = Array.from(this.userRateLimits.entries())
-                .sort((a, b) => a[1].resetTime - b[1].resetTime);
-            
-            const toRemove = entries.slice(0, entries.length - maxEntries);
-            for (const [userId] of toRemove) {
-                this.userRateLimits.delete(userId);
-            }
-        }
+    /**
+     * Get rate limiter statistics
+     * @returns {Object} Rate limiter stats
+     */
+    getRateLimiterStats() {
+        return this.rateLimiter.getStats();
+    }
+
+    /**
+     * Get cooldown manager statistics
+     * @returns {Object} Cooldown stats
+     */
+    getCooldownStats() {
+        return this.cooldownManager.getStats();
     }
 }
 

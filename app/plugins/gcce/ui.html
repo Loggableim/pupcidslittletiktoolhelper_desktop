@@ -274,6 +274,179 @@
             align-items: center;
             gap: 8px;
         }
+
+        /* Dashboard Enhancements */
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .nav-tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--color-text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: -2px;
+        }
+
+        .nav-tab:hover {
+            color: var(--color-text-primary);
+        }
+
+        .nav-tab.active {
+            color: var(--color-accent-primary);
+            border-bottom-color: var(--color-accent-primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 16px;
+        }
+
+        .realtime-log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: var(--color-bg-secondary);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .log-entry {
+            padding: 8px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.875rem;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .log-entry.success {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 3px solid #10b981;
+        }
+
+        .log-entry.error {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 3px solid #ef4444;
+        }
+
+        .log-timestamp {
+            color: var(--color-text-secondary);
+            font-size: 0.75rem;
+        }
+
+        .log-user {
+            color: var(--color-accent-primary);
+            font-weight: 600;
+        }
+
+        .log-command {
+            color: var(--color-text-primary);
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .action-btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-secondary);
+            color: var(--color-text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-btn:hover {
+            background: var(--color-bg-tertiary);
+            border-color: var(--color-accent-primary);
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--color-bg-secondary);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--color-accent-primary);
+            transition: width 0.3s;
+        }
+
+        .metric-trend {
+            font-size: 0.75rem;
+            margin-top: 4px;
+        }
+
+        .metric-trend.up {
+            color: #10b981;
+        }
+
+        .metric-trend.down {
+            color: #ef4444;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -285,19 +458,78 @@
 
         <div id="message-container"></div>
 
-        <!-- Statistics -->
-        <div class="card">
-            <div class="card-title">📊 Statistics</div>
-            <div class="stats-grid" id="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Total Commands</div>
-                    <div class="stat-value" id="stat-total-commands">-</div>
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-tab="dashboard">📊 Dashboard</button>
+            <button class="nav-tab" data-tab="commands">⚡ Commands</button>
+            <button class="nav-tab" data-tab="monitoring">📈 Monitoring</button>
+            <button class="nav-tab" data-tab="hud">🎨 HUD Overlay</button>
+            <button class="nav-tab" data-tab="config">⚙️ Configuration</button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="tab-dashboard" class="tab-content active">
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-title">🚀 Quick Actions</div>
+                <div class="quick-actions">
+                    <button class="action-btn" id="btn-refresh-stats">
+                        <span>🔄</span> Refresh Stats
+                    </button>
+                    <button class="action-btn" id="btn-clear-cache">
+                        <span>🗑️</span> Clear Caches
+                    </button>
+                    <button class="action-btn" id="btn-export-audit">
+                        <span>📥</span> Export Audit Log
+                    </button>
+                    <button class="action-btn" id="btn-view-history">
+                        <span>📜</span> View History
+                    </button>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">Enabled Commands</div>
-                    <div class="stat-value" id="stat-enabled-commands">-</div>
-                </div>
-                <div class="stat-card">
+            </div>
+
+            <!-- Enhanced Statistics Grid -->
+            <div class="card">
+                <div class="card-title">📊 Live Statistics</div>
+                <div class="stats-grid" id="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Commands</div>
+                        <div class="stat-value" id="stat-total-commands">-</div>
+                        <div class="metric-trend up" id="trend-commands">↑ Live</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Enabled Commands</div>
+                        <div class="stat-value" id="stat-enabled-commands">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Commands Executed</div>
+                        <div class="stat-value" id="stat-executed">-</div>
+                        <div class="metric-trend up" id="trend-executed">+0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Success Rate</div>
+                        <div class="stat-value" id="stat-success-rate">-</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-success" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Cache Hit Rate</div>
+                        <div class="stat-value" id="stat-cache-hit">-</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-cache" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Active Users</div>
+                        <div class="stat-value" id="stat-active-users">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Event Reduction</div>
+                        <div class="stat-value" id="stat-event-reduction">-</div>
+                        <div class="metric-trend down" id="trend-events">↓ Optimized</div>
+                    </div>
+                    <div class="stat-card">
                     <div class="stat-label">Registered Plugins</div>
                     <div class="stat-value" id="stat-plugins">-</div>
                 </div>
@@ -346,6 +578,159 @@
         <div class="card">
             <div class="card-title">📝 Registered Commands</div>
             <div id="commands-container" class="loading">Loading commands...</div>
+        </div>
+    </div>
+
+    <!-- Commands Tab -->
+    <div id="tab-commands" class="tab-content">
+        <div class="card">
+            <div class="card-title">⚡ All Commands</div>
+            <div id="all-commands-container" class="loading">Loading commands...</div>
+        </div>
+    </div>
+
+    <!-- Monitoring Tab -->
+    <div id="tab-monitoring" class="tab-content">
+        <div class="card">
+            <div class="card-title">📈 Real-time Monitoring</div>
+            <div id="monitoring-container">
+                <p>Advanced monitoring features coming soon...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- HUD Overlay Tab (NEW - integrated from gcce-hud plugin) -->
+    <div id="tab-hud" class="tab-content">
+        <!-- HUD Configuration -->
+        <div class="card">
+            <div class="card-title">🎨 HUD Overlay Configuration</div>
+            
+            <div class="config-group">
+                <label class="config-label">Overlay URL for OBS</label>
+                <div class="config-description">
+                    Add this URL as a Browser Source in OBS:
+                    <code id="hud-overlay-url">http://localhost:3000/plugins/gcce/overlay-hud</code>
+                    <button class="btn-sm" id="btn-copy-overlay-url">📋 Copy</button>
+                </div>
+            </div>
+
+            <div class="config-group">
+                <label class="config-label">Enable HUD Commands</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="hud-enabled" onchange="updateHUDConfig()">
+                    <label for="hud-enabled">Allow HUD display commands</label>
+                </div>
+            </div>
+
+            <div class="config-group">
+                <label class="config-label">Text Display Permission</label>
+                <select id="hud-perm-text" onchange="updateHUDConfig()">
+                    <option value="all">All Viewers</option>
+                    <option value="subscriber">Subscribers</option>
+                    <option value="moderator">Moderators</option>
+                    <option value="broadcaster">Broadcaster Only</option>
+                </select>
+            </div>
+
+            <div class="config-group">
+                <label class="config-label">Image Display Permission</label>
+                <select id="hud-perm-image" onchange="updateHUDConfig()">
+                    <option value="all">All Viewers</option>
+                    <option value="subscriber">Subscribers</option>
+                    <option value="moderator">Moderators</option>
+                    <option value="broadcaster">Broadcaster Only</option>
+                </select>
+            </div>
+
+            <div class="config-group">
+                <label class="config-label">Default Text Duration (seconds)</label>
+                <input type="number" id="hud-text-duration" min="3" max="60" value="10" onchange="updateHUDConfig()">
+            </div>
+
+            <div class="config-group">
+                <label class="config-label">Default Image Duration (seconds)</label>
+                <input type="number" id="hud-image-duration" min="3" max="60" value="10" onchange="updateHUDConfig()">
+            </div>
+
+            <div class="config-group">
+                <label class="config-label">Default Position</label>
+                <select id="hud-position" onchange="updateHUDConfig()">
+                    <option value="top-left">Top Left</option>
+                    <option value="top-center">Top Center</option>
+                    <option value="top-right">Top Right</option>
+                    <option value="center-left">Center Left</option>
+                    <option value="center">Center</option>
+                    <option value="center-right">Center Right</option>
+                    <option value="bottom-left">Bottom Left</option>
+                    <option value="bottom-center">Bottom Center</option>
+                    <option value="bottom-right">Bottom Right</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- HUD Statistics -->
+        <div class="card">
+            <div class="card-title">📊 HUD Statistics</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Displayed</div>
+                    <div class="stat-value" id="hud-stat-total">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Elements</div>
+                    <div class="stat-value" id="hud-stat-active">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Most Used Position</div>
+                    <div class="stat-value" id="hud-stat-position">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg Duration</div>
+                    <div class="stat-value" id="hud-stat-duration">0s</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active HUD Elements -->
+        <div class="card">
+            <div class="card-title">🎬 Active Elements</div>
+            <div id="hud-active-elements">
+                <p>No active HUD elements</p>
+            </div>
+            <button class="btn btn-primary" id="btn-clear-hud" style="margin-top: 16px;">Clear All</button>
+        </div>
+
+        <!-- Test HUD -->
+        <div class="card">
+            <div class="card-title">🧪 Test HUD Display</div>
+            <div class="config-group">
+                <label class="config-label">Test Text</label>
+                <input type="text" id="hud-test-text" placeholder="Enter test text" value="Hello from HUD!">
+                <button class="btn btn-primary" id="btn-test-hud-text" style="margin-top: 8px;">Display Text</button>
+            </div>
+            <div class="config-group">
+                <label class="config-label">Test Image URL</label>
+                <input type="text" id="hud-test-image" placeholder="Enter image URL">
+                <button class="btn btn-primary" id="btn-test-hud-image" style="margin-top: 8px;">Display Image</button>
+            </div>
+        </div>
+
+        <!-- Available Commands -->
+        <div class="card">
+            <div class="card-title">💬 Available Commands</div>
+            <ul>
+                <li><code>/hudtext [duration] &lt;text&gt;</code> - Display text on overlay</li>
+                <li><code>/hudimage [duration] &lt;url&gt;</code> - Display image on overlay</li>
+                <li><code>/hudclear</code> - Clear all HUD elements (moderator)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Configuration Tab -->
+    <div id="tab-config" class="tab-content">
+        <div class="card">
+            <div class="card-title">⚙️ GCCE Configuration</div>
+            <p>Configuration options will appear here</p>
         </div>
     </div>
 
@@ -529,6 +914,327 @@
             
             setTimeout(() => message.remove(), 5000);
         }
+
+        // Tab switching function
+        function switchTab(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(tab => tab.classList.remove('active'));
+
+            // Remove active class from all tab buttons
+            const tabButtons = document.querySelectorAll('.nav-tab');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+
+            // Show selected tab
+            const selectedTab = document.getElementById(`tab-${tabName}`);
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+            }
+
+            // Find and set active class on the correct button
+            const activeButton = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+
+            // Load tab-specific data
+            if (tabName === 'hud') {
+                loadHUDConfig();
+                loadHUDStats();
+                loadActiveElements();
+            }
+        }
+
+        // HUD Functions
+        let hudConfig = {};
+        let hudRefreshInterval = null;
+
+        async function loadHUDConfig() {
+            try {
+                const response = await fetch('/api/gcce/hud/config');
+                const data = await response.json();
+                if (data.success) {
+                    hudConfig = data.config;
+                    updateHUDForm();
+                }
+            } catch (error) {
+                console.error('Failed to load HUD config:', error);
+            }
+        }
+
+        function updateHUDForm() {
+            if (!hudConfig) return;
+
+            document.getElementById('hud-enabled').checked = hudConfig.chatCommands?.enabled || false;
+            document.getElementById('hud-perm-text').value = hudConfig.permissions?.text || 'all';
+            document.getElementById('hud-perm-image').value = hudConfig.permissions?.image || 'subscriber';
+            document.getElementById('hud-text-duration').value = hudConfig.defaults?.textDuration || 10;
+            document.getElementById('hud-image-duration').value = hudConfig.defaults?.imageDuration || 10;
+            document.getElementById('hud-position').value = hudConfig.defaults?.position || 'top-center';
+        }
+
+        async function updateHUDConfig() {
+            try {
+                const updatedConfig = {
+                    chatCommands: {
+                        enabled: document.getElementById('hud-enabled').checked,
+                        allowText: true,
+                        allowImages: true
+                    },
+                    defaults: {
+                        textDuration: parseInt(document.getElementById('hud-text-duration').value),
+                        imageDuration: parseInt(document.getElementById('hud-image-duration').value),
+                        position: document.getElementById('hud-position').value
+                    },
+                    permissions: {
+                        text: document.getElementById('hud-perm-text').value,
+                        image: document.getElementById('hud-perm-image').value,
+                        clear: 'moderator'
+                    }
+                };
+
+                const response = await fetch('/api/gcce/hud/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedConfig)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('HUD configuration saved', 'success');
+                    hudConfig = data.config;
+                }
+            } catch (error) {
+                console.error('Failed to save HUD config:', error);
+                showMessage('Failed to save HUD configuration', 'error');
+            }
+        }
+
+        async function loadHUDStats() {
+            try {
+                const response = await fetch('/api/gcce/hud/stats');
+                const data = await response.json();
+                if (data.success) {
+                    const stats = data.stats;
+                    document.getElementById('hud-stat-total').textContent = stats.totalDisplayed || 0;
+                    document.getElementById('hud-stat-active').textContent = stats.activeCount || 0;
+                    document.getElementById('hud-stat-position').textContent = stats.mostUsedPosition || '-';
+                    document.getElementById('hud-stat-duration').textContent = (stats.averageDuration || 0) + 's';
+                }
+            } catch (error) {
+                console.error('Failed to load HUD stats:', error);
+            }
+        }
+
+        async function loadActiveElements() {
+            try {
+                const response = await fetch('/api/gcce/hud/elements');
+                const data = await response.json();
+                if (data.success) {
+                    displayActiveElements(data.elements);
+                }
+            } catch (error) {
+                console.error('Failed to load active elements:', error);
+            }
+        }
+
+        function displayActiveElements(elements) {
+            const container = document.getElementById('hud-active-elements');
+            
+            if (!elements || elements.length === 0) {
+                container.innerHTML = '<p>No active HUD elements</p>';
+                return;
+            }
+
+            let html = '<div class="active-elements-list">';
+            elements.forEach(el => {
+                const remaining = Math.max(0, Math.ceil((el.expiresAt - Date.now()) / 1000));
+                html += `
+                    <div class="element-item">
+                        <strong>${el.type.toUpperCase()}</strong>: ${el.content.substring(0, 50)}...
+                        <br><small>User: ${el.username} | Remaining: ${remaining}s</small>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        async function testHUDText() {
+            const text = document.getElementById('hud-test-text').value;
+            if (!text) {
+                showMessage('Please enter test text', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/gcce/hud/test/text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, duration: 5 })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('Test text displayed on HUD overlay', 'success');
+                    setTimeout(() => loadActiveElements(), 500);
+                } else {
+                    showMessage('Failed to display text: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to test HUD text:', error);
+                showMessage('Failed to display text', 'error');
+            }
+        }
+
+        async function testHUDImage() {
+            const url = document.getElementById('hud-test-image').value;
+            if (!url) {
+                showMessage('Please enter image URL', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/gcce/hud/test/image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, duration: 5 })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('Test image displayed on HUD overlay', 'success');
+                    setTimeout(() => loadActiveElements(), 500);
+                } else {
+                    showMessage('Failed to display image: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to test HUD image:', error);
+                showMessage('Failed to display image', 'error');
+            }
+        }
+
+        async function clearHUD() {
+            try {
+                const response = await fetch('/api/gcce/hud/clear', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('All HUD elements cleared', 'success');
+                    loadActiveElements();
+                }
+            } catch (error) {
+                console.error('Failed to clear HUD:', error);
+                showMessage('Failed to clear HUD', 'error');
+            }
+        }
+
+        function copyOverlayUrl() {
+            const url = document.getElementById('hud-overlay-url').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                showMessage('Overlay URL copied to clipboard', 'success');
+            }).catch(() => {
+                showMessage('Failed to copy URL', 'error');
+            });
+        }
+
+        // Quick action functions
+        function refreshAllStats() {
+            loadStats();
+            loadCommands();
+            if (document.getElementById('tab-hud').classList.contains('active')) {
+                loadHUDStats();
+                loadActiveElements();
+            }
+            showMessage('Stats refreshed', 'success');
+        }
+
+        async function clearCache() {
+            try {
+                const response = await fetch('/api/gcce/cache/invalidate', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('Cache cleared successfully', 'success');
+                    loadStats();
+                }
+            } catch (error) {
+                showMessage('Failed to clear cache', 'error');
+            }
+        }
+
+        async function exportAuditLog() {
+            try {
+                const response = await fetch('/api/gcce/audit/export');
+                const data = await response.json();
+                if (data.success) {
+                    const blob = new Blob([JSON.stringify(data.logs, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `gcce-audit-${Date.now()}.json`;
+                    a.click();
+                    showMessage('Audit log exported', 'success');
+                }
+            } catch (error) {
+                showMessage('Failed to export audit log', 'error');
+            }
+        }
+
+        function viewHistory() {
+            showMessage('History viewer coming soon', 'info');
+        }
+
+        // Add event listeners for all buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            // Tab navigation
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabName = btn.getAttribute('data-tab');
+                    switchTab(tabName);
+                });
+            });
+
+            // Quick action buttons
+            const btnRefreshStats = document.getElementById('btn-refresh-stats');
+            if (btnRefreshStats) {
+                btnRefreshStats.addEventListener('click', refreshAllStats);
+            }
+
+            const btnClearCache = document.getElementById('btn-clear-cache');
+            if (btnClearCache) {
+                btnClearCache.addEventListener('click', clearCache);
+            }
+
+            const btnExportAudit = document.getElementById('btn-export-audit');
+            if (btnExportAudit) {
+                btnExportAudit.addEventListener('click', exportAuditLog);
+            }
+
+            const btnViewHistory = document.getElementById('btn-view-history');
+            if (btnViewHistory) {
+                btnViewHistory.addEventListener('click', viewHistory);
+            }
+
+            // HUD buttons
+            const btnCopyOverlayUrl = document.getElementById('btn-copy-overlay-url');
+            if (btnCopyOverlayUrl) {
+                btnCopyOverlayUrl.addEventListener('click', copyOverlayUrl);
+            }
+
+            const btnClearHUD = document.getElementById('btn-clear-hud');
+            if (btnClearHUD) {
+                btnClearHUD.addEventListener('click', clearHUD);
+            }
+
+            const btnTestHUDText = document.getElementById('btn-test-hud-text');
+            if (btnTestHUDText) {
+                btnTestHUDText.addEventListener('click', testHUDText);
+            }
+
+            const btnTestHUDImage = document.getElementById('btn-test-hud-image');
+            if (btnTestHUDImage) {
+                btnTestHUDImage.addEventListener('click', testHUDImage);
+            }
+        });
 
         // Initialize
         loadConfig();
