@@ -275,11 +275,11 @@ class GoalsEventHandlers {
                     // This value is stored when the goal is first created or when target is manually changed
                     const settingsDb = this.api.getDatabase();
                     const initialTargetStr = settingsDb.getSetting(`goal_${goal.id}_initial_target`);
-                    let initialTarget = initialTargetStr ? parseInt(initialTargetStr) : null;
+                    let initialTarget = initialTargetStr ? parseInt(initialTargetStr, 10) : null;
                     
                     // If no initial target is stored, use the current target_value as the initial
                     // This handles goals created before this fix was implemented
-                    if (!initialTarget) {
+                    if (initialTarget === null) {
                         initialTarget = goal.target_value;
                         // Store it for future use
                         settingsDb.setSetting(`goal_${goal.id}_initial_target`, initialTarget.toString());

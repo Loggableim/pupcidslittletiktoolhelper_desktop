@@ -193,7 +193,7 @@ runTest('resetGoalsOnStreamEnd: Resets double goal to initial target', () => {
         name: 'Follower Goal',
         goal_type: 'follower',
         current_value: 150,
-        target_value: 128,  // Has been doubled from 10 to 128 (10 -> 20 -> 40 -> 80 -> 160, then reduced to 128)
+        target_value: 128,  // Has been doubled from initial target
         start_value: 0,
         on_reach_action: 'double',
         on_reach_increment: 0
