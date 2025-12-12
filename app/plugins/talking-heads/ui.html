@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talking Heads - AI Avatar Animation</title>
+    <link rel="stylesheet" href="/css/tailwind.output.css">
+    <link rel="stylesheet" href="/css/themes.css">
+    <script>
+        // Apply saved theme immediately
+        (function() {
+            const savedTheme = localStorage.getItem('dashboard-theme');
+            if (savedTheme && savedTheme !== 'night') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
+    <script src="/js/lucide.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            background: var(--color-bg-primary);
+            padding: 20px;
+            overflow-y: auto;
+            min-height: 100vh;
+            color: var(--color-text-primary);
+        }
+        
+        .config-section {
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--color-text-primary);
+            margin-bottom: 6px;
+        }
+        
+        .form-input, .form-select {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--color-bg-tertiary);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            color: var(--color-text-primary);
+            font-size: 0.875rem;
+        }
+        
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--color-accent-primary);
+        }
+        
+        .form-help {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            margin-top: 4px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .toggle-switch input {
+            position: absolute;
+            opacity: 0;
+        }
+        
+        .toggle-slider {
+            width: 44px;
+            height: 24px;
+            background: var(--color-bg-tertiary);
+            border-radius: 12px;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: var(--color-text-secondary);
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        
+        .toggle-switch input:checked + .toggle-slider {
+            background: var(--color-accent-primary);
+        }
+        
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+            background: white;
+        }
+        
+        .toggle-label {
+            margin-left: 12px;
+            font-size: 0.875rem;
+            color: var(--color-text-primary);
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-size: 0.875rem;
+        }
+        
+        .btn-primary {
+            background: var(--color-accent-primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background: var(--color-accent-success);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: var(--color-accent-danger);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--color-btn-secondary-bg);
+            color: var(--color-btn-secondary-text);
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .badge-success {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--color-accent-success);
+        }
+        
+        .badge-warning {
+            background: rgba(234, 179, 8, 0.1);
+            color: var(--color-accent-warning);
+        }
+        
+        .badge-info {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--color-accent-primary);
+        }
+        
+        .style-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        
+        .style-card {
+            background: var(--color-bg-tertiary);
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .style-card:hover {
+            border-color: var(--color-accent-primary);
+            background: var(--color-bg-hover);
+        }
+        
+        .style-card.selected {
+            border-color: var(--color-accent-primary);
+            background: var(--color-active-bg);
+        }
+        
+        .style-name {
+            font-weight: 600;
+            color: var(--color-text-primary);
+            font-size: 0.875rem;
+            margin-bottom: 4px;
+        }
+        
+        .style-desc {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+        }
+        
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+        }
+        
+        .alert-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: var(--color-accent-primary);
+        }
+        
+        .alert-warning {
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid rgba(234, 179, 8, 0.3);
+            color: var(--color-accent-warning);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: var(--color-bg-tertiary);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-accent-primary);
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+            margin-top: 4px;
+        }
+        
+        .animation-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .animation-item {
+            background: var(--color-bg-tertiary);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .debug-log {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto max-w-7xl">
+        <!-- Header -->
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold mb-2">
+                <i data-lucide="user-circle-2" class="inline-block w-8 h-8 mr-2"></i>
+                Talking Heads - AI Avatar Animation
+            </h1>
+            <p class="text-sm" style="color: var(--color-text-secondary);">
+                Dynamische 2D-Avatare für TikTok-User mit TTS-synchronisierter Animation
+            </p>
+        </div>
+
+        <!-- Status Section -->
+        <div class="config-section">
+            <div class="section-title">
+                <i data-lucide="activity"></i>
+                Status & Einstellungen
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enabledSwitch">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">Plugin aktiviert</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="debugLoggingSwitch">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">Debug-Logging</span>
+                    </label>
+                </div>
+                <div>
+                    <span id="apiStatus" class="status-badge badge-info">Prüfe...</span>
+                </div>
+            </div>
+            
+            <div id="apiKeyWarning" class="alert alert-warning" style="display: none;">
+                <strong>⚠️ Kein API-Schlüssel konfiguriert!</strong><br>
+                Bitte konfigurieren Sie den <code>siliconflow_api_key</code> in den globalen Einstellungen.<br>
+                <small>Der API-Schlüssel wird zentral verwaltet und mit anderen Plugins geteilt (TTS Fish Speech, StreamAlchemy).</small>
+            </div>
+            
+            <div class="alert alert-info">
+                <strong>ℹ️ SiliconFlow API</strong><br>
+                Das Plugin verwendet die global konfigurierte SiliconFlow API mit FLUX.1-schnell für schnelle Bildgenerierung.
+                Der API-Schlüssel wird zentral in den Settings unter <code>siliconflow_api_key</code> gespeichert.
+            </div>
+        </div>
+
+        <!-- Style Selection -->
+        <div class="config-section">
+            <div class="section-title">
+                <i data-lucide="palette"></i>
+                Avatar-Stil
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Wählen Sie einen Stil für die Avatar-Generierung</label>
+                <div class="style-grid" id="styleGrid">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Permissions -->
+        <div class="config-section">
+            <div class="section-title">
+                <i data-lucide="shield"></i>
+                Berechtigungen
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label class="form-label">Wer erhält Talking Heads?</label>
+                    <select id="rolePermission" class="form-select">
+                        <option value="all">Alle Zuschauer</option>
+                        <option value="team">Nur Team-Mitglieder</option>
+                        <option value="subscriber">Nur Abonnenten/Superfans</option>
+                        <option value="custom_voice">Nur User mit TTS-Stimme</option>
+                        <option value="moderator">Nur Moderatoren</option>
+                        <option value="top_gifter">Nur Top Gifter</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="minTeamLevelWrapper" style="display: none;">
+                    <label class="form-label">Minimales Team-Level</label>
+                    <input type="number" id="minTeamLevel" class="form-input" min="0" max="6" value="0">
+                    <div class="form-help">Level 0-6 (0 = alle Team-Mitglieder)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Animation Settings -->
+        <div class="config-section">
+            <div class="section-title">
+                <i data-lucide="film"></i>
+                Animations-Einstellungen
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="form-group">
+                    <label class="form-label">Fade-In Dauer (ms)</label>
+                    <input type="number" id="fadeInDuration" class="form-input" min="0" max="2000" step="100" value="300">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Fade-Out Dauer (ms)</label>
+                    <input type="number" id="fadeOutDuration" class="form-input" min="0" max="2000" step="100" value="300">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Blinzel-Intervall (ms)</label>
+                    <input type="number" id="blinkInterval" class="form-input" min="1000" max="10000" step="500" value="3000">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="obsEnabled">
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-label">OBS Integration aktivieren</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Cache Management -->
+        <div class="config-section">
+            <div class="section-title">
+                <i data-lucide="database"></i>
+                Cache-Verwaltung
+            </div>
+            
+            <div class="stats-grid mb-4">
+                <div class="stat-card">
+                    <div class="stat-value" id="cacheCount">0</div>
+                    <div class="stat-label">Gespeicherte Avatare</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="activeAnimations">0</div>
+                    <div class="stat-label">Aktive Animationen</div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="form-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="cacheEnabled">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">Avatar-Caching aktivieren</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Cache-Dauer (Tage)</label>
+                    <input type="number" id="cacheDuration" class="form-input" min="1" max="365" value="30">
+                    <div class="form-help">Avatare werden nach dieser Zeit gelöscht</div>
+                </div>
+            </div>
+            
+            <div>
+                <button class="btn btn-danger" id="clearCacheBtn">
+                    <i data-lucide="trash-2" class="inline-block w-4 h-4 mr-2"></i>
+                    Gesamten Cache leeren
+                </button>
+            </div>
+        </div>
+
+        <!-- Active Animations -->
+        <div class="config-section" id="activeAnimationsSection" style="display: none;">
+            <div class="section-title">
+                <i data-lucide="play-circle"></i>
+                Aktive Animationen
+            </div>
+            <div id="animationList" class="animation-list">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Debug Log -->
+        <div class="config-section" id="debugLogSection" style="display: none;">
+            <div class="section-title">
+                <i data-lucide="terminal"></i>
+                Debug Log
+                <button class="btn btn-secondary ml-auto" id="refreshLogBtn" style="margin-left: auto;">
+                    <i data-lucide="refresh-cw" class="inline-block w-4 h-4"></i>
+                    Aktualisieren
+                </button>
+            </div>
+            <div id="debugLog" class="debug-log">
+                Debug-Logging aktivieren, um Logs zu sehen...
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div class="flex justify-end gap-4 mb-6">
+            <button class="btn btn-primary" id="testApiBtn">
+                <i data-lucide="check-circle" class="inline-block w-4 h-4 mr-2"></i>
+                API testen
+            </button>
+            <button class="btn btn-secondary" id="testGenerateBtn">
+                <i data-lucide="image" class="inline-block w-4 h-4 mr-2"></i>
+                Test-Avatar generieren
+            </button>
+            <button class="btn btn-success" id="saveConfigBtn" disabled>
+                <i data-lucide="save" class="inline-block w-4 h-4 mr-2"></i>
+                Konfiguration speichern
+            </button>
+        </div>
+    </div>
+
+    <script src="assets/ui.js"></script>
+    <script>
+        // Initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    </script>
+</body>
+</html>
