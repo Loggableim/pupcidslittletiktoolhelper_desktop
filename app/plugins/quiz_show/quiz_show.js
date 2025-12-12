@@ -2433,8 +2433,12 @@
                 `;
             }).join('');
 
-        // When a gift is selected, populate the form fields
-        selector.addEventListener('change', (e) => {
+        // Remove any existing event listeners to prevent duplicates
+        const newSelector = selector.cloneNode(true);
+        selector.parentNode.replaceChild(newSelector, selector);
+        
+        // Add event listener to the new element
+        newSelector.addEventListener('change', (e) => {
             const selectedOption = e.target.options[e.target.selectedIndex];
             if (selectedOption.value) {
                 document.getElementById('quizStartGiftId').value = selectedOption.value;
@@ -2679,14 +2683,16 @@
         }
     }
 
-    // Toggle quiz-start gift config visibility
-    if (document.getElementById('quizStartGiftEnabled')) {
-        document.getElementById('quizStartGiftEnabled').addEventListener('change', (e) => {
+    // Toggle quiz-start gift config visibility (only add listener once at initialization)
+    const quizStartGiftEnabledCheckbox = document.getElementById('quizStartGiftEnabled');
+    if (quizStartGiftEnabledCheckbox && !quizStartGiftEnabledCheckbox.dataset.listenerAdded) {
+        quizStartGiftEnabledCheckbox.addEventListener('change', (e) => {
             const configDiv = document.getElementById('quizStartGiftConfig');
             if (configDiv) {
                 configDiv.style.display = e.target.checked ? 'block' : 'none';
             }
         });
+        quizStartGiftEnabledCheckbox.dataset.listenerAdded = 'true';
     }
 
     // Save quiz-start gift config button

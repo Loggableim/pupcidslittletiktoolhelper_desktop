@@ -2227,8 +2227,7 @@ class QuizShowPlugin {
                 }
 
                 try {
-                    // Enable auto mode for gift-triggered quiz
-                    const originalAutoMode = this.config.autoMode;
+                    // Enable auto mode for gift-triggered quiz (remains enabled for session)
                     this.config.autoMode = true;
 
                     this.api.log(`Quiz started by gift from ${username} (Gift: ${this.config.quizStartGiftName})`, 'info');
@@ -2241,9 +2240,6 @@ class QuizShowPlugin {
                         username,
                         giftName: this.config.quizStartGiftName
                     });
-
-                    // Note: autoMode will remain enabled for this session
-                    // Restore original setting would require tracking, so we keep it enabled
                 } catch (error) {
                     this.api.log(`Error starting quiz from gift: ${error.message}`, 'error');
                     this.api.emit('quiz-show:error', { 
