@@ -17,6 +17,11 @@ const CommandScheduler = require('./utils/CommandScheduler');
 const AdvancedPermissionSystem = require('./utils/AdvancedPermissionSystem');
 const CommandCategoryManager = require('./utils/CommandCategoryManager');
 const CommandAutoCompleteEngine = require('./utils/CommandAutoCompleteEngine');
+const SocketEventBatcher = require('./utils/SocketEventBatcher');
+const CommandTemplateManager = require('./utils/CommandTemplateManager');
+const CommandPipelineManager = require('./utils/CommandPipelineManager');
+const CommandAuditLog = require('./utils/CommandAuditLog');
+const CommandParameterTypes = require('./utils/CommandParameterTypes');
 const config = require('./config');
 
 class GlobalChatCommandEngine {
@@ -49,6 +54,22 @@ class GlobalChatCommandEngine {
         
         // F11: Auto-Complete Engine
         this.autoComplete = null;
+        
+        // Phase 3: Advanced Features
+        // P4: Socket Event Batcher
+        this.socketBatcher = null;
+        
+        // F6: Template Manager
+        this.templateManager = null;
+        
+        // F9: Pipeline Manager
+        this.pipelineManager = null;
+        
+        // V4: Audit Log
+        this.auditLog = null;
+        
+        // F4: Parameter Types
+        this.parameterTypes = null;
         
         // Plugin configuration
         this.pluginConfig = null;
@@ -90,6 +111,13 @@ class GlobalChatCommandEngine {
             this.advancedPermissions = new AdvancedPermissionSystem();
             this.categoryManager = new CommandCategoryManager();
             this.autoComplete = new CommandAutoCompleteEngine(this.registry);
+            
+            // Phase 3: Advanced Features
+            this.socketBatcher = new SocketEventBatcher(this.api.getSocketIO(), 50);
+            this.templateManager = new CommandTemplateManager();
+            this.pipelineManager = new CommandPipelineManager(this.parser);
+            this.auditLog = new CommandAuditLog(10000);
+            this.parameterTypes = new CommandParameterTypes();
 
             // Register built-in commands
             this.registerBuiltInCommands();
@@ -530,6 +558,106 @@ class GlobalChatCommandEngine {
             res.json({ success: true, suggestions });
         });
 
+        // ===== Phase 3: Advanced Features API Endpoints =====
+
+        // API: Apply command template
+        this.api.registerRoute('POST', '/api/gcce/templates/:templateId/apply', async (req, res) => {
+            const { templateId } = req.params;
+            const { values } = req.body;
+            const result = this.templateManager.applyTemplate(templateId, values);
+            res.json(result);
+        });
+
+        // API: Create template
+        this.api.registerRoute('POST', '/api/gcce/templates', async (req, res) => {
+            try {
+                const success = this.templateManager.createTemplate(req.body);
+                res.json({ success });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // API: Get all templates
+        this.api.registerRoute('GET', '/api/gcce/templates', async (req, res) => {
+            const category = req.query.category;
+            const templates = this.templateManager.getAllTemplates(category);
+            res.json({ success: true, templates });
+        });
+
+        // API: Execute pipeline
+        this.api.registerRoute('POST', '/api/gcce/pipelines/execute', async (req, res) => {
+            const { pipeline, context, initialData } = req.body;
+            try {
+                const result = await this.pipelineManager.executePipeline(pipeline, context, initialData);
+                res.json(result);
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // API: Register pipeline
+        this.api.registerRoute('POST', '/api/gcce/pipelines', async (req, res) => {
+            try {
+                const success = this.pipelineManager.registerPipeline(req.body);
+                res.json({ success });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // API: Get all pipelines
+        this.api.registerRoute('GET', '/api/gcce/pipelines', async (req, res) => {
+            const pipelines = this.pipelineManager.getAllPipelines();
+            res.json({ success: true, pipelines });
+        });
+
+        // API: Query audit log
+        this.api.registerRoute('POST', '/api/gcce/audit/query', async (req, res) => {
+            const logs = this.auditLog.query(req.body);
+            res.json({ success: true, logs });
+        });
+
+        // API: Get audit log for user
+        this.api.registerRoute('GET', '/api/gcce/audit/user/:userId', async (req, res) => {
+            const { userId } = req.params;
+            const limit = parseInt(req.query.limit) || 50;
+            const logs = this.auditLog.getUserLogs(userId, limit);
+            res.json({ success: true, logs });
+        });
+
+        // API: Get recent audit logs
+        this.api.registerRoute('GET', '/api/gcce/audit/recent', async (req, res) => {
+            const limit = parseInt(req.query.limit) || 100;
+            const logs = this.auditLog.getRecentLogs(limit);
+            res.json({ success: true, logs });
+        });
+
+        // API: Export audit log
+        this.api.registerRoute('POST', '/api/gcce/audit/export', async (req, res) => {
+            const data = this.auditLog.export(req.body);
+            res.json({ success: true, data });
+        });
+
+        // API: Get socket batcher stats
+        this.api.registerRoute('GET', '/api/gcce/socket/stats', async (req, res) => {
+            const stats = this.socketBatcher.getStats();
+            res.json({ success: true, stats });
+        });
+
+        // API: Validate parameter types
+        this.api.registerRoute('POST', '/api/gcce/parameters/validate', async (req, res) => {
+            const { args, paramDefs } = req.body;
+            const result = this.parameterTypes.validateAndParse(args, paramDefs);
+            res.json(result);
+        });
+
+        // API: Get parameter types
+        this.api.registerRoute('GET', '/api/gcce/parameters/types', async (req, res) => {
+            const types = this.parameterTypes.getAllTypes();
+            res.json({ success: true, types });
+        });
+
         this.api.log('[GCCE] Routes registered', 'debug');
     }
 
@@ -625,10 +753,28 @@ class GlobalChatCommandEngine {
             }
 
             // Parse and execute
+            const startTime = Date.now();
             const result = await this.parser.parse(message, context);
+            const executionTime = Date.now() - startTime;
 
             // Handle result
             if (result.isCommand === false) return;
+
+            // V4: Log to audit log
+            this.auditLog.log({
+                userId: context.userId,
+                username: context.username,
+                command: result.commandName || 'unknown',
+                args: result.args || [],
+                success: result.success,
+                error: result.error || null,
+                result: result.data || null,
+                executionTime,
+                metadata: {
+                    userRole: context.userRole,
+                    timestamp: context.timestamp
+                }
+            });
 
             // F3: Record command in history (if successful)
             if (result.success && result.commandName) {
@@ -646,9 +792,16 @@ class GlobalChatCommandEngine {
                 this.autoComplete.recordUsage(result.commandName, context.userId);
             }
 
-            // Broadcast result to overlay if needed
+            // Broadcast result to overlay if needed (using batch)
             if (result.displayOverlay && this.pluginConfig.enableOverlayMessages) {
-                this.broadcastCommandResult(result, context);
+                this.socketBatcher.emit('gcce:command_result', {
+                    success: result.success,
+                    error: result.error,
+                    message: result.message,
+                    data: result.data,
+                    username: context.username,
+                    timestamp: context.timestamp
+                });
             }
 
             this.api.log(`[GCCE] Command executed: ${message} by ${context.username} - ${result.success ? 'SUCCESS' : 'FAILED'}`, 'debug');
