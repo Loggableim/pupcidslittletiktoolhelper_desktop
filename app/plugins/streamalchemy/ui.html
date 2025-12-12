@@ -1086,12 +1086,29 @@
             document.getElementById('autoCrafting').checked = config.autoCrafting !== false;
             document.getElementById('itemGenerationMode').value = config.itemGenerationMode || 'auto';
             document.getElementById('craftingWindowMs').value = config.craftingWindowMs || 6000;
-            document.getElementById('openaiApiKey').value = config.openaiApiKey || '';
             
-            // LightX API key
+            // OpenAI API key - mask if exists
+            const openaiInput = document.getElementById('openaiApiKey');
+            if (openaiInput) {
+                if (config.openaiApiKey) {
+                    openaiInput.value = '***SAVED***';
+                    openaiInput.placeholder = 'API Key gespeichert (verborgen)';
+                } else {
+                    openaiInput.value = '';
+                    openaiInput.placeholder = 'sk-...';
+                }
+            }
+            
+            // LightX API key - mask if exists
             const lightxInput = document.getElementById('lightxApiKey');
             if (lightxInput) {
-                lightxInput.value = config.lightxApiKey || '';
+                if (config.lightxApiKey) {
+                    lightxInput.value = '***SAVED***';
+                    lightxInput.placeholder = 'API Key gespeichert (verborgen)';
+                } else {
+                    lightxInput.value = '';
+                    lightxInput.placeholder = 'lx-...';
+                }
             }
 
             // Fusion settings
@@ -1108,10 +1125,16 @@
                 defaultStyleEl.value = config.defaultStyle;
             }
 
-            // Silicon Flow API key
+            // Silicon Flow API key - mask if exists
             const siliconFlowInput = document.getElementById('siliconFlowApiKey');
             if (siliconFlowInput) {
-                siliconFlowInput.value = config.siliconFlowApiKey || '';
+                if (config.siliconFlowApiKey) {
+                    siliconFlowInput.value = '***SAVED***';
+                    siliconFlowInput.placeholder = 'API Key gespeichert (verborgen)';
+                } else {
+                    siliconFlowInput.value = '';
+                    siliconFlowInput.placeholder = 'sf-...';
+                }
             }
 
             // Custom prompts
@@ -1146,11 +1169,24 @@
                 enabled: formData.get('enabled') === 'on',
                 autoCrafting: formData.get('autoCrafting') === 'on',
                 itemGenerationMode: formData.get('itemGenerationMode'),
-                craftingWindowMs: parseInt(formData.get('craftingWindowMs')),
-                openaiApiKey: formData.get('openaiApiKey'),
-                lightxApiKey: formData.get('lightxApiKey'),
-                siliconFlowApiKey: formData.get('siliconFlowApiKey')
+                craftingWindowMs: parseInt(formData.get('craftingWindowMs'))
             };
+
+            // Only update API keys if they're not the masked placeholder
+            const openaiKey = formData.get('openaiApiKey');
+            if (openaiKey && openaiKey !== '***SAVED***') {
+                updates.openaiApiKey = openaiKey;
+            }
+
+            const lightxKey = formData.get('lightxApiKey');
+            if (lightxKey && lightxKey !== '***SAVED***') {
+                updates.lightxApiKey = lightxKey;
+            }
+
+            const siliconFlowKey = formData.get('siliconFlowApiKey');
+            if (siliconFlowKey && siliconFlowKey !== '***SAVED***') {
+                updates.siliconFlowApiKey = siliconFlowKey;
+            }
 
             await saveConfig(updates);
         });

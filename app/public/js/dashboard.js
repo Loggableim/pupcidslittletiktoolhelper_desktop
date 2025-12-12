@@ -1404,16 +1404,28 @@ async function loadSettings() {
         // Settings in UI laden (falls Elemente existieren)
         // TTS-Settings werden nun vom tts_core_v2 Plugin verwaltet
 
-        // Load TikTok/Eulerstream API Key
+        // Load TikTok/Eulerstream API Key with masking
         const tiktokApiKeyInput = document.getElementById('tiktok-euler-api-key');
-        if (tiktokApiKeyInput && settings.tiktok_euler_api_key) {
-            tiktokApiKeyInput.value = settings.tiktok_euler_api_key;
+        if (tiktokApiKeyInput) {
+            if (settings.tiktok_euler_api_key) {
+                tiktokApiKeyInput.value = '***REDACTED***';
+                tiktokApiKeyInput.placeholder = 'API key configured (hidden)';
+            } else {
+                tiktokApiKeyInput.value = '';
+                tiktokApiKeyInput.placeholder = 'Enter your Eulerstream API key...';
+            }
         }
 
-        // Load OpenAI API Configuration
+        // Load OpenAI API Configuration with masking
         const openaiApiKeyInput = document.getElementById('openai-api-key');
-        if (openaiApiKeyInput && settings.openai_api_key) {
-            openaiApiKeyInput.value = settings.openai_api_key;
+        if (openaiApiKeyInput) {
+            if (settings.openai_api_key) {
+                openaiApiKeyInput.value = '***REDACTED***';
+                openaiApiKeyInput.placeholder = 'API key configured (hidden)';
+            } else {
+                openaiApiKeyInput.value = '';
+                openaiApiKeyInput.placeholder = 'sk-...';
+            }
         }
 
         const openaiModelSelect = document.getElementById('openai-model');
@@ -1488,6 +1500,12 @@ async function saveTikTokCredentials() {
 
     const apiKey = apiKeyInput.value.trim();
     
+    // Check if user is trying to save without changing the masked key
+    if (apiKey === '***REDACTED***') {
+        alert('ℹ️ API key is already saved. To update it, replace the ***REDACTED*** value with your new API key.');
+        return;
+    }
+    
     if (!apiKey) {
         alert('❌ Please enter an API key');
         return;
@@ -1512,6 +1530,8 @@ async function saveTikTokCredentials() {
         if (result.success) {
             alert('✅ Eulerstream API Key saved successfully!');
             settings.tiktok_euler_api_key = apiKey;
+            // Reload settings to show masked key
+            await loadSettings();
         } else {
             alert('❌ Error saving API key: ' + (result.error || 'Unknown error'));
         }
@@ -1530,6 +1550,12 @@ async function saveOpenAICredentials() {
 
     const apiKey = apiKeyInput.value.trim();
     const model = modelSelect.value;
+    
+    // Check if user is trying to save without changing the masked key
+    if (apiKey === '***REDACTED***') {
+        alert('ℹ️ API key is already saved. To update it, replace the ***REDACTED*** value with your new API key.');
+        return;
+    }
     
     if (!apiKey) {
         alert('❌ Please enter an API key');
@@ -1557,6 +1583,8 @@ async function saveOpenAICredentials() {
             alert('✅ OpenAI API Configuration saved successfully!');
             settings.openai_api_key = apiKey;
             settings.openai_model = model;
+            // Reload settings to show masked key
+            await loadSettings();
         } else {
             alert('❌ Error saving OpenAI configuration: ' + (result.error || 'Unknown error'));
         }
