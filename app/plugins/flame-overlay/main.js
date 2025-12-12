@@ -34,6 +34,9 @@ class FlameOverlayPlugin {
         const savedConfig = this.api.getConfig('settings');
         
         this.config = savedConfig || {
+            // Effect type selection
+            effectType: 'flames', // 'flames', 'particles', 'energy', 'lightning'
+            
             // Resolution settings
             resolutionPreset: 'tiktok-portrait',
             customWidth: 720,
