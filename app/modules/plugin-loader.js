@@ -1010,6 +1010,7 @@ class PluginLoader extends EventEmitter {
                 version: plugin.manifest.version,
                 author: plugin.manifest.author,
                 type: plugin.manifest.type,
+                devStatus: plugin.manifest.devStatus, // Include development status
                 enabled: true,
                 loadedAt: plugin.loadedAt
             });
