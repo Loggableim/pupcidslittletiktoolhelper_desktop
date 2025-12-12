@@ -72,7 +72,7 @@ class SpriteGenerator {
       });
 
       req.on('error', (error) => {
-        reject(error);
+        reject(new Error(error.message || 'HTTP request failed'));
       });
 
       req.on('timeout', () => {
@@ -102,7 +102,9 @@ class SpriteGenerator {
         res.on('end', () => {
           resolve(Buffer.concat(chunks));
         });
-      }).on('error', reject);
+      }).on('error', (error) => {
+        reject(new Error(error.message || 'HTTP GET request failed'));
+      });
     });
   }
 

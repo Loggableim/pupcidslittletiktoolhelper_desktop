@@ -63,7 +63,7 @@ class AvatarGenerator {
       });
 
       req.on('error', (error) => {
-        reject(error);
+        reject(new Error(error.message || 'HTTP request failed'));
       });
 
       req.on('timeout', () => {
@@ -93,7 +93,9 @@ class AvatarGenerator {
         res.on('end', () => {
           resolve(Buffer.concat(chunks));
         });
-      }).on('error', reject);
+      }).on('error', (error) => {
+        reject(new Error(error.message || 'HTTP GET request failed'));
+      });
     });
   }
 
