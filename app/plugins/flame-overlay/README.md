@@ -1,22 +1,29 @@
 # 🎨 TikTok Visual Effects Overlay Plugin
 
-WebGL-basiertes Multi-Effekt-Overlay für TikTok Livestreams mit 4 beeindruckenden visuellen Modi und vollständig konfigurierbarer Oberfläche.
+WebGL-basiertes Multi-Effekt-Overlay für TikTok Livestreams mit 4 beeindruckenden visuellen Modi, Echtzeit-Vorschau und vollständig konfigurierbarer Oberfläche.
 
-## ✨ Neue Features in v2.0
+## ✨ Neue Features in v2.1
 
-- 🔥 **4 Effekt-Modi**:
-  - **Enhanced Flames** - Verbesserte, realistische Flammen mit Multi-Layer-Rendering
-  - **Particle Burst** - Dynamisches Partikelsystem mit mehreren Schichten
-  - **Energy Waves** - Fließende Energie-Wellen mit Wellenmustern
-  - **Electric Lightning** - Elektrische Blitze mit Flacker-Effekten
+- 👁️ **Echtzeit-Vorschau** - Direkte Vorschau der Effekte im Settings-Panel
+- 📍 **Rahmen-Positionierung** - Präzise Positionierung des Effekt-Rahmens (X, Y, Breite, Höhe)
+- 📐 **Erweiterte Auflösungen** - Unterstützung für 2K (1440×2560) und 4K (2160×3840) in Portrait & Landscape
+- 🔄 **Live-Synchronisation** - Alle Änderungen werden in Echtzeit im OBS-Overlay aktualisiert
+- ⛶ **Vollbild-Modus** - Preview kann im Vollbildmodus angezeigt werden
 
 ## Features
 
 - ✨ **Moderne WebGL Shader** - Hardware-beschleunigte, hochperformante Effekte
 - 🎭 **4 Visual Effect Modes** - Wähle zwischen Flames, Particles, Energy, Lightning
 - 🎨 **Anpassbare Farben** - Frei wählbare Farbe via Color Picker für alle Effekte
-- 📐 **TikTok Format Presets** - Vordefinierte Auflösungen (Portrait 720×1280, HD 1080×1920, etc.)
+- 📐 **TikTok Format Presets** - Vordefinierte Auflösungen bis 4K
+  - TikTok Portrait/Landscape (720×1280 / 1280×720)
+  - HD Portrait/Landscape (1080×1920 / 1920×1080)
+  - 2K Portrait/Landscape (1440×2560 / 2560×1440)
+  - 4K Portrait/Landscape (2160×3840 / 3840×2160)
+  - Custom (eigene Auflösung)
 - 🖼️ **Flexible Rahmenposition** - Unten, Oben, Seiten oder rundherum
+- 📍 **Präzise Positionierung** - Prozentuale Angabe von Position und Größe
+- 👁️ **Echtzeit-Vorschau** - Integrierte Preview mit Live-Updates
 - ⚡ **Dynamische Animation** - Einstellbare Geschwindigkeit und Intensität für jeden Effekt
 - 🎯 **OBS-optimiert** - Transparenter Hintergrund, keine Artefakte
 - 🔧 **Live-Konfiguration** - Alle Einstellungen in Echtzeit änderbar
@@ -46,7 +53,23 @@ WebGL-basiertes Multi-Effekt-Overlay für TikTok Livestreams mit 4 beeindruckend
   - TikTok Landscape (1280×720)
   - HD Portrait (1080×1920) - Höhere Qualität
   - HD Landscape (1920×1080)
+  - 2K Portrait (1440×2560) - QHD Qualität
+  - 2K Landscape (2560×1440)
+  - 4K Portrait (2160×3840) - Ultra HD Qualität
+  - 4K Landscape (3840×2160)
   - Custom - Eigene Auflösung definieren
+
+### Echtzeit-Vorschau
+
+- **Vorschau starten/stoppen** - Integrierte Live-Vorschau der Effekte
+- **Neu laden** - Vorschau aktualisieren
+- **Vollbild** - Vorschau im Vollbildmodus anzeigen
+- **Rahmen-Positionierung** - Präzise Steuerung der Effekt-Position:
+  - **X-Position (%)**: Horizontale Position des Effekt-Rahmens
+  - **Y-Position (%)**: Vertikale Position des Effekt-Rahmens
+  - **Breite (%)**: Breite des Effekt-Rahmens
+  - **Höhe (%)**: Höhe des Effekt-Rahmens
+- Alle Änderungen werden in Echtzeit sowohl in der Vorschau als auch im OBS-Overlay angezeigt
 
 ### Rahmen Einstellungen
 

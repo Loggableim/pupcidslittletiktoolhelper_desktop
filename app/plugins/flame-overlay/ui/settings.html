@@ -231,8 +231,100 @@
             border: 1px solid #991b1b;
         }
         
+        /* Preview Styles */
+        .preview-container {
+            position: relative;
+            background: #1a1a1a;
+            border: 2px solid #444;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        
+        .preview-wrapper {
+            position: relative;
+            width: 100%;
+            padding-bottom: 177.78%; /* 9:16 aspect ratio by default */
+            background: repeating-conic-gradient(#2a2a2a 0% 25%, #1a1a1a 0% 50%) 50% / 20px 20px;
+        }
+        
+        .preview-wrapper.landscape {
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+        }
+        
+        .preview-iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .preview-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .preview-controls button {
+            padding: 8px 16px;
+            background: #444;
+            color: #e0e0e0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+        
+        .preview-controls button:hover {
+            background: #555;
+        }
+        
+        .preview-controls button.active {
+            background: #ff6600;
+            color: white;
+        }
+        
+        .frame-position-controls {
+            background: #333;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        
+        .frame-position-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .frame-position-input {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .frame-position-input label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 0;
+        }
+        
+        .frame-position-input input {
+            padding: 6px;
+            font-size: 12px;
+        }
+        
         @media (max-width: 768px) {
             .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .frame-position-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -264,6 +356,54 @@
             </p>
         </div>
         
+        <!-- Real-time Preview -->
+        <div class="section">
+            <h2 class="section-title">👁️ Echtzeit-Vorschau</h2>
+            
+            <p style="color: #888; font-size: 13px; margin-bottom: 15px;">
+                Die Vorschau zeigt deine Einstellungen in Echtzeit. Alle Änderungen werden sofort sichtbar.
+            </p>
+            
+            <div class="preview-controls">
+                <button onclick="togglePreview()" id="previewToggle">▶️ Vorschau starten</button>
+                <button onclick="refreshPreview()">🔄 Neu laden</button>
+                <button onclick="toggleFullscreen()">⛶ Vollbild</button>
+            </div>
+            
+            <div class="preview-container" id="previewContainer" style="display: none;">
+                <div class="preview-wrapper" id="previewWrapper">
+                    <iframe id="previewIframe" class="preview-iframe" src="about:blank"></iframe>
+                </div>
+            </div>
+            
+            <!-- Frame Positioning Controls -->
+            <div class="frame-position-controls" id="framePositionControls" style="display: none;">
+                <h3 style="color: #ff9933; font-size: 14px; margin-bottom: 10px;">📍 Rahmen-Positionierung (in %)</h3>
+                <p style="color: #888; font-size: 12px; margin-bottom: 10px;">
+                    Definiere die Position und Größe des Effekt-Rahmens innerhalb der Vorschau
+                </p>
+                <div class="frame-position-grid">
+                    <div class="frame-position-input">
+                        <label>X-Position (%)</label>
+                        <input type="number" id="frameX" min="0" max="100" value="0" step="1">
+                    </div>
+                    <div class="frame-position-input">
+                        <label>Y-Position (%)</label>
+                        <input type="number" id="frameY" min="0" max="100" value="0" step="1">
+                    </div>
+                    <div class="frame-position-input">
+                        <label>Breite (%)</label>
+                        <input type="number" id="frameWidth" min="10" max="100" value="100" step="1">
+                    </div>
+                    <div class="frame-position-input">
+                        <label>Höhe (%)</label>
+                        <input type="number" id="frameHeight" min="10" max="100" value="100" step="1">
+                    </div>
+                </div>
+                <button class="btn" onclick="applyFramePosition()" style="margin-top: 10px;">Anwenden</button>
+            </div>
+        </div>
+        
         <!-- Resolution Settings -->
         <div class="section">
             <h2 class="section-title">📐 Auflösung & Format</h2>
@@ -275,6 +415,10 @@
                     <option value="tiktok-landscape">TikTok Landscape (1280×720)</option>
                     <option value="hd-portrait">HD Portrait (1080×1920)</option>
                     <option value="hd-landscape">HD Landscape (1920×1080)</option>
+                    <option value="2k-portrait">2K Portrait (1440×2560)</option>
+                    <option value="2k-landscape">2K Landscape (2560×1440)</option>
+                    <option value="4k-portrait">4K Portrait (2160×3840)</option>
+                    <option value="4k-landscape">4K Landscape (3840×2160)</option>
                     <option value="custom">Custom</option>
                 </select>
             </div>
@@ -420,11 +564,119 @@
                 socket.on('connect_error', (error) => {
                     console.warn('Socket.io connection error:', error);
                 });
+                
+                // Listen for config updates to refresh preview
+                socket.on('flame-overlay:config-update', (data) => {
+                    console.log('Config updated via socket:', data);
+                    if (isPreviewActive()) {
+                        // Preview will auto-update via its own socket listener
+                    }
+                });
             } else {
                 console.warn('Socket.io not loaded - some features may not work');
             }
         } catch (error) {
             console.error('Failed to initialize socket.io:', error);
+        }
+        
+        // Preview state
+        let previewActive = false;
+        
+        // Check if preview is active
+        function isPreviewActive() {
+            return previewActive;
+        }
+        
+        // Toggle preview on/off
+        function togglePreview() {
+            const container = document.getElementById('previewContainer');
+            const iframe = document.getElementById('previewIframe');
+            const toggle = document.getElementById('previewToggle');
+            const positionControls = document.getElementById('framePositionControls');
+            
+            if (!previewActive) {
+                // Start preview
+                iframe.src = '/flame-overlay/overlay';
+                container.style.display = 'block';
+                positionControls.style.display = 'block';
+                toggle.textContent = '⏸️ Vorschau stoppen';
+                previewActive = true;
+                updatePreviewAspectRatio();
+            } else {
+                // Stop preview
+                iframe.src = 'about:blank';
+                container.style.display = 'none';
+                positionControls.style.display = 'none';
+                toggle.textContent = '▶️ Vorschau starten';
+                previewActive = false;
+            }
+        }
+        
+        // Refresh preview
+        function refreshPreview() {
+            const iframe = document.getElementById('previewIframe');
+            if (previewActive) {
+                iframe.src = iframe.src; // Reload iframe
+            }
+        }
+        
+        // Toggle fullscreen preview
+        function toggleFullscreen() {
+            const container = document.getElementById('previewContainer');
+            if (!document.fullscreenElement) {
+                container.requestFullscreen().catch(err => {
+                    console.error('Error attempting to enable fullscreen:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        // Update preview aspect ratio based on resolution
+        function updatePreviewAspectRatio() {
+            const preset = document.getElementById('resolutionPreset').value;
+            const wrapper = document.getElementById('previewWrapper');
+            
+            const landscapePresets = ['tiktok-landscape', 'hd-landscape', '2k-landscape', '4k-landscape'];
+            const isLandscape = landscapePresets.includes(preset);
+            
+            if (isLandscape) {
+                wrapper.classList.add('landscape');
+            } else {
+                wrapper.classList.remove('landscape');
+            }
+        }
+        
+        // Apply frame position
+        function applyFramePosition() {
+            const x = parseFloat(document.getElementById('frameX').value);
+            const y = parseFloat(document.getElementById('frameY').value);
+            const width = parseFloat(document.getElementById('frameWidth').value);
+            const height = parseFloat(document.getElementById('frameHeight').value);
+            
+            // Save to config
+            const config = {
+                framePositions: [{
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: height
+                }]
+            };
+            
+            // Update config
+            fetch('/api/flame-overlay/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      showStatus('✅ Rahmenposition aktualisiert!', 'success');
+                  }
+              });
         }
         
         // Update slider value displays
@@ -438,13 +690,87 @@
                     }
                     valueSpan.textContent = value;
                 }
+                
+                // Auto-update preview in real-time
+                if (previewActive) {
+                    debouncedSaveConfig();
+                }
             });
         });
+        
+        // Debounced save for real-time updates
+        let saveTimeout = null;
+        function debouncedSaveConfig() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                saveConfigSilent();
+            }, 300);
+        }
+        
+        // Save config without showing status message (for real-time updates)
+        async function saveConfigSilent() {
+            try {
+                const config = collectConfig();
+                
+                const response = await fetch('/api/flame-overlay/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+                
+                await response.json();
+            } catch (error) {
+                console.error('Error saving config:', error);
+            }
+        }
+        
+        // Collect config from form
+        function collectConfig() {
+            return {
+                effectType: document.getElementById('effectType').value,
+                resolutionPreset: document.getElementById('resolutionPreset').value,
+                customWidth: parseInt(document.getElementById('customWidth').value),
+                customHeight: parseInt(document.getElementById('customHeight').value),
+                frameMode: document.getElementById('frameMode').value,
+                frameThickness: parseFloat(document.getElementById('frameThickness').value),
+                maskOnlyEdges: document.getElementById('maskOnlyEdges').checked,
+                flameColor: document.getElementById('flameColor').value,
+                backgroundTint: document.getElementById('backgroundTint').value,
+                backgroundTintOpacity: parseFloat(document.getElementById('backgroundTintOpacity').value),
+                flameSpeed: parseFloat(document.getElementById('flameSpeed').value),
+                flameIntensity: parseFloat(document.getElementById('flameIntensity').value),
+                flameBrightness: parseFloat(document.getElementById('flameBrightness').value),
+                enableGlow: document.getElementById('enableGlow').checked,
+                enableAdditiveBlend: document.getElementById('enableAdditiveBlend').checked,
+                highDPI: document.getElementById('highDPI').checked
+            };
+        }
         
         // Toggle custom resolution inputs
         document.getElementById('resolutionPreset').addEventListener('change', (e) => {
             const customGroup = document.getElementById('customResolutionGroup');
             customGroup.style.display = e.target.value === 'custom' ? 'grid' : 'none';
+            updatePreviewAspectRatio();
+            
+            // Auto-update preview
+            if (previewActive) {
+                debouncedSaveConfig();
+            }
+        });
+        
+        // Add real-time listeners to all form inputs
+        ['effectType', 'frameMode', 'flameColor', 'backgroundTint', 
+         'enableGlow', 'enableAdditiveBlend', 'maskOnlyEdges', 'highDPI'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('change', () => {
+                    if (previewActive) {
+                        debouncedSaveConfig();
+                    }
+                });
+            }
         });
         
         // Load configuration
@@ -489,6 +815,14 @@
                     document.getElementById('enableAdditiveBlend').checked = config.enableAdditiveBlend !== false;
                     document.getElementById('highDPI').checked = config.highDPI !== false;
                     
+                    // Frame position
+                    if (config.framePositions && config.framePositions.length > 0) {
+                        document.getElementById('frameX').value = config.framePositions[0].x || 0;
+                        document.getElementById('frameY').value = config.framePositions[0].y || 0;
+                        document.getElementById('frameWidth').value = config.framePositions[0].width || 100;
+                        document.getElementById('frameHeight').value = config.framePositions[0].height || 100;
+                    }
+                    
                     // Trigger custom resolution visibility
                     document.getElementById('resolutionPreset').dispatchEvent(new Event('change'));
                     
@@ -502,24 +836,7 @@
         // Save configuration
         async function saveConfig() {
             try {
-                const config = {
-                    effectType: document.getElementById('effectType').value,
-                    resolutionPreset: document.getElementById('resolutionPreset').value,
-                    customWidth: parseInt(document.getElementById('customWidth').value),
-                    customHeight: parseInt(document.getElementById('customHeight').value),
-                    frameMode: document.getElementById('frameMode').value,
-                    frameThickness: parseFloat(document.getElementById('frameThickness').value),
-                    maskOnlyEdges: document.getElementById('maskOnlyEdges').checked,
-                    flameColor: document.getElementById('flameColor').value,
-                    backgroundTint: document.getElementById('backgroundTint').value,
-                    backgroundTintOpacity: parseFloat(document.getElementById('backgroundTintOpacity').value),
-                    flameSpeed: parseFloat(document.getElementById('flameSpeed').value),
-                    flameIntensity: parseFloat(document.getElementById('flameIntensity').value),
-                    flameBrightness: parseFloat(document.getElementById('flameBrightness').value),
-                    enableGlow: document.getElementById('enableGlow').checked,
-                    enableAdditiveBlend: document.getElementById('enableAdditiveBlend').checked,
-                    highDPI: document.getElementById('highDPI').checked
-                };
+                const config = collectConfig();
                 
                 const response = await fetch('/api/flame-overlay/config', {
                     method: 'POST',

@@ -46,6 +46,11 @@ class FlameOverlayPlugin {
             frameMode: 'bottom', // 'bottom', 'top', 'sides', 'all'
             frameThickness: 150, // pixels
             
+            // Frame positioning (for multiple frames in preview)
+            framePositions: [
+                { x: 0, y: 0, width: 100, height: 100 } // Default: full screen
+            ],
+            
             // Flame appearance
             flameColor: '#ff6600', // Main flame color
             backgroundTint: '#000000', // Background tint color
@@ -82,6 +87,10 @@ class FlameOverlayPlugin {
             'tiktok-landscape': { width: 1280, height: 720 },
             'hd-portrait': { width: 1080, height: 1920 },
             'hd-landscape': { width: 1920, height: 1080 },
+            '2k-portrait': { width: 1440, height: 2560 },
+            '2k-landscape': { width: 2560, height: 1440 },
+            '4k-portrait': { width: 2160, height: 3840 },
+            '4k-landscape': { width: 3840, height: 2160 },
             'custom': { width: this.config.customWidth, height: this.config.customHeight }
         };
         
