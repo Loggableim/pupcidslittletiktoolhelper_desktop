@@ -411,6 +411,93 @@
             border-width: 2px;
             border-color: var(--color-text-primary);
         }
+
+        /* Soundboard Volume Slider Styles */
+        .volume-slider {
+            height: 4px;
+            border-radius: 2px;
+            background: var(--color-border);
+            cursor: pointer;
+        }
+        
+        .volume-slider-inline {
+            width: 80px;
+        }
+        
+        .volume-slider-event {
+            flex: 1;
+        }
+        
+        .volume-slider-test {
+            width: 60px;
+            height: 3px;
+        }
+        
+        .volume-label {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            min-width: 35px;
+        }
+        
+        .volume-label-test {
+            font-size: 0.7rem;
+        }
+
+        /* Advanced Search Styles */
+        .advanced-search {
+            margin-top: 24px;
+            padding: 20px;
+            background: var(--gradient-primary);
+            border: 1px solid var(--color-accent-primary);
+            border-radius: 8px;
+        }
+        
+        .advanced-search h3 {
+            color: var(--color-accent-primary);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .search-filters {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .category-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        
+        .category-btn {
+            padding: 6px 14px;
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            color: var(--color-text-primary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .category-btn:hover {
+            background: var(--color-bg-hover);
+            border-color: var(--color-accent-primary);
+        }
+        
+        .category-btn.active {
+            background: var(--color-accent-primary);
+            border-color: var(--color-accent-primary);
+            color: #0f172a;
+            font-weight: 600;
+        }
     </style>
     <script src="/js/lucide.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
@@ -1224,7 +1311,14 @@
                                             </button>
                                         </div>
                                         <input type="text" id="soundboard-follow-url" placeholder="Sound URL" class="form-input">
-                                        <input type="number" id="soundboard-follow-volume" min="0" max="1" step="0.1" value="1.0" placeholder="Volume" class="form-input">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                                            <label for="soundboard-follow-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 60px;">Volume:</label>
+                                            <input type="range" id="soundboard-follow-volume-slider" min="0" max="100" value="100" 
+                                                class="volume-slider volume-slider-event"
+                                                title="Volume slider">
+                                            <span id="soundboard-follow-volume-label" class="volume-label" style="min-width: 45px;">100%</span>
+                                            <input type="number" id="soundboard-follow-volume" min="0" max="1" step="0.1" value="1.0" style="display: none;">
+                                        </div>
                                     </div>
 
                                     <div class="event-sound-item">
@@ -1236,7 +1330,14 @@
                                             </button>
                                         </div>
                                         <input type="text" id="soundboard-subscribe-url" placeholder="Sound URL" class="form-input">
-                                        <input type="number" id="soundboard-subscribe-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                                            <label for="soundboard-subscribe-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 60px;">Volume:</label>
+                                            <input type="range" id="soundboard-subscribe-volume-slider" min="0" max="100" value="100" 
+                                                class="volume-slider volume-slider-event"
+                                                title="Volume slider">
+                                            <span id="soundboard-subscribe-volume-label" class="volume-label" style="min-width: 45px;">100%</span>
+                                            <input type="number" id="soundboard-subscribe-volume" min="0" max="1" step="0.1" value="1.0" style="display: none;">
+                                        </div>
                                     </div>
 
                                     <div class="event-sound-item">
@@ -1248,7 +1349,14 @@
                                             </button>
                                         </div>
                                         <input type="text" id="soundboard-share-url" placeholder="Sound URL" class="form-input">
-                                        <input type="number" id="soundboard-share-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                                            <label for="soundboard-share-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 60px;">Volume:</label>
+                                            <input type="range" id="soundboard-share-volume-slider" min="0" max="100" value="100" 
+                                                class="volume-slider volume-slider-event"
+                                                title="Volume slider">
+                                            <span id="soundboard-share-volume-label" class="volume-label" style="min-width: 45px;">100%</span>
+                                            <input type="number" id="soundboard-share-volume" min="0" max="1" step="0.1" value="1.0" style="display: none;">
+                                        </div>
                                     </div>
 
                                     <div class="event-sound-item">
@@ -1260,7 +1368,14 @@
                                             </button>
                                         </div>
                                         <input type="text" id="soundboard-gift-url" placeholder="Sound URL" class="form-input">
-                                        <input type="number" id="soundboard-gift-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                                            <label for="soundboard-gift-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 60px;">Volume:</label>
+                                            <input type="range" id="soundboard-gift-volume-slider" min="0" max="100" value="100" 
+                                                class="volume-slider volume-slider-event"
+                                                title="Volume slider">
+                                            <span id="soundboard-gift-volume-label" class="volume-label" style="min-width: 45px;">100%</span>
+                                            <input type="number" id="soundboard-gift-volume" min="0" max="1" step="0.1" value="1.0" style="display: none;">
+                                        </div>
                                     </div>
 
                                     <div class="event-sound-item">
@@ -1272,7 +1387,14 @@
                                             </button>
                                         </div>
                                         <input type="text" id="soundboard-like-url" placeholder="Sound URL" class="form-input">
-                                        <input type="number" id="soundboard-like-volume" min="0" max="1" step="0.1" value="1.0" class="form-input">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                                            <label for="soundboard-like-volume" style="font-size: 0.85rem; color: var(--color-text-secondary); min-width: 60px;">Volume:</label>
+                                            <input type="range" id="soundboard-like-volume-slider" min="0" max="100" value="100" 
+                                                class="volume-slider volume-slider-event"
+                                                title="Volume slider">
+                                            <span id="soundboard-like-volume-label" class="volume-label" style="min-width: 45px;">100%</span>
+                                            <input type="number" id="soundboard-like-volume" min="0" max="1" step="0.1" value="1.0" style="display: none;">
+                                        </div>
                                         <div class="form-grid">
                                             <input type="number" id="soundboard-like-threshold" min="0" value="0" placeholder="Threshold" class="form-input">
                                             <input type="number" id="soundboard-like-window" min="1" value="10" placeholder="Window (s)" class="form-input">
@@ -1358,6 +1480,52 @@
                                         </thead>
                                         <tbody id="gift-sounds-list"></tbody>
                                     </table>
+                                </div>
+                            </div>
+
+                            <!-- Advanced MyInstants Search -->
+                            <div class="advanced-search">
+                                <h3>
+                                    <i data-lucide="search"></i>
+                                    Advanced Sound Search
+                                </h3>
+                                
+                                <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mb-4">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <i data-lucide="info" style="color: #3b82f6; width: 18px; height: 18px; flex-shrink: 0;"></i>
+                                        <span style="font-size: 0.85rem; line-height: 1.4;">
+                                            Search for sounds by keyword or browse by category. Click <strong>Preview</strong> to test a sound, or <strong>Use</strong> to bind it to a gift.
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Search Filters -->
+                                <div class="search-filters">
+                                    <input type="text" id="advanced-search-input" placeholder="Search for sound effects..." class="form-input">
+                                    <button id="trending-search-btn" class="btn btn-ghost">
+                                        <i data-lucide="trending-up"></i>
+                                        Trending
+                                    </button>
+                                    <button id="advanced-search-btn" class="btn btn-primary">
+                                        <i data-lucide="search"></i>
+                                        Search
+                                    </button>
+                                </div>
+                                
+                                <!-- Category Filter Buttons -->
+                                <div class="category-buttons" id="category-buttons-container">
+                                    <button class="category-btn active" data-category="all">
+                                        <i data-lucide="grid-3x3" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>
+                                        All
+                                    </button>
+                                    <!-- Categories will be loaded dynamically from MyInstants API -->
+                                </div>
+                                
+                                <!-- Search Results -->
+                                <div id="advanced-search-results" class="myinstants-results">
+                                    <div class="text-gray-400 text-sm text-center py-4">
+                                        Search for sounds or browse trending sounds to get started
+                                    </div>
                                 </div>
                             </div>
 
