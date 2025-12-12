@@ -7,6 +7,7 @@
   "entry": "main.js",
   "enabled": true,
   "type": "overlay",
+  "devStatus": "development-beta",
   "permissions": [
     "socket.io",
     "routes",

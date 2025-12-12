@@ -17,6 +17,11 @@ class PluginManager {
         this.currentSort = 'name';
         this.searchQuery = '';
         this.compactMode = false;
+        this.devStatusFilters = {
+            'working-beta': true,
+            'development-beta': true,
+            'early-version': true
+        };
         this.init();
     }
 
@@ -109,6 +114,16 @@ class PluginManager {
             });
         }
 
+        // Dev status filter checkboxes
+        const devStatusCheckboxes = document.querySelectorAll('.dev-status-filter');
+        devStatusCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const status = e.target.getAttribute('data-status');
+                this.devStatusFilters[status] = e.target.checked;
+                this.applyFiltersAndSort();
+            });
+        });
+
         // Note: Plugin loading is now triggered by navigation.js handleViewChange()
         // when switching to the plugins view
     }
@@ -131,6 +146,14 @@ class PluginManager {
         } else if (this.currentFilter === 'inactive') {
             filtered = filtered.filter(p => !p.enabled);
         }
+
+        // Apply dev status filters
+        filtered = filtered.filter(plugin => {
+            // If plugin has no devStatus, always show it
+            if (!plugin.devStatus) return true;
+            // Otherwise check if this status is enabled in filters
+            return this.devStatusFilters[plugin.devStatus] === true;
+        });
 
         // Apply sorting
         filtered.sort((a, b) => {
@@ -273,12 +296,13 @@ class PluginManager {
             <table class="plugin-compact-table">
                 <thead>
                     <tr>
-                        <th style="width: 25%;">Name</th>
-                        <th style="width: 10%;">Version</th>
+                        <th style="width: 20%;">Name</th>
+                        <th style="width: 8%;">Version</th>
                         <th style="width: 10%;">Status</th>
-                        <th style="width: 15%;">Type</th>
-                        <th style="width: 15%;">Author</th>
-                        <th style="width: 25%; text-align: right;">Actions</th>
+                        <th style="width: 20%;">Dev Status</th>
+                        <th style="width: 10%;">Type</th>
+                        <th style="width: 10%;">Author</th>
+                        <th style="width: 22%; text-align: right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -324,6 +348,11 @@ class PluginManager {
             ? '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; font-size: 0.7rem; font-weight: 600;"><i data-lucide="check-circle" style="width: 12px; height: 12px;"></i> Active</span>'
             : '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(107, 114, 128, 0.3); border: 1px solid rgba(107, 114, 128, 0.5); border-radius: 12px; font-size: 0.7rem; font-weight: 600;"><i data-lucide="pause-circle" style="width: 12px; height: 12px;"></i> Inactive</span>';
 
+        const devStatusBadge = this.getDevStatusBadge(plugin.devStatus);
+        
+        // Get row background color based on devStatus
+        const rowBackground = this.getDevStatusRowBackground(plugin.devStatus);
+
         const actionButtons = plugin.enabled
             ? `
                 <button id="reload-${plugin.id}" class="plugin-compact-btn" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
@@ -343,7 +372,7 @@ class PluginManager {
             `;
 
         return `
-            <tr>
+            <tr style="background: ${rowBackground};">
                 <td>
                     <div style="font-weight: 600; color: white; margin-bottom: 2px;">${this.escapeHtml(plugin.name)}</div>
                     <div style="font-size: 0.75rem; color: #9ca3af; font-family: monospace;">${this.escapeHtml(plugin.id)}</div>
@@ -352,6 +381,7 @@ class PluginManager {
                     <span style="padding: 2px 8px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; font-size: 0.7rem; color: #9ca3af; font-family: monospace;">v${this.escapeHtml(plugin.version)}</span>
                 </td>
                 <td>${statusBadge}</td>
+                <td>${devStatusBadge || '<span style="color: #6b7280; font-size: 0.75rem;">-</span>'}</td>
                 <td>
                     ${plugin.type ? `<span style="font-size: 0.75rem; color: #9ca3af;">${this.getTypeIcon(plugin.type)} ${this.escapeHtml(plugin.type)}</span>` : '<span style="color: #6b7280;">-</span>'}
                 </td>
@@ -378,6 +408,11 @@ class PluginManager {
         const statusBadge = plugin.enabled
             ? '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 20px; font-size: 0.75rem; font-weight: 600;"><i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Aktiv</span>'
             : '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: rgba(107, 114, 128, 0.3); border: 1px solid rgba(107, 114, 128, 0.5); border-radius: 20px; font-size: 0.75rem; font-weight: 600;"><i data-lucide="pause-circle" style="width: 14px; height: 14px;"></i> Inaktiv</span>';
+
+        const devStatusBadge = this.getDevStatusBadge(plugin.devStatus);
+
+        // Get background color based on devStatus
+        const devStatusBackground = this.getDevStatusBackground(plugin.devStatus);
 
         const typeIcon = this.getTypeIcon(plugin.type);
         const typeBadge = plugin.type 
@@ -416,7 +451,7 @@ class PluginManager {
             : '';
 
         return `
-            <div class="plugin-card" style="background: linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 1.5rem; transition: all 0.3s ease; position: relative; overflow: hidden;">
+            <div class="plugin-card" style="background: ${devStatusBackground}; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 1.5rem; transition: all 0.3s ease; position: relative; overflow: hidden;">
                 <!-- Subtle gradient overlay -->
                 <div style="position: absolute; top: 0; right: 0; width: 200px; height: 200px; background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.1) 0%, transparent 70%); pointer-events: none;"></div>
                 
@@ -436,6 +471,7 @@ class PluginManager {
                                     <h3 style="font-size: 1.25rem; font-weight: 700; color: white; margin: 0;">${this.escapeHtml(plugin.name)}</h3>
                                     ${statusBadge}
                                     <span style="padding: 4px 10px; background: rgba(0, 0, 0, 0.3); border-radius: 6px; font-size: 0.75rem; color: #9ca3af; font-family: monospace;">v${this.escapeHtml(plugin.version)}</span>
+                                    ${devStatusBadge}
                                 </div>
                                 <p style="font-size: 0.9rem; color: #d1d5db; margin: 0 0 12px 0; line-height: 1.5;">${this.escapeHtml(plugin.description || (window.i18n ? window.i18n.t('plugins.no_description') : 'No description available'))}</p>
                                 
@@ -480,6 +516,68 @@ class PluginManager {
             'utility': '🔧'
         };
         return icons[type] || '📦';
+    }
+
+    /**
+     * Get development status badge
+     */
+    getDevStatusBadge(devStatus) {
+        if (!devStatus) return '';
+
+        const statusConfig = {
+            'working-beta': {
+                text: 'Working Beta - please Report Bugs',
+                background: 'rgba(34, 197, 94, 0.15)',
+                border: 'rgba(34, 197, 94, 0.4)',
+                color: '#22c55e'
+            },
+            'development-beta': {
+                text: 'Development Beta: expect Bugs',
+                background: 'rgba(251, 191, 36, 0.15)',
+                border: 'rgba(251, 191, 36, 0.4)',
+                color: '#fbbf24'
+            },
+            'early-version': {
+                text: 'Early Version: not working - feel free to contribute',
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: 'rgba(239, 68, 68, 0.4)',
+                color: '#ef4444'
+            }
+        };
+
+        const config = statusConfig[devStatus];
+        if (!config) return '';
+
+        return `<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: ${config.background}; border: 1px solid ${config.border}; border-radius: 20px; font-size: 0.7rem; font-weight: 600; color: ${config.color};">${config.text}</span>`;
+    }
+
+    /**
+     * Get background color based on development status
+     */
+    getDevStatusBackground(devStatus) {
+        const baseGradient = 'linear-gradient(135deg, rgba(31, 41, 55, 0.6) 0%, rgba(17, 24, 39, 0.8) 100%)';
+        
+        const tints = {
+            'working-beta': 'rgba(34, 197, 94, 0.05)',
+            'development-beta': 'rgba(251, 191, 36, 0.05)',
+            'early-version': 'rgba(239, 68, 68, 0.05)'
+        };
+
+        const tint = tints[devStatus];
+        return tint ? `${baseGradient}, ${tint}` : baseGradient;
+    }
+
+    /**
+     * Get row background color based on development status (for compact view)
+     */
+    getDevStatusRowBackground(devStatus) {
+        const backgrounds = {
+            'working-beta': 'rgba(34, 197, 94, 0.08)',
+            'development-beta': 'rgba(251, 191, 36, 0.08)',
+            'early-version': 'rgba(239, 68, 68, 0.08)'
+        };
+
+        return backgrounds[devStatus] || 'transparent';
     }
 
     /**

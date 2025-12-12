@@ -97,6 +97,7 @@ function setupPluginRoutes(app, pluginLoader, apiLimiter, uploadLimiter, logger,
                                     version: manifest.version,
                                     author: manifest.author,
                                     type: manifest.type,
+                                    devStatus: manifest.devStatus, // Include development status
                                     enabled: state.enabled === true,
                                     loadedAt: null
                                 });

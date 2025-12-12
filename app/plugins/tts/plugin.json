@@ -7,6 +7,7 @@
   "entry": "main.js",
   "enabled": true,
   "type": "core",
+  "devStatus": "working-beta",
   "dependencies": [
     "axios",
     "franc-min"

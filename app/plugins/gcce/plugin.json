@@ -6,6 +6,7 @@
   "author": "Pup Cid",
   "entry": "index.js",
   "enabled": false,
+  "devStatus": "development-beta",
   "permissions": [
     "socket.io",
     "routes",

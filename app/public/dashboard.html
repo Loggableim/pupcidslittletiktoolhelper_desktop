@@ -2469,6 +2469,21 @@
                                         Inactive
                                     </button>
                                 </div>
+                                <div style="display: flex; gap: 0.75rem; align-items: center; padding: 0.5rem 0; border-left: 1px solid rgba(255, 255, 255, 0.1); padding-left: 0.75rem;">
+                                    <span style="font-size: 0.85rem; color: #9ca3af; font-weight: 500;">Dev Status:</span>
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.85rem; color: #22c55e;">
+                                        <input type="checkbox" class="dev-status-filter" data-status="working-beta" checked style="width: 16px; height: 16px; cursor: pointer; accent-color: #22c55e;">
+                                        <span>Working Beta</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.85rem; color: #fbbf24;">
+                                        <input type="checkbox" class="dev-status-filter" data-status="development-beta" checked style="width: 16px; height: 16px; cursor: pointer; accent-color: #fbbf24;">
+                                        <span>Development Beta</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.85rem; color: #ef4444;">
+                                        <input type="checkbox" class="dev-status-filter" data-status="early-version" checked style="width: 16px; height: 16px; cursor: pointer; accent-color: #ef4444;">
+                                        <span>Early Version</span>
+                                    </label>
+                                </div>
                                 <select id="plugin-sort" style="padding: 0.75rem 1rem; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; font-size: 0.9rem; cursor: pointer;">
                                     <option value="name">Sort by Name</option>
                                     <option value="status">Sort by Status</option>

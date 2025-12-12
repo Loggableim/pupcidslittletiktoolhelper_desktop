@@ -7,6 +7,7 @@
   "entry": "main.js",
   "enabled": false,
   "type": "integration",
+  "devStatus": "early-version",
   "permissions": [
     "routes",
     "socket.io",
