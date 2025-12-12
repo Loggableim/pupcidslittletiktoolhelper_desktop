@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Story Generator - Admin Panel</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .container {
+      max-width: 1400px;
+      padding: 20px;
+    }
+    .card {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      background: #0f3460;
+      border-bottom: 1px solid #e94560;
+      font-weight: bold;
+    }
+    .btn-primary {
+      background: #e94560;
+      border-color: #e94560;
+    }
+    .btn-primary:hover {
+      background: #c73a52;
+      border-color: #c73a52;
+    }
+    .btn-success {
+      background: #28a745;
+      border-color: #28a745;
+    }
+    .form-control, .form-select {
+      background: #1a1a2e;
+      color: #eee;
+      border: 1px solid #0f3460;
+    }
+    .form-control:focus, .form-select:focus {
+      background: #1a1a2e;
+      color: #eee;
+      border-color: #e94560;
+      box-shadow: 0 0 0 0.2rem rgba(233, 69, 96, 0.25);
+    }
+    .badge {
+      font-size: 0.9em;
+      padding: 5px 10px;
+    }
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+    }
+    .status-active {
+      background: #28a745;
+      box-shadow: 0 0 8px #28a745;
+    }
+    .status-inactive {
+      background: #6c757d;
+    }
+    .chapter-preview {
+      background: #0f3460;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 10px 0;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .choice-item {
+      background: #1a1a2e;
+      padding: 10px;
+      margin: 5px 0;
+      border-left: 3px solid #e94560;
+      border-radius: 3px;
+    }
+    .vote-bar {
+      height: 20px;
+      background: linear-gradient(90deg, #e94560, #c73a52);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+    .memory-tag {
+      display: inline-block;
+      background: #0f3460;
+      padding: 5px 10px;
+      margin: 3px;
+      border-radius: 15px;
+      font-size: 0.85em;
+    }
+    #storyImage {
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .theme-card {
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .theme-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 20px rgba(233, 69, 96, 0.3);
+    }
+    .theme-card.selected {
+      border: 2px solid #e94560;
+      box-shadow: 0 0 15px rgba(233, 69, 96, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="mb-4">
+      <i class="fas fa-book-open"></i> Interactive Story Generator
+    </h1>
+
+    <!-- Status Card -->
+    <div class="card">
+      <div class="card-header">
+        <i class="fas fa-info-circle"></i> Status
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3">
+            <strong>Plugin Status:</strong><br>
+            <span id="pluginStatus">
+              <span class="status-indicator status-inactive"></span> Loading...
+            </span>
+          </div>
+          <div class="col-md-3">
+            <strong>Active Session:</strong><br>
+            <span id="sessionStatus">None</span>
+          </div>
+          <div class="col-md-3">
+            <strong>Current Chapter:</strong><br>
+            <span id="chapterStatus">-</span>
+          </div>
+          <div class="col-md-3">
+            <strong>Voting:</strong><br>
+            <span id="votingStatus">Inactive</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Configuration Card -->
+    <div class="card">
+      <div class="card-header">
+        <i class="fas fa-cog"></i> Configuration
+      </div>
+      <div class="card-body">
+        <form id="configForm">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">SiliconFlow API Key</label>
+                <input type="password" class="form-control" id="apiKey" placeholder="Enter API key">
+                <small class="text-muted">Get your API key from siliconflow.cn</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Default LLM Model</label>
+                <select class="form-select" id="defaultModel">
+                  <option value="deepseek">DeepSeek V3</option>
+                  <option value="qwen">Qwen 2.5-7B</option>
+                  <option value="llama">Meta-Llama 3.1-8B</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Image Model</label>
+                <select class="form-select" id="defaultImageModel">
+                  <option value="flux-schnell">FLUX.1 Schnell</option>
+                  <option value="z-image-turbo">Z-Image Turbo</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Voting Duration (seconds)</label>
+                <input type="number" class="form-control" id="votingDuration" min="15" max="300" value="60">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Number of Choices</label>
+                <input type="number" class="form-control" id="numChoices" min="3" max="6" value="4">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3 form-check" style="margin-top: 35px;">
+                <input type="checkbox" class="form-check-input" id="autoGenerateImages">
+                <label class="form-check-label" for="autoGenerateImages">
+                  Auto-generate Images
+                </label>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3 form-check" style="margin-top: 35px;">
+                <input type="checkbox" class="form-check-input" id="autoGenerateTTS">
+                <label class="form-check-label" for="autoGenerateTTS">
+                  Auto-generate TTS
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Save Configuration
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Story Controls Card -->
+    <div class="card" id="storyControls">
+      <div class="card-header">
+        <i class="fas fa-play-circle"></i> Story Controls
+      </div>
+      <div class="card-body">
+        <div id="startStorySection">
+          <h5>Start New Story</h5>
+          <div class="row mb-3">
+            <div class="col-12">
+              <label class="form-label">Select Theme:</label>
+              <div class="row" id="themeSelector">
+                <!-- Themes will be populated here -->
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Custom Outline (optional)</label>
+            <textarea class="form-control" id="storyOutline" rows="3" placeholder="Leave blank for auto-generated outline"></textarea>
+          </div>
+
+          <button class="btn btn-success btn-lg" id="startStoryBtn">
+            <i class="fas fa-rocket"></i> Start Story
+          </button>
+        </div>
+
+        <div id="activeStorySection" style="display: none;">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5>Active Story</h5>
+            <button class="btn btn-danger" id="endStoryBtn">
+              <i class="fas fa-stop"></i> End Story
+            </button>
+          </div>
+          
+          <div id="currentChapterDisplay"></div>
+          
+          <div class="mt-3">
+            <button class="btn btn-primary" id="forceVoteEndBtn" style="display: none;">
+              <i class="fas fa-check"></i> Force Vote End
+            </button>
+            <button class="btn btn-secondary" id="regenerateImageBtn">
+              <i class="fas fa-image"></i> Regenerate Image
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Story Memory Card -->
+    <div class="card" id="memoryCard" style="display: none;">
+      <div class="card-header">
+        <i class="fas fa-brain"></i> Story Memory / Lore Database
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4">
+            <h6><i class="fas fa-users"></i> Characters</h6>
+            <div id="charactersList"></div>
+          </div>
+          <div class="col-md-4">
+            <h6><i class="fas fa-map-marker-alt"></i> Locations</h6>
+            <div id="locationsList"></div>
+          </div>
+          <div class="col-md-4">
+            <h6><i class="fas fa-gem"></i> Items</h6>
+            <div id="itemsList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Voters Card -->
+    <div class="card" id="topVotersCard" style="display: none;">
+      <div class="card-header">
+        <i class="fas fa-trophy"></i> Top Voters
+      </div>
+      <div class="card-body">
+        <div id="topVotersList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const socket = io();
+    let selectedTheme = null;
+    let currentStatus = null;
+
+    // Load initial data
+    async function loadStatus() {
+      try {
+        const response = await fetch('/api/interactive-story/status');
+        currentStatus = await response.json();
+        updateStatusDisplay();
+      } catch (error) {
+        console.error('Error loading status:', error);
+      }
+    }
+
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/interactive-story/config');
+        const config = await response.json();
+        
+        if (config.siliconFlowApiKey !== '***configured***') {
+          document.getElementById('apiKey').value = config.siliconFlowApiKey || '';
+        }
+        document.getElementById('defaultModel').value = config.defaultModel || 'deepseek';
+        document.getElementById('defaultImageModel').value = config.defaultImageModel || 'flux-schnell';
+        document.getElementById('votingDuration').value = config.votingDuration || 60;
+        document.getElementById('numChoices').value = config.numChoices || 4;
+        document.getElementById('autoGenerateImages').checked = config.autoGenerateImages !== false;
+        document.getElementById('autoGenerateTTS').checked = config.autoGenerateTTS === true;
+      } catch (error) {
+        console.error('Error loading config:', error);
+      }
+    }
+
+    async function loadThemes() {
+      try {
+        const response = await fetch('/api/interactive-story/themes');
+        const themes = await response.json();
+        
+        const themeSelector = document.getElementById('themeSelector');
+        themeSelector.innerHTML = '';
+        
+        for (const [key, theme] of Object.entries(themes)) {
+          const col = document.createElement('div');
+          col.className = 'col-md-4 mb-3';
+          col.innerHTML = `
+            <div class="card theme-card" data-theme="${key}">
+              <div class="card-body text-center">
+                <h6>${theme.name}</h6>
+                <small class="text-muted">${theme.tone}</small>
+              </div>
+            </div>
+          `;
+          themeSelector.appendChild(col);
+        }
+        
+        // Add click handlers
+        document.querySelectorAll('.theme-card').forEach(card => {
+          card.addEventListener('click', () => {
+            document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedTheme = card.dataset.theme;
+          });
+        });
+      } catch (error) {
+        console.error('Error loading themes:', error);
+      }
+    }
+
+    function updateStatusDisplay() {
+      // Plugin status
+      const statusEl = document.getElementById('pluginStatus');
+      if (currentStatus.configured) {
+        statusEl.innerHTML = '<span class="status-indicator status-active"></span> Configured';
+      } else {
+        statusEl.innerHTML = '<span class="status-indicator status-inactive"></span> Not Configured';
+      }
+      
+      // Session status
+      document.getElementById('sessionStatus').textContent = currentStatus.session ? `#${currentStatus.session.id}` : 'None';
+      
+      // Chapter status
+      document.getElementById('chapterStatus').textContent = currentStatus.chapter 
+        ? `Chapter ${currentStatus.chapter.chapterNumber}` 
+        : '-';
+      
+      // Voting status
+      const votingEl = document.getElementById('votingStatus');
+      if (currentStatus.voting && currentStatus.voting.active) {
+        const timeLeft = Math.ceil(currentStatus.voting.timeRemaining);
+        votingEl.innerHTML = `<span class="status-indicator status-active"></span> Active (${timeLeft}s)`;
+        document.getElementById('forceVoteEndBtn').style.display = 'inline-block';
+      } else {
+        votingEl.innerHTML = '<span class="status-indicator status-inactive"></span> Inactive';
+        document.getElementById('forceVoteEndBtn').style.display = 'none';
+      }
+      
+      // Show/hide sections
+      if (currentStatus.session) {
+        document.getElementById('startStorySection').style.display = 'none';
+        document.getElementById('activeStorySection').style.display = 'block';
+        document.getElementById('memoryCard').style.display = 'block';
+        document.getElementById('topVotersCard').style.display = 'block';
+        
+        if (currentStatus.chapter) {
+          displayChapter(currentStatus.chapter);
+        }
+        
+        loadMemory();
+        loadTopVoters();
+      } else {
+        document.getElementById('startStorySection').style.display = 'block';
+        document.getElementById('activeStorySection').style.display = 'none';
+        document.getElementById('memoryCard').style.display = 'none';
+        document.getElementById('topVotersCard').style.display = 'none';
+      }
+    }
+
+    function displayChapter(chapter) {
+      const display = document.getElementById('currentChapterDisplay');
+      
+      let html = `<h4>${chapter.title}</h4>`;
+      
+      if (chapter.imagePath) {
+        const filename = chapter.imagePath.split('/').pop();
+        html += `<img id="storyImage" src="/api/interactive-story/image/${filename}" alt="Chapter Image">`;
+      }
+      
+      html += `<div class="chapter-preview">${chapter.content}</div>`;
+      
+      html += '<h5 class="mt-3">Choices:</h5>';
+      chapter.choices.forEach((choice, index) => {
+        const letter = String.fromCharCode(97 + index);
+        html += `<div class="choice-item"><strong>!${letter}</strong> - ${choice}</div>`;
+      });
+      
+      display.innerHTML = html;
+    }
+
+    async function loadMemory() {
+      try {
+        const response = await fetch('/api/interactive-story/memory');
+        const memory = await response.json();
+        
+        // Characters
+        const charList = document.getElementById('charactersList');
+        charList.innerHTML = memory.characters.map(char => 
+          `<div class="memory-tag"><i class="fas fa-user"></i> ${char.name}</div>`
+        ).join('');
+        
+        // Locations
+        const locList = document.getElementById('locationsList');
+        locList.innerHTML = memory.locations.map(loc => 
+          `<div class="memory-tag"><i class="fas fa-map-marker-alt"></i> ${loc.name}</div>`
+        ).join('');
+        
+        // Items
+        const itemList = document.getElementById('itemsList');
+        itemList.innerHTML = memory.items.map(item => 
+          `<div class="memory-tag"><i class="fas fa-gem"></i> ${item.name}</div>`
+        ).join('');
+      } catch (error) {
+        console.error('Error loading memory:', error);
+      }
+    }
+
+    async function loadTopVoters() {
+      try {
+        const response = await fetch('/api/interactive-story/top-voters');
+        const voters = await response.json();
+        
+        const votersList = document.getElementById('topVotersList');
+        votersList.innerHTML = voters.map((voter, index) => `
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span><strong>#${index + 1}</strong> ${voter.username}</span>
+            <span class="badge bg-primary">${voter.votes_cast} votes</span>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading top voters:', error);
+      }
+    }
+
+    // Event handlers
+    document.getElementById('configForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const config = {
+        siliconFlowApiKey: document.getElementById('apiKey').value,
+        defaultModel: document.getElementById('defaultModel').value,
+        defaultImageModel: document.getElementById('defaultImageModel').value,
+        votingDuration: parseInt(document.getElementById('votingDuration').value),
+        numChoices: parseInt(document.getElementById('numChoices').value),
+        autoGenerateImages: document.getElementById('autoGenerateImages').checked,
+        autoGenerateTTS: document.getElementById('autoGenerateTTS').checked
+      };
+      
+      try {
+        const response = await fetch('/api/interactive-story/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
+        
+        if (response.ok) {
+          alert('Configuration saved successfully!');
+          loadStatus();
+        }
+      } catch (error) {
+        alert('Error saving configuration: ' + error.message);
+      }
+    });
+
+    document.getElementById('startStoryBtn').addEventListener('click', async () => {
+      if (!selectedTheme) {
+        alert('Please select a theme first!');
+        return;
+      }
+      
+      const outline = document.getElementById('storyOutline').value;
+      const model = document.getElementById('defaultModel').value;
+      
+      try {
+        document.getElementById('startStoryBtn').disabled = true;
+        document.getElementById('startStoryBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        
+        const response = await fetch('/api/interactive-story/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ theme: selectedTheme, outline, model })
+        });
+        
+        if (response.ok) {
+          loadStatus();
+        } else {
+          const error = await response.json();
+          alert('Error starting story: ' + error.error);
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      } finally {
+        document.getElementById('startStoryBtn').disabled = false;
+        document.getElementById('startStoryBtn').innerHTML = '<i class="fas fa-rocket"></i> Start Story';
+      }
+    });
+
+    document.getElementById('endStoryBtn').addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to end the current story?')) {
+        return;
+      }
+      
+      try {
+        await fetch('/api/interactive-story/end', { method: 'POST' });
+        loadStatus();
+      } catch (error) {
+        alert('Error ending story: ' + error.message);
+      }
+    });
+
+    document.getElementById('forceVoteEndBtn').addEventListener('click', () => {
+      socket.emit('story:force-vote-end');
+    });
+
+    document.getElementById('regenerateImageBtn').addEventListener('click', () => {
+      socket.emit('story:regenerate-image', {});
+    });
+
+    // Socket.io event listeners
+    socket.on('story:chapter-ready', (chapter) => {
+      loadStatus();
+    });
+
+    socket.on('story:voting-started', () => {
+      loadStatus();
+    });
+
+    socket.on('story:voting-ended', (results) => {
+      loadStatus();
+      loadTopVoters();
+    });
+
+    socket.on('story:vote-update', () => {
+      loadTopVoters();
+    });
+
+    socket.on('story:image-updated', () => {
+      if (currentStatus && currentStatus.chapter) {
+        displayChapter(currentStatus.chapter);
+      }
+    });
+
+    // Initialize
+    loadStatus();
+    loadConfig();
+    loadThemes();
+    
+    // Refresh status every 2 seconds
+    setInterval(loadStatus, 2000);
+  </script>
+</body>
+</html>
