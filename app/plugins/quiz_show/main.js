@@ -154,6 +154,9 @@ class QuizShowPlugin {
         // Load quiz-start gift configuration from database
         this.loadQuizStartGiftConfig();
 
+        // Load leaderboard display configuration from database
+        this.loadLeaderboardDisplayConfig();
+
         // Register routes
         this.registerRoutes();
 
@@ -643,6 +646,24 @@ class QuizShowPlugin {
             }
         } catch (error) {
             this.api.log('Error loading quiz-start gift config: ' + error.message, 'warn');
+        }
+    }
+
+    loadLeaderboardDisplayConfig() {
+        try {
+            const config = this.db.prepare('SELECT * FROM leaderboard_display_config WHERE id = 1').get();
+            if (config) {
+                this.config.leaderboardShowAfterRound = config.show_after_round;
+                this.config.leaderboardShowAfterQuestion = config.show_after_question;
+                this.config.leaderboardQuestionDisplayType = config.question_display_type;
+                this.config.leaderboardRoundDisplayType = config.round_display_type;
+                this.config.leaderboardEndGameDisplayType = config.end_game_display_type;
+                this.config.leaderboardAutoHideDelay = config.auto_hide_delay;
+                this.config.leaderboardAnimationStyle = config.animation_style;
+                this.api.log(`Leaderboard display config loaded`, 'info');
+            }
+        } catch (error) {
+            this.api.log('Error loading leaderboard display config: ' + error.message, 'warn');
         }
     }
 
@@ -2668,13 +2689,20 @@ class QuizShowPlugin {
         this.api.log(`Auto mode check: autoMode=${this.config.autoMode}, autoRestartRound=${this.config.autoRestartRound}, totalRoundsReached=${totalRoundsReached}, currentRound=${this.gameState.currentRound}, totalRounds=${this.config.totalRounds}`, 'debug');
 
         // Auto mode - automatically start next round after delay (if autoRestartRound is enabled)
-        // The total delay is answerDisplayDuration + autoModeDelay to wait for answer display
+        // The total delay must account for: answer display + leaderboard display (if shown) + auto delay
         if (this.config.autoMode && this.config.autoRestartRound !== false && !totalRoundsReached) {
             const answerDisplayDuration = (this.config.answerDisplayDuration || 5) * 1000;
             const autoDelay = (this.config.autoModeDelay || 5) * 1000;
-            const totalDelay = answerDisplayDuration + autoDelay;
             
-            this.api.log(`Auto mode: scheduling next round in ${totalDelay}ms (answerDisplay: ${answerDisplayDuration}ms + autoDelay: ${autoDelay}ms)`, 'info');
+            // Add leaderboard display duration if leaderboard is shown after question or round
+            let leaderboardDisplayDuration = 0;
+            if (this.config.leaderboardShowAfterQuestion || this.config.leaderboardShowAfterRound) {
+                leaderboardDisplayDuration = (this.config.leaderboardAutoHideDelay || 10) * 1000;
+            }
+            
+            const totalDelay = answerDisplayDuration + leaderboardDisplayDuration + autoDelay;
+            
+            this.api.log(`Auto mode: scheduling next round in ${totalDelay}ms (answerDisplay: ${answerDisplayDuration}ms + leaderboardDisplay: ${leaderboardDisplayDuration}ms + autoDelay: ${autoDelay}ms)`, 'info');
             
             this.autoModeTimeout = setTimeout(() => {
                 this.autoModeTimeout = null;
