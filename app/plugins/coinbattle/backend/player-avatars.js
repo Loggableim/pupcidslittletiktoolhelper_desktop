@@ -92,7 +92,7 @@ class PlayerAvatarSystem {
    * Initialize database tables
    */
   initializeTables() {
-    this.db.db.prepare(`
+    this.db.prepare(`
       CREATE TABLE IF NOT EXISTS coinbattle_player_avatars (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT UNIQUE NOT NULL,
@@ -118,7 +118,7 @@ class PlayerAvatarSystem {
     }
     
     try {
-      const row = this.db.db.prepare(`
+      const row = this.db.prepare(`
         SELECT * FROM coinbattle_player_avatars WHERE user_id = ?
       `).get(userId);
       
@@ -153,7 +153,7 @@ class PlayerAvatarSystem {
    */
   setPlayerAvatar(userId, avatar, avatarSet = 'animals') {
     try {
-      this.db.db.prepare(`
+      this.db.prepare(`
         INSERT INTO coinbattle_player_avatars (user_id, avatar, avatar_set, updated_at)
         VALUES (?, ?, ?, strftime('%s', 'now'))
         ON CONFLICT(user_id) DO UPDATE SET
@@ -193,7 +193,7 @@ class PlayerAvatarSystem {
     }
     
     try {
-      this.db.db.prepare(`
+      this.db.prepare(`
         UPDATE coinbattle_player_avatars
         SET skin_id = ?, frame_color = ?, updated_at = strftime('%s', 'now')
         WHERE user_id = ?
@@ -230,7 +230,7 @@ class PlayerAvatarSystem {
     playerData.unlockedSkins.push(skinId);
     
     try {
-      this.db.db.prepare(`
+      this.db.prepare(`
         UPDATE coinbattle_player_avatars
         SET unlocked_skins = ?, updated_at = strftime('%s', 'now')
         WHERE user_id = ?

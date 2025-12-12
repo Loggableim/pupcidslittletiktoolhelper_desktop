@@ -17,6 +17,13 @@ class CoinBattleDatabase {
   }
 
   /**
+   * Get the raw database instance (for direct access by subsystems)
+   */
+  getRawDb() {
+    return this.db;
+  }
+
+  /**
    * Initialize all database tables for CoinBattle
    */
   initializeTables() {

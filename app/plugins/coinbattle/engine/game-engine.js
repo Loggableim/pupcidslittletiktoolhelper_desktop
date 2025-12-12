@@ -447,7 +447,7 @@ class CoinBattleEngine {
    */
   assignTeam(userId, playerId) {
     // Check if player already has a team in this match
-    const participant = this.db.db.prepare(`
+    const participant = this.db.getRawDb().prepare(`
       SELECT team FROM coinbattle_match_participants
       WHERE match_id = ? AND player_id = ?
     `).get(this.currentMatch.id, playerId);

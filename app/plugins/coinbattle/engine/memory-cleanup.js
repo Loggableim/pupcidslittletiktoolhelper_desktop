@@ -87,7 +87,7 @@ class MemoryCleanupScheduler {
     
     try {
       // Find old completed matches
-      const oldMatches = this.db.db.prepare(`
+      const oldMatches = this.db.prepare(`
         SELECT id, match_uuid, end_time, total_coins, total_gifts
         FROM coinbattle_matches
         WHERE status = 'completed'
@@ -100,7 +100,7 @@ class MemoryCleanupScheduler {
       }
       
       // Create archive table if not exists
-      this.db.db.prepare(`
+      this.db.prepare(`
         CREATE TABLE IF NOT EXISTS coinbattle_archived_matches (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           match_id INTEGER NOT NULL,
@@ -114,7 +114,7 @@ class MemoryCleanupScheduler {
       `).run();
       
       // Archive each match
-      const archiveStmt = this.db.db.prepare(`
+      const archiveStmt = this.db.prepare(`
         INSERT INTO coinbattle_archived_matches 
         (match_id, match_uuid, end_time, total_coins, total_gifts, participant_count)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -122,7 +122,7 @@ class MemoryCleanupScheduler {
       
       for (const match of oldMatches) {
         // Get participant count
-        const participantCount = this.db.db.prepare(`
+        const participantCount = this.db.prepare(`
           SELECT COUNT(*) as count FROM coinbattle_match_participants WHERE match_id = ?
         `).get(match.id).count;
         
@@ -152,7 +152,7 @@ class MemoryCleanupScheduler {
     const cutoffTime = Date.now() - (this.config.eventCacheRetentionHours * 60 * 60 * 1000);
     
     try {
-      const result = this.db.db.prepare(`
+      const result = this.db.prepare(`
         DELETE FROM coinbattle_event_cache
         WHERE expires_at < ?
       `).run(cutoffTime);
@@ -187,11 +187,11 @@ class MemoryCleanupScheduler {
         this.logger.info('🧹 Running database optimization...');
         
         // ANALYZE updates statistics for query optimizer
-        this.db.db.prepare('ANALYZE').run();
+        this.db.prepare('ANALYZE').run();
         
         // VACUUM reclaims space (only every 10 cleanups to reduce I/O)
         if (this.stats.totalCleanups % 50 === 0) {
-          this.db.db.prepare('VACUUM').run();
+          this.db.prepare('VACUUM').run();
           this.logger.info('🧹 Database VACUUM completed');
         }
       }
@@ -206,17 +206,17 @@ class MemoryCleanupScheduler {
   async cleanMatch(matchId) {
     try {
       // Delete gift events for this match
-      const eventsDeleted = this.db.db.prepare(`
+      const eventsDeleted = this.db.prepare(`
         DELETE FROM coinbattle_gift_events WHERE match_id = ?
       `).run(matchId).changes || 0;
       
       // Delete match participants
-      this.db.db.prepare(`
+      this.db.prepare(`
         DELETE FROM coinbattle_match_participants WHERE match_id = ?
       `).run(matchId);
       
       // Delete multiplier events
-      this.db.db.prepare(`
+      this.db.prepare(`
         DELETE FROM coinbattle_multiplier_events WHERE match_id = ?
       `).run(matchId);
       
@@ -235,9 +235,9 @@ class MemoryCleanupScheduler {
   getMemoryUsage() {
     try {
       // Count total records
-      const matchCount = this.db.db.prepare('SELECT COUNT(*) as count FROM coinbattle_matches').get().count;
-      const eventCount = this.db.db.prepare('SELECT COUNT(*) as count FROM coinbattle_gift_events').get().count;
-      const cacheCount = this.db.db.prepare('SELECT COUNT(*) as count FROM coinbattle_event_cache').get().count;
+      const matchCount = this.db.prepare('SELECT COUNT(*) as count FROM coinbattle_matches').get().count;
+      const eventCount = this.db.prepare('SELECT COUNT(*) as count FROM coinbattle_gift_events').get().count;
+      const cacheCount = this.db.prepare('SELECT COUNT(*) as count FROM coinbattle_event_cache').get().count;
       
       // Estimate sizes (rough approximation)
       const estimatedSize = {

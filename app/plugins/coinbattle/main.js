@@ -40,26 +40,29 @@ class CoinBattlePlugin {
       this.db = new CoinBattleDatabase(mainDb, this.logger);
       this.db.initializeTables();
 
+      // Get raw database instance for subsystems that need direct access
+      const rawDb = this.db.getRawDb();
+
       // Initialize game engine
       this.engine = new CoinBattleEngine(this.db, this.io, this.logger);
 
       // Initialize performance manager
-      this.performanceManager = new PerformanceManager(this.db, this.io, this.logger);
+      this.performanceManager = new PerformanceManager(rawDb, this.io, this.logger);
       this.api.log('✅ Performance Manager initialized', 'info');
 
       // Initialize King of the Hill mode
-      this.kothMode = new KingOfTheHillMode(this.db, this.io, this.logger);
+      this.kothMode = new KingOfTheHillMode(rawDb, this.io, this.logger);
       this.api.log('✅ King of the Hill Mode initialized', 'info');
 
       // Initialize Friend Challenge system
-      this.friendChallenges = new FriendChallengeSystem(this.db, this.io, this.engine, this.logger);
+      this.friendChallenges = new FriendChallengeSystem(rawDb, this.io, this.engine, this.logger);
       
       // Try to register with GCCE if available
       this.registerWithGCCE();
       this.api.log('✅ Friend Challenges initialized', 'info');
 
       // Initialize Avatar system
-      this.avatarSystem = new PlayerAvatarSystem(this.db, this.logger);
+      this.avatarSystem = new PlayerAvatarSystem(rawDb, this.logger);
       this.avatarSystem.initializeTables();
       this.api.log('✅ Player Avatar System initialized', 'info');
 
@@ -665,9 +668,10 @@ class CoinBattlePlugin {
     this.api.registerRoute('GET', '/api/plugins/coinbattle/export/:matchId', (req, res) => {
       try {
         const { matchId } = req.params;
-        const match = this.db.db.prepare('SELECT * FROM coinbattle_matches WHERE id = ?').get(matchId);
+        const rawDb = this.db.getRawDb();
+        const match = rawDb.prepare('SELECT * FROM coinbattle_matches WHERE id = ?').get(matchId);
         const participants = this.db.getMatchLeaderboard(matchId, 100);
-        const gifts = this.db.db.prepare(`
+        const gifts = rawDb.prepare(`
           SELECT * FROM coinbattle_gift_events WHERE match_id = ?
         `).all(matchId);
 
@@ -726,7 +730,8 @@ class CoinBattlePlugin {
         const { userId, team } = data;
         if (this.engine.currentMatch) {
           // Update team in database
-          this.db.db.prepare(`
+          const rawDb = this.db.getRawDb();
+          rawDb.prepare(`
             UPDATE coinbattle_match_participants
             SET team = ?
             WHERE match_id = ? AND user_id = ?
