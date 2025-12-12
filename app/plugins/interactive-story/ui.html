@@ -4,55 +4,262 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Interactive Story Generator - Admin Panel</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
+    /* Reset and base styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
     body {
       background: #1a1a2e;
       color: #eee;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.5;
     }
+    
+    /* Container */
     .container {
       max-width: 1400px;
+      margin: 0 auto;
       padding: 20px;
     }
+    
+    /* Typography */
+    h1, h2, h3, h4, h5, h6 {
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.75rem; }
+    h3 { font-size: 1.5rem; }
+    h4 { font-size: 1.25rem; }
+    h5 { font-size: 1.1rem; }
+    h6 { font-size: 1rem; }
+    
+    /* Utility classes */
+    .mb-1 { margin-bottom: 0.25rem; }
+    .mb-2 { margin-bottom: 0.5rem; }
+    .mb-3 { margin-bottom: 1rem; }
+    .mb-4 { margin-bottom: 1.5rem; }
+    .mt-3 { margin-top: 1rem; }
+    .mt-4 { margin-top: 1.5rem; }
+    .d-flex { display: flex; }
+    .d-block { display: block; }
+    .d-inline-block { display: inline-block; }
+    .justify-content-between { justify-content: space-between; }
+    .align-items-center { align-items: center; }
+    .float-end { float: right; }
+    .text-muted { color: #6c757d; }
+    .w-100 { width: 100%; }
+    
+    /* Grid system */
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      margin: 0 -10px;
+    }
+    .col-md-2, .col-md-3, .col-md-4, .col-md-6, .col-md-8, .col-md-12 {
+      padding: 0 10px;
+      margin-bottom: 15px;
+    }
+    .col-md-2 { flex: 0 0 16.666%; max-width: 16.666%; }
+    .col-md-3 { flex: 0 0 25%; max-width: 25%; }
+    .col-md-4 { flex: 0 0 33.333%; max-width: 33.333%; }
+    .col-md-6 { flex: 0 0 50%; max-width: 50%; }
+    .col-md-8 { flex: 0 0 66.666%; max-width: 66.666%; }
+    .col-md-12 { flex: 0 0 100%; max-width: 100%; }
+    
+    /* Cards */
     .card {
       background: #16213e;
       border: 1px solid #0f3460;
+      border-radius: 8px;
       margin-bottom: 20px;
+      overflow: hidden;
     }
     .card-header {
       background: #0f3460;
       border-bottom: 1px solid #e94560;
       font-weight: bold;
+      padding: 15px 20px;
+      font-size: 1.1rem;
     }
-    .btn-primary {
-      background: #e94560;
-      border-color: #e94560;
+    .card-body {
+      padding: 20px;
     }
-    .btn-primary:hover {
-      background: #c73a52;
-      border-color: #c73a52;
-    }
-    .btn-success {
-      background: #28a745;
-      border-color: #28a745;
+    
+    /* Forms */
+    .form-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
     }
     .form-control, .form-select {
+      display: block;
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-size: 1rem;
+      line-height: 1.5;
       background: #1a1a2e;
       color: #eee;
       border: 1px solid #0f3460;
+      border-radius: 4px;
+      transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
     }
     .form-control:focus, .form-select:focus {
       background: #1a1a2e;
       color: #eee;
       border-color: #e94560;
+      outline: 0;
       box-shadow: 0 0 0 0.2rem rgba(233, 69, 96, 0.25);
     }
-    .badge {
-      font-size: 0.9em;
-      padding: 5px 10px;
+    .form-select {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23eee' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 16px 12px;
+      padding-right: 2.25rem;
     }
+    textarea.form-control {
+      min-height: 80px;
+      resize: vertical;
+    }
+    .form-check {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    .form-check-input {
+      width: 1.25em;
+      height: 1.25em;
+      margin-top: 0.125em;
+      margin-right: 0.5em;
+      vertical-align: top;
+      background-color: #1a1a2e;
+      border: 1px solid #0f3460;
+      border-radius: 0.25em;
+      cursor: pointer;
+    }
+    .form-check-input:checked {
+      background-color: #e94560;
+      border-color: #e94560;
+    }
+    .form-check-label {
+      cursor: pointer;
+    }
+    
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      font-weight: 400;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: middle;
+      user-select: none;
+      border: 1px solid transparent;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      line-height: 1.5;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease-in-out;
+      text-decoration: none;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      color: #fff;
+      background: #e94560;
+      border-color: #e94560;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #c73a52;
+      border-color: #c73a52;
+    }
+    .btn-success {
+      color: #fff;
+      background: #28a745;
+      border-color: #28a745;
+    }
+    .btn-success:hover:not(:disabled) {
+      background: #218838;
+      border-color: #218838;
+    }
+    .btn-danger {
+      color: #fff;
+      background: #dc3545;
+      border-color: #dc3545;
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: #c82333;
+      border-color: #c82333;
+    }
+    .btn-secondary {
+      color: #fff;
+      background: #6c757d;
+      border-color: #6c757d;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: #5a6268;
+      border-color: #5a6268;
+    }
+    .btn-outline-light {
+      color: #eee;
+      border-color: #eee;
+      background: transparent;
+    }
+    .btn-outline-light:hover:not(:disabled) {
+      color: #1a1a2e;
+      background: #eee;
+    }
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.875rem;
+      border-radius: 0.2rem;
+    }
+    
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 0.35em 0.65em;
+      font-size: 0.85em;
+      font-weight: 600;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      vertical-align: baseline;
+      border-radius: 0.25rem;
+    }
+    .bg-success { background-color: #28a745; color: #fff; }
+    .bg-warning { background-color: #ffc107; color: #000; }
+    .bg-danger { background-color: #dc3545; color: #fff; }
+    .bg-info { background-color: #17a2b8; color: #fff; }
+    .bg-primary { background-color: #e94560; color: #fff; }
+    .bg-secondary { background-color: #6c757d; color: #fff; }
+    
+    /* Alerts */
+    .alert {
+      padding: 0.75rem 1.25rem;
+      margin-bottom: 1rem;
+      border: 1px solid transparent;
+      border-radius: 0.25rem;
+    }
+    .alert-info {
+      color: #0c5460;
+      background-color: #d1ecf1;
+      border-color: #bee5eb;
+    }
+    .alert-success {
+      color: #155724;
+      background-color: #d4edda;
+      border-color: #c3e6cb;
+    }
+    
+    /* Custom styles */
     .status-indicator {
       width: 12px;
       height: 12px;
@@ -118,13 +325,13 @@
 <body>
   <div class="container">
     <h1 class="mb-4">
-      <i class="fas fa-book-open"></i> Interactive Story Generator
+      📖 Interactive Story Generator
     </h1>
 
     <!-- Status Card -->
     <div class="card">
       <div class="card-header">
-        <i class="fas fa-info-circle"></i> Status
+        ℹ️ Status
       </div>
       <div class="card-body">
         <div class="row">
@@ -153,7 +360,7 @@
     <!-- Configuration Card -->
     <div class="card">
       <div class="card-header">
-        <i class="fas fa-cog"></i> Configuration
+        ⚙️ Configuration
       </div>
       <div class="card-body">
         <form id="configForm">
@@ -239,7 +446,7 @@
           </div>
 
           <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save"></i> Save Configuration
+            💾 Save Configuration
           </button>
         </form>
       </div>
@@ -248,7 +455,7 @@
     <!-- Story Controls Card -->
     <div class="card" id="storyControls">
       <div class="card-header">
-        <i class="fas fa-play-circle"></i> Story Controls
+        ▶️ Story Controls
       </div>
       <div class="card-body">
         <div id="startStorySection">
@@ -268,7 +475,7 @@
           </div>
 
           <button class="btn btn-success btn-lg" id="startStoryBtn">
-            <i class="fas fa-rocket"></i> Start Story
+            🚀 Start Story
           </button>
         </div>
 
@@ -276,7 +483,7 @@
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5>Active Story</h5>
             <button class="btn btn-danger" id="endStoryBtn">
-              <i class="fas fa-stop"></i> End Story
+              ⏹️ End Story
             </button>
           </div>
           
@@ -285,17 +492,17 @@
           <!-- Admin Choice Selection (Offline Mode) -->
           <div id="adminChoiceSection" class="mt-3" style="display: none;">
             <div class="alert alert-info">
-              <i class="fas fa-user-shield"></i> <strong>Offline/Test Mode:</strong> Wähle den nächsten Pfad selbst
+              👤 <strong>Offline/Test Mode:</strong> Wähle den nächsten Pfad selbst
             </div>
             <div id="adminChoiceButtons"></div>
           </div>
           
           <div class="mt-3">
             <button class="btn btn-primary" id="forceVoteEndBtn" style="display: none;">
-              <i class="fas fa-check"></i> Force Vote End
+              ✓ Force Vote End
             </button>
             <button class="btn btn-secondary" id="regenerateImageBtn">
-              <i class="fas fa-image"></i> Regenerate Image
+              🖼️ Regenerate Image
             </button>
           </div>
         </div>
@@ -305,9 +512,9 @@
     <!-- Debug Logging Card -->
     <div class="card" id="debugLogCard" style="display: none;">
       <div class="card-header">
-        <i class="fas fa-bug"></i> Debug Logs
+        🐛 Debug Logs
         <button class="btn btn-sm btn-outline-light float-end" id="clearLogsBtn">
-          <i class="fas fa-trash"></i> Clear
+          🗑️ Clear
         </button>
       </div>
       <div class="card-body">
@@ -320,20 +527,20 @@
     <!-- Story Memory Card -->
     <div class="card" id="memoryCard" style="display: none;">
       <div class="card-header">
-        <i class="fas fa-brain"></i> Story Memory / Lore Database
+        🧠 Story Memory / Lore Database
       </div>
       <div class="card-body">
         <div class="row">
           <div class="col-md-4">
-            <h6><i class="fas fa-users"></i> Characters</h6>
+            <h6>👥 Characters</h6>
             <div id="charactersList"></div>
           </div>
           <div class="col-md-4">
-            <h6><i class="fas fa-map-marker-alt"></i> Locations</h6>
+            <h6>📍 Locations</h6>
             <div id="locationsList"></div>
           </div>
           <div class="col-md-4">
-            <h6><i class="fas fa-gem"></i> Items</h6>
+            <h6>💎 Items</h6>
             <div id="itemsList"></div>
           </div>
         </div>
@@ -343,7 +550,7 @@
     <!-- Top Voters Card -->
     <div class="card" id="topVotersCard" style="display: none;">
       <div class="card-header">
-        <i class="fas fa-trophy"></i> Top Voters
+        🏆 Top Voters
       </div>
       <div class="card-body">
         <div id="topVotersList"></div>
@@ -352,7 +559,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     const socket = io();
     let selectedTheme = null;
@@ -515,7 +721,7 @@
           const letter = String.fromCharCode(97 + index).toUpperCase();
           html += `
             <button class="btn btn-primary mb-2 w-100" onclick="selectAdminChoice(${index})">
-              <i class="fas fa-arrow-right"></i> Option ${letter}: ${choice}
+              ➡️ Option ${letter}: ${choice}
             </button>
           `;
         });
@@ -559,19 +765,19 @@
         // Characters
         const charList = document.getElementById('charactersList');
         charList.innerHTML = memory.characters.map(char => 
-          `<div class="memory-tag"><i class="fas fa-user"></i> ${char.name}</div>`
+          `<div class="memory-tag">👤 ${char.name}</div>`
         ).join('');
         
         // Locations
         const locList = document.getElementById('locationsList');
         locList.innerHTML = memory.locations.map(loc => 
-          `<div class="memory-tag"><i class="fas fa-map-marker-alt"></i> ${loc.name}</div>`
+          `<div class="memory-tag">📍 ${loc.name}</div>`
         ).join('');
         
         // Items
         const itemList = document.getElementById('itemsList');
         itemList.innerHTML = memory.items.map(item => 
-          `<div class="memory-tag"><i class="fas fa-gem"></i> ${item.name}</div>`
+          `<div class="memory-tag">💎 ${item.name}</div>`
         ).join('');
       } catch (error) {
         console.error('Error loading memory:', error);
@@ -639,7 +845,7 @@
       
       try {
         document.getElementById('startStoryBtn').disabled = true;
-        document.getElementById('startStoryBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        document.getElementById('startStoryBtn').innerHTML = '⏳ Generating...';
         
         const response = await fetch('/api/interactive-story/start', {
           method: 'POST',
@@ -657,7 +863,7 @@
         alert('Error: ' + error.message);
       } finally {
         document.getElementById('startStoryBtn').disabled = false;
-        document.getElementById('startStoryBtn').innerHTML = '<i class="fas fa-rocket"></i> Start Story';
+        document.getElementById('startStoryBtn').innerHTML = '🚀 Start Story';
       }
     });
 
