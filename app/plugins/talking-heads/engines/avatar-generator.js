@@ -195,7 +195,7 @@ Output Requirements:
       return filepath;
 
     } catch (error) {
-      this.logger.error(`TalkingHeads: Failed to generate avatar for ${username}`, error);
+      this.logger.error(`TalkingHeads: Failed to generate avatar for ${username}: ${error.message}`);
       throw new Error(`Avatar generation failed: ${error.message}`);
     }
   }
@@ -235,7 +235,7 @@ Output Requirements:
 
       return !!(response && response.images);
     } catch (error) {
-      this.logger.error('TalkingHeads: API connection test failed', error);
+      this.logger.error(`TalkingHeads: API connection test failed: ${error.message}`);
       return false;
     }
   }

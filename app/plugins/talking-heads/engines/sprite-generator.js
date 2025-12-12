@@ -220,7 +220,7 @@ Output Requirements:
           this.logger.info(`TalkingHeads: Sprite frame "${frameType}" generated for ${username}`);
 
         } catch (error) {
-          this.logger.error(`TalkingHeads: Failed to generate sprite frame "${frameType}"`, error);
+          this.logger.error(`TalkingHeads: Failed to generate sprite frame "${frameType}": ${error.message}`);
           throw error;
         }
       }
@@ -229,7 +229,7 @@ Output Requirements:
       return spritePaths;
 
     } catch (error) {
-      this.logger.error(`TalkingHeads: Sprite generation failed for ${username}`, error);
+      this.logger.error(`TalkingHeads: Sprite generation failed for ${username}: ${error.message}`);
       throw new Error(`Sprite generation failed: ${error.message}`);
     }
   }
@@ -287,7 +287,7 @@ Output Requirements:
       return filepath;
 
     } catch (error) {
-      this.logger.error(`TalkingHeads: Failed to generate sprite frame "${frameType}"`, error);
+      this.logger.error(`TalkingHeads: Failed to generate sprite frame "${frameType}": ${error.message}`);
       throw error;
     }
   }
