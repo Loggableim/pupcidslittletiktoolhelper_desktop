@@ -232,6 +232,11 @@
         }
         
         /* Preview Styles */
+        :root {
+            --aspect-ratio-portrait: 177.78%; /* 9:16 */
+            --aspect-ratio-landscape: 56.25%; /* 16:9 */
+        }
+        
         .preview-container {
             position: relative;
             background: #1a1a1a;
@@ -244,12 +249,12 @@
         .preview-wrapper {
             position: relative;
             width: 100%;
-            padding-bottom: 177.78%; /* 9:16 aspect ratio by default */
+            padding-bottom: var(--aspect-ratio-portrait);
             background: repeating-conic-gradient(#2a2a2a 0% 25%, #1a1a1a 0% 50%) 50% / 20px 20px;
         }
         
         .preview-wrapper.landscape {
-            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            padding-bottom: var(--aspect-ratio-landscape);
         }
         
         .preview-iframe {
@@ -556,6 +561,12 @@
     
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        // Configuration constants
+        const LANDSCAPE_PRESETS = ['tiktok-landscape', 'hd-landscape', '2k-landscape', '4k-landscape'];
+        const REALTIME_UPDATE_ELEMENTS = ['effectType', 'frameMode', 'flameColor', 'backgroundTint', 
+                                          'enableGlow', 'enableAdditiveBlend', 'maskOnlyEdges', 'highDPI'];
+        const CUSTOM_RESOLUTION_INPUTS = ['customWidth', 'customHeight'];
+        
         // Initialize socket.io with error handling
         let socket = null;
         try {
@@ -642,8 +653,7 @@
             const preset = document.getElementById('resolutionPreset').value;
             const wrapper = document.getElementById('previewWrapper');
             
-            const landscapePresets = ['tiktok-landscape', 'hd-landscape', '2k-landscape', '4k-landscape'];
-            const isLandscape = landscapePresets.includes(preset);
+            const isLandscape = LANDSCAPE_PRESETS.includes(preset);
             
             if (isLandscape) {
                 wrapper.classList.add('landscape');
@@ -726,6 +736,12 @@
         
         // Collect config from form
         function collectConfig() {
+            // Get and validate frame position values
+            const frameX = Math.max(0, Math.min(100, parseFloat(document.getElementById('frameX').value) || 0));
+            const frameY = Math.max(0, Math.min(100, parseFloat(document.getElementById('frameY').value) || 0));
+            const frameWidth = Math.max(10, Math.min(100, parseFloat(document.getElementById('frameWidth').value) || 100));
+            const frameHeight = Math.max(10, Math.min(100, parseFloat(document.getElementById('frameHeight').value) || 100));
+            
             return {
                 effectType: document.getElementById('effectType').value,
                 resolutionPreset: document.getElementById('resolutionPreset').value,
@@ -745,10 +761,10 @@
                 highDPI: document.getElementById('highDPI').checked,
                 // Currently single-frame only, but array structure supports future multi-frame feature
                 framePositions: [{
-                    x: parseFloat(document.getElementById('frameX').value) || 0,
-                    y: parseFloat(document.getElementById('frameY').value) || 0,
-                    width: parseFloat(document.getElementById('frameWidth').value) || 100,
-                    height: parseFloat(document.getElementById('frameHeight').value) || 100
+                    x: frameX,
+                    y: frameY,
+                    width: frameWidth,
+                    height: frameHeight
                 }]
             };
         }
@@ -766,8 +782,7 @@
         });
         
         // Add real-time listeners to select, checkbox, and color inputs
-        ['effectType', 'frameMode', 'flameColor', 'backgroundTint', 
-         'enableGlow', 'enableAdditiveBlend', 'maskOnlyEdges', 'highDPI'].forEach(id => {
+        REALTIME_UPDATE_ELEMENTS.forEach(id => {
             const element = document.getElementById(id);
             if (element) {
                 element.addEventListener('change', () => {
@@ -779,7 +794,7 @@
         });
         
         // Add real-time listeners to custom resolution inputs
-        ['customWidth', 'customHeight'].forEach(id => {
+        CUSTOM_RESOLUTION_INPUTS.forEach(id => {
             const element = document.getElementById(id);
             if (element) {
                 element.addEventListener('input', () => {
