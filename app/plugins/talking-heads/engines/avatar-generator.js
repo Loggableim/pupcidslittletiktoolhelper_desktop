@@ -38,7 +38,11 @@ class AvatarGenerator {
           'Content-Length': Buffer.byteLength(postData),
           ...headers
         },
-        timeout: 60000
+        timeout: 60000,
+        // TLS configuration to fix SSL handshake failures
+        secureProtocol: 'TLS_method',
+        minVersion: 'TLSv1.2',
+        maxVersion: 'TLSv1.3'
       };
 
       const req = https.request(options, (res) => {
@@ -83,7 +87,20 @@ class AvatarGenerator {
    */
   async _httpsGetBuffer(url) {
     return new Promise((resolve, reject) => {
-      https.get(url, (res) => {
+      const urlObj = new URL(url);
+      
+      const options = {
+        hostname: urlObj.hostname,
+        port: urlObj.port || 443,
+        path: urlObj.pathname + urlObj.search,
+        method: 'GET',
+        // TLS configuration to fix SSL handshake failures
+        secureProtocol: 'TLS_method',
+        minVersion: 'TLSv1.2',
+        maxVersion: 'TLSv1.3'
+      };
+      
+      https.get(options, (res) => {
         const chunks = [];
 
         res.on('data', (chunk) => {
