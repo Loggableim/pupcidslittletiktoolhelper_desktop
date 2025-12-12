@@ -37,8 +37,15 @@ case 'gift':
     // Include timestamp rounded to nearest second to catch near-duplicate events
     // but allow legitimate streak updates
     if (data.timestamp) {
-        const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
-        components.push(roundedTime.toString());
+        try {
+            const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
+            if (!isNaN(roundedTime)) {
+                components.push(roundedTime.toString());
+            }
+        } catch (error) {
+            // Ignore invalid timestamps - hash will work without timestamp component
+            this.logger.debug(`[HASH] Invalid timestamp in gift event: ${data.timestamp}`);
+        }
     }
     break;
 ```
@@ -46,7 +53,9 @@ case 'gift':
 Also added debug logging to help diagnose gift processing:
 
 ```javascript
-this.logger.debug(`[GIFT FILTER] ${giftData.giftName}: streakable=${isStreakable}, streakEnd=${isStreakEnd}, willEmit=${!isStreakable || (isStreakable && isStreakEnd)}`);
+// Determine if this gift event should be emitted
+const shouldEmitGift = !isStreakable || (isStreakable && isStreakEnd);
+this.logger.debug(`[GIFT FILTER] ${giftData.giftName}: streakable=${isStreakable}, streakEnd=${isStreakEnd}, willEmit=${shouldEmitGift}`);
 ```
 
 ## Testing
@@ -59,8 +68,9 @@ Created comprehensive test suite in `/app/test/gift-deduplication.test.js` that 
 ✓ Streakable gift streak progression generates different hashes  
 ✓ Near-duplicate gifts within same second generate same hash (will be deduplicated)  
 ✓ Same gift from different users generates different hashes  
+✓ Invalid timestamps are handled gracefully
 
-All tests pass (7/7).
+All tests pass (8/8).
 
 ## How It Works
 

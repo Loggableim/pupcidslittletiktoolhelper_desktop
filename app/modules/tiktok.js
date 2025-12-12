@@ -1530,6 +1530,7 @@ class TikTokConnector extends EventEmitter {
                         }
                     } catch (error) {
                         // Ignore invalid timestamps - hash will work without timestamp component
+                        this.logger.debug(`[HASH] Invalid timestamp in gift event: ${data.timestamp}`);
                     }
                 }
                 break;
