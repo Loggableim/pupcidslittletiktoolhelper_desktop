@@ -664,6 +664,60 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/plugins/fireworks-webgpu/gpu/engine.js"></script>
+    <script>
+        // Dynamically load appropriate engine based on WebGPU availability
+        (async function() {
+            let enginePath = '/plugins/fireworks-webgpu/gpu/engine-canvas2d.js'; // Default to Canvas2D
+            let engineType = 'Canvas2D';
+            
+            // Check if WebGPU is available
+            if (navigator.gpu) {
+                try {
+                    const adapter = await navigator.gpu.requestAdapter({
+                        powerPreference: 'high-performance'
+                    });
+                    
+                    if (adapter) {
+                        // WebGPU is available, use WebGPU engine
+                        enginePath = '/plugins/fireworks-webgpu/gpu/engine.js';
+                        engineType = 'WebGPU';
+                        console.log('[Fireworks] WebGPU available - using WebGPU engine');
+                    } else {
+                        console.log('[Fireworks] WebGPU adapter not available - falling back to Canvas2D');
+                    }
+                } catch (error) {
+                    console.log('[Fireworks] WebGPU check failed - falling back to Canvas2D:', error);
+                }
+            } else {
+                console.log('[Fireworks] WebGPU not supported - using Canvas2D');
+            }
+            
+            // Update debug panel
+            const rendererTypeEl = document.getElementById('renderer-type');
+            if (rendererTypeEl) {
+                rendererTypeEl.textContent = engineType;
+            }
+            
+            // Load the selected engine
+            const script = document.createElement('script');
+            script.src = enginePath;
+            script.onerror = function() {
+                console.error('[Fireworks] Failed to load engine:', enginePath);
+                // Show error to user
+                const container = document.getElementById('fireworks-container');
+                if (container) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; text-align: center; z-index: 10000;';
+                    errorDiv.innerHTML = `
+                        <h2>Engine Load Failed</h2>
+                        <p>Failed to load fireworks engine: ${engineType}</p>
+                        <p style="font-size: 0.9em; margin-top: 10px;">Please check browser console for details</p>
+                    `;
+                    container.appendChild(errorDiv);
+                }
+            };
+            document.body.appendChild(script);
+        })();
+    </script>
 </body>
 </html>

@@ -86,8 +86,10 @@ const ShapeGenerators = {
             for (let i = 0; i < particlesPerRing; i++) {
                 const angle = (Math.PI * 2 * i) / particlesPerRing + (Math.random() - 0.5) * 0.2;
                 particles.push({
-                    vx: Math.cos(angle) * ringSpeed * 25, // Scale for WebGPU physics (pixels per frame at 60 FPS)
-                    vy: Math.sin(angle) * ringSpeed * 25
+                    vx: Math.cos(angle) * ringSpeed,
+                    vy: Math.sin(angle) * ringSpeed,
+                    willBurst: true, // Mark for secondary mini-burst
+                    burstDelay: 500 + Math.random() * 300 // 0.5-0.8s delay
                 });
             }
         }
@@ -110,8 +112,9 @@ const ShapeGenerators = {
                 const mag = Math.max(Math.sqrt(x*x + y*y), 1);
                 const speed = (0.15 + Math.random() * 0.05) * intensity * layerScale;
                 particles.push({
-                    vx: (x / mag) * speed * 8 * 25, // Scale for WebGPU physics
-                    vy: (y / mag) * speed * 8 * 25
+                    vx: (x / mag) * speed * 8,
+                    vy: (y / mag) * speed * 8,
+                    particleType: 'heart' // Mark as heart-shaped particles
                 });
             }
         }
@@ -135,8 +138,8 @@ const ShapeGenerators = {
                 const radiusMix = 0.8 + t * 0.4;
                 const speed = (2 + Math.random() * 1) * intensity * radiusMix;
                 particles.push({
-                    vx: Math.cos(angle) * speed * 25, // Scale for WebGPU physics
-                    vy: Math.sin(angle) * speed * 25
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed
                 });
             }
             
@@ -148,8 +151,8 @@ const ShapeGenerators = {
                 const radiusMix = 0.3 + t * 0.3;
                 const speed = (1.5 + Math.random() * 0.8) * intensity * radiusMix;
                 particles.push({
-                    vx: Math.cos(angle) * speed * 25, // Scale for WebGPU physics
-                    vy: Math.sin(angle) * speed * 25
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed
                 });
             }
         }
@@ -167,8 +170,10 @@ const ShapeGenerators = {
             const radius = (i / count) * intensity * 0.8;
             const speed = 1.5 + Math.random() * 1.5;
             particles.push({
-                vx: Math.cos(t + armOffset) * radius * speed * 25, // Scale for WebGPU physics
-                vy: Math.sin(t + armOffset) * radius * speed * 25
+                vx: Math.cos(t + armOffset) * radius * speed,
+                vy: Math.sin(t + armOffset) * radius * speed,
+                willSpiral: true, // Mark for secondary spiral burst
+                spiralDelay: 600 + Math.random() * 400 // 0.6-1.0s delay
             });
         }
         return particles;
@@ -186,8 +191,9 @@ const ShapeGenerators = {
             const speed = (0.8 + Math.random() * 0.4) * intensity;
             const offsetY = 0.6; // Position offset for center pad
             particles.push({
-                vx: Math.cos(angle) * radius * speed * 25, // Scale for WebGPU physics
-                vy: (Math.sin(angle) * radius * speed + offsetY * intensity) * 25
+                vx: Math.cos(angle) * radius * speed,
+                vy: (Math.sin(angle) * radius * speed) + (offsetY * intensity),
+                particleType: 'paw' // Paw emoji particles
             });
         }
         
@@ -210,8 +216,9 @@ const ShapeGenerators = {
                 const basey = Math.sin(toePos.angle) * toePos.distance;
                 
                 particles.push({
-                    vx: (basex + Math.cos(localAngle) * radius) * speed * 25, // Scale for WebGPU physics
-                    vy: (basey + Math.sin(localAngle) * radius) * speed * 25
+                    vx: (basex + Math.cos(localAngle) * radius) * speed,
+                    vy: (basey + Math.sin(localAngle) * radius) * speed,
+                    particleType: 'paw' // Paw emoji particles
                 });
             }
         }
@@ -231,8 +238,8 @@ const ShapeGenerators = {
                 const angle = (Math.PI * 2 * i) / ringParticles;
                 const speed = (3 + Math.random()) * intensity * ringRadius;
                 particles.push({
-                    vx: Math.cos(angle) * speed * 25, // Scale for WebGPU physics
-                    vy: Math.sin(angle) * speed * 25
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed
                 });
             }
         }
@@ -489,20 +496,7 @@ class Particle {
         this.ay += this.gravity;
     }
     
-    update() {
-        // Handle despawn fade effect
-        if (this.isDespawning) {
-            const despawnDuration = 1500; // 1.5 seconds
-            const elapsed = performance.now() - this.despawnStartTime;
-            const fadeProgress = Math.min(elapsed / despawnDuration, 1.0);
-            
-            this.alpha = Math.max(0, 1.0 - fadeProgress);
-            
-            if (fadeProgress >= 1.0) {
-                this.lifespan = 0;
-            }
-        }
-        
+    applyForces() {
         // Apply air resistance
         this.vx *= this.drag;
         this.vy *= this.drag;
@@ -511,27 +505,18 @@ class Particle {
         this.vx += this.ax;
         this.vy += this.ay;
         
+        // Clear acceleration
+        this.ax = 0;
+        this.ay = 0;
+    }
+    
+    move() {
         // Update position
         this.x += this.vx;
         this.y += this.vy;
         
-        // Clear acceleration
-        this.ax = 0;
-        this.ay = 0;
-        
         // Update rotation
         this.rotation += this.rotationSpeed;
-        
-        // Update lifespan for explosion particles
-        if (!this.isSeed && !this.isDespawning) {
-            this.lifespan -= this.decay;
-            this.alpha = Math.max(0, this.lifespan / this.maxLifespan);
-            
-            // Add sparkle flicker effect
-            if (this.isSparkle && Math.random() < 0.3) {
-                this.brightness = 80 + Math.random() * 20;
-            }
-        }
         
         // Store trail with fading
         const trailLength = 20;
@@ -555,6 +540,38 @@ class Particle {
         });
         
         this.age++;
+    }
+    
+    updateLife() {
+        // Handle despawn fade effect
+        if (this.isDespawning) {
+            const despawnDuration = 1500; // 1.5 seconds
+            const elapsed = performance.now() - this.despawnStartTime;
+            const fadeProgress = Math.min(elapsed / despawnDuration, 1.0);
+            
+            this.alpha = Math.max(0, 1.0 - fadeProgress);
+            
+            if (fadeProgress >= 1.0) {
+                this.lifespan = 0;
+            }
+        }
+        
+        // Update lifespan for explosion particles
+        if (!this.isSeed && !this.isDespawning) {
+            this.lifespan -= this.decay;
+            this.alpha = Math.max(0, this.lifespan / this.maxLifespan);
+            
+            // Add sparkle flicker effect
+            if (this.isSparkle && Math.random() < 0.3) {
+                this.brightness = 80 + Math.random() * 20;
+            }
+        }
+    }
+    
+    update() {
+        this.applyForces();
+        this.move();
+        this.updateLife();
     }
     
     isDone() {
@@ -750,21 +767,25 @@ class Firework {
     }
     
     update() {
-        // Update rocket
+        // Update rocket (CPU-side physics for precise control)
         if (this.rocket && !this.exploded) {
             this.rocket.applyGravity();
-            this.rocket.update();
+            this.rocket.applyForces();
+            this.rocket.move();
+            this.rocket.updateLife();
             
             if (this.shouldExplode()) {
                 this.explode();
             }
         }
         
-        // Update explosion particles
+        // Update explosion particles (CPU-side physics)
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
             p.applyGravity();
-            p.update();
+            p.applyForces();
+            p.move();
+            p.updateLife();
             
             // Check for secondary mini-burst
             if (p.willBurst && !p.hasBurst && performance.now() - p.burstTime >= p.burstDelay) {
@@ -791,11 +812,13 @@ class Firework {
             }
         }
         
-        // Update secondary explosions
+        // Update secondary explosions (CPU-side physics)
         for (let i = this.secondaryExplosions.length - 1; i >= 0; i--) {
             const p = this.secondaryExplosions[i];
             p.applyGravity();
-            p.update();
+            p.applyForces();
+            p.move();
+            p.updateLife();
             
             if (p.isDone()) {
                 this.secondaryExplosions.splice(i, 1);
@@ -1305,15 +1328,6 @@ class FireworksEngine {
             }
         }
         
-        // Update uniforms for compute shader (deltaTime, gravity, airResistance, padding)
-        const computeUniformData = new Float32Array([
-            deltaTime,
-            this.config.gravity,
-            this.config.airResistance,
-            0 // padding
-        ]);
-        this.device.queue.writeBuffer(this.computeUniformBuffer, 0, computeUniformData);
-        
         // Update uniforms for render shader (resolution.x, resolution.y, padding, padding)
         const renderUniformData = new Float32Array([
             this.width,
@@ -1323,17 +1337,12 @@ class FireworksEngine {
         ]);
         this.device.queue.writeBuffer(this.renderUniformBuffer, 0, renderUniformData);
         
-        // Compute pass - update particle physics
+        // Create command encoder
         const commandEncoder = this.device.createCommandEncoder();
         
-        if (this.particles.length > 0) {
-            const computePass = commandEncoder.beginComputePass();
-            computePass.setPipeline(this.computePipeline);
-            computePass.setBindGroup(0, this.computeBindGroup);
-            const workgroupCount = Math.ceil(this.particles.length / 64);
-            computePass.dispatchWorkgroups(workgroupCount);
-            computePass.end();
-        }
+        // NOTE: Compute pass DISABLED - we use CPU-side physics for proper feature support
+        // (secondary explosions, willBurst, willSpiral, etc. need CPU-side state)
+        // GPU is only used for rendering particles, not physics simulation
         
         // Render pass
         const textureView = this.context.getCurrentTexture().createView();
