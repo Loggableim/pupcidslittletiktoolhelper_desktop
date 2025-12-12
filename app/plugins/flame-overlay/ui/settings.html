@@ -616,7 +616,12 @@
         function refreshPreview() {
             const iframe = document.getElementById('previewIframe');
             if (previewActive) {
-                iframe.src = iframe.src; // Reload iframe
+                // Reliable iframe reload
+                const currentSrc = iframe.src;
+                iframe.src = 'about:blank';
+                setTimeout(() => {
+                    iframe.src = currentSrc;
+                }, 50);
             }
         }
         
@@ -649,22 +654,10 @@
         
         // Apply frame position
         function applyFramePosition() {
-            const x = parseFloat(document.getElementById('frameX').value);
-            const y = parseFloat(document.getElementById('frameY').value);
-            const width = parseFloat(document.getElementById('frameWidth').value);
-            const height = parseFloat(document.getElementById('frameHeight').value);
+            // collectConfig already includes framePositions from the input fields
+            const config = collectConfig();
             
-            // Save to config
-            const config = {
-                framePositions: [{
-                    x: x,
-                    y: y,
-                    width: width,
-                    height: height
-                }]
-            };
-            
-            // Update config
+            // Save complete config
             fetch('/api/flame-overlay/config', {
                 method: 'POST',
                 headers: {
@@ -675,11 +668,16 @@
               .then(data => {
                   if (data.success) {
                       showStatus('✅ Rahmenposition aktualisiert!', 'success');
+                  } else {
+                      showStatus('❌ Fehler: ' + (data.error || 'Unbekannter Fehler'), 'error');
                   }
+              })
+              .catch(error => {
+                  showStatus('❌ Fehler beim Speichern: ' + error.message, 'error');
               });
         }
         
-        // Update slider value displays
+        // Update slider value displays and trigger real-time updates
         document.querySelectorAll('input[type="range"]').forEach(slider => {
             slider.addEventListener('input', (e) => {
                 const valueSpan = document.getElementById(e.target.id + 'Value');
@@ -744,11 +742,18 @@
                 flameBrightness: parseFloat(document.getElementById('flameBrightness').value),
                 enableGlow: document.getElementById('enableGlow').checked,
                 enableAdditiveBlend: document.getElementById('enableAdditiveBlend').checked,
-                highDPI: document.getElementById('highDPI').checked
+                highDPI: document.getElementById('highDPI').checked,
+                // Currently single-frame only, but array structure supports future multi-frame feature
+                framePositions: [{
+                    x: parseFloat(document.getElementById('frameX').value) || 0,
+                    y: parseFloat(document.getElementById('frameY').value) || 0,
+                    width: parseFloat(document.getElementById('frameWidth').value) || 100,
+                    height: parseFloat(document.getElementById('frameHeight').value) || 100
+                }]
             };
         }
         
-        // Toggle custom resolution inputs
+        // Toggle custom resolution inputs and trigger updates
         document.getElementById('resolutionPreset').addEventListener('change', (e) => {
             const customGroup = document.getElementById('customResolutionGroup');
             customGroup.style.display = e.target.value === 'custom' ? 'grid' : 'none';
@@ -760,12 +765,24 @@
             }
         });
         
-        // Add real-time listeners to all form inputs
+        // Add real-time listeners to select, checkbox, and color inputs
         ['effectType', 'frameMode', 'flameColor', 'backgroundTint', 
          'enableGlow', 'enableAdditiveBlend', 'maskOnlyEdges', 'highDPI'].forEach(id => {
             const element = document.getElementById(id);
             if (element) {
                 element.addEventListener('change', () => {
+                    if (previewActive) {
+                        debouncedSaveConfig();
+                    }
+                });
+            }
+        });
+        
+        // Add real-time listeners to custom resolution inputs
+        ['customWidth', 'customHeight'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', () => {
                     if (previewActive) {
                         debouncedSaveConfig();
                     }
