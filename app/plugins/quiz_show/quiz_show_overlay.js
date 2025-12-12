@@ -588,6 +588,13 @@
                 }
             };
 
+            // Hide leaderboard and show quiz sections when new question arrives
+            const leaderboardOverlay = document.getElementById('leaderboardOverlay');
+            if (leaderboardOverlay) {
+                leaderboardOverlay.classList.add('hidden');
+            }
+            showQuizSections();
+
             displayQuestion(gameData.question);
             displayAnswers(gameData.answers);
             
@@ -624,7 +631,10 @@
                 updateJokerInfo(state.jokerEvents, state.giftJokerMappings || {});
             }
 
-            if (currentState === States.IDLE || currentState === States.WAIT_NEXT) {
+            // Transition to question intro if not already running
+            // This handles both fresh starts and auto-advance scenarios
+            if (currentState === States.IDLE || currentState === States.WAIT_NEXT || 
+                currentState === States.REVEAL_CORRECT || currentState === States.TIME_UP) {
                 transitionToState(States.QUESTION_INTRO);
             }
         }
@@ -667,8 +677,17 @@
             }, 500); // Small delay to sync with TTS
         }
 
+        // Handle state transitions based on current state
+        // If already in TIME_UP or later, we need to update correct answer display
         if (currentState === States.RUNNING || currentState === States.TIME_LOW) {
             transitionToState(States.TIME_UP);
+        } else if (currentState === States.TIME_UP) {
+            // Already in TIME_UP, update the correct answer and transition manually
+            revealCorrectAnswer();
+            transitionToState(States.REVEAL_CORRECT);
+        } else if (currentState === States.REVEAL_CORRECT) {
+            // Already revealing, just update the display with correct info
+            revealCorrectAnswer();
         }
     }
 
