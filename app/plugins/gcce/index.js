@@ -24,6 +24,7 @@ const CommandAuditLog = require('./utils/CommandAuditLog');
 const CommandParameterTypes = require('./utils/CommandParameterTypes');
 const DashboardWidgets = require('./utils/DashboardWidgets');
 const CommandHelpers = require('./utils/CommandHelpers');
+const HUDManager = require('./utils/HUDManager');
 const config = require('./config');
 
 class GlobalChatCommandEngine {
@@ -80,6 +81,9 @@ class GlobalChatCommandEngine {
         // Command Helpers
         this.commandHelpers = null;
         
+        // HUD Manager (integrated from gcce-hud plugin)
+        this.hudManager = null;
+        
         // Plugin configuration
         this.pluginConfig = null;
         
@@ -131,6 +135,17 @@ class GlobalChatCommandEngine {
             // Phase 4: GUI & Useful Features
             this.dashboardWidgets = new DashboardWidgets(this.api);
             this.commandHelpers = new CommandHelpers(this.api, this.registry, this.parser);
+            
+            // HUD Manager (integrated from gcce-hud plugin)
+            this.hudManager = new HUDManager(
+                this.api,
+                this.parser.rateLimiter,
+                this.advancedPermissions,
+                this.auditLog,
+                this.userDataCache,
+                this.socketBatcher
+            );
+            await this.hudManager.init();
             
             // Register default dashboard widgets
             this.registerDefaultWidgets();
@@ -391,6 +406,48 @@ class GlobalChatCommandEngine {
                     data: { similar }
                 };
             }
+        });
+
+        // HUD Commands (integrated from gcce-hud plugin)
+        
+        // /hudtext command
+        this.registry.registerCommand({
+            pluginId: 'gcce',
+            name: 'hudtext',
+            description: 'Display text on HUD overlay',
+            syntax: '/hudtext [duration] <text>',
+            permission: this.hudManager.config.permissions.text,
+            enabled: this.hudManager.config.chatCommands.allowText,
+            minArgs: 1,
+            category: 'HUD',
+            handler: async (args, context) => await this.hudManager.handleTextCommand(args, context)
+        });
+
+        // /hudimage command
+        this.registry.registerCommand({
+            pluginId: 'gcce',
+            name: 'hudimage',
+            description: 'Display image on HUD overlay',
+            syntax: '/hudimage [duration] <url>',
+            permission: this.hudManager.config.permissions.image,
+            enabled: this.hudManager.config.chatCommands.allowImages,
+            minArgs: 1,
+            category: 'HUD',
+            handler: async (args, context) => await this.hudManager.handleImageCommand(args, context)
+        });
+
+        // /hudclear command
+        this.registry.registerCommand({
+            pluginId: 'gcce',
+            name: 'hudclear',
+            description: 'Clear all HUD overlay elements',
+            syntax: '/hudclear',
+            permission: this.hudManager.config.permissions.clear,
+            enabled: true,
+            minArgs: 0,
+            maxArgs: 0,
+            category: 'HUD',
+            handler: async (args, context) => await this.hudManager.handleClearCommand(args, context)
         });
 
         this.api.log('[GCCE] Built-in commands registered', 'debug');
@@ -940,6 +997,107 @@ class GlobalChatCommandEngine {
             }
         });
 
+        // ===================
+        // HUD Routes (integrated from gcce-hud plugin)
+        // ===================
+        
+        // Serve HUD overlay
+        this.api.registerRoute('get', '/plugins/gcce/overlay-hud', (req, res) => {
+            const overlayPath = path.join(this.pluginDir, 'overlay-hud.html');
+            res.sendFile(overlayPath);
+        });
+
+        // Get HUD configuration
+        this.api.registerRoute('GET', '/api/gcce/hud/config', async (req, res) => {
+            try {
+                res.json({ success: true, config: this.hudManager.getConfig() });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Update HUD configuration
+        this.api.registerRoute('POST', '/api/gcce/hud/config', async (req, res) => {
+            try {
+                const updatedConfig = await this.hudManager.updateConfig(req.body);
+                res.json({ success: true, config: updatedConfig });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get active HUD elements
+        this.api.registerRoute('GET', '/api/gcce/hud/elements', async (req, res) => {
+            try {
+                res.json({
+                    success: true,
+                    elements: this.hudManager.getActiveElements()
+                });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Remove specific HUD element
+        this.api.registerRoute('DELETE', '/api/gcce/hud/elements/:elementId', async (req, res) => {
+            try {
+                const { elementId } = req.params;
+                const removed = this.hudManager.removeElement(elementId);
+                res.json({ success: removed });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Clear all HUD elements
+        this.api.registerRoute('POST', '/api/gcce/hud/clear', async (req, res) => {
+            try {
+                this.hudManager.clearAllElements();
+                res.json({ success: true, message: 'All HUD elements cleared' });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Test text display
+        this.api.registerRoute('POST', '/api/gcce/hud/test/text', async (req, res) => {
+            try {
+                const { text, duration } = req.body;
+                const context = { userId: 'test-user', username: 'Test User' };
+                const result = await this.hudManager.handleTextCommand(
+                    [duration || '5', text || 'Test Text'],
+                    context
+                );
+                res.json(result);
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Test image display
+        this.api.registerRoute('POST', '/api/gcce/hud/test/image', async (req, res) => {
+            try {
+                const { url, duration } = req.body;
+                const context = { userId: 'test-user', username: 'Test User' };
+                const result = await this.hudManager.handleImageCommand(
+                    [duration || '5', url || ''],
+                    context
+                );
+                res.json(result);
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Get HUD statistics
+        this.api.registerRoute('GET', '/api/gcce/hud/stats', async (req, res) => {
+            try {
+                res.json({ success: true, stats: this.hudManager.getStats() });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
         this.api.log('[GCCE] Routes registered', 'debug');
     }
 
@@ -1267,6 +1425,16 @@ class GlobalChatCommandEngine {
         // Stop cleanup timer
         if (this.cleanupInterval) {
             clearInterval(this.cleanupInterval);
+        }
+
+        // Cleanup HUD Manager
+        if (this.hudManager) {
+            await this.hudManager.destroy();
+        }
+
+        // Stop dashboard widgets
+        if (this.dashboardWidgets) {
+            this.dashboardWidgets.stopAutoRefresh();
         }
 
         // Clear registry
