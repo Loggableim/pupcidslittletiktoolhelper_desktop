@@ -860,6 +860,10 @@
                     <i data-lucide="trophy"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.leaderboard">Leaderboard</span>
                 </a>
+                <a href="#" class="sidebar-item" data-view="coinbattle" data-plugin="coinbattle">
+                    <i data-lucide="coins"></i>
+                    <span class="sidebar-item-text" data-i18n="navigation.coinbattle">CoinBattle</span>
+                </a>
                 <a href="#" class="sidebar-item" data-view="weather-control" data-plugin="weather-control">
                     <i data-lucide="cloud-rain"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.weather_control">Weather Control</span>
@@ -2125,6 +2129,25 @@
                         </div>
                         <div class="iframe-container">
                             <iframe data-src="/leaderboard/ui" title="Leaderboard Configuration"></iframe>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: CoinBattle -->
+                <div id="view-coinbattle" class="content-view" data-plugin="coinbattle">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="coins"></i>
+                                CoinBattle
+                            </h2>
+                            <a href="/plugins/coinbattle/ui.html" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe data-src="/plugins/coinbattle/ui.html" title="CoinBattle Admin Panel"></iframe>
                         </div>
                     </section>
                 </div>
