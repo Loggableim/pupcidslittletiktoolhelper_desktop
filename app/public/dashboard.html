@@ -498,6 +498,214 @@
             color: #0f172a;
             font-weight: 600;
         }
+
+        /* MyInstants Search Results */
+        .myinstants-results {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .myinstants-result-item {
+            background: var(--color-bg-tertiary);
+            padding: 12px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid var(--color-border);
+            transition: all 0.2s;
+        }
+        
+        .myinstants-result-item:hover {
+            background: var(--color-bg-hover);
+            border-color: var(--color-accent-primary);
+        }
+        
+        .myinstants-result-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .myinstants-result-name {
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-bottom: 4px;
+        }
+        
+        .myinstants-result-url {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .myinstants-result-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        /* Gift Catalog Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            padding: 20px;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: var(--color-bg-primary);
+            border: 2px solid var(--color-accent-primary);
+            border-radius: 12px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            color: var(--color-accent-primary);
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--color-text-primary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .modal-close:hover {
+            background: var(--color-bg-hover);
+        }
+        
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .selected-sound-info {
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .selected-sound-info h4 {
+            color: var(--color-text-primary);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .selected-sound-name {
+            color: var(--color-accent-primary);
+            font-weight: 600;
+        }
+        
+        .gift-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        
+        .gift-card {
+            background: var(--color-bg-secondary);
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        
+        .gift-card:hover {
+            background: var(--color-bg-hover);
+            border-color: var(--color-accent-primary);
+            transform: translateY(-2px);
+        }
+        
+        .gift-card.has-sound {
+            border-color: #22c55e;
+        }
+        
+        .gift-card-image {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        
+        .gift-card-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .gift-card-name {
+            color: var(--color-text-primary);
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+        
+        .gift-card-id {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            margin-bottom: 4px;
+        }
+        
+        .gift-card-coins {
+            color: var(--color-accent-primary);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        
+        .gift-card-badge {
+            display: inline-block;
+            background: #22c55e;
+            color: #0f172a;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-top: 4px;
+            font-weight: 600;
+        }
     </style>
     <script src="/js/lucide.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
@@ -1616,6 +1824,30 @@
                                         <div id="audio-debug-log" style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6;">
                                             <div style="color: #60a5fa;">🎵 Audio system ready. Waiting for events...</div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Gift Catalog Modal -->
+                        <div id="gift-catalog-modal" class="modal-overlay">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h3>
+                                        <i data-lucide="gift"></i>
+                                        Select Gift for Sound
+                                    </h3>
+                                    <button class="modal-close" id="close-gift-modal">
+                                        <i data-lucide="x" style="width: 24px; height: 24px;"></i>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="selected-sound-info">
+                                        <h4>Selected Sound:</h4>
+                                        <div class="selected-sound-name" id="selected-sound-name">-</div>
+                                    </div>
+                                    <div class="gift-grid" id="modal-gift-grid">
+                                        <div class="text-gray-400 text-sm text-center py-8">Loading gifts...</div>
                                     </div>
                                 </div>
                             </div>
