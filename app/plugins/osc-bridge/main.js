@@ -1,8 +1,12 @@
 const osc = require('osc');
 const fs = require('fs').promises;
 const path = require('path');
-const WebSocket = require('ws');
-const http = require('http');
+
+// Import modular components
+const OSCQueryClient = require('./modules/OSCQueryClient');
+const AvatarStateStore = require('./modules/AvatarStateStore');
+const ExpressionController = require('./modules/ExpressionController');
+const PhysBonesController = require('./modules/PhysBonesController');
 
 /**
  * Message Batching & Queuing System
@@ -50,107 +54,6 @@ class MessageBatcher {
 }
 
 /**
- * OSCQuery Client for Auto-Discovery
- * Automatically discovers avatar parameters via HTTP/WebSocket
- */
-class OSCQueryClient {
-    constructor(host = '127.0.0.1', port = 9001) {
-        this.host = host;
-        this.port = port;
-        this.baseUrl = `http://${host}:${port}`;
-        this.ws = null;
-        this.parameters = new Map();
-        this.listeners = new Map();
-    }
-
-    async discover() {
-        try {
-            // Query OSCQuery HTTP endpoint for host info
-            const hostInfoResponse = await fetch(`${this.baseUrl}/?HOST_INFO`);
-            if (!hostInfoResponse.ok) {
-                throw new Error(`OSCQuery not available at ${this.baseUrl}`);
-            }
-            const hostInfo = await hostInfoResponse.json();
-
-            // Discover all avatar parameters
-            const paramsResponse = await fetch(`${this.baseUrl}/avatar/parameters`);
-            if (paramsResponse.ok) {
-                const paramTree = await paramsResponse.json();
-                this.parseParameterTree(paramTree, '/avatar/parameters');
-            }
-
-            return {
-                hostInfo,
-                parameters: Array.from(this.parameters.entries()).map(([path, info]) => ({
-                    path,
-                    ...info
-                }))
-            };
-        } catch (error) {
-            throw new Error(`OSCQuery discovery failed: ${error.message}`);
-        }
-    }
-
-    parseParameterTree(tree, prefix = '') {
-        if (tree.CONTENTS) {
-            for (const [key, value] of Object.entries(tree.CONTENTS)) {
-                const fullPath = `${prefix}/${key}`;
-                if (value.CONTENTS) {
-                    this.parseParameterTree(value, fullPath);
-                } else {
-                    this.parameters.set(fullPath, {
-                        type: value.TYPE,
-                        access: value.ACCESS,
-                        value: value.VALUE,
-                        range: value.RANGE,
-                        description: value.DESCRIPTION
-                    });
-                }
-            }
-        }
-    }
-
-    subscribe(callback) {
-        try {
-            this.ws = new WebSocket(`ws://${this.host}:${this.port}`);
-            
-            this.ws.on('open', () => {
-                console.log('OSCQuery WebSocket connected');
-            });
-
-            this.ws.on('message', (data) => {
-                try {
-                    const update = JSON.parse(data.toString());
-                    if (callback) callback(update);
-                } catch (error) {
-                    console.error('OSCQuery message parse error:', error);
-                }
-            });
-
-            this.ws.on('error', (error) => {
-                console.error('OSCQuery WebSocket error:', error);
-            });
-
-            this.ws.on('close', () => {
-                console.log('OSCQuery WebSocket disconnected');
-            });
-
-            return true;
-        } catch (error) {
-            console.error('OSCQuery subscribe failed:', error);
-            return false;
-        }
-    }
-
-    disconnect() {
-        if (this.ws) {
-            this.ws.close();
-            this.ws = null;
-        }
-    }
-}
-
-/**
  * Parameter Cache with TTL
  * Skips redundant messages for unchanged values
  */
@@ -176,83 +79,6 @@ class ParameterCache {
 
     clear() {
         this.cache.clear();
-    }
-}
-
-/**
- * Live Parameter Monitor
- * Tracks and emits real-time parameter state
- */
-class LiveParameterMonitor {
-    constructor(api) {
-        this.api = api;
-        this.state = new Map();
-        this.history = new Map(); // Keep 60s of history
-        this.maxHistoryAge = 60000; // 60 seconds
-        this.updateInterval = null;
-    }
-
-    start() {
-        this.updateInterval = setInterval(() => {
-            this.cleanHistory();
-            this.emitState();
-        }, 100); // Emit every 100ms
-    }
-
-    stop() {
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-            this.updateInterval = null;
-        }
-    }
-
-    updateParameter(address, value) {
-        const timestamp = Date.now();
-        
-        // Update current state
-        this.state.set(address, { value, timestamp });
-
-        // Update history
-        if (!this.history.has(address)) {
-            this.history.set(address, []);
-        }
-        this.history.get(address).push({ value, timestamp });
-    }
-
-    cleanHistory() {
-        const cutoff = Date.now() - this.maxHistoryAge;
-        for (const [address, history] of this.history.entries()) {
-            const filtered = history.filter(h => h.timestamp > cutoff);
-            if (filtered.length === 0) {
-                this.history.delete(address);
-            } else {
-                this.history.set(address, filtered);
-            }
-        }
-    }
-
-    emitState() {
-        const state = {
-            parameters: Array.from(this.state.entries()).map(([address, data]) => ({
-                address,
-                value: data.value,
-                timestamp: data.timestamp
-            })),
-            timestamp: Date.now()
-        };
-        this.api.emit('osc:live-state', state);
-    }
-
-    getHistory(address) {
-        return this.history.get(address) || [];
-    }
-
-    getState() {
-        return Array.from(this.state.entries()).map(([address, data]) => ({
-            address,
-            value: data.value,
-            timestamp: data.timestamp
-        }));
     }
 }
 
@@ -370,9 +196,13 @@ class OSCBridgePlugin {
         // New Performance & Feature Components
         this.messageBatcher = new MessageBatcher(10); // 10ms batch window
         this.parameterCache = new ParameterCache(5000); // 5s TTL
-        this.oscQueryClient = null; // Initialized on demand
-        this.liveMonitor = new LiveParameterMonitor(api);
         this.presetManager = new ParameterPresetManager(api);
+        
+        // Modular components (initialized later)
+        this.oscQueryClient = null; // OSCQueryClient instance
+        this.avatarStateStore = null; // AvatarStateStore instance  
+        this.expressionController = null; // ExpressionController instance
+        this.physBonesController = null; // PhysBonesController instance
 
         // Standard VRChat Parameter-Pfade
         this.VRCHAT_PARAMS = {
@@ -405,8 +235,21 @@ class OSCBridgePlugin {
             // Config laden
             this.config = await this.api.getConfig('config') || this.getDefaultConfig();
 
+            // Initialize modular components
+            this.avatarStateStore = new AvatarStateStore(this.api);
+            this.expressionController = new ExpressionController(this.api, this);
+            this.physBonesController = new PhysBonesController(this.api, this, this.avatarStateStore);
+            
             // Initialize Preset Manager
             await this.presetManager.loadPresets();
+
+            // Start AvatarStateStore cleanup
+            if (this.config.liveMonitoring?.enabled) {
+                this.avatarStateStore.startCleanup();
+            }
+            
+            // Start ExpressionController cleanup
+            this.expressionController.startCleanup();
 
             // API-Routes registrieren
             this.registerRoutes();
@@ -420,17 +263,12 @@ class OSCBridgePlugin {
             // GCCE Commands registrieren
             this.registerGCCECommands();
 
-            // Start Live Parameter Monitor if enabled
-            if (this.config.liveMonitoring?.enabled) {
-                this.liveMonitor.start();
-            }
-
             // Automatisch starten wenn enabled
             if (this.config.enabled) {
                 await this.start();
             }
 
-            this.logger.info('📡 OSC-Bridge Plugin initialized with enhanced features');
+            this.logger.info('📡 OSC-Bridge Plugin initialized with enhanced modular features');
 
             return true;
         } catch (error) {
@@ -817,13 +655,13 @@ class OSCBridgePlugin {
 
         // Live Monitoring Endpoints
         this.api.registerRoute('get', '/api/osc/monitor/state', (req, res) => {
-            const state = this.liveMonitor.getState();
+            const state = this.avatarStateStore ? this.avatarStateStore.getState() : { parameters: [], physbones: [] };
             res.json({ success: true, state });
         });
 
         this.api.registerRoute('get', '/api/osc/monitor/history/:address', (req, res) => {
             const { address } = req.params;
-            const history = this.liveMonitor.getHistory(decodeURIComponent(address));
+            const history = this.avatarStateStore ? this.avatarStateStore.getHistory(decodeURIComponent(address)) : [];
             res.json({ success: true, history });
         });
 
@@ -882,12 +720,138 @@ class OSCBridgePlugin {
 
         // Expression Menu Endpoints
         this.api.registerRoute('post', '/api/osc/expressions/trigger', (req, res) => {
-            const { slot, hold } = req.body;
+            const { type, slot, hold } = req.body;
             if (slot === undefined) {
                 return res.status(400).json({ success: false, error: 'Slot required' });
             }
-            this.triggerExpression(slot, hold);
-            res.json({ success: true, slot, hold });
+            const expressionType = type || 'Emote';
+            if (this.expressionController) {
+                this.expressionController.triggerExpression(expressionType, slot, hold);
+            } else {
+                this.triggerExpression(slot, hold);
+            }
+            res.json({ success: true, type: expressionType, slot, hold });
+        });
+
+        this.api.registerRoute('post', '/api/osc/expressions/combo', async (req, res) => {
+            const { combo } = req.body;
+            if (!combo || !Array.isArray(combo)) {
+                return res.status(400).json({ success: false, error: 'Combo array required' });
+            }
+            const success = await this.playExpressionCombo(combo);
+            res.json({ success, steps: combo.length });
+        });
+
+        this.api.registerRoute('post', '/api/osc/expressions/queue', (req, res) => {
+            const { combo } = req.body;
+            if (!combo || !Array.isArray(combo)) {
+                return res.status(400).json({ success: false, error: 'Combo array required' });
+            }
+            if (this.expressionController) {
+                this.expressionController.queueCombo(combo);
+                res.json({ success: true, queueLength: this.expressionController.comboQueue.length });
+            } else {
+                res.status(501).json({ success: false, error: 'ExpressionController not initialized' });
+            }
+        });
+
+        this.api.registerRoute('post', '/api/osc/expressions/stop', (req, res) => {
+            if (this.expressionController) {
+                this.expressionController.stopCombo();
+                res.json({ success: true });
+            } else {
+                res.json({ success: false, error: 'ExpressionController not initialized' });
+            }
+        });
+
+        this.api.registerRoute('get', '/api/osc/expressions/state', (req, res) => {
+            if (this.expressionController) {
+                res.json({ success: true, state: this.expressionController.getState() });
+            } else {
+                res.json({ success: false, state: null });
+            }
+        });
+
+        // PhysBones Enhanced Endpoints
+        this.api.registerRoute('get', '/api/osc/physbones/discovered', (req, res) => {
+            if (this.physBonesController) {
+                res.json({ success: true, bones: this.physBonesController.getDiscoveredBones() });
+            } else {
+                res.json({ success: true, bones: [] });
+            }
+        });
+
+        this.api.registerRoute('post', '/api/osc/physbones/discover', async (req, res) => {
+            if (!this.oscQueryClient) {
+                return res.status(400).json({ success: false, error: 'OSCQuery not configured' });
+            }
+            if (this.physBonesController) {
+                const result = await this.physBonesController.autoDiscover(this.oscQueryClient);
+                res.json(result);
+            } else {
+                res.status(501).json({ success: false, error: 'PhysBonesController not initialized' });
+            }
+        });
+
+        this.api.registerRoute('post', '/api/osc/physbones/stop', (req, res) => {
+            const { boneName } = req.body;
+            if (this.physBonesController) {
+                if (boneName) {
+                    const count = this.physBonesController.stopAnimation(boneName);
+                    res.json({ success: true, stopped: count });
+                } else {
+                    const count = this.physBonesController.stopAllAnimations();
+                    res.json({ success: true, stopped: count });
+                }
+            } else {
+                res.json({ success: false, error: 'PhysBonesController not initialized' });
+            }
+        });
+
+        this.api.registerRoute('get', '/api/osc/physbones/animations', (req, res) => {
+            if (this.physBonesController) {
+                res.json({ success: true, animations: this.physBonesController.getActiveAnimations() });
+            } else {
+                res.json({ success: true, animations: [] });
+            }
+        });
+
+        // Avatar State Store Endpoints
+        this.api.registerRoute('get', '/api/osc/avatar/state', (req, res) => {
+            if (this.avatarStateStore) {
+                res.json({ success: true, state: this.avatarStateStore.getState() });
+            } else {
+                res.json({ success: false, state: null });
+            }
+        });
+
+        this.api.registerRoute('get', '/api/osc/avatar/parameters/tree', (req, res) => {
+            if (this.oscQueryClient) {
+                res.json({ success: true, tree: this.oscQueryClient.getParameterTree() });
+            } else {
+                res.json({ success: false, tree: {} });
+            }
+        });
+
+        // OSCQuery Enhanced Endpoints
+        this.api.registerRoute('get', '/api/osc/oscquery/status', (req, res) => {
+            if (this.oscQueryClient) {
+                res.json({ success: true, status: this.oscQueryClient.getStatus() });
+            } else {
+                res.json({ success: false, status: null });
+            }
+        });
+
+        this.api.registerRoute('get', '/api/osc/oscquery/parameters', (req, res) => {
+            const { pattern } = req.query;
+            if (this.oscQueryClient) {
+                const params = pattern 
+                    ? this.oscQueryClient.getParametersByPattern(pattern)
+                    : this.oscQueryClient.getAllParameters();
+                res.json({ success: true, parameters: params });
+            } else {
+                res.json({ success: false, parameters: [] });
+            }
         });
     }
 
@@ -1039,9 +1003,9 @@ class OSCBridgePlugin {
                 this.parameterCache.update(address, value);
             }
 
-            // Update live monitor
-            if (this.config.liveMonitoring?.enabled) {
-                this.liveMonitor.updateParameter(address, value);
+            // Update avatar state store
+            if (this.config.liveMonitoring?.enabled && this.avatarStateStore) {
+                this.avatarStateStore.updateParameter(address, value);
             }
 
             this.stats.messagesSent++;
@@ -1079,9 +1043,9 @@ class OSCBridgePlugin {
 
             const values = args.map(arg => arg.value);
             
-            // Update live monitor for incoming messages
-            if (this.config.liveMonitoring?.enabled && values.length > 0) {
-                this.liveMonitor.updateParameter(address, values[0]);
+            // Update avatar state store for incoming messages
+            if (this.config.liveMonitoring?.enabled && values.length > 0 && this.avatarStateStore) {
+                this.avatarStateStore.updateParameter(address, values[0]);
             }
 
             const logMsg = `RECV ← ${address} ${JSON.stringify(values)} from ${info.address}:${info.port}`;
@@ -1747,15 +1711,41 @@ class OSCBridgePlugin {
             if (!this.oscQueryClient) {
                 const host = this.config.oscQuery?.host || '127.0.0.1';
                 const port = this.config.oscQuery?.port || 9001;
-                this.oscQueryClient = new OSCQueryClient(host, port);
+                this.oscQueryClient = new OSCQueryClient(host, port, this.logger);
             }
 
             const result = await this.oscQueryClient.discover();
             this.logger.info(`✅ OSCQuery discovered ${result.parameters.length} parameters`);
             
+            // Auto-discover PhysBones if enabled
+            if (this.config.physBones?.enabled && this.physBonesController) {
+                await this.physBonesController.autoDiscover(this.oscQueryClient);
+            }
+            
             if (this.config.oscQuery?.autoSubscribe) {
                 this.oscQueryClient.subscribe((update) => {
                     this.api.emit('osc:oscquery-update', update);
+                    
+                    // Update avatar state store with parameter updates
+                    if (this.avatarStateStore && update.path && update.value !== undefined) {
+                        this.avatarStateStore.updateParameter(update.path, update.value);
+                    }
+                });
+                
+                // Watch for avatar changes
+                this.oscQueryClient.startAvatarWatcher(5000, (avatarInfo) => {
+                    this.logger.info(`👤 Avatar changed: ${avatarInfo.id}`);
+                    
+                    if (this.avatarStateStore) {
+                        this.avatarStateStore.setCurrentAvatar(avatarInfo.id);
+                    }
+                    
+                    if (this.physBonesController) {
+                        this.physBonesController.onAvatarChanged(avatarInfo.id);
+                    }
+                    
+                    // Re-discover parameters for new avatar
+                    this.autoDiscoverOSCQuery();
                 });
             }
 
@@ -1766,9 +1756,14 @@ class OSCBridgePlugin {
     }
 
     /**
-     * PhysBones Control
+     * PhysBones Control - delegated to PhysBonesController
      */
     triggerPhysBoneAnimation(boneName, animation = 'wiggle', params = {}) {
+        if (this.physBonesController) {
+            return this.physBonesController.triggerAnimation(boneName, animation, params);
+        }
+        
+        // Fallback to old implementation
         const basePath = `/avatar/physbones/${boneName}`;
         const duration = params.duration || 1000;
         const amplitude = params.amplitude || 0.5;
@@ -1848,9 +1843,14 @@ class OSCBridgePlugin {
     }
 
     /**
-     * Expression Menu Integration (8 emote slots)
+     * Expression Menu Integration (8 emote slots) - delegated to ExpressionController
      */
     triggerExpression(slot, hold = false) {
+        if (this.expressionController) {
+            return this.expressionController.triggerExpression('Emote', slot, hold);
+        }
+        
+        // Fallback to old implementation
         if (slot < 0 || slot > 7) {
             this.logger.warn(`Invalid expression slot: ${slot}. Must be 0-7.`);
             return false;
@@ -1864,9 +1864,14 @@ class OSCBridgePlugin {
     }
 
     /**
-     * Play expression combo (sequence of expressions)
+     * Play expression combo (sequence of expressions) - delegated to ExpressionController
      */
     async playExpressionCombo(combo) {
+        if (this.expressionController) {
+            return await this.expressionController.playCombo(combo);
+        }
+        
+        // Fallback to old implementation
         for (const step of combo) {
             this.triggerExpression(step.slot, true);
             await new Promise(resolve => setTimeout(resolve, step.duration || 1000));
@@ -1881,14 +1886,22 @@ class OSCBridgePlugin {
         // Unregister GCCE commands
         this.unregisterGCCECommands();
 
-        // Stop live monitor
-        if (this.liveMonitor) {
-            this.liveMonitor.stop();
+        // Destroy modular components
+        if (this.avatarStateStore) {
+            this.avatarStateStore.destroy();
+        }
+        
+        if (this.expressionController) {
+            this.expressionController.destroy();
+        }
+        
+        if (this.physBonesController) {
+            this.physBonesController.destroy();
         }
 
         // Disconnect OSCQuery
         if (this.oscQueryClient) {
-            this.oscQueryClient.disconnect();
+            this.oscQueryClient.destroy();
         }
 
         // Clear caches
