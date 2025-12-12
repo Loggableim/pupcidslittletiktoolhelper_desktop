@@ -186,8 +186,7 @@ Output Requirements:
               image_size: '512x512',
               batch_size: 1,
               num_inference_steps: 4,
-              guidance_scale: 7.5,
-              prompt_enhancement: false
+              guidance_scale: 7.5
             },
             {
               'Authorization': `Bearer ${this.apiKey}`

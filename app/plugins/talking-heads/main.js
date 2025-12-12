@@ -47,7 +47,7 @@ class TalkingHeadsPlugin {
   _loadConfig() {
     const defaultConfig = {
       enabled: false,
-      imageApiUrl: 'https://api.siliconflow.cn/v1/image/generations',
+      imageApiUrl: 'https://api.siliconflow.cn/v1/images/generations',
       defaultStyle: 'cartoon',
       cacheEnabled: true,
       cacheDuration: 2592000000, // 30 days in milliseconds

@@ -160,8 +160,7 @@ Output Requirements:
           image_size: '1024x1024',
           batch_size: 1,
           num_inference_steps: 4,
-          guidance_scale: 7.5,
-          prompt_enhancement: true
+          guidance_scale: 7.5
         },
         {
           'Authorization': `Bearer ${this.apiKey}`
@@ -224,9 +223,10 @@ Output Requirements:
         {
           model: 'black-forest-labs/FLUX.1-schnell',
           prompt: 'A simple test image of a cartoon character face',
-          image_size: '512x512',
+          image_size: '1024x1024',
           batch_size: 1,
-          num_inference_steps: 4
+          num_inference_steps: 4,
+          guidance_scale: 7.5
         },
         {
           'Authorization': `Bearer ${this.apiKey}`
