@@ -4,7 +4,7 @@
 
 ### Schritt 1: API-Key besorgen
 
-1. Gehe zu https://siliconflow.cn
+1. Gehe zu https://cloud.siliconflow.cn/
 2. Registriere einen Account
 3. Navigiere zu "API Keys" im Dashboard
 4. Erstelle einen neuen API Key
@@ -17,21 +17,32 @@
 3. Suche "Interactive Story Generator"
 4. Klicke auf **Aktivieren**
 
-### Schritt 3: Konfiguration
+### Schritt 3: API-Key in LTTH Settings eintragen
 
-1. Klicke auf das Plugin in der Plugin-Liste
+⚠️ **Wichtig:** Der SiliconFlow API Key wird jetzt zentral verwaltet!
+
+1. Öffne **Settings** (Einstellungen) im LTTH Dashboard
+2. Scrolle zu **TTS API Keys**
+3. Finde **Fish Speech 1.5 API Key (SiliconFlow)**
+4. **SiliconFlow API Key einfügen**
+5. Klicke **Save TTS API Keys**
+
+💡 Dieser eine API Key wird für LLM, Bildgenerierung UND TTS verwendet!
+
+### Schritt 4: Plugin-Optionen konfigurieren
+
+1. Gehe zu **Plugins & Tools → Interactive Story**
 2. Tab "Configuration" öffnen
-3. **SiliconFlow API Key** einfügen
-4. Einstellungen nach Wunsch anpassen:
+3. Einstellungen nach Wunsch anpassen:
    - **Default LLM Model**: DeepSeek V3 (empfohlen)
    - **Image Model**: FLUX.1 Schnell (empfohlen)
    - **Voting Duration**: 60 Sekunden (Standard)
    - **Number of Choices**: 4 (Standard)
    - **Auto-generate Images**: ✅ AN
    - **Auto-generate TTS**: ❌ AUS (optional)
-5. Klicke **Save Configuration**
+4. Klicke **Save Configuration**
 
-### Schritt 4: OBS einrichten
+### Schritt 5: OBS einrichten
 
 1. Öffne OBS Studio
 2. Neue Scene erstellen (z.B. "Story Stream")
@@ -48,7 +59,7 @@
    - ✅ "Refresh browser when scene becomes active"
 9. Klicke **OK**
 
-### Schritt 5: Story starten!
+### Schritt 6: Story starten!
 
 1. Zurück zum Plugin UI in LTTH
 2. Wähle ein **Theme** (z.B. Fantasy)
@@ -57,7 +68,7 @@
 5. Warte ~10-30 Sekunden
 6. Story erscheint im OBS-Overlay!
 
-### Schritt 6: Zuschauer einbinden
+### Schritt 7: Zuschauer einbinden
 
 Erkläre deinen Zuschauern:
 ```

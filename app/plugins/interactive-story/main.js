@@ -95,16 +95,20 @@ class InteractiveStoryPlugin {
       // Load configuration
       const config = this._loadConfig();
 
+      // Get SiliconFlow API key from global settings
+      const apiKey = this._getSiliconFlowApiKey();
+
       // Initialize services
-      if (config.siliconFlowApiKey) {
-        this.llmService = new LLMService(config.siliconFlowApiKey, this.logger);
-        this.imageService = new ImageService(config.siliconFlowApiKey, this.logger, this.imageCacheDir);
-        this.ttsService = new TTSService(config.siliconFlowApiKey, this.logger, this.audioCacheDir);
+      if (apiKey) {
+        this.llmService = new LLMService(apiKey, this.logger);
+        this.imageService = new ImageService(apiKey, this.logger, this.imageCacheDir);
+        this.ttsService = new TTSService(apiKey, this.logger, this.audioCacheDir);
         this.storyEngine = new StoryEngine(this.llmService, this.logger);
         
         this.api.log('✅ SiliconFlow services initialized', 'info');
       } else {
-        this.api.log('⚠️ SiliconFlow API key not configured', 'warn');
+        this.api.log('⚠️ SiliconFlow API key not configured in global settings', 'warn');
+        this.api.log('Please configure API key in Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)', 'warn');
       }
 
       // Initialize voting system
@@ -145,11 +149,31 @@ class InteractiveStoryPlugin {
   }
 
   /**
+   * Get SiliconFlow API key from global settings
+   * @returns {string|null} API key or null if not configured
+   */
+  _getSiliconFlowApiKey() {
+    try {
+      const db = this.api.getDatabase();
+      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('tts_fishspeech_api_key');
+      
+      if (row && row.value) {
+        // Trim whitespace that might have been accidentally saved
+        return row.value.trim();
+      }
+      
+      return null;
+    } catch (error) {
+      this.logger.error('Error retrieving SiliconFlow API key from settings:', error);
+      return null;
+    }
+  }
+
+  /**
    * Load plugin configuration
    */
   _loadConfig() {
     const defaultConfig = {
-      siliconFlowApiKey: '',
       defaultModel: 'deepseek',
       defaultImageModel: 'flux-schnell',
       votingDuration: 60,

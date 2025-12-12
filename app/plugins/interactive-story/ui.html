@@ -365,14 +365,14 @@
       <div class="card-body">
         <form id="configForm">
           <div class="row">
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label class="form-label">SiliconFlow API Key</label>
-                <input type="password" class="form-control" id="apiKey" placeholder="Enter API key">
-                <small class="text-muted">Get your API key from siliconflow.cn</small>
+            <div class="col-md-12">
+              <div class="alert alert-info mb-4">
+                <strong>ℹ️ API Key Configuration</strong><br>
+                The SiliconFlow API key is now configured globally in <strong>Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)</strong>.<br>
+                This single API key is used for LLM chat completions, image generation, and TTS across all plugins.
               </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-6">
               <div class="mb-3">
                 <label class="form-label">Default LLM Model</label>
                 <select class="form-select" id="defaultModel">
@@ -382,7 +382,7 @@
                 </select>
               </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-6">
               <div class="mb-3">
                 <label class="form-label">Image Model</label>
                 <select class="form-select" id="defaultImageModel">
@@ -580,9 +580,7 @@
         const response = await fetch('/api/interactive-story/config');
         const config = await response.json();
         
-        if (config.siliconFlowApiKey !== '***configured***') {
-          document.getElementById('apiKey').value = config.siliconFlowApiKey || '';
-        }
+        // API key is now in global settings, not plugin config
         document.getElementById('defaultModel').value = config.defaultModel || 'deepseek';
         document.getElementById('defaultImageModel').value = config.defaultImageModel || 'flux-schnell';
         document.getElementById('votingDuration').value = config.votingDuration || 60;
@@ -806,7 +804,7 @@
       e.preventDefault();
       
       const config = {
-        siliconFlowApiKey: document.getElementById('apiKey').value,
+        // API key is now in global settings, not saved here
         defaultModel: document.getElementById('defaultModel').value,
         defaultImageModel: document.getElementById('defaultImageModel').value,
         votingDuration: parseInt(document.getElementById('votingDuration').value),

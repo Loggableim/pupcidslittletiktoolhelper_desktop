@@ -79,17 +79,36 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
 
 ### 1. API-Key einrichten
 
-Öffne das Interactive Story Plugin UI und gib deinen SiliconFlow API Key ein:
+⚠️ **Der SiliconFlow API Key wird nun zentral in den globalen Einstellungen verwaltet:**
+
+1. Öffne **Settings** (Einstellungen) im LTTH Dashboard
+2. Scrolle zu **TTS API Keys**
+3. Finde **Fish Speech 1.5 API Key (SiliconFlow)**
+4. Gib deinen SiliconFlow API Key ein
+5. Klicke auf **Save TTS API Keys**
+
+**Warum global?**
+- Ein API Key für LLM, Bilder UND TTS
+- Zentrale Verwaltung für alle SiliconFlow-Features
+- Bessere Sicherheit (masked display)
+- Keine Duplikate mehr
+
+**API Key erhalten:**
+1. Registrierung: https://cloud.siliconflow.cn/
+2. API Keys Bereich öffnen
+3. Neuen API Key erstellen
+4. Key kopieren und in LTTH Settings einfügen
+
+### 2. Plugin-Spezifische Einstellungen
+
+Öffne das Interactive Story Plugin UI:
 
 ```
-Dashboard -> Plugins -> Interactive Story Generator -> Configuration
+Dashboard -> Plugins & Tools -> Interactive Story -> Configuration
 ```
 
-**Erforderlich:**
-- SiliconFlow API Key
-
-**Optional:**
-- Default LLM Model (DeepSeek empfohlen)
+**Verfügbare Optionen:**
+- Default LLM Model (DeepSeek V3 empfohlen)
 - Default Image Model (FLUX.1-schnell empfohlen)
 - Voting Duration (Standard: 60 Sekunden)
 - Number of Choices (Standard: 4)
@@ -98,7 +117,7 @@ Dashboard -> Plugins -> Interactive Story Generator -> Configuration
 - **Offline/Test Mode** (Standard: AUS) - Für Testing ohne Live-Chat
 - **Debug Logging** (Standard: AUS) - Detailliertes Logging für Entwicklung
 
-### 1a. Offline/Test-Modus
+### 2a. Offline/Test-Modus
 
 **Für Testing ohne TikTok LIVE Chat:**
 
@@ -119,7 +138,7 @@ Dashboard -> Plugins -> Interactive Story Generator -> Configuration
 - Timestamps für jedes Event
 - "Clear" Button zum Leeren der Logs
 
-### 2. OBS-Overlay einrichten
+### 3. OBS-Overlay einrichten
 
 1. Öffne OBS Studio
 2. Füge eine neue **Browser Source** hinzu
