@@ -7,6 +7,12 @@ class LRUCache {
   constructor(maxSize = 50) {
     this.maxSize = maxSize;
     this.cache = new Map();
+    
+    // Statistics tracking
+    this.stats = {
+      hits: 0,
+      misses: 0
+    };
   }
 
   /**
@@ -16,6 +22,7 @@ class LRUCache {
    */
   get(key) {
     if (!this.cache.has(key)) {
+      this.stats.misses++;
       return undefined;
     }
 
@@ -24,6 +31,7 @@ class LRUCache {
     this.cache.delete(key);
     this.cache.set(key, value);
     
+    this.stats.hits++;
     return value;
   }
 
@@ -86,10 +94,16 @@ class LRUCache {
    * @returns {Object} Cache stats
    */
   getStats() {
+    const total = this.stats.hits + this.stats.misses;
+    const hitRate = total > 0 ? (this.stats.hits / total) * 100 : 0;
+    
     return {
       size: this.cache.size,
       maxSize: this.maxSize,
-      utilizationPercent: ((this.cache.size / this.maxSize) * 100).toFixed(2)
+      utilizationPercent: parseFloat(((this.cache.size / this.maxSize) * 100).toFixed(2)),
+      hits: this.stats.hits,
+      misses: this.stats.misses,
+      hitRate: parseFloat(hitRate.toFixed(2))
     };
   }
 }
