@@ -323,9 +323,45 @@ class TalkingHeadsPlugin {
         }
 
         const connected = await this.avatarGenerator.testConnection();
-        res.json({ success: connected });
+        res.json({ success: connected, message: connected ? 'API connection successful' : 'API connection failed' });
       } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        this._log(`Test API error: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message || 'Unknown error' });
+      }
+    });
+
+    // Test avatar generation
+    this.api.registerRoute('post', '/api/talkingheads/test-generate', async (req, res) => {
+      try {
+        if (!this.avatarGenerator) {
+          return res.json({ success: false, error: 'API key not configured' });
+        }
+
+        const { styleKey } = req.body;
+        const style = styleKey || this.config.defaultStyle;
+        
+        this._log(`Testing avatar generation with style: ${style}`, 'info');
+
+        // Generate a test avatar with dummy user data
+        const testUserId = `test_${Date.now()}`;
+        const testUsername = 'TestUser';
+        
+        const result = await this._generateAvatarAndSprites(
+          testUserId,
+          testUsername,
+          '',
+          style
+        );
+
+        res.json({ 
+          success: true, 
+          message: 'Test avatar generated successfully',
+          sprites: result.sprites ? Object.keys(result.sprites).length : 0,
+          cacheId: result.cacheId
+        });
+      } catch (error) {
+        this._log(`Test generation failed: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message || 'Generation failed' });
       }
     });
 

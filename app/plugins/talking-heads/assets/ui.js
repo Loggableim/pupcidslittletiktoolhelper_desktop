@@ -151,6 +151,12 @@ function setupEventListeners() {
   // Test API button
   document.getElementById('testApiBtn').addEventListener('click', testApi);
   
+  // Test generation button
+  const testGenBtn = document.getElementById('testGenerateBtn');
+  if (testGenBtn) {
+    testGenBtn.addEventListener('click', testGenerate);
+  }
+  
   // Clear cache button
   document.getElementById('clearCacheBtn').addEventListener('click', clearCache);
   
@@ -248,8 +254,53 @@ async function testApi() {
     }
   } catch (error) {
     console.error('API test failed:', error);
-    showNotification('❌ API-Test fehlgeschlagen', 'error');
+    showNotification('❌ API-Test fehlgeschlagen: ' + error.message, 'error');
     updateApiStatus(false, 'none');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+}
+
+/**
+ * Test avatar generation
+ */
+async function testGenerate() {
+  const btn = document.getElementById('testGenerateBtn');
+  const originalHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" class="inline-block w-4 h-4 mr-2 animate-spin"></i> Generiere...';
+  
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+
+  try {
+    const styleKey = currentConfig?.defaultStyle || 'cartoon';
+    
+    showNotification('🎨 Starte Test-Generierung... (kann 15-30 Sekunden dauern)', 'info');
+    
+    const response = await fetch('/api/talkingheads/test-generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ styleKey })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      showNotification(`✅ Test-Avatar erfolgreich generiert! (${data.sprites} Sprites erstellt)`, 'success');
+    } else {
+      showNotification('❌ Avatar-Generierung fehlgeschlagen: ' + (data.error || 'Unbekannter Fehler'), 'error');
+    }
+  } catch (error) {
+    console.error('Test generation failed:', error);
+    showNotification('❌ Test-Generierung fehlgeschlagen: ' + error.message, 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = originalHTML;
