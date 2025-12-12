@@ -641,6 +641,23 @@ input[type="range"]::-moz-range-thumb {
     min-width: 36px;
 }
 
+/* Editing state for pattern steps */
+.pattern-step-editing {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.2));
+    border: 2px solid rgba(251, 191, 36, 0.6);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+}
+
+.pattern-step-editing .pattern-step-number {
+    background: #f59e0b;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
 /* Quick Step Form Styling */
 #quickStepForm {
     background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1));

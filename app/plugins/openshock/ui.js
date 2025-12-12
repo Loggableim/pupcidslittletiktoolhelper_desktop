@@ -1196,6 +1196,7 @@ async function refreshGiftCatalog() {
 // ====================================================================
 
 let currentPatternSteps = [];
+let editingStepIndex = null; // Track which step is being edited (null = adding new step)
 
 function openPatternModal(patternId = null) {
     const modal = document.getElementById('patternModal');
@@ -1224,6 +1225,7 @@ function openPatternModal(patternId = null) {
     if (descriptionInput) descriptionInput.value = pattern?.description || '';
 
     currentPatternSteps = pattern?.steps ? structuredClone(pattern.steps) : [];
+    editingStepIndex = null; // Reset editing state when opening modal
     
     // Update step count label
     if (stepCountLabel) {
@@ -1297,7 +1299,7 @@ function renderPatternSteps() {
     };
 
     const html = currentPatternSteps.map((step, index) => `
-        <div class="pattern-step">
+        <div class="pattern-step ${editingStepIndex === index ? 'pattern-step-editing' : ''}">
             <div class="pattern-step-number">${index + 1}</div>
             <div class="pattern-step-content">
                 <span class="pattern-step-type"><strong>${stepTypeLabels[step.type] || step.type}</strong></span>
@@ -1354,9 +1356,33 @@ function addPatternStep() {
         delete step.intensity;
     }
 
-    addDebugLog('debug', `Adding step: ${JSON.stringify(step)}`);
+    addDebugLog('debug', `${editingStepIndex !== null ? 'Updating' : 'Adding'} step: ${JSON.stringify(step)}`);
 
-    currentPatternSteps.push(step);
+    // Track whether we're editing for the notification message
+    const isEditing = editingStepIndex !== null;
+    const editedStepNumber = isEditing ? editingStepIndex + 1 : null;
+
+    // Check if we're editing an existing step or adding a new one
+    if (editingStepIndex !== null) {
+        // Update the existing step
+        currentPatternSteps[editingStepIndex] = step;
+        addDebugLog('info', `Updated step ${editingStepIndex + 1}: ${step.type}`);
+        
+        // Reset editing state
+        editingStepIndex = null;
+    } else {
+        // Add new step
+        currentPatternSteps.push(step);
+    }
+    
+    // Reset button to add mode
+    const addButton = document.getElementById('addPatternStep');
+    if (addButton) {
+        addButton.innerHTML = '➕ Schritt zum Pattern hinzufügen';
+        addButton.classList.remove('btn-warning');
+        addButton.classList.add('btn-success');
+    }
+    
     renderPatternSteps();
     
     // Update step count label
@@ -1381,10 +1407,23 @@ function addPatternStep() {
     const stepLabel = stepTypeLabels[step.type] || step.type;
     const intensityText = step.type !== 'pause' ? ` @ ${step.intensity}%` : '';
     
-    showNotification(`Schritt ${currentPatternSteps.length} hinzugefügt: ${stepLabel}${intensityText}`, 'success');
+    // Generate notification message based on whether we were editing
+    const message = isEditing 
+        ? `Schritt ${editedStepNumber} aktualisiert: ${stepLabel}${intensityText}`
+        : `Schritt ${currentPatternSteps.length} hinzugefügt: ${stepLabel}${intensityText}`;
+    
+    showNotification(message, 'success');
 }
 
 function removePatternStep(index) {
+    // If we're editing this step, cancel the edit
+    if (editingStepIndex === index) {
+        editingStepIndex = null;
+    } else if (editingStepIndex !== null && editingStepIndex > index) {
+        // If we're editing a step after this one, adjust the index
+        editingStepIndex--;
+    }
+    
     currentPatternSteps.splice(index, 1);
     renderPatternSteps();
     
@@ -1419,6 +1458,13 @@ function duplicatePatternStep(index) {
 function movePatternStepUp(index) {
     if (index <= 0 || index >= currentPatternSteps.length) return;
     
+    // Adjust editing index if necessary
+    if (editingStepIndex === index) {
+        editingStepIndex = index - 1;
+    } else if (editingStepIndex === index - 1) {
+        editingStepIndex = index;
+    }
+    
     // Swap with previous step
     const temp = currentPatternSteps[index];
     currentPatternSteps[index] = currentPatternSteps[index - 1];
@@ -1430,6 +1476,13 @@ function movePatternStepUp(index) {
 
 function movePatternStepDown(index) {
     if (index < 0 || index >= currentPatternSteps.length - 1) return;
+    
+    // Adjust editing index if necessary
+    if (editingStepIndex === index) {
+        editingStepIndex = index + 1;
+    } else if (editingStepIndex === index + 1) {
+        editingStepIndex = index;
+    }
     
     // Swap with next step
     const temp = currentPatternSteps[index];
@@ -1443,6 +1496,9 @@ function movePatternStepDown(index) {
 function editPatternStep(index) {
     const step = currentPatternSteps[index];
     if (!step) return;
+    
+    // Store the index of the step being edited
+    editingStepIndex = index;
     
     // Populate the form with step values
     const typeSelect = document.getElementById('stepType');
@@ -1460,8 +1516,15 @@ function editPatternStep(index) {
     // Update visibility based on type
     updateStepFormVisibility();
     
-    // Remove the step from the array (will be re-added when user clicks "Add Step")
-    currentPatternSteps.splice(index, 1);
+    // Update button text to indicate editing mode
+    const addButton = document.getElementById('addPatternStep');
+    if (addButton) {
+        addButton.innerHTML = '✏️ Schritt aktualisieren';
+        addButton.classList.remove('btn-success');
+        addButton.classList.add('btn-warning');
+    }
+    
+    // Highlight the step being edited
     renderPatternSteps();
     
     // Scroll to the form
@@ -1470,7 +1533,7 @@ function editPatternStep(index) {
         quickStepForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     
-    showNotification('Schritt zum Bearbeiten geladen. Passe die Werte an und klicke "Schritt hinzufügen".', 'info');
+    showNotification('Schritt zum Bearbeiten geladen. Passe die Werte an und klicke "Schritt aktualisieren".', 'info');
     addDebugLog('info', `Editing step ${index + 1}: ${step.type}`);
 }
 
@@ -3126,6 +3189,7 @@ function initializeEventDelegation() {
             e.preventDefault();
             if (confirm('Alle Schritte löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
                 currentPatternSteps = [];
+                editingStepIndex = null; // Reset editing state
                 renderPatternSteps();
                 showNotification('Alle Schritte gelöscht', 'info');
             }
