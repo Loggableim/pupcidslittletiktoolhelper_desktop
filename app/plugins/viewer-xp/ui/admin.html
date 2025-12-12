@@ -2840,7 +2840,8 @@
 
     // ========== UTILITY FUNCTIONS ==========
     
-    // Add CSS animations for toast (if not already added)
+    // Add CSS animations for toast notifications
+    // Check prevents duplicate style injection if this code runs multiple times
     if (!document.getElementById('toastAnimations')) {
       const style = document.createElement('style');
       style.id = 'toastAnimations';
