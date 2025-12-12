@@ -45,6 +45,36 @@ class InteractiveStoryPlugin {
     this.currentChapter = null;
     this.isGenerating = false;
     this.ttsPaused = false;
+    
+    // Debug logs for offline testing
+    this.debugLogs = [];
+    this.maxDebugLogs = 100;
+  }
+  
+  /**
+   * Add debug log entry
+   */
+  _debugLog(level, message, data = null) {
+    const config = this._loadConfig();
+    if (!config.debugLogging) return;
+    
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      data
+    };
+    
+    this.debugLogs.unshift(logEntry);
+    if (this.debugLogs.length > this.maxDebugLogs) {
+      this.debugLogs.pop();
+    }
+    
+    // Also log to console
+    this.logger[level] ? this.logger[level](message, data) : this.logger.info(message, data);
+    
+    // Emit to UI
+    this.io.emit('story:debug-log', logEntry);
   }
 
   async init() {
@@ -132,7 +162,9 @@ class InteractiveStoryPlugin {
       ttsVoiceMapping: {
         narrator: 'narrator',
         default: 'narrator'
-      }
+      },
+      offlineMode: false,
+      debugLogging: false
     };
 
     const savedConfig = this.api.getConfig('story-config');
@@ -212,11 +244,15 @@ class InteractiveStoryPlugin {
 
         const { theme, outline, model } = req.body;
         
+        this._debugLog('info', `Starting new story`, { theme, model, hasOutline: !!outline });
+        
         this.isGenerating = true;
         this.io.emit('story:generation-started', { theme });
 
         // Initialize story
         const firstChapter = await this.storyEngine.initializeStory(theme, outline, model);
+        
+        this._debugLog('info', `First chapter generated`, { title: firstChapter.title, choiceCount: firstChapter.choices.length });
 
         // Create session in database
         const sessionId = this.db.createSession({
@@ -227,6 +263,8 @@ class InteractiveStoryPlugin {
         });
 
         this.currentSession = { id: sessionId, theme, model };
+        
+        this._debugLog('info', `Session created`, { sessionId, theme });
 
         // Generate image if enabled
         const config = this._loadConfig();
@@ -389,6 +427,75 @@ class InteractiveStoryPlugin {
         res.sendFile(imagePath);
       } else {
         res.status(404).json({ error: 'Image not found' });
+      }
+    });
+    
+    // Get debug logs (for offline testing)
+    this.api.registerRoute('get', '/api/interactive-story/debug-logs', (req, res) => {
+      res.json({ logs: this.debugLogs });
+    });
+    
+    // Admin manual choice selection (offline mode)
+    this.api.registerRoute('post', '/api/interactive-story/admin-choice', async (req, res) => {
+      try {
+        const config = this._loadConfig();
+        
+        if (!config.offlineMode) {
+          return res.status(403).json({ error: 'Offline mode not enabled' });
+        }
+        
+        if (!this.currentSession || !this.storyEngine) {
+          return res.status(400).json({ error: 'No active story session' });
+        }
+        
+        const { choiceIndex } = req.body;
+        
+        if (choiceIndex === undefined || choiceIndex < 0 || choiceIndex >= this.currentChapter.choices.length) {
+          return res.status(400).json({ error: 'Invalid choice index' });
+        }
+        
+        this._debugLog('info', `Admin selected choice ${choiceIndex} in offline mode`, { choice: this.currentChapter.choices[choiceIndex] });
+        
+        const previousChoice = this.currentChapter.choices[choiceIndex];
+        
+        this.isGenerating = true;
+        this.io.emit('story:generation-started', {});
+        
+        const chapterNumber = this.currentChapter.chapterNumber + 1;
+        
+        // Generate next chapter
+        const nextChapter = await this.storyEngine.generateChapter(
+          chapterNumber,
+          previousChoice,
+          this.currentSession.model,
+          config.numChoices
+        );
+        
+        // Generate image
+        if (config.autoGenerateImages && this.imageService) {
+          const style = this.imageService.getStyleForTheme(this.currentSession.theme);
+          const imagePrompt = `${nextChapter.title}: ${nextChapter.content.substring(0, 200)}`;
+          nextChapter.imagePath = await this.imageService.generateImage(imagePrompt, config.defaultImageModel, style);
+        }
+        
+        // Save chapter with admin choice
+        this.db.saveChapter(this.currentSession.id, nextChapter);
+        this.db.saveVote(this.currentSession.id, this.currentChapter.chapterNumber, choiceIndex, 1);
+        this.currentChapter = nextChapter;
+        
+        this.isGenerating = false;
+        
+        // Emit chapter
+        this.io.emit('story:chapter-ready', nextChapter);
+        
+        this._debugLog('info', `Next chapter generated`, { chapterNumber, title: nextChapter.title });
+        
+        res.json({ success: true, chapter: nextChapter });
+      } catch (error) {
+        this.isGenerating = false;
+        this._debugLog('error', `Error in admin choice: ${error.message}`, { error: error.stack });
+        this.logger.error(`Error in admin choice: ${error.message}`);
+        res.status(500).json({ error: error.message });
       }
     });
   }

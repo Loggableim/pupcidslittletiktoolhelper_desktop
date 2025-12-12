@@ -95,6 +95,29 @@ Dashboard -> Plugins -> Interactive Story Generator -> Configuration
 - Number of Choices (Standard: 4)
 - Auto-generate Images (Standard: AN)
 - Auto-generate TTS (Standard: AUS)
+- **Offline/Test Mode** (Standard: AUS) - Für Testing ohne Live-Chat
+- **Debug Logging** (Standard: AUS) - Detailliertes Logging für Entwicklung
+
+### 1a. Offline/Test-Modus
+
+**Für Testing ohne TikTok LIVE Chat:**
+
+1. Aktiviere "Offline/Test Mode" in der Konfiguration
+2. Aktiviere optional "Debug Logging" für detaillierte Logs
+3. Nach dem Start einer Story erscheinen **Admin-Choice-Buttons**
+4. Wähle selbst die Story-Pfade aus, ohne auf Chat-Voting zu warten
+
+**Vorteile:**
+- ✅ Testen ohne Live-Stream
+- ✅ Schnelles Durchspielen verschiedener Story-Pfade
+- ✅ Debug-Logging zeigt detaillierte Informationen
+- ✅ Keine Wartezeit für Voting
+
+**Debug-Log-Panel:**
+- Zeigt alle Plugin-Operationen in Echtzeit
+- Farbcodierte Log-Levels (Error, Warning, Info, Debug)
+- Timestamps für jedes Event
+- "Clear" Button zum Leeren der Logs
 
 ### 2. OBS-Overlay einrichten
 
