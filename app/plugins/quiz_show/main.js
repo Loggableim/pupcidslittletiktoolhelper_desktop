@@ -2026,15 +2026,21 @@ class QuizShowPlugin {
                 const totalRoundsReached = this.config.totalRounds > 0 && this.gameState.currentRound >= this.config.totalRounds;
                 
                 if (totalRoundsReached) {
-                    // Round limit reached - reset game state to start a new game
+                    // Round limit reached - show final leaderboard and reset game state
                     this.api.log(`Total rounds limit (${this.config.totalRounds}) reached - resetting for new game`, 'info');
-                    this.resetGameState();
-                    // Broadcast to all clients that the quiz has ended
+                    
+                    // Show final leaderboard before ending
+                    await this.showLeaderboardAtEnd();
+                    
+                    // Get MVP and broadcast quiz-ended event to all clients
                     const mvp = this.getMVPPlayer();
                     this.api.emit('quiz-show:quiz-ended', { 
                         mvp,
                         message: 'Quiz beendet. Klicken Sie "Quiz starten", um eine neue Runde zu beginnen.' 
                     });
+                    
+                    // Reset game state for new game
+                    this.resetGameState();
                     return;
                 }
 
