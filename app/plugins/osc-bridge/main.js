@@ -1,6 +1,315 @@
 const osc = require('osc');
 const fs = require('fs').promises;
 const path = require('path');
+const WebSocket = require('ws');
+const http = require('http');
+
+/**
+ * Message Batching & Queuing System
+ * Bundles multiple OSC messages within a time window for better performance
+ */
+class MessageBatcher {
+    constructor(batchWindow = 10) {
+        this.queue = [];
+        this.timer = null;
+        this.batchWindow = batchWindow; // ms
+        this.udpPort = null;
+    }
+
+    setUDPPort(udpPort) {
+        this.udpPort = udpPort;
+    }
+
+    add(message) {
+        this.queue.push(message);
+        if (!this.timer) {
+            this.timer = setTimeout(() => this.flush(), this.batchWindow);
+        }
+    }
+
+    flush() {
+        if (this.queue.length > 0 && this.udpPort) {
+            // Send as OSC bundle for batch sending
+            const bundle = {
+                timeTag: osc.timeTag(0),
+                packets: this.queue
+            };
+            this.udpPort.send(bundle);
+            this.queue = [];
+        }
+        this.timer = null;
+    }
+
+    clear() {
+        if (this.timer) {
+            clearTimeout(this.timer);
+            this.timer = null;
+        }
+        this.queue = [];
+    }
+}
+
+/**
+ * OSCQuery Client for Auto-Discovery
+ * Automatically discovers avatar parameters via HTTP/WebSocket
+ */
+class OSCQueryClient {
+    constructor(host = '127.0.0.1', port = 9001) {
+        this.host = host;
+        this.port = port;
+        this.baseUrl = `http://${host}:${port}`;
+        this.ws = null;
+        this.parameters = new Map();
+        this.listeners = new Map();
+    }
+
+    async discover() {
+        try {
+            // Query OSCQuery HTTP endpoint for host info
+            const hostInfoResponse = await fetch(`${this.baseUrl}/?HOST_INFO`);
+            if (!hostInfoResponse.ok) {
+                throw new Error(`OSCQuery not available at ${this.baseUrl}`);
+            }
+            const hostInfo = await hostInfoResponse.json();
+
+            // Discover all avatar parameters
+            const paramsResponse = await fetch(`${this.baseUrl}/avatar/parameters`);
+            if (paramsResponse.ok) {
+                const paramTree = await paramsResponse.json();
+                this.parseParameterTree(paramTree, '/avatar/parameters');
+            }
+
+            return {
+                hostInfo,
+                parameters: Array.from(this.parameters.entries()).map(([path, info]) => ({
+                    path,
+                    ...info
+                }))
+            };
+        } catch (error) {
+            throw new Error(`OSCQuery discovery failed: ${error.message}`);
+        }
+    }
+
+    parseParameterTree(tree, prefix = '') {
+        if (tree.CONTENTS) {
+            for (const [key, value] of Object.entries(tree.CONTENTS)) {
+                const fullPath = `${prefix}/${key}`;
+                if (value.CONTENTS) {
+                    this.parseParameterTree(value, fullPath);
+                } else {
+                    this.parameters.set(fullPath, {
+                        type: value.TYPE,
+                        access: value.ACCESS,
+                        value: value.VALUE,
+                        range: value.RANGE,
+                        description: value.DESCRIPTION
+                    });
+                }
+            }
+        }
+    }
+
+    subscribe(callback) {
+        try {
+            this.ws = new WebSocket(`ws://${this.host}:${this.port}`);
+            
+            this.ws.on('open', () => {
+                console.log('OSCQuery WebSocket connected');
+            });
+
+            this.ws.on('message', (data) => {
+                try {
+                    const update = JSON.parse(data.toString());
+                    if (callback) callback(update);
+                } catch (error) {
+                    console.error('OSCQuery message parse error:', error);
+                }
+            });
+
+            this.ws.on('error', (error) => {
+                console.error('OSCQuery WebSocket error:', error);
+            });
+
+            this.ws.on('close', () => {
+                console.log('OSCQuery WebSocket disconnected');
+            });
+
+            return true;
+        } catch (error) {
+            console.error('OSCQuery subscribe failed:', error);
+            return false;
+        }
+    }
+
+    disconnect() {
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+    }
+}
+
+/**
+ * Parameter Cache with TTL
+ * Skips redundant messages for unchanged values
+ */
+class ParameterCache {
+    constructor(ttl = 5000) {
+        this.cache = new Map();
+        this.ttl = ttl;
+    }
+
+    shouldSend(address, value) {
+        const cached = this.cache.get(address);
+        if (!cached) return true;
+        
+        if (Date.now() - cached.timestamp > this.ttl) return true;
+        if (cached.value !== value) return true;
+        
+        return false; // Skip redundant send
+    }
+
+    update(address, value) {
+        this.cache.set(address, { value, timestamp: Date.now() });
+    }
+
+    clear() {
+        this.cache.clear();
+    }
+}
+
+/**
+ * Live Parameter Monitor
+ * Tracks and emits real-time parameter state
+ */
+class LiveParameterMonitor {
+    constructor(api) {
+        this.api = api;
+        this.state = new Map();
+        this.history = new Map(); // Keep 60s of history
+        this.maxHistoryAge = 60000; // 60 seconds
+        this.updateInterval = null;
+    }
+
+    start() {
+        this.updateInterval = setInterval(() => {
+            this.cleanHistory();
+            this.emitState();
+        }, 100); // Emit every 100ms
+    }
+
+    stop() {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
+    }
+
+    updateParameter(address, value) {
+        const timestamp = Date.now();
+        
+        // Update current state
+        this.state.set(address, { value, timestamp });
+
+        // Update history
+        if (!this.history.has(address)) {
+            this.history.set(address, []);
+        }
+        this.history.get(address).push({ value, timestamp });
+    }
+
+    cleanHistory() {
+        const cutoff = Date.now() - this.maxHistoryAge;
+        for (const [address, history] of this.history.entries()) {
+            const filtered = history.filter(h => h.timestamp > cutoff);
+            if (filtered.length === 0) {
+                this.history.delete(address);
+            } else {
+                this.history.set(address, filtered);
+            }
+        }
+    }
+
+    emitState() {
+        const state = {
+            parameters: Array.from(this.state.entries()).map(([address, data]) => ({
+                address,
+                value: data.value,
+                timestamp: data.timestamp
+            })),
+            timestamp: Date.now()
+        };
+        this.api.emit('osc:live-state', state);
+    }
+
+    getHistory(address) {
+        return this.history.get(address) || [];
+    }
+
+    getState() {
+        return Array.from(this.state.entries()).map(([address, data]) => ({
+            address,
+            value: data.value,
+            timestamp: data.timestamp
+        }));
+    }
+}
+
+/**
+ * Parameter Presets System
+ * Save and load parameter configurations
+ */
+class ParameterPresetManager {
+    constructor(api) {
+        this.api = api;
+        this.presets = new Map();
+    }
+
+    async loadPresets() {
+        try {
+            const stored = await this.api.getConfig('presets');
+            if (stored && Array.isArray(stored)) {
+                this.presets = new Map(stored.map(p => [p.id, p]));
+            }
+        } catch (error) {
+            console.error('Failed to load presets:', error);
+        }
+    }
+
+    async savePreset(name, parameters, description = '') {
+        const id = `preset_${Date.now()}`;
+        const preset = {
+            id,
+            name,
+            description,
+            parameters,
+            createdAt: Date.now()
+        };
+        
+        this.presets.set(id, preset);
+        await this.persistPresets();
+        return preset;
+    }
+
+    async deletePreset(id) {
+        this.presets.delete(id);
+        await this.persistPresets();
+    }
+
+    getPreset(id) {
+        return this.presets.get(id);
+    }
+
+    getAllPresets() {
+        return Array.from(this.presets.values());
+    }
+
+    async persistPresets() {
+        const presetsArray = Array.from(this.presets.values());
+        await this.api.setConfig('presets', presetsArray);
+    }
+}
 
 /**
  * OSC-Bridge Plugin für VRChat-Integration
@@ -15,6 +324,13 @@ const path = require('path');
  * - Vollständiges Logging mit oscBridge.log
  * - Event-Bus-Integration für eingehende OSC-Signale
  * - Flow-System-Integration für automatische Trigger
+ * - Message Batching & Queuing für bessere Performance
+ * - OSCQuery Auto-Discovery
+ * - Live Parameter Monitoring
+ * - PhysBones Control
+ * - Expression Menu Integration
+ * - VRChat Chatbox Integration
+ * - Parameter Presets System
  */
 class OSCBridgePlugin {
     constructor(api) {
@@ -38,7 +354,8 @@ class OSCBridgePlugin {
             errors: 0,
             lastMessageSent: null,
             lastMessageReceived: null,
-            startTime: null
+            startTime: null,
+            batchedMessages: 0
         };
 
         // Sicherheit: Erlaubte IP-Adressen
@@ -50,6 +367,13 @@ class OSCBridgePlugin {
             global: null        // Global last switch timestamp
         };
 
+        // New Performance & Feature Components
+        this.messageBatcher = new MessageBatcher(10); // 10ms batch window
+        this.parameterCache = new ParameterCache(5000); // 5s TTL
+        this.oscQueryClient = null; // Initialized on demand
+        this.liveMonitor = new LiveParameterMonitor(api);
+        this.presetManager = new ParameterPresetManager(api);
+
         // Standard VRChat Parameter-Pfade
         this.VRCHAT_PARAMS = {
             WAVE: '/avatar/parameters/Wave',
@@ -59,10 +383,17 @@ class OSCBridgePlugin {
             EMOTE_SLOT_1: '/avatar/parameters/EmoteSlot1',
             EMOTE_SLOT_2: '/avatar/parameters/EmoteSlot2',
             EMOTE_SLOT_3: '/avatar/parameters/EmoteSlot3',
+            EMOTE_SLOT_4: '/avatar/parameters/EmoteSlot4',
+            EMOTE_SLOT_5: '/avatar/parameters/EmoteSlot5',
+            EMOTE_SLOT_6: '/avatar/parameters/EmoteSlot6',
+            EMOTE_SLOT_7: '/avatar/parameters/EmoteSlot7',
             HEARTS: '/avatar/parameters/Hearts',
             CONFETTI: '/avatar/parameters/Confetti',
             LIGHTS: '/world/lights/nightmode',
-            VOLUME: '/world/audio/volume'
+            VOLUME: '/world/audio/volume',
+            // Chatbox parameters
+            CHATBOX_INPUT: '/chatbox/input',
+            CHATBOX_TYPING: '/chatbox/typing'
         };
     }
 
@@ -73,6 +404,9 @@ class OSCBridgePlugin {
 
             // Config laden
             this.config = await this.api.getConfig('config') || this.getDefaultConfig();
+
+            // Initialize Preset Manager
+            await this.presetManager.loadPresets();
 
             // API-Routes registrieren
             this.registerRoutes();
@@ -86,12 +420,17 @@ class OSCBridgePlugin {
             // GCCE Commands registrieren
             this.registerGCCECommands();
 
+            // Start Live Parameter Monitor if enabled
+            if (this.config.liveMonitoring?.enabled) {
+                this.liveMonitor.start();
+            }
+
             // Automatisch starten wenn enabled
             if (this.config.enabled) {
                 await this.start();
             }
 
-            this.logger.info('📡 OSC-Bridge Plugin initialized');
+            this.logger.info('📡 OSC-Bridge Plugin initialized with enhanced features');
 
             return true;
         } catch (error) {
@@ -121,6 +460,40 @@ class OSCBridgePlugin {
             maxPacketSize: 65536,
             giftMappings: [], // Array of {giftId, giftName, action, params}
             avatars: [], // Array of {id, name, avatarId, description}
+            // Performance features
+            messageBatching: {
+                enabled: true,
+                batchWindow: 10 // ms
+            },
+            parameterCaching: {
+                enabled: true,
+                ttl: 5000 // ms
+            },
+            // OSCQuery Auto-Discovery
+            oscQuery: {
+                enabled: false,
+                host: '127.0.0.1',
+                port: 9001,
+                autoSubscribe: true
+            },
+            // Live Parameter Monitoring
+            liveMonitoring: {
+                enabled: false,
+                updateInterval: 100, // ms
+                historyDuration: 60000 // ms (60s)
+            },
+            // PhysBones Control
+            physBones: {
+                enabled: false,
+                bones: [] // Array of {name, path, animations}
+            },
+            // Chatbox Integration
+            chatbox: {
+                enabled: false,
+                mirrorTikTokChat: false,
+                prefix: '[TikTok]',
+                showTyping: true
+            },
             chatCommands: {
                 enabled: true,           // Chat-Befehle aktivieren
                 requireOSCConnection: true, // Nur wenn OSC verbunden
@@ -410,6 +783,112 @@ class OSCBridgePlugin {
             this.logger.info(`✅ Updated ${commands.length} chat commands`);
             res.json({ success: true, commands });
         });
+
+        // OSCQuery Discovery Endpoints
+        this.api.registerRoute('post', '/api/osc/oscquery/discover', async (req, res) => {
+            try {
+                if (!this.oscQueryClient) {
+                    const host = this.config.oscQuery?.host || '127.0.0.1';
+                    const port = this.config.oscQuery?.port || 9001;
+                    this.oscQueryClient = new OSCQueryClient(host, port);
+                }
+                const result = await this.oscQueryClient.discover();
+                res.json({ success: true, ...result });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        this.api.registerRoute('post', '/api/osc/oscquery/subscribe', (req, res) => {
+            try {
+                if (!this.oscQueryClient) {
+                    const host = this.config.oscQuery?.host || '127.0.0.1';
+                    const port = this.config.oscQuery?.port || 9001;
+                    this.oscQueryClient = new OSCQueryClient(host, port);
+                }
+                const success = this.oscQueryClient.subscribe((update) => {
+                    this.api.emit('osc:oscquery-update', update);
+                });
+                res.json({ success });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Live Monitoring Endpoints
+        this.api.registerRoute('get', '/api/osc/monitor/state', (req, res) => {
+            const state = this.liveMonitor.getState();
+            res.json({ success: true, state });
+        });
+
+        this.api.registerRoute('get', '/api/osc/monitor/history/:address', (req, res) => {
+            const { address } = req.params;
+            const history = this.liveMonitor.getHistory(decodeURIComponent(address));
+            res.json({ success: true, history });
+        });
+
+        // Parameter Presets Endpoints
+        this.api.registerRoute('get', '/api/osc/presets', (req, res) => {
+            const presets = this.presetManager.getAllPresets();
+            res.json({ success: true, presets });
+        });
+
+        this.api.registerRoute('post', '/api/osc/presets', async (req, res) => {
+            const { name, parameters, description } = req.body;
+            if (!name || !parameters) {
+                return res.status(400).json({ success: false, error: 'Name and parameters required' });
+            }
+            const preset = await this.presetManager.savePreset(name, parameters, description);
+            res.json({ success: true, preset });
+        });
+
+        this.api.registerRoute('delete', '/api/osc/presets/:id', async (req, res) => {
+            await this.presetManager.deletePreset(req.params.id);
+            res.json({ success: true });
+        });
+
+        this.api.registerRoute('post', '/api/osc/presets/:id/apply', async (req, res) => {
+            const preset = this.presetManager.getPreset(req.params.id);
+            if (!preset) {
+                return res.status(404).json({ success: false, error: 'Preset not found' });
+            }
+            // Apply all parameters from preset
+            for (const [address, value] of Object.entries(preset.parameters)) {
+                this.send(address, value);
+                await new Promise(resolve => setTimeout(resolve, 10)); // Small delay between sends
+            }
+            res.json({ success: true, applied: Object.keys(preset.parameters).length });
+        });
+
+        // PhysBones Control Endpoints
+        this.api.registerRoute('post', '/api/osc/physbones/trigger', (req, res) => {
+            const { boneName, animation, params } = req.body;
+            if (!boneName) {
+                return res.status(400).json({ success: false, error: 'Bone name required' });
+            }
+            this.triggerPhysBoneAnimation(boneName, animation, params);
+            res.json({ success: true, boneName, animation });
+        });
+
+        // Chatbox Endpoints
+        this.api.registerRoute('post', '/api/osc/chatbox/send', (req, res) => {
+            const { message, showTyping } = req.body;
+            if (!message) {
+                return res.status(400).json({ success: false, error: 'Message required' });
+            }
+            this.sendToChatbox(message, showTyping !== false);
+            res.json({ success: true });
+        });
+
+        // Expression Menu Endpoints
+        this.api.registerRoute('post', '/api/osc/expressions/trigger', (req, res) => {
+            const { slot, hold } = req.body;
+            if (slot === undefined) {
+                return res.status(400).json({ success: false, error: 'Slot required' });
+            }
+            this.triggerExpression(slot, hold);
+            res.json({ success: true, slot, hold });
+        });
     }
 
     registerSocketEvents() {
@@ -433,13 +912,23 @@ class OSCBridgePlugin {
                 metadata: true
             });
 
+            // Initialize message batcher with UDP port
+            if (this.config.messageBatching?.enabled) {
+                this.messageBatcher.setUDPPort(this.udpPort);
+            }
+
             this.udpPort.on('ready', () => {
                 this.isRunning = true;
                 this.stats.startTime = new Date();
 
                 const info = `OSC-Bridge started - Receive: ${this.config.receivePort}, Send: ${this.config.sendHost}:${this.config.sendPort}`;
-                this.logger.info(`📡 ${info}`);
+                this.logger.info(`📡 ${info} (Batching: ${this.config.messageBatching?.enabled ? 'ON' : 'OFF'})`);
                 this.logToFile('INFO', info);
+
+                // Auto-discover OSCQuery if enabled
+                if (this.config.oscQuery?.enabled) {
+                    this.autoDiscoverOSCQuery();
+                }
 
                 this.emitStatus();
             });
@@ -484,6 +973,16 @@ class OSCBridgePlugin {
         }
 
         try {
+            // Clear message batcher
+            if (this.messageBatcher) {
+                this.messageBatcher.clear();
+            }
+
+            // Disconnect OSCQuery
+            if (this.oscQueryClient) {
+                this.oscQueryClient.disconnect();
+            }
+
             if (this.udpPort) {
                 this.udpPort.close();
                 this.udpPort = null;
@@ -515,12 +1014,35 @@ class OSCBridgePlugin {
                 return false;
             }
 
+            // Check parameter cache to skip redundant sends
+            const value = args[0];
+            if (this.config.parameterCaching?.enabled && !this.parameterCache.shouldSend(address, value)) {
+                // Skip redundant send
+                return true;
+            }
+
             const message = {
                 address: address,
                 args: args.map(arg => this.convertToOSCArg(arg))
             };
 
-            this.udpPort.send(message);
+            // Use message batching if enabled
+            if (this.config.messageBatching?.enabled) {
+                this.messageBatcher.add(message);
+                this.stats.batchedMessages++;
+            } else {
+                this.udpPort.send(message);
+            }
+
+            // Update cache
+            if (this.config.parameterCaching?.enabled) {
+                this.parameterCache.update(address, value);
+            }
+
+            // Update live monitor
+            if (this.config.liveMonitoring?.enabled) {
+                this.liveMonitor.updateParameter(address, value);
+            }
 
             this.stats.messagesSent++;
             this.stats.lastMessageSent = { address, args, timestamp: new Date() };
@@ -556,6 +1078,12 @@ class OSCBridgePlugin {
             this.stats.lastMessageReceived = { address, args, timestamp: new Date() };
 
             const values = args.map(arg => arg.value);
+            
+            // Update live monitor for incoming messages
+            if (this.config.liveMonitoring?.enabled && values.length > 0) {
+                this.liveMonitor.updateParameter(address, values[0]);
+            }
+
             const logMsg = `RECV ← ${address} ${JSON.stringify(values)} from ${info.address}:${info.port}`;
             this.logToFile('RECV', logMsg);
 
@@ -734,8 +1262,16 @@ class OSCBridgePlugin {
                 this.handleGiftEvent(giftData);
             });
             this.logger.info('✅ TikTok gift event handler registered for OSC-Bridge');
+
+            // Register chat event handler for chatbox mirroring
+            this.api.registerTikTokEvent('chat', (chatData) => {
+                if (chatData && chatData.comment && chatData.uniqueId) {
+                    this.mirrorTikTokChatToChatbox(chatData.comment, chatData.uniqueId);
+                }
+            });
+            this.logger.info('✅ TikTok chat event handler registered for chatbox mirroring');
         } catch (error) {
-            this.logger.error('Failed to register TikTok gift event handler. TikTok integration may not be available:', error);
+            this.logger.error('Failed to register TikTok event handlers. TikTok integration may not be available:', error);
         }
     }
 
@@ -1203,9 +1739,162 @@ class OSCBridgePlugin {
         }
     }
 
+    /**
+     * OSCQuery Auto-Discovery
+     */
+    async autoDiscoverOSCQuery() {
+        try {
+            if (!this.oscQueryClient) {
+                const host = this.config.oscQuery?.host || '127.0.0.1';
+                const port = this.config.oscQuery?.port || 9001;
+                this.oscQueryClient = new OSCQueryClient(host, port);
+            }
+
+            const result = await this.oscQueryClient.discover();
+            this.logger.info(`✅ OSCQuery discovered ${result.parameters.length} parameters`);
+            
+            if (this.config.oscQuery?.autoSubscribe) {
+                this.oscQueryClient.subscribe((update) => {
+                    this.api.emit('osc:oscquery-update', update);
+                });
+            }
+
+            this.api.emit('osc:oscquery-discovered', result);
+        } catch (error) {
+            this.logger.error('OSCQuery auto-discovery failed:', error);
+        }
+    }
+
+    /**
+     * PhysBones Control
+     */
+    triggerPhysBoneAnimation(boneName, animation = 'wiggle', params = {}) {
+        const basePath = `/avatar/physbones/${boneName}`;
+        const duration = params.duration || 1000;
+        const amplitude = params.amplitude || 0.5;
+
+        if (animation === 'wiggle') {
+            // Wiggle animation (e.g., tail wag)
+            const startTime = Date.now();
+            const interval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                if (elapsed > duration) {
+                    clearInterval(interval);
+                    this.send(`${basePath}/Angle`, 0);
+                    return;
+                }
+                
+                const value = Math.sin((elapsed / 100) * Math.PI) * amplitude;
+                this.send(`${basePath}/Angle`, value);
+            }, 16); // 60fps
+        } else if (animation === 'stretch') {
+            // Stretch animation
+            this.send(`${basePath}/Stretch`, amplitude);
+            setTimeout(() => {
+                this.send(`${basePath}/Stretch`, 0);
+            }, duration);
+        } else if (animation === 'grab') {
+            // Grab simulation
+            this.send(`${basePath}/IsGrabbed`, 1);
+            setTimeout(() => {
+                this.send(`${basePath}/IsGrabbed`, 0);
+            }, duration);
+        }
+
+        this.logger.info(`🦴 PhysBone animation: ${boneName} - ${animation}`);
+    }
+
+    /**
+     * VRChat Chatbox Integration
+     */
+    sendToChatbox(message, showTyping = true) {
+        if (!this.isRunning) {
+            this.logger.warn('Cannot send to chatbox: OSC not running');
+            return false;
+        }
+
+        try {
+            // Show typing indicator
+            if (showTyping && this.config.chatbox?.showTyping) {
+                this.send(this.VRCHAT_PARAMS.CHATBOX_TYPING, true);
+                setTimeout(() => {
+                    this.send(this.VRCHAT_PARAMS.CHATBOX_TYPING, false);
+                }, 1000);
+            }
+
+            // Send message to chatbox
+            // VRChat chatbox takes string and boolean (true = send immediately)
+            this.send(this.VRCHAT_PARAMS.CHATBOX_INPUT, message, true);
+            
+            this.logger.info(`💬 Sent to VRChat chatbox: ${message}`);
+            return true;
+        } catch (error) {
+            this.logger.error('Chatbox send error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Mirror TikTok chat to VRChat chatbox
+     */
+    mirrorTikTokChatToChatbox(message, username) {
+        if (!this.config.chatbox?.enabled || !this.config.chatbox?.mirrorTikTokChat) {
+            return;
+        }
+
+        const prefix = this.config.chatbox?.prefix || '[TikTok]';
+        const formatted = `${prefix} ${username}: ${message}`;
+        this.sendToChatbox(formatted, true);
+    }
+
+    /**
+     * Expression Menu Integration (8 emote slots)
+     */
+    triggerExpression(slot, hold = false) {
+        if (slot < 0 || slot > 7) {
+            this.logger.warn(`Invalid expression slot: ${slot}. Must be 0-7.`);
+            return false;
+        }
+
+        const address = `/avatar/parameters/EmoteSlot${slot}`;
+        this.send(address, hold ? 1 : 0);
+        
+        this.logger.info(`😀 Expression slot ${slot} triggered (hold: ${hold})`);
+        return true;
+    }
+
+    /**
+     * Play expression combo (sequence of expressions)
+     */
+    async playExpressionCombo(combo) {
+        for (const step of combo) {
+            this.triggerExpression(step.slot, true);
+            await new Promise(resolve => setTimeout(resolve, step.duration || 1000));
+            this.triggerExpression(step.slot, false);
+            if (step.pause) {
+                await new Promise(resolve => setTimeout(resolve, step.pause));
+            }
+        }
+    }
+
     async destroy() {
         // Unregister GCCE commands
         this.unregisterGCCECommands();
+
+        // Stop live monitor
+        if (this.liveMonitor) {
+            this.liveMonitor.stop();
+        }
+
+        // Disconnect OSCQuery
+        if (this.oscQueryClient) {
+            this.oscQueryClient.disconnect();
+        }
+
+        // Clear caches
+        if (this.parameterCache) {
+            this.parameterCache.clear();
+        }
 
         if (this.isRunning) {
             await this.stop();
