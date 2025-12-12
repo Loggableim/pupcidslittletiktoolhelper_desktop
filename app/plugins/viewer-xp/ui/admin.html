@@ -2499,6 +2499,23 @@
 
     // ========== OVERLAY PREVIEW FUNCTIONS ==========
     
+    // Test data constants
+    const TEST_LEVEL = 5;
+    const TEST_TOTAL_XP = 2500;  // Total XP earned across all levels
+    const TEST_XP_FOR_NEXT_LEVEL = 500;  // XP required for next level
+    const TEST_XP_PROGRESS = 250;  // Current progress in this level (0-500)
+    
+    // Helper function to calculate XP progress for test data
+    function calculateTestXPProgress() {
+      const xpProgressPercent = (TEST_XP_PROGRESS / TEST_XP_FOR_NEXT_LEVEL) * 100;
+      return {
+        xp: TEST_TOTAL_XP,  // Total XP earned
+        xp_progress: TEST_XP_PROGRESS,  // Progress in current level
+        xp_for_next_level: TEST_XP_FOR_NEXT_LEVEL,  // XP needed for next level
+        xp_progress_percent: xpProgressPercent  // Percentage (50%)
+      };
+    }
+    
     function loadOverlayPreview() {
       const select = document.getElementById('overlaySelect');
       const overlayType = select.value;
@@ -2527,9 +2544,28 @@
     }
     
     function updatePreviewScale() {
-      const scale = document.getElementById('previewScale').value;
+      const scaleInput = document.getElementById('previewScale').value;
+      let scale = parseFloat(scaleInput);
+      
+      // Validate scale value and apply default if invalid
+      if (isNaN(scale) || scale <= 0 || scale > 2) {
+        console.warn('Invalid preview scale value:', scaleInput, '- using default 1.0');
+        scale = 1.0;
+      }
+      
       const container = document.getElementById('previewContainer');
+      
+      // Apply scale transform
       container.style.transform = `scale(${scale})`;
+      
+      // Adjust container dimensions to prevent overflow
+      // When scaled down, the container takes less visual space
+      const frameHeight = 600;
+      container.style.height = `${frameHeight}px`;
+      
+      // Adjust parent to fit scaled content
+      const parentHeight = frameHeight * scale;
+      container.parentElement.style.minHeight = `${parentHeight + 40}px`;
     }
     
     function refreshPreview() {
@@ -2583,51 +2619,82 @@
     
     function testLevelUp() {
       const username = document.getElementById('testUsername').value || 'TestUser';
-      socket.emit('viewer-xp:level-up', {
+      const testData = {
         username,
-        oldLevel: 5,
-        newLevel: 6,
+        oldLevel: TEST_LEVEL,
+        newLevel: TEST_LEVEL + 1,
         rewards: {
           title: 'Rising Star',
           badge: '⭐',
-          announcement_message: `Congratulations ${username}! You've reached Level 6!`
+          announcement_message: `Congratulations ${username}! You've reached Level ${TEST_LEVEL + 1}!`
         }
-      });
+      };
+      
+      console.log('🧪 Testing Level Up:', testData);
+      socket.emit('viewer-xp:level-up', testData);
+      showToast('✅ Level Up test event sent!', 'success');
     }
     
     function testXPGain() {
       const username = document.getElementById('testUsername').value || 'TestUser';
-      socket.emit('viewer-xp:update', {
+      const xpData = calculateTestXPProgress();
+      
+      const testData = {
         username,
         amount: 50,
         actionType: 'chat_message',
         profile: {
           username,
-          level: 5,
-          xp: 1250,
-          total_xp_earned: 2500
+          level: TEST_LEVEL,
+          xp: xpData.xp,
+          total_xp_earned: TEST_TOTAL_XP,
+          xp_progress: xpData.xp_progress,
+          xp_for_next_level: xpData.xp_for_next_level,
+          xp_progress_percent: xpData.xp_progress_percent,
+          name_color: '#FFD700',
+          title: 'Rising Star'
         }
-      });
+      };
+      
+      console.log('🧪 Testing XP Gain:', testData);
+      socket.emit('viewer-xp:update', testData);
+      showToast('✅ XP Gain test event sent!', 'success');
     }
     
     function refreshLeaderboardPreview() {
-      socket.emit('viewer-xp:show-leaderboard', {
+      // Request actual leaderboard data from the server
+      console.log('🧪 Requesting leaderboard data...');
+      socket.emit('viewer-xp:get-leaderboard', {
         limit: 10,
-        leaderboard: [],
-        requestedBy: 'Preview'
+        days: null
       });
+      showToast('✅ Leaderboard refresh requested!', 'success');
     }
     
     function testUserProfile() {
       const username = document.getElementById('testUsername').value || 'TestUser';
-      socket.emit('viewer-xp:show-user-profile', {
+      const xpData = calculateTestXPProgress();
+      
+      const testData = {
         username,
-        level: 5,
-        xp: 1250,
-        total_xp_earned: 2500,
+        level: TEST_LEVEL,
+        xp: xpData.xp,
+        total_xp_earned: TEST_TOTAL_XP,
+        xp_progress: xpData.xp_progress,
+        xp_for_next_level: xpData.xp_for_next_level,
+        xp_progress_percent: xpData.xp_progress_percent,
         rank: 42,
-        title: 'Rising Star'
-      });
+        title: 'Rising Star',
+        name_color: '#FFD700',
+        badges: ['🎮', '⭐', '🏆'],
+        streak_days: 7,
+        watch_time_minutes: 180,
+        last_seen: new Date().toISOString()
+      };
+      
+      console.log('🧪 Testing User Profile:', testData);
+      socket.emit('viewer-xp:show-user-profile', testData);
+      showToast('✅ User Profile test event sent!', 'success');
     }
 
     // ========== LEVEL CONFIGURATION FUNCTIONS ==========
@@ -2773,35 +2840,8 @@
 
     // ========== UTILITY FUNCTIONS ==========
     
-    function showToast(message) {
-      // Simple toast notification
-      const toast = document.createElement('div');
-      toast.className = 'toast-notification';
-      toast.textContent = message;
-      toast.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: var(--color-bg-secondary);
-        color: var(--color-text-primary);
-        padding: 16px 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        border: 1px solid var(--color-border);
-        z-index: 10000;
-        font-weight: 500;
-        animation: slideIn 0.3s ease;
-      `;
-      
-      document.body.appendChild(toast);
-      
-      setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-      }, 3000);
-    }
-    
-    // Add CSS animations for toast
+    // Add CSS animations for toast notifications
+    // Check prevents duplicate style injection if this code runs multiple times
     if (!document.getElementById('toastAnimations')) {
       const style = document.createElement('style');
       style.id = 'toastAnimations';

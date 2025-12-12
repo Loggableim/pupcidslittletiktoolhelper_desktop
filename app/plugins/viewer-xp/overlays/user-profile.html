@@ -333,6 +333,19 @@
     
     try {
       socket = io();
+      
+      // Connection status logging
+      socket.on('connect', () => {
+        console.log('✅ User Profile: Socket.io connected');
+      });
+
+      socket.on('disconnect', () => {
+        console.log('⚠️ User Profile: Socket.io disconnected');
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('❌ User Profile: Socket.io connection error:', error);
+      });
     } catch (error) {
       console.error('Failed to initialize socket.io:', error);
       // Display error message
@@ -345,11 +358,13 @@
     // Listen for user profile events
     if (socket) {
       socket.on('viewer-xp:show-user-profile', (data) => {
+        console.log('👤 User Profile: Received show-user-profile event', data);
         showUserProfile(data);
       });
 
       // Also listen for the profile data from commands
       socket.on('viewer-xp:profile', (data) => {
+        console.log('👤 User Profile: Received profile event', data);
         if (data) {
           showUserProfile(data);
         }
