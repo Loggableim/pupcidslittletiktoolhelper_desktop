@@ -18,7 +18,7 @@ class QueueManager {
         // Deduplication: track recently queued items by content hash
         this.recentHashes = new Map();
         this.maxRecentHashes = 500; // Keep last 500 hashes
-        this.hashExpirationMs = 30000; // Hashes expire after 30 seconds
+        this.hashExpirationMs = 60000; // Hashes expire after 60 seconds (matches TikTok module deduplication)
 
         // Queue statistics
         this.stats = {
@@ -37,14 +37,12 @@ class QueueManager {
      */
     _generateContentHash(item) {
         // Create hash from userId + text (normalized)
+        // Note: No timestamp in hash to ensure duplicates are always caught
+        // The expiration time controls how long we remember duplicates
         const text = (item.text || '').toLowerCase().trim();
         const userId = item.userId || 'unknown';
         
-        // Include timestamp rounded to nearest 5 seconds to allow same user to say same thing
-        // but prevent rapid duplicates (within 5 second window)
-        const timestamp = Math.floor(Date.now() / 5000);
-        
-        return `${userId}|${text}|${timestamp}`;
+        return `${userId}|${text}`;
     }
 
     /**
@@ -65,18 +63,25 @@ class QueueManager {
         
         // Check if hash exists
         if (this.recentHashes.has(hash)) {
-            this.logger.warn(`Duplicate TTS item blocked: "${item.text?.substring(0, 30)}..." from ${item.username}`);
+            const existingTimestamp = this.recentHashes.get(hash);
+            const timeSinceFirst = now - existingTimestamp;
+            this.logger.warn(
+                `🔄 [DUPLICATE BLOCKED] TTS item already queued ${Math.floor(timeSinceFirst / 1000)}s ago: ` +
+                `"${item.text?.substring(0, 30)}..." from ${item.username} (hash: ${hash.substring(0, 30)}...)`
+            );
             return true;
         }
         
         // Add hash to tracking
         this.recentHashes.set(hash, now);
         
-        // Limit cache size
+        // Limit cache size (LRU eviction)
         if (this.recentHashes.size > this.maxRecentHashes) {
             const firstKey = this.recentHashes.keys().next().value;
             this.recentHashes.delete(firstKey);
         }
+        
+        this.logger.debug(`✓ TTS item unique, queuing: "${item.text?.substring(0, 30)}..." from ${item.username} (hash: ${hash.substring(0, 30)}...)`);
         
         return false;
     }
