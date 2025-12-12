@@ -23,6 +23,10 @@ function runTest(name, fn) {
 }
 
 // Simulate the _generateEventHash function for gift events
+// NOTE: This duplicates the production code intentionally for unit testing.
+// We test the hash generation logic in isolation without requiring the full
+// TikTok module and its dependencies. This allows the test to run independently
+// and documents the expected hash generation behavior.
 function generateGiftEventHash(eventType, data) {
     const components = [eventType];
     
