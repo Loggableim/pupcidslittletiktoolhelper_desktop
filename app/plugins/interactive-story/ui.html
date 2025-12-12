@@ -425,7 +425,7 @@
           </div>
           
           <div class="row">
-            <div class="col-md-3">
+            <div class="col-md-4">
               <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="offlineMode">
                 <label class="form-check-label" for="offlineMode">
@@ -434,13 +434,22 @@
                 <small class="d-block text-muted">Admin wählt Pfad (kein Live-Chat nötig)</small>
               </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
               <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="debugLogging">
                 <label class="form-check-label" for="debugLogging">
                   <strong>Debug Logging</strong>
                 </label>
-                <small class="d-block text-muted">Aktiviere detailliertes Logging</small>
+                <small class="d-block text-muted">Aktiviere detailliertes Logging & API-Diagnose</small>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="apiLogging">
+                <label class="form-check-label" for="apiLogging">
+                  <strong>API Request Logging</strong>
+                </label>
+                <small class="d-block text-muted">Zeige detaillierte API-Anfragen (nur für Debugging)</small>
               </div>
             </div>
           </div>
@@ -449,6 +458,46 @@
             💾 Save Configuration
           </button>
         </form>
+      </div>
+    </div>
+
+    <!-- OBS Overlay Preview Card -->
+    <div class="card">
+      <div class="card-header">
+        📺 OBS Overlay
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Overlay URL für OBS Browser Source:</label>
+          <div class="input-group">
+            <input type="text" class="form-control" id="overlayUrl" readonly value="">
+            <button class="btn btn-outline-primary" onclick="copyOverlayUrl()">📋 Copy</button>
+            <button class="btn btn-primary" onclick="openOverlayInNewTab()">🔗 Open</button>
+          </div>
+          <small class="text-muted">
+            Füge diese URL in OBS als Browser Source hinzu (Empfohlene Größe: 1920x1080)
+          </small>
+        </div>
+        
+        <div class="mb-2">
+          <button class="btn btn-secondary btn-sm" onclick="toggleOverlayPreview()">
+            <span id="previewToggleIcon">▶️</span> <span id="previewToggleText">Vorschau anzeigen</span>
+          </button>
+        </div>
+        
+        <div id="overlayPreviewContainer" style="display: none;">
+          <div style="border: 2px solid #0f3460; border-radius: 8px; overflow: hidden; background: #000;">
+            <iframe 
+              id="overlayPreview" 
+              src="" 
+              style="width: 100%; height: 540px; border: none; display: block;"
+              title="OBS Overlay Preview"
+            ></iframe>
+          </div>
+          <small class="text-muted d-block mt-2">
+            ℹ️ Dies ist eine 50%-Skalierung der 1920x1080 Overlay-Ansicht
+          </small>
+        </div>
       </div>
     </div>
 
@@ -564,6 +613,42 @@
     let selectedTheme = null;
     let currentStatus = null;
 
+    // Set overlay URL on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      const overlayUrl = `${window.location.protocol}//${window.location.host}/interactive-story/overlay`;
+      document.getElementById('overlayUrl').value = overlayUrl;
+      document.getElementById('overlayPreview').src = overlayUrl;
+    });
+
+    // Overlay preview functions
+    function copyOverlayUrl() {
+      const urlInput = document.getElementById('overlayUrl');
+      urlInput.select();
+      document.execCommand('copy');
+      alert('✅ Overlay URL kopiert!');
+    }
+
+    function openOverlayInNewTab() {
+      const url = document.getElementById('overlayUrl').value;
+      window.open(url, '_blank', 'width=1920,height=1080');
+    }
+
+    function toggleOverlayPreview() {
+      const container = document.getElementById('overlayPreviewContainer');
+      const toggleIcon = document.getElementById('previewToggleIcon');
+      const toggleText = document.getElementById('previewToggleText');
+      
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        toggleIcon.textContent = '⏸️';
+        toggleText.textContent = 'Vorschau ausblenden';
+      } else {
+        container.style.display = 'none';
+        toggleIcon.textContent = '▶️';
+        toggleText.textContent = 'Vorschau anzeigen';
+      }
+    }
+
     // Load initial data
     async function loadStatus() {
       try {
@@ -589,6 +674,7 @@
         document.getElementById('autoGenerateTTS').checked = config.autoGenerateTTS === true;
         document.getElementById('offlineMode').checked = config.offlineMode === true;
         document.getElementById('debugLogging').checked = config.debugLogging === true;
+        document.getElementById('apiLogging').checked = config.apiLogging === true;
         
         // Show/hide debug log card based on debug logging setting
         document.getElementById('debugLogCard').style.display = config.debugLogging ? 'block' : 'none';
@@ -812,7 +898,8 @@
         autoGenerateImages: document.getElementById('autoGenerateImages').checked,
         autoGenerateTTS: document.getElementById('autoGenerateTTS').checked,
         offlineMode: document.getElementById('offlineMode').checked,
-        debugLogging: document.getElementById('debugLogging').checked
+        debugLogging: document.getElementById('debugLogging').checked,
+        apiLogging: document.getElementById('apiLogging').checked
       };
       
       try {

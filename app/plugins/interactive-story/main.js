@@ -70,8 +70,21 @@ class InteractiveStoryPlugin {
       this.debugLogs.pop();
     }
     
-    // Also log to console
-    this.logger[level] ? this.logger[level](message, data) : this.logger.info(message, data);
+    // Log to Winston logger with appropriate level
+    const logMessage = data ? `${message} ${JSON.stringify(data)}` : message;
+    switch(level) {
+      case 'error':
+        this.logger.error(logMessage);
+        break;
+      case 'warn':
+        this.logger.warn(logMessage);
+        break;
+      case 'debug':
+        this.logger.debug(logMessage);
+        break;
+      default:
+        this.logger.info(logMessage);
+    }
     
     // Emit to UI
     this.io.emit('story:debug-log', logEntry);
@@ -100,13 +113,21 @@ class InteractiveStoryPlugin {
 
       // Initialize services
       if (apiKey) {
-        this.llmService = new LLMService(apiKey, this.logger);
+        // Create debug callback that respects debugLogging config
+        const debugCallback = (level, message, data) => this._debugLog(level, message, data);
+        
+        this.llmService = new LLMService(apiKey, this.logger, debugCallback);
         this.imageService = new ImageService(apiKey, this.logger, this.imageCacheDir);
         this.ttsService = new TTSService(apiKey, this.logger, this.audioCacheDir);
         this.storyEngine = new StoryEngine(this.llmService, this.logger);
         
+        this._debugLog('info', '✅ SiliconFlow services initialized', { 
+          apiKeyLength: apiKey.length,
+          apiKeyPrefix: apiKey.substring(0, 6) + '...'
+        });
         this.api.log('✅ SiliconFlow services initialized', 'info');
       } else {
+        this._debugLog('error', '⚠️ SiliconFlow API key not configured in global settings', null);
         this.api.log('⚠️ SiliconFlow API key not configured in global settings', 'warn');
         this.api.log('Please configure API key in Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)', 'warn');
       }
@@ -188,7 +209,8 @@ class InteractiveStoryPlugin {
         default: 'narrator'
       },
       offlineMode: false,
-      debugLogging: false
+      debugLogging: false,
+      apiLogging: false
     };
 
     const savedConfig = this.api.getConfig('story-config');
@@ -263,20 +285,31 @@ class InteractiveStoryPlugin {
     this.api.registerRoute('post', '/api/interactive-story/start', async (req, res) => {
       try {
         if (!this.storyEngine) {
-          return res.status(400).json({ error: 'Services not configured' });
+          this._debugLog('error', 'Services not configured - missing API key', null);
+          return res.status(400).json({ error: 'Services not configured. Please add SiliconFlow API key in Settings → TTS API Keys' });
         }
 
         const { theme, outline, model } = req.body;
         
-        this._debugLog('info', `Starting new story`, { theme, model, hasOutline: !!outline });
+        this._debugLog('info', `🚀 Starting new story`, { 
+          theme, 
+          model, 
+          hasOutline: !!outline,
+          apiKeyConfigured: !!this._getSiliconFlowApiKey()
+        });
         
         this.isGenerating = true;
         this.io.emit('story:generation-started', { theme });
 
         // Initialize story
+        this._debugLog('info', `📡 Calling LLM API to generate first chapter...`, { theme, model });
         const firstChapter = await this.storyEngine.initializeStory(theme, outline, model);
         
-        this._debugLog('info', `First chapter generated`, { title: firstChapter.title, choiceCount: firstChapter.choices.length });
+        this._debugLog('info', `✅ First chapter generated successfully`, { 
+          title: firstChapter.title, 
+          choiceCount: firstChapter.choices.length,
+          contentLength: firstChapter.content.length
+        });
 
         // Create session in database
         const sessionId = this.db.createSession({
@@ -318,7 +351,13 @@ class InteractiveStoryPlugin {
         res.json({ success: true, chapter: firstChapter, sessionId });
       } catch (error) {
         this.isGenerating = false;
-        this.logger.error(`Error starting story: ${error.message}`);
+        this._debugLog('error', `❌ Error starting story: ${error.message}`, { 
+          error: error.message,
+          stack: error.stack,
+          statusCode: error.response?.status,
+          responseData: error.response?.data
+        });
+        this.logger.error(`Error starting story: ${error.message}`, error);
         res.status(500).json({ error: error.message });
       }
     });
