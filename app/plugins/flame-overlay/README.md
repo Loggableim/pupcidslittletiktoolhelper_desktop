@@ -1,26 +1,43 @@
-# 🔥 TikTok Flame Overlay Plugin
+# 🎨 TikTok Visual Effects Overlay Plugin
 
-WebGL-basiertes Flammen-Overlay für TikTok Livestreams mit vollständig konfigurierbarer Oberfläche.
+WebGL-basiertes Multi-Effekt-Overlay für TikTok Livestreams mit 4 beeindruckenden visuellen Modi und vollständig konfigurierbarer Oberfläche.
+
+## ✨ Neue Features in v2.0
+
+- 🔥 **4 Effekt-Modi**:
+  - **Enhanced Flames** - Verbesserte, realistische Flammen mit Multi-Layer-Rendering
+  - **Particle Burst** - Dynamisches Partikelsystem mit mehreren Schichten
+  - **Energy Waves** - Fließende Energie-Wellen mit Wellenmustern
+  - **Electric Lightning** - Elektrische Blitze mit Flacker-Effekten
 
 ## Features
 
-- ✨ **WebGL Shader-basierte Flammen** - Hardware-beschleunigte, realistische Flammeneffekte
-- 🎨 **Anpassbare Farben** - Frei wählbare Flammenfarbe via Color Picker
+- ✨ **Moderne WebGL Shader** - Hardware-beschleunigte, hochperformante Effekte
+- 🎭 **4 Visual Effect Modes** - Wähle zwischen Flames, Particles, Energy, Lightning
+- 🎨 **Anpassbare Farben** - Frei wählbare Farbe via Color Picker für alle Effekte
 - 📐 **TikTok Format Presets** - Vordefinierte Auflösungen (Portrait 720×1280, HD 1080×1920, etc.)
 - 🖼️ **Flexible Rahmenposition** - Unten, Oben, Seiten oder rundherum
-- ⚡ **Dynamische Animation** - Einstellbare Geschwindigkeit und Intensität
+- ⚡ **Dynamische Animation** - Einstellbare Geschwindigkeit und Intensität für jeden Effekt
 - 🎯 **OBS-optimiert** - Transparenter Hintergrund, keine Artefakte
 - 🔧 **Live-Konfiguration** - Alle Einstellungen in Echtzeit änderbar
+- 🔄 **Echtzeit-Umschaltung** - Wechsel zwischen Effekten ohne Neustart
 - 🚀 **Performant** - WebGL 1.0 kompatibel, läuft auf jedem System
 
 ## Installation
 
 1. Das Plugin ist bereits im `/app/plugins/flame-overlay/` Verzeichnis installiert
 2. LTTH starten und zum Plugin-Manager navigieren
-3. "TikTok Flame Overlay" aktivieren
+3. "TikTok Visual Effects Overlay" aktivieren
 4. Einstellungen öffnen über das Plugin-Menü
 
 ## Konfiguration
+
+### Effekt-Typ
+
+- **🔥 Flammen (Klassisch)**: Verbesserte realistische Flammen mit Multi-Octave-Turbulenz
+- **✨ Partikel-Burst**: Animiertes Partikelsystem mit Größen- und Farbvariation
+- **⚡ Energie-Wellen**: Fließende Wellen-Effekte mit Sinuswellen-Mustern
+- **⚡ Elektrische Blitze**: Realistische Blitz-Arcs mit Flimmern und Glühen
 
 ### Auflösung & Format
 
@@ -34,17 +51,17 @@ WebGL-basiertes Flammen-Overlay für TikTok Livestreams mit vollständig konfigu
 ### Rahmen Einstellungen
 
 - **Rahmen Position**:
-  - `Unten` - Flammen nur am unteren Rand (klassisch für TikTok)
-  - `Oben` - Flammen nur am oberen Rand
-  - `Seiten` - Flammen links und rechts
-  - `Rundherum` - Flammen an allen Kanten (volle Immersion)
+  - `Unten` - Effekte nur am unteren Rand (klassisch für TikTok)
+  - `Oben` - Effekte nur am oberen Rand
+  - `Seiten` - Effekte links und rechts
+  - `Rundherum` - Effekte an allen Kanten (volle Immersion)
 
 - **Rahmenbreite**: 50-500 Pixel (Standard: 150px)
 - **Nur Kanten maskieren**: Weicherer Übergang zu transparenten Bereichen
 
-### Flammen Aussehen
+### Effekt Aussehen
 
-- **Flammenfarbe**: Frei wählbare Farbe via Color Picker (Standard: #ff6600 - Orange)
+- **Effektfarbe**: Frei wählbare Farbe via Color Picker (Standard: #ff6600 - Orange)
 - **Hintergrund Tint**: Optional färbbare Hintergrundfarbe
 - **Hintergrund Transparenz**: 0.0 (voll transparent) bis 1.0 (deckend)
 

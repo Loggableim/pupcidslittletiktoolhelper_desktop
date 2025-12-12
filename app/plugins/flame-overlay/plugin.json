@@ -1,8 +1,8 @@
 {
   "id": "flame-overlay",
-  "name": "TikTok Flame Overlay",
-  "version": "1.0.0",
-  "description": "Configurable WebGL flame border overlay for TikTok livestreams. Features customizable colors, intensity, speed, and frame thickness with transparent background for OBS.",
+  "name": "TikTok Visual Effects Overlay",
+  "version": "2.0.0",
+  "description": "Advanced WebGL effects overlay with 4 stunning visual modes: Flames, Particle Burst, Energy Waves, and Electric Lightning. Fully customizable colors, intensity, speed, and frame positioning with transparent background for OBS.",
   "author": "Pup Cid",
   "entry": "main.js",
   "enabled": false,
@@ -12,17 +12,23 @@
     "database"
   ],
   "features": [
-    "webgl-flames",
+    "multiple-effect-modes",
+    "webgl-rendering",
+    "particle-systems",
+    "energy-waves",
+    "lightning-effects",
+    "enhanced-flames",
     "customizable-colors",
     "adjustable-intensity",
     "obs-transparent-overlay",
     "tiktok-format-presets",
-    "configurable-frame-borders"
+    "configurable-frame-borders",
+    "real-time-switching"
   ],
   "descriptions": {
-    "en": "Configurable WebGL flame border overlay for TikTok livestreams. Features customizable colors, intensity, speed, and frame thickness with transparent background for OBS integration.",
-    "de": "Konfigurierbares WebGL-Flammen-Rahmen-Overlay für TikTok-Livestreams. Bietet anpassbare Farben, Intensität, Geschwindigkeit und Rahmenstärke mit transparentem Hintergrund für OBS-Integration.",
-    "es": "Overlay de marco de llamas WebGL configurable para transmisiones en vivo de TikTok. Presenta colores personalizables, intensidad, velocidad y grosor de marco con fondo transparente para integración OBS.",
-    "fr": "Overlay de cadre de flammes WebGL configurable pour les livestreams TikTok. Propose couleurs personnalisables, intensité, vitesse et épaisseur de cadre avec fond transparent pour intégration OBS."
+    "en": "Advanced WebGL effects overlay featuring 4 stunning visual modes: Enhanced Flames, Particle Burst, Energy Waves, and Electric Lightning. Fully customizable colors, intensity, speed, and frame positioning with transparent background for seamless OBS integration.",
+    "de": "Fortgeschrittenes WebGL-Effekt-Overlay mit 4 beeindruckenden visuellen Modi: Verbesserte Flammen, Partikel-Burst, Energie-Wellen und Elektrische Blitze. Vollständig anpassbare Farben, Intensität, Geschwindigkeit und Rahmenpositionierung mit transparentem Hintergrund für nahtlose OBS-Integration.",
+    "es": "Overlay de efectos WebGL avanzado con 4 modos visuales impresionantes: Llamas Mejoradas, Explosión de Partículas, Ondas de Energía y Relámpagos Eléctricos. Colores, intensidad, velocidad y posicionamiento de marco totalmente personalizables con fondo transparente para integración perfecta con OBS.",
+    "fr": "Overlay d'effets WebGL avancé avec 4 modes visuels époustouflants : Flammes Améliorées, Rafale de Particules, Ondes d'Énergie et Éclairs Électriques. Couleurs, intensité, vitesse et positionnement de cadre entièrement personnalisables avec fond transparent pour intégration transparente OBS."
   }
 }

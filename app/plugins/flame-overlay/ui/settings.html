@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok Flame Overlay - Einstellungen</title>
+    <title>TikTok Visual Effects Overlay - Einstellungen</title>
     <style>
         * {
             box-sizing: border-box;
@@ -240,10 +240,29 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔥 TikTok Flame Overlay</h1>
-        <p class="subtitle">Konfiguriere dein WebGL Flammen-Overlay für TikTok Livestreams</p>
+        <h1>🎨 TikTok Visual Effects Overlay</h1>
+        <p class="subtitle">Konfiguriere dein WebGL Effekt-Overlay mit 4 verschiedenen visuellen Modi für TikTok Livestreams</p>
         
         <div id="status" class="status"></div>
+        
+        <!-- Resolution Settings -->
+        <div class="section">
+            <h2 class="section-title">🎭 Effekt-Typ</h2>
+            
+            <div class="form-group">
+                <label for="effectType">Wähle deinen Effekt:</label>
+                <select id="effectType">
+                    <option value="flames">🔥 Flammen (Klassisch)</option>
+                    <option value="particles">✨ Partikel-Burst</option>
+                    <option value="energy">⚡ Energie-Wellen</option>
+                    <option value="lightning">⚡ Elektrische Blitze</option>
+                </select>
+            </div>
+            
+            <p style="color: #888; font-size: 13px; margin-top: 10px;">
+                <strong>Tipp:</strong> Jeder Effekt verwendet unterschiedliche Rendering-Techniken für maximale visuelle Wirkung!
+            </p>
+        </div>
         
         <!-- Resolution Settings -->
         <div class="section">
@@ -437,6 +456,9 @@
                 if (data.success) {
                     const config = data.config;
                     
+                    // Effect Type
+                    document.getElementById('effectType').value = config.effectType || 'flames';
+                    
                     // Resolution
                     document.getElementById('resolutionPreset').value = config.resolutionPreset || 'tiktok-portrait';
                     document.getElementById('customWidth').value = config.customWidth || 720;
@@ -481,6 +503,7 @@
         async function saveConfig() {
             try {
                 const config = {
+                    effectType: document.getElementById('effectType').value,
                     resolutionPreset: document.getElementById('resolutionPreset').value,
                     customWidth: parseInt(document.getElementById('customWidth').value),
                     customHeight: parseInt(document.getElementById('customHeight').value),
