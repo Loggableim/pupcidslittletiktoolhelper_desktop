@@ -655,5 +655,147 @@
     "copy_overlay_url": "📋 Copier l'URL de l'Overlay",
     "open_in_new_tab": "🔗 Ouvrir dans un Nouvel Onglet",
     "test_firework": "🧪 Tester Feu d'Artifice"
+  },
+  "launcher": {
+    "language_selection": {
+      "title": "Sélectionnez votre langue",
+      "subtitle": "Choisissez votre langue préférée pour continuer"
+    },
+    "tabs": {
+      "welcome": "Bienvenue",
+      "resources": "Ressources",
+      "changelog": "Journal des modifications",
+      "community": "Communauté",
+      "logging": "Journalisation"
+    },
+    "welcome": {
+      "title": "Bienvenue dans PupCid's Little TikTool Helper!",
+      "thank_you": "Merci d'avoir installé LTTH!",
+      "description": "LTTH est un outil gratuit et open-source pour le streaming TikTok LIVE avec overlays, alertes, TTS, automatisation et un vaste écosystème de plugins.",
+      "features": {
+        "title": "Fonctionnalités principales:",
+        "live_connection": "Connexion TikTok LIVE",
+        "overlays": "Overlays personnalisables",
+        "tts": "Synthèse vocale",
+        "automation": "Flux d'automatisation",
+        "plugins": "Vaste écosystème de plugins",
+        "osc": "Intégration OSC (VRChat, etc.)"
+      }
+    },
+    "resources": {
+      "title": "Dépendances requises & Clés API",
+      "dependencies": {
+        "title": "Dépendances",
+        "subtitle": "Les dépendances suivantes devraient être installées automatiquement. Si l'installation automatique a échoué, installez-les manuellement:",
+        "nodejs": "Node.js 18.x - 23.x",
+        "npm": "npm (inclus avec Node.js)",
+        "install_command": "Exécuter dans le dossier app:"
+      },
+      "api_keys": {
+        "title": "Clés API",
+        "required": "Requis",
+        "optional": "Optionnel",
+        "tiktok": {
+          "title": "Session TikTok",
+          "description": "Requis pour la connexion TikTok LIVE",
+          "link": "Comment obtenir l'ID de session"
+        },
+        "openai": {
+          "title": "Clé API OpenAI",
+          "description": "Optionnel pour les fonctionnalités TTS et IA avancées",
+          "link": "Obtenir une clé API"
+        },
+        "elevenlabs": {
+          "title": "Clé API ElevenLabs",
+          "description": "Optionnel pour des voix TTS de haute qualité",
+          "link": "Obtenir une clé API"
+        },
+        "obs": {
+          "title": "OBS WebSocket",
+          "description": "Optionnel pour l'intégration OBS",
+          "link": "Guide de configuration"
+        }
+      }
+    },
+    "changelog": {
+      "title": "Modifications récentes",
+      "loading": "Chargement du journal...",
+      "failed": "Échec du chargement du journal."
+    },
+    "community": {
+      "title": "Communauté & Support",
+      "links": {
+        "website": {
+          "title": "Site Web LTTH",
+          "description": "Visitez notre site officiel pour la documentation et les guides",
+          "url": "https://ltth.app"
+        },
+        "discord": {
+          "title": "Communauté Discord",
+          "description": "Rejoignez notre serveur Discord pour le support et les discussions",
+          "url": "https://discord.gg/pawsunited"
+        },
+        "github": {
+          "title": "Dépôt GitHub",
+          "description": "Voir le code source et contribuer au développement",
+          "url": "https://github.com/Loggableim/ltth.app"
+        },
+        "discussions": {
+          "title": "Discussions GitHub",
+          "description": "Poser des questions et partager des idées avec la communauté",
+          "url": "https://github.com/Loggableim/ltth.app/discussions"
+        },
+        "feature_requests": {
+          "title": "Demandes de fonctionnalités",
+          "description": "Suggérer de nouvelles fonctionnalités et voter sur les demandes existantes",
+          "url": "https://github.com/Loggableim/ltth.app/issues?q=is:issue+label:enhancement"
+        },
+        "bug_reports": {
+          "title": "Rapports de bugs",
+          "description": "Signaler des bugs et des problèmes",
+          "url": "https://github.com/Loggableim/ltth.app/issues?q=is:issue+label:bug"
+        }
+      }
+    },
+    "logging": {
+      "title": "Journaux du serveur",
+      "enable": "Activer la journalisation",
+      "disable": "Désactiver la journalisation",
+      "description": "Afficher les journaux du serveur en temps réel. Désactiver pour économiser des ressources.",
+      "no_logs": "Aucun journal disponible. Activez la journalisation pour voir la sortie du serveur."
+    },
+    "profile": {
+      "title": "Profil utilisateur",
+      "select_profile": "Sélectionner un profil",
+      "create_profile": "Créer un nouveau profil",
+      "username_label": "Nom d'utilisateur TikTok",
+      "username_placeholder": "Entrez votre nom d'utilisateur TikTok (sans @)",
+      "username_required": "Le nom d'utilisateur est requis",
+      "profile_exists": "Le profil existe déjà",
+      "create_button": "Créer un profil",
+      "continue_button": "Continuer",
+      "no_profiles": "Aucun profil trouvé. Créez un nouveau profil pour continuer."
+    },
+    "options": {
+      "keep_launcher_open": "Garder le lanceur ouvert après le démarrage",
+      "keep_launcher_hint": "Lorsqu'activé, le tableau de bord s'ouvre dans un nouvel onglet/fenêtre"
+    },
+    "status": {
+      "initializing": "Initialisation...",
+      "checking_node": "Vérification de l'installation de Node.js...",
+      "node_found": "Node.js trouvé...",
+      "checking_npm": "Vérification de l'installation de npm...",
+      "npm_found": "npm trouvé...",
+      "checking_dependencies": "Vérification des dépendances...",
+      "installing_dependencies": "Installation des dépendances...",
+      "dependencies_installed": "Dépendances installées!",
+      "checking_config": "Vérification de la configuration...",
+      "config_checked": "Configuration vérifiée!",
+      "starting_server": "Démarrage du serveur...",
+      "server_started": "Serveur démarré avec succès!",
+      "redirecting": "Redirection vers le tableau de bord...",
+      "loading_profile": "Chargement du profil...",
+      "profile_loaded": "Profil chargé!"
+    }
   }
 }

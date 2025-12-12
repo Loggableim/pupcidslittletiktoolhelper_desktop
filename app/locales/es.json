@@ -654,5 +654,147 @@
     "copy_overlay_url": "📋 Copiar URL del Overlay",
     "open_in_new_tab": "🔗 Abrir en Nueva Pestaña",
     "test_firework": "🧪 Probar Fuego Artificial"
+  },
+  "launcher": {
+    "language_selection": {
+      "title": "Selecciona tu idioma",
+      "subtitle": "Elige tu idioma preferido para continuar"
+    },
+    "tabs": {
+      "welcome": "Bienvenida",
+      "resources": "Recursos",
+      "changelog": "Registro de cambios",
+      "community": "Comunidad",
+      "logging": "Registro"
+    },
+    "welcome": {
+      "title": "¡Bienvenido a PupCid's Little TikTool Helper!",
+      "thank_you": "¡Gracias por instalar LTTH!",
+      "description": "LTTH es una herramienta gratuita y de código abierto para transmisión en vivo de TikTok con overlays, alertas, TTS, automatización y un amplio ecosistema de plugins.",
+      "features": {
+        "title": "Características principales:",
+        "live_connection": "Conexión TikTok LIVE",
+        "overlays": "Overlays personalizables",
+        "tts": "Texto a voz",
+        "automation": "Flujos de automatización",
+        "plugins": "Amplio ecosistema de plugins",
+        "osc": "Integración OSC (VRChat, etc.)"
+      }
+    },
+    "resources": {
+      "title": "Dependencias requeridas y claves API",
+      "dependencies": {
+        "title": "Dependencias",
+        "subtitle": "Las siguientes dependencias deberían instalarse automáticamente. Si la instalación automática falló, instálalas manualmente:",
+        "nodejs": "Node.js 18.x - 23.x",
+        "npm": "npm (incluido con Node.js)",
+        "install_command": "Ejecutar en la carpeta app:"
+      },
+      "api_keys": {
+        "title": "Claves API",
+        "required": "Requerido",
+        "optional": "Opcional",
+        "tiktok": {
+          "title": "Sesión de TikTok",
+          "description": "Requerido para la conexión TikTok LIVE",
+          "link": "Cómo obtener el ID de sesión"
+        },
+        "openai": {
+          "title": "Clave API de OpenAI",
+          "description": "Opcional para funciones TTS e IA avanzadas",
+          "link": "Obtener clave API"
+        },
+        "elevenlabs": {
+          "title": "Clave API de ElevenLabs",
+          "description": "Opcional para voces TTS de alta calidad",
+          "link": "Obtener clave API"
+        },
+        "obs": {
+          "title": "OBS WebSocket",
+          "description": "Opcional para integración con OBS",
+          "link": "Guía de configuración"
+        }
+      }
+    },
+    "changelog": {
+      "title": "Cambios recientes",
+      "loading": "Cargando registro de cambios...",
+      "failed": "Error al cargar el registro de cambios."
+    },
+    "community": {
+      "title": "Comunidad y Soporte",
+      "links": {
+        "website": {
+          "title": "Sitio web de LTTH",
+          "description": "Visita nuestro sitio oficial para documentación y guías",
+          "url": "https://ltth.app"
+        },
+        "discord": {
+          "title": "Comunidad Discord",
+          "description": "Únete a nuestro servidor de Discord para soporte y discusiones",
+          "url": "https://discord.gg/pawsunited"
+        },
+        "github": {
+          "title": "Repositorio GitHub",
+          "description": "Ver el código fuente y contribuir al desarrollo",
+          "url": "https://github.com/Loggableim/ltth.app"
+        },
+        "discussions": {
+          "title": "Discusiones de GitHub",
+          "description": "Hacer preguntas y compartir ideas con la comunidad",
+          "url": "https://github.com/Loggableim/ltth.app/discussions"
+        },
+        "feature_requests": {
+          "title": "Solicitudes de funciones",
+          "description": "Sugerir nuevas funciones y votar sobre solicitudes existentes",
+          "url": "https://github.com/Loggableim/ltth.app/issues?q=is:issue+label:enhancement"
+        },
+        "bug_reports": {
+          "title": "Informes de errores",
+          "description": "Informar errores y problemas",
+          "url": "https://github.com/Loggableim/ltth.app/issues?q=is:issue+label:bug"
+        }
+      }
+    },
+    "logging": {
+      "title": "Registros del servidor",
+      "enable": "Habilitar registro",
+      "disable": "Deshabilitar registro",
+      "description": "Ver registros del servidor en tiempo real. Deshabilitar para ahorrar recursos.",
+      "no_logs": "No hay registros disponibles. Habilita el registro para ver la salida del servidor."
+    },
+    "profile": {
+      "title": "Perfil de usuario",
+      "select_profile": "Seleccionar perfil",
+      "create_profile": "Crear nuevo perfil",
+      "username_label": "Nombre de usuario de TikTok",
+      "username_placeholder": "Ingresa tu nombre de usuario de TikTok (sin @)",
+      "username_required": "El nombre de usuario es requerido",
+      "profile_exists": "El perfil ya existe",
+      "create_button": "Crear perfil",
+      "continue_button": "Continuar",
+      "no_profiles": "No se encontraron perfiles. Crea un nuevo perfil para continuar."
+    },
+    "options": {
+      "keep_launcher_open": "Mantener el lanzador abierto después de iniciar",
+      "keep_launcher_hint": "Cuando está habilitado, el panel se abre en una nueva pestaña/ventana"
+    },
+    "status": {
+      "initializing": "Inicializando...",
+      "checking_node": "Verificando instalación de Node.js...",
+      "node_found": "Node.js encontrado...",
+      "checking_npm": "Verificando instalación de npm...",
+      "npm_found": "npm encontrado...",
+      "checking_dependencies": "Verificando dependencias...",
+      "installing_dependencies": "Instalando dependencias...",
+      "dependencies_installed": "¡Dependencias instaladas!",
+      "checking_config": "Verificando configuración...",
+      "config_checked": "¡Configuración verificada!",
+      "starting_server": "Iniciando servidor...",
+      "server_started": "¡Servidor iniciado exitosamente!",
+      "redirecting": "Redirigiendo al panel...",
+      "loading_profile": "Cargando perfil...",
+      "profile_loaded": "¡Perfil cargado!"
+    }
   }
 }

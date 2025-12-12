@@ -759,5 +759,147 @@
     "copy_overlay_url": "📋 Overlay-URL kopieren",
     "open_in_new_tab": "🔗 In neuem Tab öffnen",
     "test_firework": "🧪 Feuerwerk testen"
+  },
+  "launcher": {
+    "language_selection": {
+      "title": "Wähle deine Sprache",
+      "subtitle": "Wähle deine bevorzugte Sprache um fortzufahren"
+    },
+    "tabs": {
+      "welcome": "Willkommen",
+      "resources": "Ressourcen",
+      "changelog": "Änderungsprotokoll",
+      "community": "Community",
+      "logging": "Protokollierung"
+    },
+    "welcome": {
+      "title": "Willkommen zu PupCid's Little TikTool Helper!",
+      "thank_you": "Danke für die Installation von LTTH!",
+      "description": "LTTH ist ein kostenloses Open-Source-Tool für TikTok LIVE-Streaming mit Overlays, Benachrichtigungen, TTS, Automatisierung und einem umfangreichen Plugin-Ökosystem.",
+      "features": {
+        "title": "Hauptfunktionen:",
+        "live_connection": "TikTok LIVE Verbindung",
+        "overlays": "Anpassbare Overlays",
+        "tts": "Text-zu-Sprache",
+        "automation": "Automatisierungsflows",
+        "plugins": "Umfangreiches Plugin-Ökosystem",
+        "osc": "OSC-Integration (VRChat, etc.)"
+      }
+    },
+    "resources": {
+      "title": "Erforderliche Abhängigkeiten & API-Schlüssel",
+      "dependencies": {
+        "title": "Abhängigkeiten",
+        "subtitle": "Die folgenden Abhängigkeiten sollten automatisch installiert werden. Falls die automatische Installation fehlgeschlagen ist, installiere sie manuell:",
+        "nodejs": "Node.js 18.x - 23.x",
+        "npm": "npm (mit Node.js enthalten)",
+        "install_command": "Im app-Ordner ausführen:"
+      },
+      "api_keys": {
+        "title": "API-Schlüssel",
+        "required": "Erforderlich",
+        "optional": "Optional",
+        "tiktok": {
+          "title": "TikTok Sitzung",
+          "description": "Erforderlich für TikTok LIVE Verbindung",
+          "link": "Wie man die Session-ID erhält"
+        },
+        "openai": {
+          "title": "OpenAI API-Schlüssel",
+          "description": "Optional für erweiterte TTS und KI-Funktionen",
+          "link": "API-Schlüssel erhalten"
+        },
+        "elevenlabs": {
+          "title": "ElevenLabs API-Schlüssel",
+          "description": "Optional für hochwertige TTS-Stimmen",
+          "link": "API-Schlüssel erhalten"
+        },
+        "obs": {
+          "title": "OBS WebSocket",
+          "description": "Optional für OBS-Integration",
+          "link": "Setup-Anleitung"
+        }
+      }
+    },
+    "changelog": {
+      "title": "Letzte Änderungen",
+      "loading": "Lade Änderungsprotokoll...",
+      "failed": "Fehler beim Laden des Änderungsprotokolls."
+    },
+    "community": {
+      "title": "Community & Support",
+      "links": {
+        "website": {
+          "title": "LTTH Website",
+          "description": "Besuche unsere offizielle Website für Dokumentation und Anleitungen",
+          "url": "https://ltth.app"
+        },
+        "discord": {
+          "title": "Discord Community",
+          "description": "Tritt unserem Discord-Server bei für Support und Diskussionen",
+          "url": "https://discord.gg/pawsunited"
+        },
+        "github": {
+          "title": "GitHub Repository",
+          "description": "Quellcode ansehen und zur Entwicklung beitragen",
+          "url": "https://github.com/Loggableim/ltth.app"
+        },
+        "discussions": {
+          "title": "GitHub Diskussionen",
+          "description": "Stelle Fragen und teile Ideen mit der Community",
+          "url": "https://github.com/Loggableim/ltth.app/discussions"
+        },
+        "feature_requests": {
+          "title": "Feature-Anfragen",
+          "description": "Schlage neue Funktionen vor und stimme über bestehende Anfragen ab",
+          "url": "https://github.com/Loggableim/ltth.app/issues?q=is:issue+label:enhancement"
+        },
+        "bug_reports": {
+          "title": "Fehlerberichte",
+          "description": "Melde Bugs und Probleme",
+          "url": "https://github.com/Loggableim/ltth.app/issues?q=is:issue+label:bug"
+        }
+      }
+    },
+    "logging": {
+      "title": "Server-Protokolle",
+      "enable": "Protokollierung aktivieren",
+      "disable": "Protokollierung deaktivieren",
+      "description": "Echtzeitprotokolle des Servers anzeigen. Deaktivieren um Ressourcen zu sparen.",
+      "no_logs": "Keine Protokolle verfügbar. Aktiviere die Protokollierung um die Serverausgabe anzuzeigen."
+    },
+    "profile": {
+      "title": "Benutzerprofil",
+      "select_profile": "Profil auswählen",
+      "create_profile": "Neues Profil erstellen",
+      "username_label": "TikTok Benutzername",
+      "username_placeholder": "Gib deinen TikTok-Benutzernamen ein (ohne @)",
+      "username_required": "Benutzername ist erforderlich",
+      "profile_exists": "Profil existiert bereits",
+      "create_button": "Profil erstellen",
+      "continue_button": "Fortfahren",
+      "no_profiles": "Keine Profile gefunden. Erstelle ein neues Profil um fortzufahren."
+    },
+    "options": {
+      "keep_launcher_open": "Launcher nach dem Start geöffnet lassen",
+      "keep_launcher_hint": "Wenn aktiviert, öffnet sich das Dashboard in einem neuen Tab/Fenster"
+    },
+    "status": {
+      "initializing": "Initialisiere...",
+      "checking_node": "Prüfe Node.js Installation...",
+      "node_found": "Node.js gefunden...",
+      "checking_npm": "Prüfe npm Installation...",
+      "npm_found": "npm gefunden...",
+      "checking_dependencies": "Prüfe Abhängigkeiten...",
+      "installing_dependencies": "Installiere Abhängigkeiten...",
+      "dependencies_installed": "Abhängigkeiten installiert!",
+      "checking_config": "Prüfe Konfiguration...",
+      "config_checked": "Konfiguration geprüft!",
+      "starting_server": "Starte Server...",
+      "server_started": "Server erfolgreich gestartet!",
+      "redirecting": "Weiterleitung zum Dashboard...",
+      "loading_profile": "Lade Profil...",
+      "profile_loaded": "Profil geladen!"
+    }
   }
 }

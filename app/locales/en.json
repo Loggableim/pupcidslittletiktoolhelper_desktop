@@ -732,5 +732,147 @@
     "copy_overlay_url": "📋 Copy Overlay URL",
     "open_in_new_tab": "🔗 Open in New Tab",
     "test_firework": "🧪 Test Firework"
+  },
+  "launcher": {
+    "language_selection": {
+      "title": "Select Your Language",
+      "subtitle": "Choose your preferred language to continue"
+    },
+    "tabs": {
+      "welcome": "Welcome",
+      "resources": "Resources",
+      "changelog": "Changelog",
+      "community": "Community",
+      "logging": "Logging"
+    },
+    "welcome": {
+      "title": "Welcome to PupCid's Little TikTool Helper!",
+      "thank_you": "Thank you for installing LTTH!",
+      "description": "LTTH is a free and open-source tool for TikTok LIVE streaming with overlays, alerts, TTS, automation, and an extensive plugin ecosystem.",
+      "features": {
+        "title": "Key Features:",
+        "live_connection": "TikTok LIVE Connection",
+        "overlays": "Customizable Overlays",
+        "tts": "Text-to-Speech",
+        "automation": "Automation Flows",
+        "plugins": "Extensive Plugin Ecosystem",
+        "osc": "OSC Integration (VRChat, etc.)"
+      }
+    },
+    "resources": {
+      "title": "Required Dependencies & API Keys",
+      "dependencies": {
+        "title": "Dependencies",
+        "subtitle": "The following dependencies should be automatically installed. If automatic installation failed, install them manually:",
+        "nodejs": "Node.js 18.x - 23.x",
+        "npm": "npm (included with Node.js)",
+        "install_command": "Run in app folder:"
+      },
+      "api_keys": {
+        "title": "API Keys",
+        "required": "Required",
+        "optional": "Optional",
+        "tiktok": {
+          "title": "TikTok Session",
+          "description": "Required for TikTok LIVE connection",
+          "link": "How to get session ID"
+        },
+        "openai": {
+          "title": "OpenAI API Key",
+          "description": "Optional for advanced TTS and AI features",
+          "link": "Get API Key"
+        },
+        "elevenlabs": {
+          "title": "ElevenLabs API Key",
+          "description": "Optional for high-quality TTS voices",
+          "link": "Get API Key"
+        },
+        "obs": {
+          "title": "OBS WebSocket",
+          "description": "Optional for OBS integration",
+          "link": "Setup Guide"
+        }
+      }
+    },
+    "changelog": {
+      "title": "Recent Changes",
+      "loading": "Loading changelog...",
+      "failed": "Failed to load changelog."
+    },
+    "community": {
+      "title": "Community & Support",
+      "links": {
+        "website": {
+          "title": "LTTH Website",
+          "description": "Visit our official website for documentation and guides",
+          "url": "https://ltth.app"
+        },
+        "discord": {
+          "title": "Discord Community",
+          "description": "Join our Discord server for support and discussions",
+          "url": "https://discord.gg/pawsunited"
+        },
+        "github": {
+          "title": "GitHub Repository",
+          "description": "View source code and contribute to development",
+          "url": "https://github.com/Loggableim/ltth.app"
+        },
+        "discussions": {
+          "title": "GitHub Discussions",
+          "description": "Ask questions and share ideas with the community",
+          "url": "https://github.com/Loggableim/ltth.app/discussions"
+        },
+        "feature_requests": {
+          "title": "Feature Requests",
+          "description": "Suggest new features and vote on existing requests",
+          "url": "https://github.com/Loggableim/ltth.app/issues?q=is:issue+label:enhancement"
+        },
+        "bug_reports": {
+          "title": "Bug Reports",
+          "description": "Report bugs and issues",
+          "url": "https://github.com/Loggableim/ltth.app/issues?q=is:issue+label:bug"
+        }
+      }
+    },
+    "logging": {
+      "title": "Server Logs",
+      "enable": "Enable Logging",
+      "disable": "Disable Logging",
+      "description": "View real-time server logs. Disable to save resources.",
+      "no_logs": "No logs available. Enable logging to view server output."
+    },
+    "profile": {
+      "title": "User Profile",
+      "select_profile": "Select Profile",
+      "create_profile": "Create New Profile",
+      "username_label": "TikTok Username",
+      "username_placeholder": "Enter your TikTok username (without @)",
+      "username_required": "Username is required",
+      "profile_exists": "Profile already exists",
+      "create_button": "Create Profile",
+      "continue_button": "Continue",
+      "no_profiles": "No profiles found. Create a new profile to continue."
+    },
+    "options": {
+      "keep_launcher_open": "Keep launcher open after starting",
+      "keep_launcher_hint": "When enabled, the dashboard opens in a new tab/window"
+    },
+    "status": {
+      "initializing": "Initializing...",
+      "checking_node": "Checking Node.js installation...",
+      "node_found": "Node.js found...",
+      "checking_npm": "Checking npm installation...",
+      "npm_found": "npm found...",
+      "checking_dependencies": "Checking dependencies...",
+      "installing_dependencies": "Installing dependencies...",
+      "dependencies_installed": "Dependencies installed!",
+      "checking_config": "Checking configuration...",
+      "config_checked": "Configuration checked!",
+      "starting_server": "Starting server...",
+      "server_started": "Server started successfully!",
+      "redirecting": "Redirecting to dashboard...",
+      "loading_profile": "Loading profile...",
+      "profile_loaded": "Profile loaded!"
+    }
   }
 }
