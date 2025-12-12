@@ -1443,12 +1443,64 @@
             <div class="content-grid">
                 <div class="panel full-width">
                     <div class="panel-header">
-                        <h2>🎁 Gift-Joker Zuordnung</h2>
+                        <h2>🎁 Gift-Einstellungen</h2>
                     </div>
                     <div class="panel-body">
                         <div class="help-text">
-                            Ordnen Sie TikTok-Geschenke bestimmten Jokern zu. Wenn ein Viewer ein zugeordnetes Geschenk sendet, wird automatisch der entsprechende Joker aktiviert.
+                            Konfigurieren Sie TikTok-Geschenke für Quiz-Start und Joker-Aktivierung.
                         </div>
+                    </div>
+                </div>
+
+                <!-- Quiz-Start Gift Configuration -->
+                <div class="panel full-width">
+                    <div class="panel-header">
+                        <h2>🎮 Quiz-Start per Geschenk</h2>
+                    </div>
+                    <div class="panel-body">
+                        <div class="help-text" style="margin-bottom: 20px;">
+                            Wählen Sie ein Geschenk, das automatisch ein Quiz mit Auto-Play startet. 
+                            Das Quiz läuft dann automatisch weiter mit den konfigurierten Einstellungen (siehe Settings-Tab).
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="quizStartGiftEnabled">
+                                Quiz-Start per Geschenk aktivieren
+                            </label>
+                        </div>
+
+                        <div id="quizStartGiftConfig" style="margin-top: 20px; display: none;">
+                            <div class="form-group">
+                                <label>Quiz-Start Geschenk auswählen</label>
+                                <select id="quizStartGiftSelector" class="form-control">
+                                    <option value="">-- Geschenk wählen --</option>
+                                </select>
+                                <small>Oder manuell eingeben:</small>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Geschenk ID</label>
+                                    <input type="number" id="quizStartGiftId" class="form-control" placeholder="z.B. 5655">
+                                </div>
+                                <div class="form-group">
+                                    <label>Geschenk Name</label>
+                                    <input type="text" id="quizStartGiftName" class="form-control" placeholder="z.B. Galaxy">
+                                </div>
+                            </div>
+
+                            <div class="help-text" style="margin-top: 15px; padding: 10px; background: #f0f9ff; border-left: 4px solid #3b82f6;">
+                                <strong>ℹ️ Hinweis:</strong> Wenn ein Viewer dieses Geschenk sendet, wird automatisch ein Quiz gestartet. 
+                                Der Auto-Modus wird aktiviert und das Quiz läuft mit den Einstellungen aus dem Settings-Tab 
+                                (z.B. Auto-Modus Verzögerung, Rundenzahl, etc.).
+                            </div>
+                        </div>
+
+                        <div class="button-group" style="margin-top: 20px;">
+                            <button id="saveQuizStartGiftBtn" class="btn btn-primary">💾 Einstellungen Speichern</button>
+                        </div>
+                        <div id="quizStartGiftSaveMessage" class="message hidden"></div>
                     </div>
                 </div>
 
