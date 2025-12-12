@@ -123,7 +123,10 @@
    * Handle match state update
    */
   function handleMatchState(state) {
+    // Preserve previousLeaderboard when updating state
+    const previousLeaderboard = currentState.previousLeaderboard || [];
     currentState = state;
+    currentState.previousLeaderboard = currentState.previousLeaderboard || previousLeaderboard;
 
     if (state.active) {
       // Show match UI
@@ -201,7 +204,7 @@
     const offset = circumference * (1 - progress);
     
     circle.style.strokeDashoffset = offset;
-    circle.className = 'timer-circle-progress';
+    circle.setAttribute('class', 'timer-circle-progress');
     if (data.remaining < 30) {
       circle.classList.add('danger');
     } else if (data.remaining < 60) {
@@ -248,9 +251,11 @@
 
     // Store previous positions for animation
     const previousPositions = new Map();
-    currentState.previousLeaderboard.forEach((player, index) => {
-      previousPositions.set(player.user_id, index);
-    });
+    if (currentState.previousLeaderboard && Array.isArray(currentState.previousLeaderboard)) {
+      currentState.previousLeaderboard.forEach((player, index) => {
+        previousPositions.set(player.user_id, index);
+      });
+    }
 
     // Render leaderboard
     container.innerHTML = '';
