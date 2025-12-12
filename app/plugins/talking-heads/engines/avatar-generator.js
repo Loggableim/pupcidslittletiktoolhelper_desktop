@@ -3,7 +3,7 @@
  * Generates AI-based 2D avatars using image generation API
  */
 
-const axios = require('axios');
+const https = require('https');
 const fs = require('fs').promises;
 const path = require('path');
 const { getStyleTemplate } = require('../utils/style-templates');
@@ -14,6 +14,87 @@ class AvatarGenerator {
     this.apiKey = apiKey;
     this.logger = logger;
     this.config = config;
+  }
+
+  /**
+   * Make HTTPS POST request
+   * @param {string} url - URL to POST to
+   * @param {object} data - Data to send
+   * @param {object} headers - HTTP headers
+   * @returns {Promise<object>} Response data
+   */
+  async _httpsPost(url, data, headers = {}) {
+    return new Promise((resolve, reject) => {
+      const postData = JSON.stringify(data);
+      const urlObj = new URL(url);
+      
+      const options = {
+        hostname: urlObj.hostname,
+        port: urlObj.port || 443,
+        path: urlObj.pathname + urlObj.search,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          ...headers
+        },
+        timeout: 60000
+      };
+
+      const req = https.request(options, (res) => {
+        let responseData = '';
+
+        res.on('data', (chunk) => {
+          responseData += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(responseData);
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve(parsed);
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+            }
+          } catch (error) {
+            reject(new Error(`Failed to parse response: ${error.message}`));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        reject(error);
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
+
+      req.write(postData);
+      req.end();
+    });
+  }
+
+  /**
+   * Make HTTPS GET request for binary data
+   * @param {string} url - URL to GET
+   * @returns {Promise<Buffer>} Response buffer
+   */
+  async _httpsGetBuffer(url) {
+    return new Promise((resolve, reject) => {
+      https.get(url, (res) => {
+        const chunks = [];
+
+        res.on('data', (chunk) => {
+          chunks.push(chunk);
+        });
+
+        res.on('end', () => {
+          resolve(Buffer.concat(chunks));
+        });
+      }).on('error', reject);
+    });
   }
 
   /**
@@ -71,7 +152,7 @@ Output Requirements:
       this.logger.info(`TalkingHeads: Generating avatar for ${username} with style ${styleKey}`);
 
       // Call image generation API
-      const response = await axios.post(
+      const response = await this._httpsPost(
         this.apiUrl,
         {
           model: 'black-forest-labs/FLUX.1-schnell',
@@ -83,27 +164,22 @@ Output Requirements:
           prompt_enhancement: true
         },
         {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 60000 // 60 second timeout
+          'Authorization': `Bearer ${this.apiKey}`
         }
       );
 
-      if (!response.data || !response.data.images || response.data.images.length === 0) {
+      if (!response || !response.images || response.images.length === 0) {
         throw new Error('No image returned from API');
       }
 
       // Get base64 image data
-      const imageData = response.data.images[0].url;
+      const imageData = response.images[0].url;
       
       // Download image if URL, or decode if base64
       let imageBuffer;
       if (imageData.startsWith('http')) {
         // Download from URL
-        const imgResponse = await axios.get(imageData, { responseType: 'arraybuffer' });
-        imageBuffer = Buffer.from(imgResponse.data);
+        imageBuffer = await this._httpsGetBuffer(imageData);
       } else {
         // Decode base64
         const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
@@ -120,14 +196,6 @@ Output Requirements:
 
     } catch (error) {
       this.logger.error(`TalkingHeads: Failed to generate avatar for ${username}`, error);
-      
-      if (error.response) {
-        this.logger.error('TalkingHeads: API Error Response', {
-          status: error.response.status,
-          data: error.response.data
-        });
-      }
-      
       throw new Error(`Avatar generation failed: ${error.message}`);
     }
   }
@@ -151,7 +219,7 @@ Output Requirements:
 
     try {
       // Simple test with minimal prompt
-      const response = await axios.post(
+      const response = await this._httpsPost(
         this.apiUrl,
         {
           model: 'black-forest-labs/FLUX.1-schnell',
@@ -161,15 +229,11 @@ Output Requirements:
           num_inference_steps: 4
         },
         {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 30000
+          'Authorization': `Bearer ${this.apiKey}`
         }
       );
 
-      return response.status === 200;
+      return !!(response && response.images);
     } catch (error) {
       this.logger.error('TalkingHeads: API connection test failed', error);
       return false;

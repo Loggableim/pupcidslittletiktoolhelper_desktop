@@ -3,7 +3,7 @@
  * Generates 5 essential sprite frames from base avatar image
  */
 
-const axios = require('axios');
+const https = require('https');
 const fs = require('fs').promises;
 const path = require('path');
 const { getStyleTemplate } = require('../utils/style-templates');
@@ -23,6 +23,87 @@ class SpriteGenerator {
       speak_mid: 'character with mouth halfway open, mid-speech expression',
       speak_open: 'character with mouth fully open, speaking expression'
     };
+  }
+
+  /**
+   * Make HTTPS POST request
+   * @param {string} url - URL to POST to
+   * @param {object} data - Data to send
+   * @param {object} headers - HTTP headers
+   * @returns {Promise<object>} Response data
+   */
+  async _httpsPost(url, data, headers = {}) {
+    return new Promise((resolve, reject) => {
+      const postData = JSON.stringify(data);
+      const urlObj = new URL(url);
+      
+      const options = {
+        hostname: urlObj.hostname,
+        port: urlObj.port || 443,
+        path: urlObj.pathname + urlObj.search,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          ...headers
+        },
+        timeout: 60000
+      };
+
+      const req = https.request(options, (res) => {
+        let responseData = '';
+
+        res.on('data', (chunk) => {
+          responseData += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(responseData);
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve(parsed);
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+            }
+          } catch (error) {
+            reject(new Error(`Failed to parse response: ${error.message}`));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        reject(error);
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
+
+      req.write(postData);
+      req.end();
+    });
+  }
+
+  /**
+   * Make HTTPS GET request for binary data
+   * @param {string} url - URL to GET
+   * @returns {Promise<Buffer>} Response buffer
+   */
+  async _httpsGetBuffer(url) {
+    return new Promise((resolve, reject) => {
+      https.get(url, (res) => {
+        const chunks = [];
+
+        res.on('data', (chunk) => {
+          chunks.push(chunk);
+        });
+
+        res.on('end', () => {
+          resolve(Buffer.concat(chunks));
+        });
+      }).on('error', reject);
+    });
   }
 
   /**
@@ -97,7 +178,7 @@ Output Requirements:
           this.logger.info(`TalkingHeads: Generating sprite frame "${frameType}" for ${username}`);
 
           // Call image generation API with image reference
-          const response = await axios.post(
+          const response = await this._httpsPost(
             this.apiUrl,
             {
               model: 'black-forest-labs/FLUX.1-schnell',
@@ -109,26 +190,21 @@ Output Requirements:
               prompt_enhancement: false
             },
             {
-              headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type': 'application/json'
-              },
-              timeout: 60000
+              'Authorization': `Bearer ${this.apiKey}`
             }
           );
 
-          if (!response.data || !response.data.images || response.data.images.length === 0) {
+          if (!response || !response.images || response.images.length === 0) {
             throw new Error(`No image returned for frame ${frameType}`);
           }
 
           // Get image data
-          const imageData = response.data.images[0].url;
+          const imageData = response.images[0].url;
           
           // Download or decode image
           let imageBuffer;
           if (imageData.startsWith('http')) {
-            const imgResponse = await axios.get(imageData, { responseType: 'arraybuffer' });
-            imageBuffer = Buffer.from(imgResponse.data);
+            imageBuffer = await this._httpsGetBuffer(imageData);
           } else {
             const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
             imageBuffer = Buffer.from(base64Data, 'base64');
@@ -175,7 +251,7 @@ Output Requirements:
     try {
       const prompt = this.buildSpritePrompt(frameType, styleKey, username);
 
-      const response = await axios.post(
+      const response = await this._httpsPost(
         this.apiUrl,
         {
           model: 'black-forest-labs/FLUX.1-schnell',
@@ -186,24 +262,19 @@ Output Requirements:
           guidance_scale: 7.5
         },
         {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 60000
+          'Authorization': `Bearer ${this.apiKey}`
         }
       );
 
-      if (!response.data || !response.data.images || response.data.images.length === 0) {
+      if (!response || !response.images || response.images.length === 0) {
         throw new Error('No image returned from API');
       }
 
-      const imageData = response.data.images[0].url;
+      const imageData = response.images[0].url;
       
       let imageBuffer;
       if (imageData.startsWith('http')) {
-        const imgResponse = await axios.get(imageData, { responseType: 'arraybuffer' });
-        imageBuffer = Buffer.from(imgResponse.data);
+        imageBuffer = await this._httpsGetBuffer(imageData);
       } else {
         const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
         imageBuffer = Buffer.from(base64Data, 'base64');
