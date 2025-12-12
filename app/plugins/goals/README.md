@@ -6,11 +6,27 @@ A production-ready, fully-featured Goals plugin with dynamic templates, real ani
 
 ### Core System
 - **Multi-Goal Support**: Create unlimited goals, each with its own overlay
+- **🔄 NEW: MultiGoal System**: Rotate through multiple goals with WebGL animations
 - **Individual Overlay URLs**: Each goal gets a unique URL - no coordinates, all positioning in OBS
 - **Real-Time Updates**: WebSocket-based live updates with <50ms latency
 - **State Machine**: Robust state management for each goal (Idle, Updating, Reached, Animating, Hidden)
 - **TikTok Integration**: Automatic tracking of Coins, Likes, Followers
 - **Custom Goals**: Manually controlled goals for custom events
+
+### 🆕 MultiGoal Feature (NEW!)
+Rotate through multiple goals with smooth WebGL-powered transitions:
+- **Goal Selection**: Choose which existing goals to include in the rotation
+- **Custom Interval**: Set rotation speed from 1-60 seconds
+- **5 WebGL Animations**:
+  - Slide Transition - Smooth sliding effect
+  - Fade Transition - Cross-fade between goals
+  - Cube Rotation - 3D cube flip effect
+  - Wave Distortion - Ripple wave effect
+  - Particle Transition - Particle dissolve effect
+- **Real-Time Sync**: Goal values update live during rotation
+- **Easy Setup**: Simple UI to create and manage multigoals
+
+👉 **[MultiGoal Documentation (German)](./MULTIGOAL_DOCUMENTATION_DE.md)**
 
 ### Templates (6 Available)
 All templates are fully functional, dynamically loaded, and support live switching:

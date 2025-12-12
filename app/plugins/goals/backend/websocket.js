@@ -170,6 +170,34 @@ class GoalsWebSocket {
             }
         });
 
+        // MultiGoal subscribe
+        this.api.registerSocket('multigoals:subscribe', (socket, multigoalId) => {
+            this.subscribeToMultiGoal(socket, multigoalId);
+        });
+
+        // MultiGoal unsubscribe
+        this.api.registerSocket('multigoals:unsubscribe', (socket, multigoalId) => {
+            socket.leave(`multigoal:${multigoalId}`);
+            this.api.log(`Client unsubscribed from multigoal: ${multigoalId}`, 'debug');
+        });
+
+        // Get all multigoals
+        this.api.registerSocket('multigoals:get-all', (socket) => {
+            try {
+                const multigoals = this.db.getAllMultiGoals();
+                socket.emit('multigoals:all', {
+                    success: true,
+                    multigoals: multigoals
+                });
+            } catch (error) {
+                this.api.log(`Error getting all multigoals: ${error.message}`, 'error');
+                socket.emit('multigoals:all', {
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
         // Store io instance for broadcasting
         this.io = this.api.io;
 
@@ -278,6 +306,85 @@ class GoalsWebSocket {
             goalId: goal.id,
             goal: goal,
             state: snapshot
+        });
+    }
+
+    // ========================================
+    // MULTIGOAL WEBSOCKET METHODS
+    // ========================================
+
+    /**
+     * Subscribe to multigoal updates
+     */
+    subscribeToMultiGoal(socket, multigoalId) {
+        try {
+            const multigoal = this.db.getMultiGoalWithGoals(multigoalId);
+            if (!multigoal) {
+                socket.emit('multigoals:error', {
+                    error: 'MultiGoal not found',
+                    multigoalId: multigoalId
+                });
+                return;
+            }
+
+            // Join room for this multigoal
+            socket.join(`multigoal:${multigoalId}`);
+
+            // Send current multigoal state
+            socket.emit('multigoals:subscribed', {
+                multigoalId: multigoalId,
+                multigoal: multigoal
+            });
+
+            this.api.log(`Client subscribed to multigoal: ${multigoalId}`, 'debug');
+        } catch (error) {
+            this.api.log(`Error subscribing to multigoal: ${error.message}`, 'error');
+            socket.emit('multigoals:error', {
+                error: error.message,
+                multigoalId: multigoalId
+            });
+        }
+    }
+
+    /**
+     * Emit multigoal created
+     */
+    emitMultiGoalCreated(multigoal) {
+        if (!this.io) return;
+
+        this.io.emit('multigoals:created', {
+            multigoal: multigoal
+        });
+    }
+
+    /**
+     * Emit multigoal updated
+     */
+    emitMultiGoalUpdated(multigoal) {
+        if (!this.io) return;
+
+        this.io.emit('multigoals:updated', {
+            multigoal: multigoal
+        });
+
+        // Also send to multigoal-specific room
+        this.io.to(`multigoal:${multigoal.id}`).emit('multigoals:config-changed', {
+            multigoal: multigoal
+        });
+    }
+
+    /**
+     * Emit multigoal deleted
+     */
+    emitMultiGoalDeleted(multigoalId) {
+        if (!this.io) return;
+
+        this.io.emit('multigoals:deleted', {
+            multigoalId: multigoalId
+        });
+
+        this.io.to(`multigoal:${multigoalId}`).emit('multigoals:deleted', {
+            multigoalId: multigoalId
         });
     }
 }

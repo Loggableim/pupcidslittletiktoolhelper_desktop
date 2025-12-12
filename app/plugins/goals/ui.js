@@ -544,3 +544,380 @@ function getTemplate(id) {
 
     return templateMap[id] || templateMap['compact-bar'];
 }
+
+// ========================================
+// MULTIGOAL FUNCTIONALITY
+// ========================================
+
+let multigoals = [];
+let editingMultiGoalId = null;
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const tab = e.target.dataset.tab;
+        switchTab(tab);
+    });
+});
+
+function switchTab(tab) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    if (tab === 'goals') {
+        document.getElementById('goals-tab-content').classList.add('active');
+        document.getElementById('create-goal-btn').style.display = 'block';
+        document.getElementById('create-multigoal-btn').style.display = 'none';
+    } else if (tab === 'multigoals') {
+        document.getElementById('multigoals-tab-content').classList.add('active');
+        document.getElementById('create-goal-btn').style.display = 'none';
+        document.getElementById('create-multigoal-btn').style.display = 'block';
+        loadMultiGoals();
+    }
+}
+
+// Initialize multigoal socket events
+socket.on('multigoals:all', (data) => {
+    if (data.success) {
+        multigoals = data.multigoals;
+        renderMultiGoals();
+    }
+});
+
+socket.on('multigoals:created', (data) => {
+    multigoals.push(data.multigoal);
+    renderMultiGoals();
+});
+
+socket.on('multigoals:updated', (data) => {
+    const index = multigoals.findIndex(mg => mg.id === data.multigoal.id);
+    if (index !== -1) {
+        multigoals[index] = data.multigoal;
+        renderMultiGoals();
+    }
+});
+
+socket.on('multigoals:deleted', (data) => {
+    multigoals = multigoals.filter(mg => mg.id !== data.multigoalId);
+    renderMultiGoals();
+});
+
+// MultiGoal button handlers
+document.getElementById('create-multigoal-btn').addEventListener('click', () => {
+    editingMultiGoalId = null;
+    openMultiGoalModal();
+});
+
+document.getElementById('create-first-multigoal-btn').addEventListener('click', () => {
+    editingMultiGoalId = null;
+    openMultiGoalModal();
+});
+
+document.getElementById('cancel-multigoal-btn').addEventListener('click', () => {
+    closeMultiGoalModal();
+});
+
+document.getElementById('multigoal-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await saveMultiGoal();
+});
+
+// Load multigoals from server
+function loadMultiGoals() {
+    socket.emit('multigoals:get-all');
+}
+
+// Open multigoal modal
+function openMultiGoalModal() {
+    const modal = document.getElementById('multigoal-modal');
+    const form = document.getElementById('multigoal-form');
+    
+    form.reset();
+    
+    if (editingMultiGoalId) {
+        const multigoal = multigoals.find(mg => mg.id === editingMultiGoalId);
+        if (multigoal) {
+            document.getElementById('multigoal-name').value = multigoal.name;
+            document.getElementById('multigoal-interval').value = multigoal.rotation_interval;
+            document.getElementById('multigoal-animation').value = multigoal.animation_type;
+            document.getElementById('multigoal-width').value = multigoal.overlay_width;
+            document.getElementById('multigoal-height').value = multigoal.overlay_height;
+        }
+        modal.querySelector('.modal-header').textContent = 'Edit MultiGoal';
+    } else {
+        modal.querySelector('.modal-header').textContent = 'Create MultiGoal';
+    }
+
+    // Load goals for selection
+    loadGoalsSelector();
+    
+    modal.classList.add('active');
+}
+
+// Close multigoal modal
+function closeMultiGoalModal() {
+    document.getElementById('multigoal-modal').classList.remove('active');
+}
+
+// Load goals into the selector
+function loadGoalsSelector() {
+    const selector = document.getElementById('multigoal-goals-selector');
+    
+    if (goals.length === 0) {
+        selector.innerHTML = '<div style="color: var(--color-text-muted); text-align: center; padding: 20px;">No goals available. Create some goals first.</div>';
+        return;
+    }
+
+    // Get currently selected goals if editing
+    const selectedGoals = editingMultiGoalId 
+        ? (multigoals.find(mg => mg.id === editingMultiGoalId)?.goal_ids || [])
+        : [];
+
+    selector.innerHTML = goals.map(goal => `
+        <label style="display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 6px; margin-bottom: 6px;" 
+               onmouseover="this.style.background='var(--color-bg-tertiary)'" 
+               onmouseout="this.style.background='transparent'">
+            <input type="checkbox" 
+                   class="multigoal-goal-checkbox" 
+                   value="${goal.id}" 
+                   ${selectedGoals.includes(goal.id) ? 'checked' : ''}
+                   style="margin-right: 12px; width: 18px; height: 18px; cursor: pointer;">
+            <div style="flex: 1;">
+                <div style="font-weight: 600;">${goal.name}</div>
+                <div style="font-size: 0.85rem; color: var(--color-text-muted);">
+                    ${getGoalTypeIcon(goal.goal_type)} ${goal.current_value || 0} / ${goal.target_value}
+                </div>
+            </div>
+        </label>
+    `).join('');
+}
+
+// Get goal type icon
+function getGoalTypeIcon(type) {
+    const icons = {
+        coin: '🪙',
+        likes: '❤️',
+        follower: '👥',
+        custom: '⭐'
+    };
+    return icons[type] || '🎯';
+}
+
+// Save multigoal
+async function saveMultiGoal() {
+    const name = document.getElementById('multigoal-name').value;
+    const interval = parseInt(document.getElementById('multigoal-interval').value);
+    const animation = document.getElementById('multigoal-animation').value;
+    const width = parseInt(document.getElementById('multigoal-width').value);
+    const height = parseInt(document.getElementById('multigoal-height').value);
+
+    // Get selected goals
+    const selectedGoals = Array.from(document.querySelectorAll('.multigoal-goal-checkbox:checked'))
+        .map(cb => cb.value);
+
+    if (selectedGoals.length < 2) {
+        alert('Please select at least 2 goals for the multigoal rotation');
+        return;
+    }
+
+    const multigoalData = {
+        name,
+        rotation_interval: interval,
+        animation_type: animation,
+        overlay_width: width,
+        overlay_height: height,
+        goal_ids: selectedGoals
+    };
+
+    try {
+        const url = editingMultiGoalId 
+            ? `/api/multigoals/${editingMultiGoalId}`
+            : '/api/multigoals';
+        
+        const method = editingMultiGoalId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(multigoalData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            closeMultiGoalModal();
+            editingMultiGoalId = null;
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error saving multigoal:', error);
+        alert('Error saving multigoal');
+    }
+}
+
+// Render multigoals list
+function renderMultiGoals() {
+    const container = document.getElementById('multigoals-container');
+
+    if (multigoals.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">🔄</div>
+                <div class="empty-state-text">No multigoals created yet</div>
+                <button class="btn btn-primary" id="create-first-multigoal-btn">Create Your First MultiGoal</button>
+            </div>
+        `;
+        // Re-attach event listener
+        document.getElementById('create-first-multigoal-btn').addEventListener('click', () => {
+            editingMultiGoalId = null;
+            openMultiGoalModal();
+        });
+        return;
+    }
+
+    container.innerHTML = multigoals.map(mg => renderMultiGoalCard(mg)).join('');
+}
+
+// Render single multigoal card
+function renderMultiGoalCard(multigoal) {
+    const overlayUrl = `${window.location.origin}/goals/multigoal-overlay?id=${multigoal.id}`;
+    const animationNames = {
+        slide: 'Slide',
+        fade: 'Fade',
+        cube: 'Cube',
+        wave: 'Wave',
+        particle: 'Particle'
+    };
+
+    return `
+        <div class="multigoal-card">
+            <div class="multigoal-header">
+                <div class="multigoal-title">🔄 ${multigoal.name}</div>
+                <div>
+                    <span style="padding: 4px 12px; background: var(--color-active-bg); border-radius: 12px; font-size: 0.85rem; font-weight: 600;">
+                        ${multigoal.goal_ids?.length || 0} goals
+                    </span>
+                </div>
+            </div>
+
+            <div class="multigoal-info">
+                <div class="multigoal-info-item">
+                    <div class="multigoal-info-label">Interval</div>
+                    <div class="multigoal-info-value">${multigoal.rotation_interval}s</div>
+                </div>
+                <div class="multigoal-info-item">
+                    <div class="multigoal-info-label">Animation</div>
+                    <div class="multigoal-info-value">${animationNames[multigoal.animation_type] || multigoal.animation_type}</div>
+                </div>
+                <div class="multigoal-info-item">
+                    <div class="multigoal-info-label">Size</div>
+                    <div class="multigoal-info-value">${multigoal.overlay_width}×${multigoal.overlay_height}</div>
+                </div>
+            </div>
+
+            <div class="multigoal-goals-list">
+                <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: var(--color-text-muted);">
+                    Included Goals:
+                </div>
+                ${(multigoal.goal_ids || []).map(goalId => {
+                    const goal = goals.find(g => g.id === goalId);
+                    if (!goal) return `<div class="multigoal-goal-item" style="color: var(--color-text-muted);">Goal not found (${goalId})</div>`;
+                    return `
+                        <div class="multigoal-goal-item">
+                            ${getGoalTypeIcon(goal.goal_type)} ${goal.name} 
+                            <span style="color: var(--color-text-muted); font-size: 0.85rem;">
+                                (${goal.current_value || 0} / ${goal.target_value})
+                            </span>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+
+            <div style="background: var(--color-bg-tertiary); padding: 12px; border-radius: 8px; margin-top: 12px;">
+                <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 8px;">Overlay URL:</div>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" 
+                           value="${overlayUrl}" 
+                           readonly 
+                           style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-bg-card); color: var(--color-text-primary); font-size: 0.85rem;"
+                           onclick="this.select()">
+                    <button class="btn btn-secondary" 
+                            style="padding: 8px 16px;"
+                            onclick="copyToClipboard('${overlayUrl}')">
+                        📋 Copy
+                    </button>
+                </div>
+            </div>
+
+            <div class="multigoal-actions">
+                <button class="btn btn-primary" 
+                        style="flex: 1;"
+                        onclick="editMultiGoal('${multigoal.id}')">
+                    ✏️ Edit
+                </button>
+                <button class="btn btn-danger" 
+                        style="flex: 1;"
+                        onclick="deleteMultiGoal('${multigoal.id}', '${multigoal.name}')">
+                    🗑️ Delete
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Edit multigoal
+function editMultiGoal(id) {
+    editingMultiGoalId = id;
+    openMultiGoalModal();
+}
+
+// Delete multigoal
+async function deleteMultiGoal(id, name) {
+    if (!confirm(`Are you sure you want to delete "${name}"?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/multigoals/${id}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error deleting multigoal:', error);
+        alert('Error deleting multigoal');
+    }
+}
+
+// Copy to clipboard helper
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+    });
+}
+
+// Initialize on load - show goals tab by default
+window.addEventListener('DOMContentLoaded', () => {
+    switchTab('goals');
+    document.getElementById('create-goal-btn').style.display = 'block';
+});
+
