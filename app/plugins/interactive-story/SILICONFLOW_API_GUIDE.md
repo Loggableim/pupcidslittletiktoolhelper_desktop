@@ -46,7 +46,7 @@ headers: {
 
 ### Endpoint
 ```
-POST https://api.siliconflow.cn/v1/chat/completions
+POST https://api.siliconflow.com/v1/chat/completions
 ```
 
 ### Supported Models
@@ -117,7 +117,7 @@ POST https://api.siliconflow.cn/v1/chat/completions
 
 ### Endpoint
 ```
-POST https://api.siliconflow.cn/v1/images/generations
+POST https://api.siliconflow.com/v1/images/generations
 ```
 
 ### Supported Models
@@ -167,7 +167,7 @@ POST https://api.siliconflow.cn/v1/images/generations
 
 ### Endpoint
 ```
-POST https://api.siliconflow.cn/v1/audio/speech
+POST https://api.siliconflow.com/v1/audio/speech
 ```
 
 ### Supported Voices
@@ -292,7 +292,7 @@ async init() {
 
 3. **Test API key with curl:**
    ```bash
-   curl -X POST https://api.siliconflow.cn/v1/chat/completions \
+   curl -X POST https://api.siliconflow.com/v1/chat/completions \
      -H "Authorization: Bearer YOUR_API_KEY" \
      -H "Content-Type: application/json" \
      -d '{"model":"deepseek-ai/DeepSeek-V3","messages":[{"role":"user","content":"test"}]}'

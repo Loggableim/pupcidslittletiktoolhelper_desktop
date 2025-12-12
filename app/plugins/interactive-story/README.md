@@ -61,7 +61,7 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
 
 ### API Keys
 - **SiliconFlow API Key** (erforderlich)
-  - Registrierung: https://siliconflow.cn
+  - Registrierung: https://cloud.siliconflow.com
   - API-Dokumentation: https://docs.siliconflow.com
 
 ### Systemanforderungen
@@ -89,7 +89,7 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
 6. **Teste den API Key** im Interactive Story Plugin UI (siehe unten)
 
 **API Key erhalten:**
-1. Registrierung: https://cloud.siliconflow.cn/
+1. Registrierung: https://cloud.siliconflow.com/
 2. API Keys Bereich öffnen
 3. Neuen API Key erstellen
 4. Key kopieren (sollte mit "sk-" beginnen)
