@@ -715,9 +715,17 @@ class TikTokConnector extends EventEmitter {
             // Check if streak ended
             const isStreakEnd = giftData.repeatEnd;
             const isStreakable = giftData.giftType === 1;
+            
+            // Determine if this gift event should be emitted
+            // Non-streakable gifts (giftType !== 1) are always emitted
+            // Streakable gifts (giftType === 1) are only emitted when the streak ends
+            const shouldEmitGift = !isStreakable || (isStreakable && isStreakEnd);
+
+            // Log gift processing decision for debugging duplicate detection
+            this.logger.debug(`[GIFT FILTER] ${giftData.giftName}: streakable=${isStreakable}, streakEnd=${isStreakEnd}, willEmit=${shouldEmitGift}`);
 
             // Only count if not streakable OR streakable and streak ended
-            if (!isStreakable || (isStreakable && isStreakEnd)) {
+            if (shouldEmitGift) {
                 this.stats.totalCoins += coins;
                 this.stats.gifts++;
 
@@ -1507,7 +1515,24 @@ class TikTokConnector extends EventEmitter {
             case 'gift':
                 if (data.giftId) components.push(data.giftId.toString());
                 if (data.giftName) components.push(data.giftName);
-                if (data.repeatCount) components.push(data.repeatCount.toString());
+                // For gift events, use coins instead of repeatCount to better handle streak updates
+                // Coins = diamondCount * repeatCount, so it's more unique
+                if (data.coins) components.push(data.coins.toString());
+                // Also include repeatCount as fallback if coins is not available
+                else if (data.repeatCount) components.push(data.repeatCount.toString());
+                // Include timestamp rounded to nearest second to catch near-duplicate events
+                // but allow legitimate streak updates
+                if (data.timestamp) {
+                    try {
+                        const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
+                        if (!isNaN(roundedTime)) {
+                            components.push(roundedTime.toString());
+                        }
+                    } catch (error) {
+                        // Ignore invalid timestamps - hash will work without timestamp component
+                        this.logger.debug(`[HASH] Invalid timestamp in gift event: ${data.timestamp}`);
+                    }
+                }
                 break;
             case 'like':
                 // Include likeCount and totalLikes to prevent incorrect deduplication
