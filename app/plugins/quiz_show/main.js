@@ -67,7 +67,7 @@ class QuizShowPlugin {
             // NEW: Quiz-Start Gift Configuration
             quizStartGiftEnabled: false,
             quizStartGiftId: null,
-            quizStartGiftName: null
+            quizStartGiftName: null,
             // NEW: Custom Layout
             activeLayoutId: null, // ID of active layout from overlay_layouts table
             customLayoutEnabled: false, // Use custom layout vs default
