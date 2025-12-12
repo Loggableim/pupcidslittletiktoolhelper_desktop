@@ -52,10 +52,13 @@ async function loadConfig() {
       
       // Load cache stats
       await loadCacheStats();
+    } else {
+      console.error('Failed to load config:', data);
+      showNotification('Fehler beim Laden der Konfiguration: ' + (data.error || 'Unbekannter Fehler'), 'error');
     }
   } catch (error) {
     console.error('Failed to load config:', error);
-    showNotification('Fehler beim Laden der Konfiguration', 'error');
+    showNotification('Fehler beim Laden der Konfiguration: ' + error.message, 'error');
   }
 }
 
@@ -63,6 +66,11 @@ async function loadConfig() {
  * Populate form with configuration
  */
 function populateForm(config) {
+  if (!config) {
+    console.warn('No config provided to populateForm');
+    return;
+  }
+  
   document.getElementById('enabledSwitch').checked = config.enabled || false;
   document.getElementById('debugLoggingSwitch').checked = config.debugLogging || false;
   document.getElementById('rolePermission').value = config.rolePermission || 'all';
@@ -78,10 +86,10 @@ function populateForm(config) {
   document.getElementById('cacheDuration').value = cacheDays;
 
   // Show/hide team level input
-  toggleTeamLevelInput(config.rolePermission);
+  toggleTeamLevelInput(config.rolePermission || 'all');
   
   // Show/hide debug log section
-  toggleDebugLogSection(config.debugLogging);
+  toggleDebugLogSection(config.debugLogging || false);
 }
 
 /**
@@ -162,7 +170,7 @@ async function saveConfig() {
     const config = {
       enabled: document.getElementById('enabledSwitch').checked,
       debugLogging: document.getElementById('debugLoggingSwitch').checked,
-      defaultStyle: currentConfig.defaultStyle,
+      defaultStyle: currentConfig ? currentConfig.defaultStyle : 'cartoon',
       rolePermission: document.getElementById('rolePermission').value,
       minTeamLevel: parseInt(document.getElementById('minTeamLevel').value) || 0,
       fadeInDuration: parseInt(document.getElementById('fadeInDuration').value) || 300,
@@ -190,11 +198,12 @@ async function saveConfig() {
         lucide.createIcons();
       }
     } else {
-      showNotification('❌ Fehler beim Speichern', 'error');
+      showNotification('❌ Fehler beim Speichern: ' + (data.error || 'Unbekannter Fehler'), 'error');
+      console.error('Config save error:', data);
     }
   } catch (error) {
     console.error('Failed to save config:', error);
-    showNotification('❌ Fehler beim Speichern der Konfiguration', 'error');
+    showNotification('❌ Fehler beim Speichern der Konfiguration: ' + error.message, 'error');
   }
 }
 

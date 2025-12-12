@@ -95,6 +95,12 @@ class TalkingHeadsPlugin {
    * @private
    */
   _log(message, level = 'info', data = null) {
+    // Safety check
+    if (!this.logger) {
+      console.warn('TalkingHeads: Logger not initialized');
+      return;
+    }
+    
     const prefix = 'TalkingHeads:';
     const fullMessage = `${prefix} ${message}`;
     
@@ -105,7 +111,9 @@ class TalkingHeadsPlugin {
     }
     
     // Log info and debug based on debugLogging setting
-    if (level === 'debug' && !this.config.debugLogging) {
+    // Default to false if config or debugLogging is undefined
+    const debugEnabled = this.config && this.config.debugLogging === true;
+    if (level === 'debug' && !debugEnabled) {
       return; // Skip debug logs if debugging is disabled
     }
     
@@ -122,27 +130,35 @@ class TalkingHeadsPlugin {
    * @private
    */
   _saveConfig(newConfig) {
-    const oldDebugLogging = this.config.debugLogging;
-    this.config = { ...this.config, ...newConfig };
-    this.api.setConfig('talking_heads_config', this.config);
-    
-    // Log configuration change
-    this._log('Configuration saved', 'info');
-    
-    // If debug logging was toggled, log the change
-    if (oldDebugLogging !== this.config.debugLogging) {
-      this._log(`Debug logging ${this.config.debugLogging ? 'ENABLED' : 'DISABLED'}`, 'info');
-    }
-    
-    // Log other important config changes
-    if (this.config.debugLogging) {
-      this._log('Config updated', 'debug', {
-        enabled: this.config.enabled,
-        defaultStyle: this.config.defaultStyle,
-        rolePermission: this.config.rolePermission,
-        cacheEnabled: this.config.cacheEnabled,
-        debugLogging: this.config.debugLogging
-      });
+    try {
+      const oldDebugLogging = this.config ? this.config.debugLogging : false;
+      this.config = { ...this.config, ...newConfig };
+      this.api.setConfig('talking_heads_config', this.config);
+      
+      // Log configuration change
+      this._log('Configuration saved', 'info');
+      
+      // If debug logging was toggled, log the change
+      if (oldDebugLogging !== this.config.debugLogging) {
+        this._log(`Debug logging ${this.config.debugLogging ? 'ENABLED' : 'DISABLED'}`, 'info');
+      }
+      
+      // Log other important config changes
+      if (this.config.debugLogging) {
+        this._log('Config updated', 'debug', {
+          enabled: this.config.enabled,
+          defaultStyle: this.config.defaultStyle,
+          rolePermission: this.config.rolePermission,
+          cacheEnabled: this.config.cacheEnabled,
+          debugLogging: this.config.debugLogging
+        });
+      }
+    } catch (error) {
+      // If logging fails, use basic logger
+      if (this.logger) {
+        this.logger.error('TalkingHeads: Failed to save config internally', error);
+      }
+      throw error; // Re-throw to be caught by the route handler
     }
   }
 
