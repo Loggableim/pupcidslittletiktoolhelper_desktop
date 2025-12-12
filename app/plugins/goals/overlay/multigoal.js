@@ -459,11 +459,8 @@ class WebGLAnimator {
             return;
         }
 
-        // Create textures from DOM elements
-        const currentTexture = this.createTextureFromElement(fromElement);
-        const nextTexture = this.createTextureFromElement(toElement);
-
-        // Animate
+        // For a simpler implementation, we'll use the WebGL canvas as an overlay
+        // and apply shader effects during the transition
         const startTime = Date.now();
 
         return new Promise((resolve) => {
@@ -471,14 +468,14 @@ class WebGLAnimator {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / duration, 1.0);
 
-                this.renderTransition(program, currentTexture, nextTexture, progress);
+                // Render WebGL transition effect
+                this.renderTransitionEffect(program, progress);
 
                 if (progress < 1.0) {
                     requestAnimationFrame(animate);
                 } else {
-                    // Clean up textures
-                    this.gl.deleteTexture(currentTexture);
-                    this.gl.deleteTexture(nextTexture);
+                    // Clear canvas after transition
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
                     resolve();
                 }
             };
@@ -488,38 +485,9 @@ class WebGLAnimator {
     }
 
     /**
-     * Create WebGL texture from DOM element
+     * Render transition effect (simplified version)
      */
-    createTextureFromElement(element) {
-        const gl = this.gl;
-
-        // Create canvas from element
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = this.canvas.width;
-        tempCanvas.height = this.canvas.height;
-        const ctx = tempCanvas.getContext('2d');
-
-        // Use html2canvas-like approach - draw element to canvas
-        // For simplicity, we'll use the element's current rendering
-        ctx.fillStyle = 'transparent';
-        ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-        // Create texture
-        const texture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tempCanvas);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-        return texture;
-    }
-
-    /**
-     * Render transition frame
-     */
-    renderTransition(program, currentTexture, nextTexture, progress) {
+    renderTransitionEffect(program, progress) {
         const gl = this.gl;
 
         gl.useProgram(program);
@@ -557,25 +525,66 @@ class WebGLAnimator {
         gl.enableVertexAttribArray(texCoordLocation);
         gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
 
+        // Create simple gradient textures for transition
+        const texture1 = this.createGradientTexture([0.2, 0.4, 0.8, 0.3]);
+        const texture2 = this.createGradientTexture([0.8, 0.2, 0.4, 0.3]);
+
         // Set textures
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, currentTexture);
+        gl.bindTexture(gl.TEXTURE_2D, texture1);
         gl.uniform1i(gl.getUniformLocation(program, 'u_textureCurrent'), 0);
 
         gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, nextTexture);
+        gl.bindTexture(gl.TEXTURE_2D, texture2);
         gl.uniform1i(gl.getUniformLocation(program, 'u_textureNext'), 1);
 
         // Set progress uniform
         gl.uniform1f(gl.getUniformLocation(program, 'u_progress'), progress);
 
+        // Set blend mode for overlay effect
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
         // Clear and draw
+        gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
         // Clean up
         gl.deleteBuffer(positionBuffer);
         gl.deleteBuffer(texCoordBuffer);
+        gl.deleteTexture(texture1);
+        gl.deleteTexture(texture2);
+    }
+
+    /**
+     * Create a simple gradient texture
+     */
+    createGradientTexture(color) {
+        const gl = this.gl;
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        // Create gradient
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        gradient.addColorStop(0, `rgba(${color[0] * 255}, ${color[1] * 255}, ${color[2] * 255}, ${color[3]})`);
+        gradient.addColorStop(1, `rgba(${color[2] * 255}, ${color[0] * 255}, ${color[1] * 255}, ${color[3]})`);
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Create texture
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+        return texture;
     }
 }
 
