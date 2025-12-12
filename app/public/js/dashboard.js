@@ -1460,7 +1460,8 @@ async function loadSettings() {
         }
 
         const ttsFishspeechKeyInput = document.getElementById('tts-fishspeech-api-key');
-        if (ttsFishspeechKeyInput && settings.tts_fishspeech_api_key) {
+        // Check centralized key first, then legacy key for backwards compatibility
+        if (ttsFishspeechKeyInput && (settings.siliconflow_api_key || settings.tts_fishspeech_api_key)) {
             ttsFishspeechKeyInput.value = '***REDACTED***';
             ttsFishspeechKeyInput.placeholder = 'API key configured (hidden)';
         }
@@ -1647,6 +1648,9 @@ async function saveTTSAPIKeys() {
             updateData.tts_openai_api_key = openaiKey;
         }
         if (fishspeechKey && fishspeechKey !== '***REDACTED***') {
+            // Save to centralized SiliconFlow API key (used by both TTS and StreamAlchemy)
+            updateData.siliconflow_api_key = fishspeechKey;
+            // Also save to legacy key for backwards compatibility
             updateData.tts_fishspeech_api_key = fishspeechKey;
         }
 
@@ -1665,7 +1669,10 @@ async function saveTTSAPIKeys() {
             if (speechifyKey && speechifyKey !== '***REDACTED***') settings.tts_speechify_api_key = speechifyKey;
             if (elevenlabsKey && elevenlabsKey !== '***REDACTED***') settings.tts_elevenlabs_api_key = elevenlabsKey;
             if (openaiKey && openaiKey !== '***REDACTED***') settings.tts_openai_api_key = openaiKey;
-            if (fishspeechKey && fishspeechKey !== '***REDACTED***') settings.tts_fishspeech_api_key = fishspeechKey;
+            if (fishspeechKey && fishspeechKey !== '***REDACTED***') {
+                settings.tts_fishspeech_api_key = fishspeechKey;
+                settings.siliconflow_api_key = fishspeechKey; // Update centralized key too
+            }
             
             // Reload the settings to show the masked keys
             await loadSettings();

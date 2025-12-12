@@ -93,8 +93,10 @@ class StreamAlchemyPlugin {
 
             // Initialize fusion service (LightX + DALL-E fallback)
             const lightxKey = this.getLightXApiKey();
+            const siliconFlowKey = this.getSiliconFlowApiKey();
             this.fusionService = new FusionService(this.db, logger, {
                 lightxApiKey: lightxKey,
+                siliconFlowApiKey: siliconFlowKey,
                 customPrompts: this.pluginConfig?.customPrompts,
                 autoFusionEnabled: this.pluginConfig?.autoFusionEnabled || config.FUSION_MODE.AUTO_FUSION_ENABLED,
                 preferLightX: this.pluginConfig?.preferLightX ?? config.FUSION_MODE.PREFER_LIGHTX,
@@ -162,6 +164,30 @@ class StreamAlchemyPlugin {
         }
         // Try environment variable
         return process.env.LIGHTX_API_KEY || null;
+    }
+
+    /**
+     * Get SiliconFlow API key from settings or environment
+     * @returns {string|null} SiliconFlow API key
+     */
+    getSiliconFlowApiKey() {
+        // Try plugin config first
+        if (this.pluginConfig?.siliconFlowApiKey) {
+            return this.pluginConfig.siliconFlowApiKey;
+        }
+        // Try global settings (centralized key shared with TTS Fish Speech)
+        try {
+            const db = this.api.getDatabase();
+            // Try centralized key first, then legacy key for backwards compatibility
+            const key = db.getSetting('siliconflow_api_key') || 
+                       db.getSetting('streamalchemy_siliconflow_api_key') ||
+                       db.getSetting('tts_fishspeech_api_key');
+            if (key) return key;
+        } catch (error) {
+            this.api.log(`[STREAMALCHEMY] Failed to get SiliconFlow key from settings: ${error.message}`, 'warn');
+        }
+        // Try environment variable
+        return process.env.SILICONFLOW_API_KEY || null;
     }
 
     /**
@@ -630,6 +656,9 @@ class StreamAlchemyPlugin {
 
                 if (updates.siliconFlowApiKey && updates.siliconFlowApiKey !== '***HIDDEN***') {
                     try {
+                        // Save to centralized SiliconFlow key (shared with TTS Fish Speech)
+                        db.setSetting('siliconflow_api_key', updates.siliconFlowApiKey);
+                        // Also save to legacy key for backwards compatibility
                         db.setSetting('streamalchemy_siliconflow_api_key', updates.siliconFlowApiKey);
                         this.pluginConfig.siliconFlowApiKey = updates.siliconFlowApiKey;
                     } catch (error) {
