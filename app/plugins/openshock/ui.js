@@ -297,10 +297,15 @@ async function loadConfig() {
         console.log('[OpenShock] Config loaded:', config);
 
         // Update UI with config
-        if (config.apiKey) {
-            const apiKeyInput = document.getElementById('apiKey');
-            if (apiKeyInput) {
-                apiKeyInput.value = config.apiKey.substring(0, 8) + '...' + config.apiKey.substring(config.apiKey.length - 4);
+        const apiKeyInput = document.getElementById('apiKey');
+        if (apiKeyInput) {
+            if (config.apiKey) {
+                // Mask the API key to show it's saved
+                apiKeyInput.value = '***SAVED***';
+                apiKeyInput.placeholder = 'API Key gespeichert (verborgen)';
+            } else {
+                apiKeyInput.value = '';
+                apiKeyInput.placeholder = 'Enter your OpenShock API key';
             }
         }
         
@@ -2377,8 +2382,9 @@ async function saveApiSettings() {
     const apiKey = document.getElementById('apiKey').value;
     const baseUrl = document.getElementById('baseUrl').value;
 
-    if (!apiKey || apiKey.includes('...')) {
-        showNotification('Please enter a valid API key', 'error');
+    // Check if user is trying to save without changing the masked key
+    if (!apiKey || apiKey === '***SAVED***') {
+        showNotification('API key ist bereits gespeichert. Gib einen neuen Key ein, um ihn zu ändern.', 'info');
         return;
     }
 
