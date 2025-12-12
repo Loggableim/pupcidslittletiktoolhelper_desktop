@@ -2501,19 +2501,18 @@
     
     // Test data constants
     const TEST_LEVEL = 5;
-    const TEST_XP_IN_LEVEL = 1250;
-    const TEST_XP_FOR_NEXT_LEVEL = 500;
-    const TEST_TOTAL_XP = 2500;
+    const TEST_TOTAL_XP = 2500;  // Total XP earned across all levels
+    const TEST_XP_FOR_NEXT_LEVEL = 500;  // XP required for next level
+    const TEST_XP_PROGRESS = 250;  // Current progress in this level (0-500)
     
     // Helper function to calculate XP progress for test data
     function calculateTestXPProgress() {
-      const xpProgress = TEST_XP_IN_LEVEL % TEST_XP_FOR_NEXT_LEVEL;
-      const xpProgressPercent = (xpProgress / TEST_XP_FOR_NEXT_LEVEL) * 100;
+      const xpProgressPercent = (TEST_XP_PROGRESS / TEST_XP_FOR_NEXT_LEVEL) * 100;
       return {
-        xp: TEST_XP_IN_LEVEL,
-        xp_progress: xpProgress,
-        xp_for_next_level: TEST_XP_FOR_NEXT_LEVEL,
-        xp_progress_percent: xpProgressPercent
+        xp: TEST_TOTAL_XP,  // Total XP earned
+        xp_progress: TEST_XP_PROGRESS,  // Progress in current level
+        xp_for_next_level: TEST_XP_FOR_NEXT_LEVEL,  // XP needed for next level
+        xp_progress_percent: xpProgressPercent  // Percentage (50%)
       };
     }
     
@@ -2546,16 +2545,15 @@
     
     function updatePreviewScale() {
       const scaleInput = document.getElementById('previewScale').value;
-      const scale = parseFloat(scaleInput);
+      let scale = parseFloat(scaleInput);
       
-      // Validate scale value
+      // Validate scale value and apply default if invalid
       if (isNaN(scale) || scale <= 0 || scale > 2) {
         console.warn('Invalid preview scale value:', scaleInput, '- using default 1.0');
-        return;
+        scale = 1.0;
       }
       
       const container = document.getElementById('previewContainer');
-      const frame = document.getElementById('previewFrame');
       
       // Apply scale transform
       container.style.transform = `scale(${scale})`;
