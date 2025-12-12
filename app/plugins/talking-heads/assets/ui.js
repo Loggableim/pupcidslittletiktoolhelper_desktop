@@ -52,6 +52,12 @@ async function loadConfig() {
       
       // Load cache stats
       await loadCacheStats();
+      
+      // Enable save button now that config is loaded
+      const saveBtn = document.getElementById('saveConfigBtn');
+      if (saveBtn) {
+        saveBtn.disabled = false;
+      }
     } else {
       console.error('Failed to load config:', data);
       showNotification('Fehler beim Laden der Konfiguration: ' + (data.error || 'Unbekannter Fehler'), 'error');
@@ -167,10 +173,16 @@ function setupEventListeners() {
  */
 async function saveConfig() {
   try {
+    // Wait for config to load if not ready
+    if (!currentConfig) {
+      showNotification('⏳ Bitte warten Sie, bis die Konfiguration geladen ist...', 'info');
+      return;
+    }
+    
     const config = {
       enabled: document.getElementById('enabledSwitch').checked,
       debugLogging: document.getElementById('debugLoggingSwitch').checked,
-      defaultStyle: currentConfig ? currentConfig.defaultStyle : 'cartoon',
+      defaultStyle: currentConfig.defaultStyle || 'cartoon',
       rolePermission: document.getElementById('rolePermission').value,
       minTeamLevel: parseInt(document.getElementById('minTeamLevel').value) || 0,
       fadeInDuration: parseInt(document.getElementById('fadeInDuration').value) || 300,
@@ -337,6 +349,12 @@ function toggleTeamLevelInput(permission) {
 async function loadActiveAnimations() {
   try {
     const response = await fetch('/api/talkingheads/animations');
+    
+    // Silently ignore 404 errors (endpoint might not be available during initialization)
+    if (response.status === 404) {
+      return;
+    }
+    
     const data = await response.json();
 
     if (data.success) {
@@ -364,7 +382,8 @@ async function loadActiveAnimations() {
       }
     }
   } catch (error) {
-    console.error('Failed to load active animations:', error);
+    // Silently ignore errors during polling
+    // console.error('Failed to load active animations:', error);
   }
 }
 
