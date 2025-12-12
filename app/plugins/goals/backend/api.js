@@ -346,6 +346,189 @@ class GoalsAPI {
             });
         });
 
+        // ========================================
+        // MULTIGOAL ROUTES
+        // ========================================
+
+        // MultiGoal overlay route
+        this.api.registerRoute('get', '/goals/multigoal-overlay', (req, res) => {
+            res.sendFile(path.join(this.api.getPluginDir(), 'overlay', 'multigoal.html'));
+        });
+
+        // Get all multigoals
+        this.api.registerRoute('get', '/api/multigoals', (req, res) => {
+            try {
+                const multigoals = this.db.getAllMultiGoals();
+                res.json({
+                    success: true,
+                    multigoals: multigoals
+                });
+            } catch (error) {
+                this.api.log(`Error getting multigoals: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Get single multigoal
+        this.api.registerRoute('get', '/api/multigoals/:id', (req, res) => {
+            try {
+                const multigoal = this.db.getMultiGoalWithGoals(req.params.id);
+                if (!multigoal) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'MultiGoal not found'
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    multigoal: multigoal
+                });
+            } catch (error) {
+                this.api.log(`Error getting multigoal: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Create new multigoal
+        this.api.registerRoute('post', '/api/multigoals', (req, res) => {
+            try {
+                const multigoalData = {
+                    id: generateId().replace('goal_', 'multigoal_'),
+                    ...req.body
+                };
+
+                // Validate required fields
+                if (!multigoalData.name) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Missing required field: name'
+                    });
+                }
+
+                // Create multigoal
+                const multigoal = this.db.createMultiGoal(multigoalData);
+
+                // Set associated goals
+                if (req.body.goal_ids && Array.isArray(req.body.goal_ids)) {
+                    this.db.setMultiGoalGoals(multigoal.id, req.body.goal_ids);
+                }
+
+                // Get full multigoal with goals
+                const fullMultigoal = this.db.getMultiGoalWithGoals(multigoal.id);
+
+                // Emit WebSocket event
+                this.plugin.websocketHandler.emitMultiGoalCreated(fullMultigoal);
+
+                res.json({
+                    success: true,
+                    multigoal: fullMultigoal
+                });
+            } catch (error) {
+                this.api.log(`Error creating multigoal: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Update multigoal
+        this.api.registerRoute('put', '/api/multigoals/:id', (req, res) => {
+            try {
+                const id = req.params.id;
+
+                if (!this.db.multiGoalExists(id)) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'MultiGoal not found'
+                    });
+                }
+
+                // Update multigoal
+                this.db.updateMultiGoal(id, req.body);
+
+                // Update associated goals if provided
+                if (req.body.goal_ids && Array.isArray(req.body.goal_ids)) {
+                    this.db.setMultiGoalGoals(id, req.body.goal_ids);
+                }
+
+                // Get full multigoal with goals
+                const multigoal = this.db.getMultiGoalWithGoals(id);
+
+                // Emit WebSocket event
+                this.plugin.websocketHandler.emitMultiGoalUpdated(multigoal);
+
+                res.json({
+                    success: true,
+                    multigoal: multigoal
+                });
+            } catch (error) {
+                this.api.log(`Error updating multigoal: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Delete multigoal
+        this.api.registerRoute('delete', '/api/multigoals/:id', (req, res) => {
+            try {
+                const id = req.params.id;
+
+                if (!this.db.multiGoalExists(id)) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'MultiGoal not found'
+                    });
+                }
+
+                const deleted = this.db.deleteMultiGoal(id);
+
+                if (deleted) {
+                    // Emit WebSocket event
+                    this.plugin.websocketHandler.emitMultiGoalDeleted(id);
+
+                    res.json({
+                        success: true,
+                        message: 'MultiGoal deleted'
+                    });
+                } else {
+                    res.status(500).json({
+                        success: false,
+                        error: 'Failed to delete multigoal'
+                    });
+                }
+            } catch (error) {
+                this.api.log(`Error deleting multigoal: ${error.message}`, 'error');
+                res.status(500).json({
+                    success: false,
+                    error: error.message
+                });
+            }
+        });
+
+        // Get available WebGL animations for multigoals
+        this.api.registerRoute('get', '/api/multigoals/meta/animations', (req, res) => {
+            res.json({
+                success: true,
+                animations: [
+                    { id: 'slide', name: 'Slide Transition', description: 'Smooth sliding animation' },
+                    { id: 'fade', name: 'Fade Transition', description: 'Cross-fade between goals' },
+                    { id: 'cube', name: 'Cube Rotation', description: '3D cube flip effect' },
+                    { id: 'wave', name: 'Wave Distortion', description: 'Ripple wave effect' },
+                    { id: 'particle', name: 'Particle Transition', description: 'Particle dissolve effect' }
+                ]
+            });
+        });
+
         this.api.log('✅ Goals API routes registered', 'info');
     }
 }
