@@ -2022,6 +2022,28 @@ class QuizShowPlugin {
                     await this.endRound();
                 }
 
+                // Check if total rounds limit has been reached
+                const totalRoundsReached = this.config.totalRounds > 0 && this.gameState.currentRound >= this.config.totalRounds;
+                
+                if (totalRoundsReached) {
+                    // Round limit reached - show final leaderboard and reset game state
+                    this.api.log(`Total rounds limit (${this.config.totalRounds}) reached - resetting for new game`, 'info');
+                    
+                    // Show final leaderboard before ending
+                    await this.showLeaderboardAtEnd();
+                    
+                    // Get MVP and broadcast quiz-ended event to all clients
+                    const mvp = this.getMVPPlayer();
+                    this.api.emit('quiz-show:quiz-ended', { 
+                        mvp,
+                        message: 'Quiz beendet. Klicken Sie "Quiz starten", um eine neue Runde zu beginnen.' 
+                    });
+                    
+                    // Reset game state for new game
+                    this.resetGameState();
+                    return;
+                }
+
                 await this.startRound();
                 socket.emit('quiz-show:next', { success: true });
             } catch (error) {
