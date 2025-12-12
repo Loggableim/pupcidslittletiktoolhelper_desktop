@@ -40,9 +40,7 @@ class AvatarGenerator {
         },
         timeout: 60000,
         // TLS configuration to fix SSL handshake failures
-        secureProtocol: 'TLS_method',
-        minVersion: 'TLSv1.2',
-        maxVersion: 'TLSv1.3'
+        minVersion: 'TLSv1.2'
       };
 
       const req = https.request(options, (res) => {
@@ -95,9 +93,7 @@ class AvatarGenerator {
         path: urlObj.pathname + urlObj.search,
         method: 'GET',
         // TLS configuration to fix SSL handshake failures
-        secureProtocol: 'TLS_method',
-        minVersion: 'TLSv1.2',
-        maxVersion: 'TLSv1.3'
+        minVersion: 'TLSv1.2'
       };
       
       https.get(options, (res) => {
