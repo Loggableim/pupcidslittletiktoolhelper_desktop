@@ -460,11 +460,11 @@
 
         <!-- Navigation Tabs -->
         <div class="nav-tabs">
-            <button class="nav-tab active" onclick="switchTab('dashboard')">📊 Dashboard</button>
-            <button class="nav-tab" onclick="switchTab('commands')">⚡ Commands</button>
-            <button class="nav-tab" onclick="switchTab('monitoring')">📈 Monitoring</button>
-            <button class="nav-tab" onclick="switchTab('hud')">🎨 HUD Overlay</button>
-            <button class="nav-tab" onclick="switchTab('config')">⚙️ Configuration</button>
+            <button class="nav-tab active" data-tab="dashboard">📊 Dashboard</button>
+            <button class="nav-tab" data-tab="commands">⚡ Commands</button>
+            <button class="nav-tab" data-tab="monitoring">📈 Monitoring</button>
+            <button class="nav-tab" data-tab="hud">🎨 HUD Overlay</button>
+            <button class="nav-tab" data-tab="config">⚙️ Configuration</button>
         </div>
 
         <!-- Dashboard Tab -->
@@ -473,16 +473,16 @@
             <div class="card">
                 <div class="card-title">🚀 Quick Actions</div>
                 <div class="quick-actions">
-                    <button class="action-btn" onclick="refreshAllStats()">
+                    <button class="action-btn" id="btn-refresh-stats">
                         <span>🔄</span> Refresh Stats
                     </button>
-                    <button class="action-btn" onclick="clearCache()">
+                    <button class="action-btn" id="btn-clear-cache">
                         <span>🗑️</span> Clear Caches
                     </button>
-                    <button class="action-btn" onclick="exportAuditLog()">
+                    <button class="action-btn" id="btn-export-audit">
                         <span>📥</span> Export Audit Log
                     </button>
-                    <button class="action-btn" onclick="viewHistory()">
+                    <button class="action-btn" id="btn-view-history">
                         <span>📜</span> View History
                     </button>
                 </div>
@@ -610,7 +610,7 @@
                 <div class="config-description">
                     Add this URL as a Browser Source in OBS:
                     <code id="hud-overlay-url">http://localhost:3000/plugins/gcce/overlay-hud</code>
-                    <button class="btn-sm" onclick="copyOverlayUrl()">📋 Copy</button>
+                    <button class="btn-sm" id="btn-copy-overlay-url">📋 Copy</button>
                 </div>
             </div>
 
@@ -697,7 +697,7 @@
             <div id="hud-active-elements">
                 <p>No active HUD elements</p>
             </div>
-            <button class="btn btn-primary" onclick="clearHUD()" style="margin-top: 16px;">Clear All</button>
+            <button class="btn btn-primary" id="btn-clear-hud" style="margin-top: 16px;">Clear All</button>
         </div>
 
         <!-- Test HUD -->
@@ -706,12 +706,12 @@
             <div class="config-group">
                 <label class="config-label">Test Text</label>
                 <input type="text" id="hud-test-text" placeholder="Enter test text" value="Hello from HUD!">
-                <button class="btn btn-primary" onclick="testHUDText()" style="margin-top: 8px;">Display Text</button>
+                <button class="btn btn-primary" id="btn-test-hud-text" style="margin-top: 8px;">Display Text</button>
             </div>
             <div class="config-group">
                 <label class="config-label">Test Image URL</label>
                 <input type="text" id="hud-test-image" placeholder="Enter image URL">
-                <button class="btn btn-primary" onclick="testHUDImage()" style="margin-top: 8px;">Display Image</button>
+                <button class="btn btn-primary" id="btn-test-hud-image" style="margin-top: 8px;">Display Image</button>
             </div>
         </div>
 
@@ -931,8 +931,11 @@
                 selectedTab.classList.add('active');
             }
 
-            // Set active class on clicked button
-            event.target.classList.add('active');
+            // Find and set active class on the correct button
+            const activeButton = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
 
             // Load tab-specific data
             if (tabName === 'hud') {
@@ -1179,6 +1182,59 @@
         function viewHistory() {
             showMessage('History viewer coming soon', 'info');
         }
+
+        // Add event listeners for all buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            // Tab navigation
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabName = btn.getAttribute('data-tab');
+                    switchTab(tabName);
+                });
+            });
+
+            // Quick action buttons
+            const btnRefreshStats = document.getElementById('btn-refresh-stats');
+            if (btnRefreshStats) {
+                btnRefreshStats.addEventListener('click', refreshAllStats);
+            }
+
+            const btnClearCache = document.getElementById('btn-clear-cache');
+            if (btnClearCache) {
+                btnClearCache.addEventListener('click', clearCache);
+            }
+
+            const btnExportAudit = document.getElementById('btn-export-audit');
+            if (btnExportAudit) {
+                btnExportAudit.addEventListener('click', exportAuditLog);
+            }
+
+            const btnViewHistory = document.getElementById('btn-view-history');
+            if (btnViewHistory) {
+                btnViewHistory.addEventListener('click', viewHistory);
+            }
+
+            // HUD buttons
+            const btnCopyOverlayUrl = document.getElementById('btn-copy-overlay-url');
+            if (btnCopyOverlayUrl) {
+                btnCopyOverlayUrl.addEventListener('click', copyOverlayUrl);
+            }
+
+            const btnClearHUD = document.getElementById('btn-clear-hud');
+            if (btnClearHUD) {
+                btnClearHUD.addEventListener('click', clearHUD);
+            }
+
+            const btnTestHUDText = document.getElementById('btn-test-hud-text');
+            if (btnTestHUDText) {
+                btnTestHUDText.addEventListener('click', testHUDText);
+            }
+
+            const btnTestHUDImage = document.getElementById('btn-test-hud-image');
+            if (btnTestHUDImage) {
+                btnTestHUDImage.addEventListener('click', testHUDImage);
+            }
+        });
 
         // Initialize
         loadConfig();
