@@ -716,6 +716,9 @@ class TikTokConnector extends EventEmitter {
             const isStreakEnd = giftData.repeatEnd;
             const isStreakable = giftData.giftType === 1;
 
+            // Log gift processing decision for debugging duplicate detection
+            this.logger.debug(`[GIFT FILTER] ${giftData.giftName}: streakable=${isStreakable}, streakEnd=${isStreakEnd}, willEmit=${!isStreakable || (isStreakable && isStreakEnd)}`);
+
             // Only count if not streakable OR streakable and streak ended
             if (!isStreakable || (isStreakable && isStreakEnd)) {
                 this.stats.totalCoins += coins;
