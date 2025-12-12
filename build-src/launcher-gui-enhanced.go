@@ -53,7 +53,7 @@ type Profile struct {
 
 func NewLauncher() *Launcher {
 	return &Launcher{
-		status:         "Initialisiere...",
+		status:         "Initializing...",
 		progress:       0,
 		clients:        make(map[chan string]bool),
 		envFileFixed:   false,
@@ -163,7 +163,7 @@ func (l *Launcher) sendRedirect(keepOpen bool) {
 func (l *Launcher) checkNodeJS() error {
 	nodePath, err := exec.LookPath("node")
 	if err != nil {
-		return fmt.Errorf("Node.js ist nicht installiert")
+		return fmt.Errorf("Node.js is not installed")
 	}
 	l.nodePath = nodePath
 	return nil
@@ -189,7 +189,7 @@ func (l *Launcher) checkNodeModules() bool {
 
 func (l *Launcher) installDependencies() error {
 	l.logger.Println("[INFO] Starting npm install...")
-	l.updateProgress(45, "npm install wird gestartet...")
+	l.updateProgress(45, "Starting npm install...")
 	time.Sleep(500 * time.Millisecond)
 	
 	var cmd *exec.Cmd
@@ -246,7 +246,7 @@ func (l *Launcher) installDependencies() error {
 	err = cmd.Wait()
 	if err != nil {
 		l.logger.Printf("[ERROR] npm install failed: %v\n", err)
-		return fmt.Errorf("Installation fehlgeschlagen: %v", err)
+		return fmt.Errorf("Installation failed: %v", err)
 	}
 	
 	l.logger.Println("[SUCCESS] npm install completed successfully")
@@ -339,7 +339,7 @@ func (l *Launcher) autoFixEnvFile() error {
 	}
 	
 	l.logger.Println("[AUTO-FIX] Creating .env from .env.example...")
-	l.updateProgress(85, "🔧 Auto-Fix: Erstelle .env Datei...")
+	l.updateProgress(85, "🔧 Auto-Fix: Creating .env file...")
 	
 	input, err := os.ReadFile(envExamplePath)
 	if err != nil {
@@ -429,20 +429,20 @@ func (l *Launcher) setActiveProfile(profileName string) error {
 func (l *Launcher) runLauncher(keepOpen bool, profileName string) {
 	time.Sleep(1 * time.Second)
 
-	l.updateProgress(0, "Prüfe Node.js Installation...")
+	l.updateProgress(0, "Checking Node.js installation...")
 	l.logAndSync("[Phase 1] Checking Node.js installation...")
 	time.Sleep(500 * time.Millisecond)
 
 	err := l.checkNodeJS()
 	if err != nil {
 		l.logAndSync("[ERROR] Node.js check failed: %v", err)
-		l.updateProgress(0, "FEHLER: Node.js ist nicht installiert!")
+		l.updateProgress(0, "ERROR: Node.js is not installed!")
 		time.Sleep(5 * time.Second)
 		l.closeLogging()
 		os.Exit(1)
 	}
 
-	l.updateProgress(10, "Node.js gefunden...")
+	l.updateProgress(10, "Node.js found...")
 	l.logAndSync("[SUCCESS] Node.js found at: %s", l.nodePath)
 	time.Sleep(300 * time.Millisecond)
 
@@ -451,37 +451,37 @@ func (l *Launcher) runLauncher(keepOpen bool, profileName string) {
 	l.logger.Printf("[INFO] Node.js version: %s\n", version)
 	time.Sleep(300 * time.Millisecond)
 
-	l.updateProgress(30, "Prüfe Abhängigkeiten...")
+	l.updateProgress(30, "Checking dependencies...")
 	time.Sleep(300 * time.Millisecond)
 
 	if !l.checkNodeModules() {
-		l.updateProgress(40, "Installiere Abhängigkeiten...")
+		l.updateProgress(40, "Installing dependencies...")
 		err = l.installDependencies()
 		if err != nil {
 			l.logger.Printf("[ERROR] Dependency installation failed: %v\n", err)
-			l.updateProgress(45, fmt.Sprintf("FEHLER: %v", err))
+			l.updateProgress(45, fmt.Sprintf("ERROR: %v", err))
 			time.Sleep(5 * time.Second)
 			l.closeLogging()
 			os.Exit(1)
 		}
-		l.updateProgress(80, "Installation abgeschlossen!")
+		l.updateProgress(80, "Installation complete!")
 	} else {
-		l.updateProgress(80, "Abhängigkeiten bereits installiert...")
+		l.updateProgress(80, "Dependencies already installed...")
 	}
 	time.Sleep(300 * time.Millisecond)
 
-	l.updateProgress(82, "Prüfe Konfiguration...")
+	l.updateProgress(82, "Checking configuration...")
 	if err := l.autoFixEnvFile(); err != nil {
 		l.logger.Printf("[WARNING] Could not auto-create .env: %v\n", err)
 	}
 	
-	l.updateProgress(90, "Starte Server...")
+	l.updateProgress(90, "Starting server...")
 	time.Sleep(500 * time.Millisecond)
 
 	cmd, err := l.startTool()
 	if err != nil {
 		l.logger.Printf("[ERROR] Failed to start server: %v\n", err)
-		l.updateProgress(90, fmt.Sprintf("FEHLER beim Starten: %v", err))
+		l.updateProgress(90, fmt.Sprintf("ERROR starting server: %v", err))
 		time.Sleep(30 * time.Second)
 		l.closeLogging()
 		os.Exit(1)
@@ -492,7 +492,7 @@ func (l *Launcher) runLauncher(keepOpen bool, profileName string) {
 		processDied <- cmd.Wait()
 	}()
 
-	l.updateProgress(93, "Warte auf Server-Start...")
+	l.updateProgress(93, "Waiting for server to start...")
 	
 	healthCheckTimeout := time.After(60 * time.Second)
 	healthCheckTicker := time.NewTicker(1 * time.Second)
@@ -509,7 +509,7 @@ func (l *Launcher) runLauncher(keepOpen bool, profileName string) {
 			}
 			
 			l.logAndSync("[ERROR] Server crashed: %v", err)
-			l.updateProgress(95, "⚠️ Server konnte nicht starten!")
+			l.updateProgress(95, "⚠️ Server failed to start!")
 			time.Sleep(15 * time.Second)
 			l.closeLogging()
 			os.Exit(1)
@@ -519,20 +519,20 @@ func (l *Launcher) runLauncher(keepOpen bool, profileName string) {
 			}
 		case <-healthCheckTimeout:
 			l.logger.Println("[ERROR] Server health check timed out")
-			l.updateProgress(95, "⏱️ Server-Start Timeout")
+			l.updateProgress(95, "⏱️ Server start timeout")
 			time.Sleep(15 * time.Second)
 			l.closeLogging()
 			os.Exit(1)
 		}
 	}
 
-	l.updateProgress(100, "Server erfolgreich gestartet!")
+	l.updateProgress(100, "Server started successfully!")
 	l.logger.Println("[SUCCESS] Server is running!")
 	time.Sleep(500 * time.Millisecond)
 	
 	// Set active profile if provided
 	if profileName != "" {
-		l.updateProgress(100, "Setze aktives Profil...")
+		l.updateProgress(100, "Setting active profile...")
 		l.logger.Printf("[INFO] Setting active profile: %s", profileName)
 		if err := l.setActiveProfile(profileName); err != nil {
 			l.logAndSync("[WARNING] Could not set active profile: %v", err)
@@ -540,7 +540,7 @@ func (l *Launcher) runLauncher(keepOpen bool, profileName string) {
 		}
 	}
 	
-	l.updateProgress(100, "Weiterleitung zum Dashboard...")
+	l.updateProgress(100, "Redirecting to dashboard...")
 	time.Sleep(500 * time.Millisecond)
 	l.sendRedirect(keepOpen)
 
@@ -620,7 +620,7 @@ func main() {
 
 	exePath, err := os.Executable()
 	if err != nil {
-		log.Fatal("Kann Programmverzeichnis nicht ermitteln:", err)
+		log.Fatal("Cannot determine program directory:", err)
 	}
 
 	exeDir := filepath.Dir(exePath)
