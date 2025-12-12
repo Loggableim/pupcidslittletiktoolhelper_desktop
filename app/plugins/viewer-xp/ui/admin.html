@@ -2499,6 +2499,24 @@
 
     // ========== OVERLAY PREVIEW FUNCTIONS ==========
     
+    // Test data constants
+    const TEST_LEVEL = 5;
+    const TEST_XP_IN_LEVEL = 1250;
+    const TEST_XP_FOR_NEXT_LEVEL = 500;
+    const TEST_TOTAL_XP = 2500;
+    
+    // Helper function to calculate XP progress for test data
+    function calculateTestXPProgress() {
+      const xpProgress = TEST_XP_IN_LEVEL % TEST_XP_FOR_NEXT_LEVEL;
+      const xpProgressPercent = (xpProgress / TEST_XP_FOR_NEXT_LEVEL) * 100;
+      return {
+        xp: TEST_XP_IN_LEVEL,
+        xp_progress: xpProgress,
+        xp_for_next_level: TEST_XP_FOR_NEXT_LEVEL,
+        xp_progress_percent: xpProgressPercent
+      };
+    }
+    
     function loadOverlayPreview() {
       const select = document.getElementById('overlaySelect');
       const overlayType = select.value;
@@ -2527,7 +2545,15 @@
     }
     
     function updatePreviewScale() {
-      const scale = parseFloat(document.getElementById('previewScale').value);
+      const scaleInput = document.getElementById('previewScale').value;
+      const scale = parseFloat(scaleInput);
+      
+      // Validate scale value
+      if (isNaN(scale) || scale <= 0 || scale > 2) {
+        console.warn('Invalid preview scale value:', scaleInput, '- using default 1.0');
+        return;
+      }
+      
       const container = document.getElementById('previewContainer');
       const frame = document.getElementById('previewFrame');
       
@@ -2597,12 +2623,12 @@
       const username = document.getElementById('testUsername').value || 'TestUser';
       const testData = {
         username,
-        oldLevel: 5,
-        newLevel: 6,
+        oldLevel: TEST_LEVEL,
+        newLevel: TEST_LEVEL + 1,
         rewards: {
           title: 'Rising Star',
           badge: '⭐',
-          announcement_message: `Congratulations ${username}! You've reached Level 6!`
+          announcement_message: `Congratulations ${username}! You've reached Level ${TEST_LEVEL + 1}!`
         }
       };
       
@@ -2613,11 +2639,7 @@
     
     function testXPGain() {
       const username = document.getElementById('testUsername').value || 'TestUser';
-      // Calculate XP progress for level 5 (assuming 500 XP needed for next level)
-      const currentLevelXP = 1250; // Current XP in this level
-      const xpForNextLevel = 500;
-      const xpProgress = currentLevelXP % xpForNextLevel;
-      const xpProgressPercent = (xpProgress / xpForNextLevel) * 100;
+      const xpData = calculateTestXPProgress();
       
       const testData = {
         username,
@@ -2625,12 +2647,12 @@
         actionType: 'chat_message',
         profile: {
           username,
-          level: 5,
-          xp: currentLevelXP,
-          total_xp_earned: 2500,
-          xp_progress: xpProgress,
-          xp_for_next_level: xpForNextLevel,
-          xp_progress_percent: xpProgressPercent,
+          level: TEST_LEVEL,
+          xp: xpData.xp,
+          total_xp_earned: TEST_TOTAL_XP,
+          xp_progress: xpData.xp_progress,
+          xp_for_next_level: xpData.xp_for_next_level,
+          xp_progress_percent: xpData.xp_progress_percent,
           name_color: '#FFD700',
           title: 'Rising Star'
         }
@@ -2653,20 +2675,16 @@
     
     function testUserProfile() {
       const username = document.getElementById('testUsername').value || 'TestUser';
-      // Calculate XP progress for level 5 (assuming 500 XP needed for next level)
-      const currentLevelXP = 1250;
-      const xpForNextLevel = 500;
-      const xpProgress = currentLevelXP % xpForNextLevel;
-      const xpProgressPercent = (xpProgress / xpForNextLevel) * 100;
+      const xpData = calculateTestXPProgress();
       
       const testData = {
         username,
-        level: 5,
-        xp: currentLevelXP,
-        total_xp_earned: 2500,
-        xp_progress: xpProgress,
-        xp_for_next_level: xpForNextLevel,
-        xp_progress_percent: xpProgressPercent,
+        level: TEST_LEVEL,
+        xp: xpData.xp,
+        total_xp_earned: TEST_TOTAL_XP,
+        xp_progress: xpData.xp_progress,
+        xp_for_next_level: xpData.xp_for_next_level,
+        xp_progress_percent: xpData.xp_progress_percent,
         rank: 42,
         title: 'Rising Star',
         name_color: '#FFD700',
