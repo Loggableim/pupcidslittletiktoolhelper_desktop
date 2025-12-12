@@ -522,7 +522,7 @@ class InteractiveStoryPlugin {
         const axios = require('axios');
         try {
           const response = await axios.post(
-            'https://api.siliconflow.cn/v1/chat/completions',
+            'https://api.siliconflow.com/v1/chat/completions',  // Fixed: Use .com instead of .cn
             {
               model: 'meta-llama/Meta-Llama-3.1-8B-Instruct',
               messages: [{ role: 'user', content: 'test' }],
@@ -569,7 +569,7 @@ class InteractiveStoryPlugin {
           if (statusCode === 401) {
             message = 'API key is invalid or not authorized';
             troubleshooting = [
-              'Check that the API key is correct and active on https://cloud.siliconflow.cn/',
+              'Check that the API key is correct and active on https://cloud.siliconflow.com/',
               'Make sure you copied the entire API key without extra spaces',
               'Verify the API key hasn\'t expired',
               'Check that you have credits/quota available on SiliconFlow',
@@ -586,7 +586,7 @@ class InteractiveStoryPlugin {
             message = 'Network error - cannot reach SiliconFlow API';
             troubleshooting = [
               'Check your internet connection',
-              'Verify that api.siliconflow.cn is accessible',
+              'Verify that api.siliconflow.com is accessible',
               'Check firewall/proxy settings'
             ];
           }

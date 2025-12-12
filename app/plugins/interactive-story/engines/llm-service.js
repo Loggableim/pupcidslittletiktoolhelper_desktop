@@ -9,7 +9,7 @@ class LLMService {
     this.apiKey = apiKey;
     this.logger = logger;
     this.debugCallback = debugCallback;
-    this.baseURL = 'https://api.siliconflow.cn/v1';
+    this.baseURL = 'https://api.siliconflow.com/v1';  // Fixed: Use .com instead of .cn
     this.models = {
       deepseek: 'deepseek-ai/DeepSeek-V3',
       qwen: 'Qwen/Qwen2.5-7B-Instruct',

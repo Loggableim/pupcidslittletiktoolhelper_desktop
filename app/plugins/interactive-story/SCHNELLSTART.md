@@ -4,7 +4,7 @@
 
 ### Schritt 1: API-Key besorgen
 
-1. Gehe zu https://cloud.siliconflow.cn/
+1. Gehe zu https://cloud.siliconflow.com/
 2. Registriere einen Account
 3. Navigiere zu "API Keys" im Dashboard
 4. Erstelle einen neuen API Key

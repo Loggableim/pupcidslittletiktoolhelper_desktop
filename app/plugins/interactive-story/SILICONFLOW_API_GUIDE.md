@@ -8,7 +8,7 @@ This document provides comprehensive information about integrating with SiliconF
 ## API Key Management
 
 ### Where to Get API Key
-1. Sign up at https://cloud.siliconflow.cn/
+1. Sign up at https://cloud.siliconflow.com/
 2. Navigate to API Keys section
 3. Create a new API key
 
@@ -207,7 +207,7 @@ Binary audio data (MP3, WAV, etc.) based on `response_format`.
 - Faster inference
 - Access to premium models
 
-**Check your quota:** https://cloud.siliconflow.cn/account/usage
+**Check your quota:** https://cloud.siliconflow.com/account/usage
 
 ## Error Handling
 
@@ -330,7 +330,7 @@ const apiKey = row ? row.value : null;
 - **Official Docs:** https://docs.siliconflow.com
 - **API Reference:** https://docs.siliconflow.com/en/api-reference
 - **Model List:** https://docs.siliconflow.com/en/models
-- **Dashboard:** https://cloud.siliconflow.cn
+- **Dashboard:** https://cloud.siliconflow.com
 - **Support:** https://discord.gg/siliconflow (check docs for current link)
 
 ---

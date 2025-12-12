@@ -11,7 +11,7 @@ class ImageService {
     this.apiKey = apiKey;
     this.logger = logger;
     this.cacheDir = cacheDir;
-    this.baseURL = 'https://api.siliconflow.cn/v1';
+    this.baseURL = 'https://api.siliconflow.com/v1';  // Fixed: Use .com instead of .cn
     
     this.models = {
       'z-image-turbo': 'Tongyi-MAI/Z-Image-Turbo',

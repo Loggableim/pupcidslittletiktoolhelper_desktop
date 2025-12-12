@@ -128,7 +128,7 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
 
 ❌ **Network Error**: Verbindungsprobleme
 - Prüfe deine Internetverbindung
-- Stelle sicher dass api.siliconflow.cn erreichbar ist
+- Stelle sicher dass api.siliconflow.com erreichbar ist
 
 **Warum global?**
 - Ein API Key für LLM, Bilder UND TTS
