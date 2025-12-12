@@ -366,10 +366,18 @@
         <form id="configForm">
           <div class="row">
             <div class="col-md-12">
-              <div class="alert alert-info mb-4">
+              <div class="alert alert-info mb-3">
                 <strong>ℹ️ API Key Configuration</strong><br>
                 The SiliconFlow API key is now configured globally in <strong>Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)</strong>.<br>
                 This single API key is used for LLM chat completions, image generation, and TTS across all plugins.
+              </div>
+              
+              <div class="mb-4">
+                <button type="button" class="btn btn-primary" id="testApiKeyBtn" onclick="testApiKey()">
+                  🔍 Test API Key
+                </button>
+                <small class="form-text text-muted ml-2">Click to validate your SiliconFlow API key</small>
+                <div id="apiKeyTestResult" class="mt-2" style="display: none;"></div>
               </div>
             </div>
             <div class="col-md-6">
@@ -646,6 +654,72 @@
         container.style.display = 'none';
         toggleIcon.textContent = '▶️';
         toggleText.textContent = 'Vorschau anzeigen';
+      }
+    }
+
+    // Test API key
+    async function testApiKey() {
+      const btn = document.getElementById('testApiKeyBtn');
+      const resultDiv = document.getElementById('apiKeyTestResult');
+      
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Testing...';
+      resultDiv.style.display = 'none';
+      
+      try {
+        const response = await fetch('/api/interactive-story/validate-api-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const result = await response.json();
+        
+        resultDiv.style.display = 'block';
+        
+        if (result.valid) {
+          resultDiv.className = 'alert alert-success mt-2';
+          resultDiv.innerHTML = `
+            <strong>✅ ${result.message}</strong><br>
+            <small>
+              API Key Length: ${result.details.keyLength} characters<br>
+              Prefix: ${result.details.keyPrefix}<br>
+              Tested Model: ${result.details.testedModel}
+            </small>
+          `;
+        } else {
+          resultDiv.className = 'alert alert-danger mt-2';
+          let html = `<strong>❌ ${result.message}</strong><br>`;
+          
+          if (!result.configured) {
+            html += `<small>${result.error}</small>`;
+          } else {
+            html += `<small>Error: ${result.error}</small><br>`;
+            if (result.details) {
+              html += `<br><strong>Details:</strong><br>`;
+              html += `API Key Length: ${result.details.keyLength} characters<br>`;
+              html += `Prefix: ${result.details.keyPrefix}<br>`;
+              html += `Status Code: ${result.details.statusCode}<br>`;
+              if (result.details.hasWhitespace) {
+                html += `⚠️ API key contains whitespace!<br>`;
+              }
+            }
+            if (result.troubleshooting && result.troubleshooting.length > 0) {
+              html += `<br><strong>Troubleshooting:</strong><ul class="mb-0">`;
+              result.troubleshooting.forEach(tip => {
+                html += `<li>${tip}</li>`;
+              });
+              html += `</ul>`;
+            }
+          }
+          
+          resultDiv.innerHTML = html;
+        }
+      } catch (error) {
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'alert alert-danger mt-2';
+        resultDiv.innerHTML = `<strong>❌ Error testing API key</strong><br><small>${error.message}</small>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🔍 Test API Key';
       }
     }
 

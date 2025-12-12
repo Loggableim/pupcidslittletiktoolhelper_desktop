@@ -86,18 +86,55 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
 3. Finde **Fish Speech 1.5 API Key (SiliconFlow)**
 4. Gib deinen SiliconFlow API Key ein
 5. Klicke auf **Save TTS API Keys**
+6. **Teste den API Key** im Interactive Story Plugin UI (siehe unten)
+
+**API Key erhalten:**
+1. Registrierung: https://cloud.siliconflow.cn/
+2. API Keys Bereich öffnen
+3. Neuen API Key erstellen
+4. Key kopieren (sollte mit "sk-" beginnen)
+5. In LTTH Settings einfügen
+
+**Wichtig:**
+- API Key sollte mit `sk-` beginnen
+- Keine Leerzeichen vor/nach dem Key
+- API Key sollte 60-70 Zeichen lang sein
+- Stelle sicher, dass du Credits/Quota auf SiliconFlow hast
+
+### 1a. API Key testen
+
+**Nach dem Einfügen des API Keys im LTTH Settings:**
+
+1. Öffne das Interactive Story Plugin UI
+2. Finde die "⚙️ Configuration" Sektion
+3. Klicke auf **🔍 Test API Key** Button
+4. Das System testet die Verbindung zu SiliconFlow
+
+**Mögliche Ergebnisse:**
+
+✅ **Erfolgreich**: API Key ist gültig und funktioniert
+- Zeigt Key-Länge und Prefix
+- Zeigt getestetes Model
+
+❌ **401 Unauthorized**: API Key ungültig
+- Prüfe ob der Key korrekt kopiert wurde
+- Stelle sicher, dass der Key auf SiliconFlow aktiv ist
+- Überprüfe ob du Credits/Quota hast
+- Versuche einen neuen API Key zu generieren
+
+❌ **429 Rate Limit**: Quota erschöpft
+- Warte einige Minuten
+- Prüfe dein SiliconFlow Dashboard für Quota-Status
+
+❌ **Network Error**: Verbindungsprobleme
+- Prüfe deine Internetverbindung
+- Stelle sicher dass api.siliconflow.cn erreichbar ist
 
 **Warum global?**
 - Ein API Key für LLM, Bilder UND TTS
 - Zentrale Verwaltung für alle SiliconFlow-Features
 - Bessere Sicherheit (masked display)
 - Keine Duplikate mehr
-
-**API Key erhalten:**
-1. Registrierung: https://cloud.siliconflow.cn/
-2. API Keys Bereich öffnen
-3. Neuen API Key erstellen
-4. Key kopieren und in LTTH Settings einfügen
 
 ### 2. Plugin-Spezifische Einstellungen
 

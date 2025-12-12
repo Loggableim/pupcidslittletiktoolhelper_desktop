@@ -498,6 +498,122 @@ class InteractiveStoryPlugin {
       res.json({ logs: this.debugLogs });
     });
     
+    // Validate API key
+    this.api.registerRoute('post', '/api/interactive-story/validate-api-key', async (req, res) => {
+      try {
+        const apiKey = this._getSiliconFlowApiKey();
+        
+        if (!apiKey) {
+          return res.json({
+            valid: false,
+            error: 'No API key configured',
+            message: 'Please configure API key in Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)',
+            configured: false
+          });
+        }
+        
+        // Log validation attempt
+        this._debugLog('info', '🔍 Validating SiliconFlow API key...', {
+          keyLength: apiKey.length,
+          keyPrefix: apiKey.substring(0, 6) + '...'
+        });
+        
+        // Test API key with a minimal request
+        const axios = require('axios');
+        try {
+          const response = await axios.post(
+            'https://api.siliconflow.cn/v1/chat/completions',
+            {
+              model: 'meta-llama/Meta-Llama-3.1-8B-Instruct',
+              messages: [{ role: 'user', content: 'test' }],
+              max_tokens: 5,
+              temperature: 0.1
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+              },
+              timeout: 10000
+            }
+          );
+          
+          this._debugLog('info', '✅ API key validation successful', {
+            statusCode: response.status
+          });
+          
+          res.json({
+            valid: true,
+            configured: true,
+            message: 'API key is valid and working!',
+            details: {
+              keyLength: apiKey.length,
+              keyPrefix: apiKey.substring(0, 6) + '...',
+              testedModel: 'meta-llama/Meta-Llama-3.1-8B-Instruct'
+            }
+          });
+        } catch (error) {
+          const statusCode = error.response?.status || 0;
+          const responseData = error.response?.data || error.message;
+          
+          this._debugLog('error', '❌ API key validation failed', {
+            statusCode,
+            error: responseData,
+            keyLength: apiKey.length,
+            keyPrefix: apiKey.substring(0, 6) + '...'
+          });
+          
+          let message = 'API key validation failed';
+          let troubleshooting = [];
+          
+          if (statusCode === 401) {
+            message = 'API key is invalid or not authorized';
+            troubleshooting = [
+              'Check that the API key is correct and active on https://cloud.siliconflow.cn/',
+              'Make sure you copied the entire API key without extra spaces',
+              'Verify the API key hasn\'t expired',
+              'Check that you have credits/quota available on SiliconFlow',
+              'Try generating a new API key on SiliconFlow dashboard'
+            ];
+          } else if (statusCode === 429) {
+            message = 'Rate limit exceeded or quota exhausted';
+            troubleshooting = [
+              'Check your API usage quota on SiliconFlow dashboard',
+              'Wait a few minutes and try again',
+              'Consider upgrading your plan if needed'
+            ];
+          } else if (statusCode === 0) {
+            message = 'Network error - cannot reach SiliconFlow API';
+            troubleshooting = [
+              'Check your internet connection',
+              'Verify that api.siliconflow.cn is accessible',
+              'Check firewall/proxy settings'
+            ];
+          }
+          
+          res.json({
+            valid: false,
+            configured: true,
+            error: String(responseData),
+            message,
+            troubleshooting,
+            details: {
+              statusCode,
+              keyLength: apiKey.length,
+              keyPrefix: apiKey.substring(0, 6) + '...',
+              hasWhitespace: apiKey !== apiKey.trim()
+            }
+          });
+        }
+      } catch (error) {
+        this.logger.error('Error validating API key:', error);
+        res.status(500).json({
+          valid: false,
+          error: error.message
+        });
+      }
+    });
+    
     // Admin manual choice selection (offline mode)
     this.api.registerRoute('post', '/api/interactive-story/admin-choice', async (req, res) => {
       try {
