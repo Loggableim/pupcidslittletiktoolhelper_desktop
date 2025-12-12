@@ -5,7 +5,9 @@
 
 class CoinBattleDatabase {
   constructor(db, logger = console) {
-    this.db = db;
+    // db is a DatabaseManager instance with a .db property containing the raw better-sqlite3 database
+    this.dbManager = db;
+    this.db = db.db || db; // Support both DatabaseManager and raw database
     this.logger = logger;
     
     // Batch processing for high-performance event inserts
@@ -14,6 +16,13 @@ class CoinBattleDatabase {
     this.batchTimeout = 100; // or after 100ms
     this.batchTimer = null;
     this.batchInsertStatement = null;
+  }
+
+  /**
+   * Get the raw database instance (for direct access by subsystems)
+   */
+  getRawDb() {
+    return this.db; // Now this.db is the raw better-sqlite3 instance
   }
 
   /**

@@ -5,6 +5,13 @@
 
 const CoinBattleDatabase = require('./backend/database');
 const CoinBattleEngine = require('./engine/game-engine');
+const PerformanceManager = require('./engine/performance-manager');
+const KingOfTheHillMode = require('./engine/koth-mode');
+const FriendChallengeSystem = require('./engine/friend-challenges');
+const PlayerAvatarSystem = require('./backend/player-avatars');
+const OverlayTemplateManager = require('./overlay/template-manager');
+const TeamNamesManager = require('./backend/team-names');
+const LikesPointsSystem = require('./backend/likes-points');
 const path = require('path');
 
 class CoinBattlePlugin {
@@ -13,10 +20,18 @@ class CoinBattlePlugin {
     this.io = api.getSocketIO();
     this.db = null;
     this.engine = null;
+    this.performanceManager = null;
+    this.kothMode = null;
+    this.friendChallenges = null;
+    this.avatarSystem = null;
+    this.templateManager = null;
+    this.teamNamesManager = null;
+    this.likesPointsSystem = null;
     this.logger = {
       info: (msg) => this.api.log(msg, 'info'),
       error: (msg) => this.api.log(msg, 'error'),
-      warn: (msg) => this.api.log(msg, 'warn')
+      warn: (msg) => this.api.log(msg, 'warn'),
+      debug: (msg) => this.api.log(msg, 'debug')
     };
   }
 
@@ -29,8 +44,45 @@ class CoinBattlePlugin {
       this.db = new CoinBattleDatabase(mainDb, this.logger);
       this.db.initializeTables();
 
+      // Get raw database instance for subsystems that need direct access
+      const rawDb = this.db.getRawDb();
+
       // Initialize game engine
       this.engine = new CoinBattleEngine(this.db, this.io, this.logger);
+
+      // Initialize performance manager
+      this.performanceManager = new PerformanceManager(rawDb, this.io, this.logger);
+      this.api.log('✅ Performance Manager initialized', 'info');
+
+      // Initialize King of the Hill mode
+      this.kothMode = new KingOfTheHillMode(rawDb, this.io, this.logger);
+      this.api.log('✅ King of the Hill Mode initialized', 'info');
+
+      // Initialize Friend Challenge system
+      this.friendChallenges = new FriendChallengeSystem(rawDb, this.io, this.engine, this.logger);
+      
+      // Try to register with GCCE if available
+      this.registerWithGCCE();
+      this.api.log('✅ Friend Challenges initialized', 'info');
+
+      // Initialize Avatar system
+      this.avatarSystem = new PlayerAvatarSystem(rawDb, this.logger);
+      this.avatarSystem.initializeTables();
+      this.api.log('✅ Player Avatar System initialized', 'info');
+
+      // Initialize Template Manager
+      this.templateManager = new OverlayTemplateManager(this.logger);
+      this.api.log('✅ Overlay Template Manager initialized', 'info');
+
+      // Initialize Team Names Manager
+      this.teamNamesManager = new TeamNamesManager(rawDb, this.logger);
+      this.teamNamesManager.initializeTable();
+      this.api.log('✅ Team Names Manager initialized', 'info');
+
+      // Initialize Likes Points System
+      this.likesPointsSystem = new LikesPointsSystem(rawDb, this.logger);
+      this.likesPointsSystem.initializeTable();
+      this.api.log('✅ Likes Points System initialized', 'info');
 
       // Load configuration
       const config = this.loadConfiguration();
@@ -45,10 +97,31 @@ class CoinBattlePlugin {
       // Register TikTok events
       this.registerTikTokEvents();
 
-      this.api.log('✅ CoinBattle Plugin initialized successfully', 'info');
+      this.api.log('✅ CoinBattle Plugin initialized successfully with all features', 'info');
     } catch (error) {
       this.api.log(`Failed to initialize CoinBattle: ${error.message}`, 'error');
       throw error;
+    }
+  }
+
+  /**
+   * Register with GCCE if available
+   */
+  registerWithGCCE() {
+    try {
+      // Listen for GCCE ready event
+      this.api.on('gcce:ready', () => {
+        this.logger.info('GCCE detected, registering friend challenge commands');
+        // Get GCCE registry from the plugin system
+        // This would need to be exposed by GCCE plugin
+        const gccePlugin = this.api.getPlugin?.('gcce');
+        if (gccePlugin && gccePlugin.registry) {
+          this.friendChallenges.registerGCCECommands(gccePlugin.registry);
+          this.logger.info('✅ Friend Challenges registered with GCCE');
+        }
+      });
+    } catch (error) {
+      this.logger.warn(`GCCE integration not available: ${error.message}`);
     }
   }
 
@@ -389,13 +462,379 @@ class CoinBattlePlugin {
       })
     );
 
+    // ==================== KOTH MODE ROUTES ====================
+    
+    // Start KOTH mode
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/koth/start',
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const { matchId } = req.body;
+          this.kothMode.start(matchId);
+          res.json({ success: true });
+        } catch (error) {
+          this.api.log(`Error starting KOTH mode: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Get KOTH stats
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/koth/stats', (req, res) => {
+      try {
+        const stats = this.kothMode.getStats();
+        res.json({ success: true, data: stats });
+      } catch (error) {
+        this.api.log(`Error getting KOTH stats: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // ==================== FRIEND CHALLENGES ROUTES ====================
+    
+    // Create challenge
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/challenge/create',
+      withRateLimit(moderateLimit, async (req, res) => {
+        try {
+          const { challengerUserId, challengerNickname, targetUsername, stake } = req.body;
+          const result = await this.friendChallenges.createChallenge(
+            challengerUserId,
+            challengerNickname,
+            targetUsername,
+            stake
+          );
+          res.json(result);
+        } catch (error) {
+          this.api.log(`Error creating challenge: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Accept challenge
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/challenge/accept',
+      withRateLimit(moderateLimit, async (req, res) => {
+        try {
+          const { challengeId, accepterUserId, accepterNickname } = req.body;
+          const result = await this.friendChallenges.acceptChallenge(
+            challengeId,
+            accepterUserId,
+            accepterNickname
+          );
+          res.json(result);
+        } catch (error) {
+          this.api.log(`Error accepting challenge: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Decline challenge
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/challenge/decline',
+      withRateLimit(moderateLimit, (req, res) => {
+        try {
+          const { challengeId } = req.body;
+          const success = this.friendChallenges.declineChallenge(challengeId);
+          res.json({ success });
+        } catch (error) {
+          this.api.log(`Error declining challenge: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Get challenge stats
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/challenge/stats', (req, res) => {
+      try {
+        const stats = this.friendChallenges.getStats();
+        res.json({ success: true, data: stats });
+      } catch (error) {
+        this.api.log(`Error getting challenge stats: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // ==================== AVATAR ROUTES ====================
+    
+    // Get player avatar
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/avatar/:userId', (req, res) => {
+      try {
+        const avatar = this.avatarSystem.getPlayerAvatar(req.params.userId);
+        res.json({ success: true, data: avatar });
+      } catch (error) {
+        this.api.log(`Error getting avatar: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Set player avatar
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/avatar/set',
+      withRateLimit(moderateLimit, (req, res) => {
+        try {
+          const { userId, avatar, avatarSet } = req.body;
+          const success = this.avatarSystem.setPlayerAvatar(userId, avatar, avatarSet);
+          res.json({ success });
+        } catch (error) {
+          this.api.log(`Error setting avatar: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Set player skin
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/avatar/skin',
+      withRateLimit(moderateLimit, (req, res) => {
+        try {
+          const { userId, skinId } = req.body;
+          const result = this.avatarSystem.setPlayerSkin(userId, skinId);
+          res.json(result);
+        } catch (error) {
+          this.api.log(`Error setting skin: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Get available avatars
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/avatar/available', (req, res) => {
+      try {
+        const avatars = this.avatarSystem.getAvailableAvatars();
+        res.json({ success: true, data: avatars });
+      } catch (error) {
+        this.api.log(`Error getting available avatars: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Get available skins
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/avatar/skins', (req, res) => {
+      try {
+        const skins = this.avatarSystem.getAvailableSkins();
+        res.json({ success: true, data: skins });
+      } catch (error) {
+        this.api.log(`Error getting available skins: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // ==================== TEMPLATE ROUTES ====================
+    
+    // Get all templates
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/template/all', (req, res) => {
+      try {
+        const templates = this.templateManager.getAllTemplates();
+        res.json({ success: true, data: templates });
+      } catch (error) {
+        this.api.log(`Error getting templates: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Get template
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/template/:id', (req, res) => {
+      try {
+        const template = this.templateManager.getTemplate(req.params.id);
+        res.json({ success: true, data: template });
+      } catch (error) {
+        this.api.log(`Error getting template: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Apply template
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/template/apply',
+      withRateLimit(moderateLimit, (req, res) => {
+        try {
+          const { templateId } = req.body;
+          const success = this.templateManager.applyTemplate(templateId);
+          res.json({ success });
+        } catch (error) {
+          this.api.log(`Error applying template: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // ==================== PERFORMANCE ROUTES ====================
+    
+    // Get performance stats
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/performance/stats', (req, res) => {
+      try {
+        const stats = this.performanceManager.getStatistics();
+        res.json({ success: true, data: stats });
+      } catch (error) {
+        this.api.log(`Error getting performance stats: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Get health status
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/performance/health', (req, res) => {
+      try {
+        const health = this.performanceManager.getHealthStatus();
+        res.json({ success: true, data: health });
+      } catch (error) {
+        this.api.log(`Error getting health status: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // ==================== TEAM NAMES ROUTES ====================
+    
+    // Get team names
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/team-names', (req, res) => {
+      try {
+        const { matchId } = req.query;
+        const names = this.teamNamesManager.getTeamNames(matchId ? parseInt(matchId) : null);
+        res.json({ success: true, data: names });
+      } catch (error) {
+        this.api.log(`Error getting team names: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Set team name
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/team-names',
+      withRateLimit(moderateLimit, (req, res) => {
+        try {
+          const { team, name, matchId } = req.body;
+          const result = this.teamNamesManager.setTeamName(team, name, matchId);
+          res.json(result);
+        } catch (error) {
+          this.api.log(`Error setting team name: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Reset team names
+    this.api.registerRoute('DELETE', '/api/plugins/coinbattle/team-names',
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const { matchId } = req.query;
+          const result = this.teamNamesManager.resetTeamNames(matchId ? parseInt(matchId) : null);
+          res.json(result);
+        } catch (error) {
+          this.api.log(`Error resetting team names: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Get team name history
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/team-names/history', (req, res) => {
+      try {
+        const history = this.teamNamesManager.getTeamNameHistory();
+        res.json({ success: true, data: history });
+      } catch (error) {
+        this.api.log(`Error getting team name history: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // ==================== LIKES POINTS ROUTES ====================
+    
+    // Get likes points configuration
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/likes-points/config', (req, res) => {
+      try {
+        const config = this.likesPointsSystem.getConfig();
+        res.json({ success: true, data: config });
+      } catch (error) {
+        this.api.log(`Error getting likes points config: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Update likes points configuration
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/likes-points/config',
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const result = this.likesPointsSystem.updateConfig(req.body);
+          res.json(result);
+        } catch (error) {
+          this.api.log(`Error updating likes points config: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Get match statistics for likes points
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/likes-points/stats/:matchId', (req, res) => {
+      try {
+        const { matchId } = req.params;
+        const stats = this.likesPointsSystem.getMatchStatistics(parseInt(matchId));
+        res.json({ success: true, data: stats });
+      } catch (error) {
+        this.api.log(`Error getting likes points stats: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Get player points from likes/shares/etc
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/likes-points/player/:matchId/:userId', (req, res) => {
+      try {
+        const { matchId, userId } = req.params;
+        const points = this.likesPointsSystem.getPlayerPointsForMatch(parseInt(matchId), userId);
+        res.json({ success: true, data: points });
+      } catch (error) {
+        this.api.log(`Error getting player points: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // ==================== OVERLAY LAYOUT ROUTES ====================
+    
+    // Get all overlay layouts
+    this.api.registerRoute('GET', '/api/plugins/coinbattle/overlay/layouts', (req, res) => {
+      try {
+        const config = this.api.getConfig('coinbattle_overlay_layouts') || {};
+        const layouts = Object.entries(config).map(([id, layout]) => ({ id, ...layout }));
+        res.json({ success: true, data: layouts });
+      } catch (error) {
+        this.api.log(`Error getting overlay layouts: ${error.message}`, 'error');
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // Save overlay layout
+    this.api.registerRoute('POST', '/api/plugins/coinbattle/overlay/layouts',
+      withRateLimit(moderateLimit, (req, res) => {
+        try {
+          const layout = req.body;
+          const layouts = this.api.getConfig('coinbattle_overlay_layouts') || {};
+          layouts[layout.id] = layout;
+          this.api.setConfig('coinbattle_overlay_layouts', layouts);
+          res.json({ success: true });
+        } catch (error) {
+          this.api.log(`Error saving overlay layout: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
+    // Delete overlay layout
+    this.api.registerRoute('DELETE', '/api/plugins/coinbattle/overlay/layouts/:id',
+      withRateLimit(strictLimit, (req, res) => {
+        try {
+          const { id } = req.params;
+          const layouts = this.api.getConfig('coinbattle_overlay_layouts') || {};
+          delete layouts[id];
+          this.api.setConfig('coinbattle_overlay_layouts', layouts);
+          res.json({ success: true });
+        } catch (error) {
+          this.api.log(`Error deleting overlay layout: ${error.message}`, 'error');
+          res.status(500).json({ success: false, error: error.message });
+        }
+      })
+    );
+
     // Export match data (relaxed)
     this.api.registerRoute('GET', '/api/plugins/coinbattle/export/:matchId', (req, res) => {
       try {
         const { matchId } = req.params;
-        const match = this.db.db.prepare('SELECT * FROM coinbattle_matches WHERE id = ?').get(matchId);
+        const rawDb = this.db.getRawDb();
+        const match = rawDb.prepare('SELECT * FROM coinbattle_matches WHERE id = ?').get(matchId);
         const participants = this.db.getMatchLeaderboard(matchId, 100);
-        const gifts = this.db.db.prepare(`
+        const gifts = rawDb.prepare(`
           SELECT * FROM coinbattle_gift_events WHERE match_id = ?
         `).all(matchId);
 
@@ -454,7 +893,8 @@ class CoinBattlePlugin {
         const { userId, team } = data;
         if (this.engine.currentMatch) {
           // Update team in database
-          this.db.db.prepare(`
+          const rawDb = this.db.getRawDb();
+          rawDb.prepare(`
             UPDATE coinbattle_match_participants
             SET team = ?
             WHERE match_id = ? AND user_id = ?
@@ -476,7 +916,7 @@ class CoinBattlePlugin {
    */
   registerTikTokEvents() {
     // Gift received
-    this.api.registerTikTokEvent('gift', (data) => {
+    this.api.registerTikTokEvent('gift', async (data) => {
       try {
         const giftData = {
           giftId: data.giftId,
@@ -492,7 +932,30 @@ class CoinBattlePlugin {
           profilePictureUrl: data.profilePictureUrl
         };
 
+        // Use performance manager for optimized gift processing
+        await this.performanceManager.processGiftEvent(userData.userId, giftData);
+
+        // Process gift through engine
         this.engine.processGift(giftData, userData);
+
+        // Update KOTH mode if active
+        if (this.kothMode && this.kothMode.currentKing) {
+          const leaderboard = this.engine.getLeaderboard();
+          this.kothMode.updateLeaderboard(leaderboard);
+        }
+
+        // Check for avatar achievement unlocks
+        const playerStats = this.db.getPlayerStats(userData.userId);
+        if (playerStats) {
+          const unlockedSkins = this.avatarSystem.checkAchievements(userData.userId, playerStats);
+          if (unlockedSkins.length > 0) {
+            this.io.emit('coinbattle:skins-unlocked', {
+              userId: userData.userId,
+              nickname: userData.nickname,
+              skins: unlockedSkins
+            });
+          }
+        }
       } catch (error) {
         this.api.log(`Error processing gift: ${error.message}`, 'error');
       }
@@ -519,12 +982,164 @@ class CoinBattlePlugin {
       }
     });
 
-    // Like event (optional - could be used for bonus points)
-    this.api.registerTikTokEvent('like', (data) => {
-      // Optional: implement like-based bonuses
+    // Like event - integrate with likes points system
+    this.api.registerTikTokEvent('like', async (data) => {
+      if (!this.engine.currentMatch) return;
+      
+      try {
+        // Process likes as points if enabled
+        const likesConfig = this.likesPointsSystem.getConfig();
+        if (likesConfig.enabled && data.likeCount) {
+          const result = this.likesPointsSystem.processLikeEvent(
+            this.engine.currentMatch.id,
+            data.userId,
+            data.likeCount
+          );
+          
+          if (result.success && result.points > 0) {
+            // Add points to player's score
+            const userData = {
+              userId: data.userId,
+              uniqueId: data.uniqueId,
+              nickname: data.nickname,
+              profilePictureUrl: data.profilePictureUrl
+            };
+            
+            const giftData = {
+              giftId: 0,
+              giftName: '❤️ Likes',
+              coins: result.points
+            };
+            
+            this.engine.processGift(giftData, userData);
+            
+            // Emit notification
+            this.io.emit('coinbattle:likes-points', {
+              userId: data.userId,
+              likes: data.likeCount,
+              points: result.points
+            });
+          }
+        }
+      } catch (error) {
+        this.api.log(`Error processing like event: ${error.message}`, 'error');
+      }
     });
 
-    this.api.log('CoinBattle TikTok events registered', 'info');
+    // Share event - integrate with likes points system
+    this.api.registerTikTokEvent('share', async (data) => {
+      if (!this.engine.currentMatch) return;
+      
+      try {
+        const likesConfig = this.likesPointsSystem.getConfig();
+        if (likesConfig.enabled) {
+          const result = this.likesPointsSystem.processShareEvent(
+            this.engine.currentMatch.id,
+            data.userId,
+            1
+          );
+          
+          if (result.success && result.points > 0) {
+            const userData = {
+              userId: data.userId,
+              uniqueId: data.uniqueId,
+              nickname: data.nickname,
+              profilePictureUrl: data.profilePictureUrl
+            };
+            
+            const giftData = {
+              giftId: 0,
+              giftName: '🔗 Share',
+              coins: result.points
+            };
+            
+            this.engine.processGift(giftData, userData);
+            
+            this.io.emit('coinbattle:share-points', {
+              userId: data.userId,
+              points: result.points
+            });
+          }
+        }
+      } catch (error) {
+        this.api.log(`Error processing share event: ${error.message}`, 'error');
+      }
+    });
+
+    // Follow event - integrate with likes points system
+    this.api.registerTikTokEvent('follow', async (data) => {
+      if (!this.engine.currentMatch) return;
+      
+      try {
+        const likesConfig = this.likesPointsSystem.getConfig();
+        if (likesConfig.enabled) {
+          const result = this.likesPointsSystem.processFollowEvent(
+            this.engine.currentMatch.id,
+            data.userId
+          );
+          
+          if (result.success && result.points > 0) {
+            const userData = {
+              userId: data.userId,
+              uniqueId: data.uniqueId,
+              nickname: data.nickname,
+              profilePictureUrl: data.profilePictureUrl
+            };
+            
+            const giftData = {
+              giftId: 0,
+              giftName: '➕ Follow',
+              coins: result.points
+            };
+            
+            this.engine.processGift(giftData, userData);
+            
+            this.io.emit('coinbattle:follow-points', {
+              userId: data.userId,
+              points: result.points
+            });
+          }
+        }
+      } catch (error) {
+        this.api.log(`Error processing follow event: ${error.message}`, 'error');
+      }
+    });
+
+    // Comment event - integrate with likes points system
+    this.api.registerTikTokEvent('chat', async (data) => {
+      if (!this.engine.currentMatch) return;
+      
+      try {
+        const likesConfig = this.likesPointsSystem.getConfig();
+        if (likesConfig.enabled) {
+          const result = this.likesPointsSystem.processCommentEvent(
+            this.engine.currentMatch.id,
+            data.userId
+          );
+          
+          if (result.success && result.points > 0) {
+            const userData = {
+              userId: data.userId,
+              uniqueId: data.uniqueId,
+              nickname: data.nickname,
+              profilePictureUrl: data.profilePictureUrl
+            };
+            
+            const giftData = {
+              giftId: 0,
+              giftName: '💬 Comment',
+              coins: result.points
+            };
+            
+            this.engine.processGift(giftData, userData);
+          }
+        }
+      } catch (error) {
+        this.api.log(`Error processing comment event: ${error.message}`, 'error');
+      }
+    });
+
+    this.api.log('CoinBattle TikTok events registered with performance optimization', 'info');
   }
 
   /**
@@ -533,11 +1148,24 @@ class CoinBattlePlugin {
   async destroy() {
     this.api.log('Destroying CoinBattle Plugin...', 'info');
     
+    // Destroy all subsystems
     if (this.engine) {
       this.engine.destroy();
     }
 
-    this.api.log('✅ CoinBattle Plugin destroyed', 'info');
+    if (this.performanceManager) {
+      this.performanceManager.destroy();
+    }
+
+    if (this.kothMode) {
+      this.kothMode.destroy();
+    }
+
+    if (this.friendChallenges) {
+      this.friendChallenges.destroy();
+    }
+
+    this.api.log('✅ CoinBattle Plugin destroyed with all features cleaned up', 'info');
   }
 }
 
