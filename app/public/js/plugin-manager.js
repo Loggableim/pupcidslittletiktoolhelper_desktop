@@ -17,6 +17,11 @@ class PluginManager {
         this.currentSort = 'name';
         this.searchQuery = '';
         this.compactMode = false;
+        this.devStatusFilters = {
+            'working-beta': true,
+            'development-beta': true,
+            'early-version': true
+        };
         this.init();
     }
 
@@ -109,6 +114,16 @@ class PluginManager {
             });
         }
 
+        // Dev status filter checkboxes
+        const devStatusCheckboxes = document.querySelectorAll('.dev-status-filter');
+        devStatusCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const status = e.target.getAttribute('data-status');
+                this.devStatusFilters[status] = e.target.checked;
+                this.applyFiltersAndSort();
+            });
+        });
+
         // Note: Plugin loading is now triggered by navigation.js handleViewChange()
         // when switching to the plugins view
     }
@@ -131,6 +146,14 @@ class PluginManager {
         } else if (this.currentFilter === 'inactive') {
             filtered = filtered.filter(p => !p.enabled);
         }
+
+        // Apply dev status filters
+        filtered = filtered.filter(plugin => {
+            // If plugin has no devStatus, always show it
+            if (!plugin.devStatus) return true;
+            // Otherwise check if this status is enabled in filters
+            return this.devStatusFilters[plugin.devStatus] === true;
+        });
 
         // Apply sorting
         filtered.sort((a, b) => {
@@ -326,6 +349,9 @@ class PluginManager {
             : '<span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(107, 114, 128, 0.3); border: 1px solid rgba(107, 114, 128, 0.5); border-radius: 12px; font-size: 0.7rem; font-weight: 600;"><i data-lucide="pause-circle" style="width: 12px; height: 12px;"></i> Inactive</span>';
 
         const devStatusBadge = this.getDevStatusBadge(plugin.devStatus);
+        
+        // Get row background color based on devStatus
+        const rowBackground = this.getDevStatusRowBackground(plugin.devStatus);
 
         const actionButtons = plugin.enabled
             ? `
@@ -346,7 +372,7 @@ class PluginManager {
             `;
 
         return `
-            <tr>
+            <tr style="background: ${rowBackground};">
                 <td>
                     <div style="font-weight: 600; color: white; margin-bottom: 2px;">${this.escapeHtml(plugin.name)}</div>
                     <div style="font-size: 0.75rem; color: #9ca3af; font-family: monospace;">${this.escapeHtml(plugin.id)}</div>
@@ -539,6 +565,19 @@ class PluginManager {
 
         const tint = tints[devStatus];
         return tint ? `${baseGradient}, ${tint}` : baseGradient;
+    }
+
+    /**
+     * Get row background color based on development status (for compact view)
+     */
+    getDevStatusRowBackground(devStatus) {
+        const backgrounds = {
+            'working-beta': 'rgba(34, 197, 94, 0.08)',
+            'development-beta': 'rgba(251, 191, 36, 0.08)',
+            'early-version': 'rgba(239, 68, 68, 0.08)'
+        };
+
+        return backgrounds[devStatus] || 'transparent';
     }
 
     /**
