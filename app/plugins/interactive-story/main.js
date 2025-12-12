@@ -150,6 +150,16 @@ class InteractiveStoryPlugin {
    * Register API routes
    */
   _registerRoutes() {
+    // Serve UI HTML
+    this.api.registerRoute('get', '/interactive-story/ui', (req, res) => {
+      res.sendFile(path.join(__dirname, 'ui.html'));
+    });
+
+    // Serve overlay HTML
+    this.api.registerRoute('get', '/interactive-story/overlay', (req, res) => {
+      res.sendFile(path.join(__dirname, 'overlay.html'));
+    });
+
     // Get plugin status
     this.api.registerRoute('get', '/api/interactive-story/status', (req, res) => {
       res.json({

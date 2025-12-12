@@ -549,6 +549,10 @@
                     <i data-lucide="help-circle"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.quiz_show">Quiz Show</span>
                 </a>
+                <a href="#" class="sidebar-item" data-view="interactive-story" data-plugin="interactive-story">
+                    <i data-lucide="book-open"></i>
+                    <span class="sidebar-item-text" data-i18n="navigation.interactive_story">Interactive Story</span>
+                </a>
                 <a href="#" class="sidebar-item" data-view="viewer-xp" data-plugin="viewer-xp">
                     <i data-lucide="award"></i>
                     <span class="sidebar-item-text" data-i18n="navigation.viewer_xp">Viewer XP</span>
@@ -1641,6 +1645,25 @@
                         </div>
                         <div class="iframe-container">
                             <iframe data-src="/quiz-show/ui" title="Quiz Show Configuration"></iframe>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- View: Interactive Story -->
+                <div id="view-interactive-story" class="content-view" data-plugin="interactive-story">
+                    <section class="view-section">
+                        <div class="view-header">
+                            <h2 class="view-title">
+                                <i data-lucide="book-open"></i>
+                                Interactive Story Generator
+                            </h2>
+                            <a href="/interactive-story/ui" target="_blank" class="btn btn-sm btn-ghost">
+                                <i data-lucide="external-link"></i>
+                                Open in New Tab
+                            </a>
+                        </div>
+                        <div class="iframe-container">
+                            <iframe data-src="/interactive-story/ui" title="Interactive Story Configuration"></iframe>
                         </div>
                     </section>
                 </div>
