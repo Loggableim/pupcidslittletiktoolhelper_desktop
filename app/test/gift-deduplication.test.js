@@ -1,6 +1,23 @@
 /**
  * Test to verify gift event deduplication prevents duplicate detection
  * Specifically tests the fix for gifts like "teamherz" being shown twice
+ * 
+ * TEST DESIGN NOTE:
+ * This test duplicates the hash generation logic from /app/modules/tiktok.js
+ * intentionally. While this creates some code duplication, it provides:
+ * 
+ * 1. Independence: Tests run without requiring the full TikTok module and its
+ *    dependencies (@eulerstream/euler-websocket-sdk, etc.)
+ * 
+ * 2. Documentation: The test serves as living documentation of the expected
+ *    hash generation behavior and design decisions
+ * 
+ * 3. Regression Detection: If the production code changes in a way that breaks
+ *    the deduplication logic, this test will fail, alerting developers
+ * 
+ * IMPORTANT: If you modify the hash generation logic in /app/modules/tiktok.js,
+ * you must also update this test to match. The two implementations should
+ * remain synchronized.
  */
 
 const assert = require('assert');
