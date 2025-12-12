@@ -161,6 +161,9 @@ class GlobalChatCommandEngine {
 
             // Register Socket.io events
             this.registerSocketEvents();
+            
+            // Register Flow actions
+            this.registerFlowActions();
 
             // Start cleanup timer
             this.startCleanupTimer();
@@ -1355,6 +1358,244 @@ class GlobalChatCommandEngine {
             },
             message: `Available commands (${commands.length}): ${commandList}`
         };
+    }
+
+    /**
+     * Register Flow actions for automation
+     */
+    registerFlowActions() {
+        // Execute command action
+        this.api.registerFlowAction('gcce.execute_command', async (params) => {
+            const { command, username = 'system', userId = 'flow-system' } = params;
+            
+            if (!command) {
+                return { success: false, error: 'Command is required' };
+            }
+            
+            const context = {
+                username,
+                userId,
+                uniqueId: userId,
+                profilePictureUrl: '',
+                timestamp: new Date().toISOString(),
+                isGift: false,
+                isModerator: true,
+                source: 'flow'
+            };
+            
+            const result = await this.parser.parseAndExecute(command, context);
+            return { success: result.success, message: result.message, data: result.data };
+        });
+        
+        // Register macro action
+        this.api.registerFlowAction('gcce.execute_macro', async (params) => {
+            const { macroName, username = 'system', userId = 'flow-system' } = params;
+            
+            if (!macroName) {
+                return { success: false, error: 'Macro name is required' };
+            }
+            
+            const context = {
+                username,
+                userId,
+                uniqueId: userId,
+                timestamp: new Date().toISOString(),
+                source: 'flow'
+            };
+            
+            const result = await this.macroManager.executeMacro(macroName, context);
+            return { success: result.success, message: result.message };
+        });
+        
+        // Enable/disable command action
+        this.api.registerFlowAction('gcce.toggle_command', async (params) => {
+            const { commandName, enabled } = params;
+            
+            if (!commandName) {
+                return { success: false, error: 'Command name is required' };
+            }
+            
+            const command = this.registry.getCommand(commandName);
+            if (!command) {
+                return { success: false, error: 'Command not found' };
+            }
+            
+            command.enabled = enabled !== undefined ? enabled : !command.enabled;
+            return { success: true, commandName, enabled: command.enabled };
+        });
+
+        this.api.log('✅ [GCCE] Flow actions registered', 'info');
+
+        // Register IFTTT actions for visual flow editor (if IFTTT engine is available)
+        if (this.api.iftttEngine) {
+            this.registerIFTTTActions();
+        } else {
+            this.api.log('[GCCE] IFTTT engine not available, skipping IFTTT action registration', 'debug');
+        }
+    }
+
+    /**
+     * Register IFTTT actions for the visual flow editor
+     */
+    registerIFTTTActions() {
+        // Execute Command Action
+        this.api.registerIFTTTAction('gcce:execute_command', {
+            name: 'Execute GCCE Command',
+            description: 'Execute a chat command programmatically',
+            category: 'gcce',
+            icon: 'terminal',
+            fields: [
+                { name: 'command', label: 'Command', type: 'text', required: true, placeholder: '/help' },
+                { name: 'username', label: 'Username (optional)', type: 'text', required: false, placeholder: 'system' },
+                { name: 'userId', label: 'User ID (optional)', type: 'text', required: false, placeholder: 'flow-system' }
+            ],
+            executor: async (action, context, services) => {
+                const command = action.command;
+                const username = action.username || 'system';
+                const userId = action.userId || 'flow-system';
+                
+                if (!command) {
+                    throw new Error('Command is required');
+                }
+                
+                const cmdContext = {
+                    username,
+                    userId,
+                    uniqueId: userId,
+                    profilePictureUrl: '',
+                    timestamp: new Date().toISOString(),
+                    isGift: false,
+                    isModerator: true,
+                    source: 'ifttt'
+                };
+                
+                const result = await this.parser.parseAndExecute(command, cmdContext);
+                services.logger?.info(`🎯 GCCE: Executed command: ${command}`);
+                
+                return { success: result.success, message: result.message, data: result.data };
+            }
+        });
+
+        // Execute Macro Action
+        this.api.registerIFTTTAction('gcce:execute_macro', {
+            name: 'Execute GCCE Macro',
+            description: 'Execute a pre-defined command macro',
+            category: 'gcce',
+            icon: 'list',
+            fields: [
+                { name: 'macroName', label: 'Macro Name', type: 'text', required: true },
+                { name: 'username', label: 'Username (optional)', type: 'text', required: false, placeholder: 'system' },
+                { name: 'userId', label: 'User ID (optional)', type: 'text', required: false, placeholder: 'flow-system' }
+            ],
+            executor: async (action, context, services) => {
+                const macroName = action.macroName;
+                const username = action.username || 'system';
+                const userId = action.userId || 'flow-system';
+                
+                if (!macroName) {
+                    throw new Error('Macro name is required');
+                }
+                
+                const cmdContext = {
+                    username,
+                    userId,
+                    uniqueId: userId,
+                    timestamp: new Date().toISOString(),
+                    source: 'ifttt'
+                };
+                
+                const result = await this.macroManager.executeMacro(macroName, cmdContext);
+                services.logger?.info(`🎯 GCCE: Executed macro: ${macroName}`);
+                
+                return { success: result.success, message: result.message };
+            }
+        });
+
+        // Toggle Command Action
+        this.api.registerIFTTTAction('gcce:toggle_command', {
+            name: 'Enable/Disable Command',
+            description: 'Enable or disable a specific command',
+            category: 'gcce',
+            icon: 'toggle-on',
+            fields: [
+                { name: 'commandName', label: 'Command Name', type: 'text', required: true },
+                { name: 'enabled', label: 'Enabled', type: 'boolean', required: true, default: true }
+            ],
+            executor: async (action, context, services) => {
+                const commandName = action.commandName;
+                const enabled = action.enabled;
+                
+                if (!commandName) {
+                    throw new Error('Command name is required');
+                }
+                
+                const command = this.registry.getCommand(commandName);
+                if (!command) {
+                    throw new Error('Command not found');
+                }
+                
+                command.enabled = enabled;
+                services.logger?.info(`🎯 GCCE: ${enabled ? 'Enabled' : 'Disabled'} command: ${commandName}`);
+                
+                return { success: true, commandName, enabled };
+            }
+        });
+
+        // Show HUD Text Action
+        this.api.registerIFTTTAction('gcce:show_hud_text', {
+            name: 'Show HUD Text',
+            description: 'Display text on the HUD overlay',
+            category: 'gcce',
+            icon: 'font',
+            fields: [
+                { name: 'text', label: 'Text', type: 'text', required: true },
+                { name: 'duration', label: 'Duration (seconds)', type: 'number', required: false, default: 10, min: 3, max: 60 },
+                { name: 'username', label: 'Username (optional)', type: 'text', required: false, placeholder: 'system' }
+            ],
+            executor: async (action, context, services) => {
+                const text = action.text;
+                const duration = action.duration || 10;
+                const username = action.username || 'system';
+                
+                if (!text) {
+                    throw new Error('Text is required');
+                }
+                
+                this.hudManager.showText(username, text, duration);
+                services.logger?.info(`🎯 GCCE: Displayed HUD text: ${text}`);
+                
+                return { success: true, text, duration };
+            }
+        });
+
+        // Show HUD Image Action
+        this.api.registerIFTTTAction('gcce:show_hud_image', {
+            name: 'Show HUD Image',
+            description: 'Display an image on the HUD overlay',
+            category: 'gcce',
+            icon: 'image',
+            fields: [
+                { name: 'imageUrl', label: 'Image URL', type: 'text', required: true },
+                { name: 'duration', label: 'Duration (seconds)', type: 'number', required: false, default: 10, min: 3, max: 60 },
+                { name: 'username', label: 'Username (optional)', type: 'text', required: false, placeholder: 'system' }
+            ],
+            executor: async (action, context, services) => {
+                const imageUrl = action.imageUrl;
+                const duration = action.duration || 10;
+                const username = action.username || 'system';
+                
+                if (!imageUrl) {
+                    throw new Error('Image URL is required');
+                }
+                
+                this.hudManager.showImage(username, imageUrl, duration);
+                services.logger?.info(`🎯 GCCE: Displayed HUD image: ${imageUrl}`);
+                
+                return { success: true, imageUrl, duration };
+            }
+        });
+
+        this.api.log('✅ [GCCE] IFTTT actions registered', 'info');
     }
 
     /**
