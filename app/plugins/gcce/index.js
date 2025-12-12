@@ -22,6 +22,8 @@ const CommandTemplateManager = require('./utils/CommandTemplateManager');
 const CommandPipelineManager = require('./utils/CommandPipelineManager');
 const CommandAuditLog = require('./utils/CommandAuditLog');
 const CommandParameterTypes = require('./utils/CommandParameterTypes');
+const DashboardWidgets = require('./utils/DashboardWidgets');
+const CommandHelpers = require('./utils/CommandHelpers');
 const config = require('./config');
 
 class GlobalChatCommandEngine {
@@ -71,6 +73,13 @@ class GlobalChatCommandEngine {
         // F4: Parameter Types
         this.parameterTypes = null;
         
+        // Phase 4: GUI & Useful Features
+        // Dashboard Widgets
+        this.dashboardWidgets = null;
+        
+        // Command Helpers
+        this.commandHelpers = null;
+        
         // Plugin configuration
         this.pluginConfig = null;
         
@@ -118,6 +127,13 @@ class GlobalChatCommandEngine {
             this.pipelineManager = new CommandPipelineManager(this.parser);
             this.auditLog = new CommandAuditLog(10000);
             this.parameterTypes = new CommandParameterTypes();
+            
+            // Phase 4: GUI & Useful Features
+            this.dashboardWidgets = new DashboardWidgets(this.api);
+            this.commandHelpers = new CommandHelpers(this.api, this.registry, this.parser);
+            
+            // Register default dashboard widgets
+            this.registerDefaultWidgets();
 
             // Register built-in commands
             this.registerBuiltInCommands();
@@ -172,6 +188,70 @@ class GlobalChatCommandEngine {
     }
 
     /**
+     * Register default dashboard widgets
+     */
+    registerDefaultWidgets() {
+        // Command stats widget
+        this.dashboardWidgets.registerWidget({
+            id: 'command-stats',
+            name: 'Command Statistics',
+            type: 'stat',
+            dataSource: async () => {
+                return this.registry.getStats();
+            },
+            refreshInterval: 2000
+        });
+
+        // Recent executions widget
+        this.dashboardWidgets.registerWidget({
+            id: 'recent-executions',
+            name: 'Recent Command Executions',
+            type: 'list',
+            dataSource: async () => {
+                return this.auditLog.getRecentLogs(20);
+            },
+            refreshInterval: 1000
+        });
+
+        // Performance metrics widget
+        this.dashboardWidgets.registerWidget({
+            id: 'performance-metrics',
+            name: 'Performance Metrics',
+            type: 'chart',
+            dataSource: async () => {
+                const stats = this.registry.getStats();
+                const cacheStats = this.userDataCache.getStats();
+                const rateLimiterStats = this.parser.getRateLimiterStats();
+                
+                return {
+                    cacheHitRate: cacheStats.hitRate,
+                    commandExecutions: stats.totalExecuted,
+                    failureRate: stats.totalFailed / (stats.totalExecuted || 1) * 100,
+                    activeUsers: cacheStats.size
+                };
+            },
+            refreshInterval: 3000
+        });
+
+        // Top commands widget
+        this.dashboardWidgets.registerWidget({
+            id: 'top-commands',
+            name: 'Top Commands',
+            type: 'table',
+            dataSource: async () => {
+                const stats = this.registry.getStats();
+                return stats.topCommands || [];
+            },
+            refreshInterval: 5000
+        });
+
+        // Start auto-refresh
+        this.dashboardWidgets.startAutoRefresh();
+        
+        this.api.log('[GCCE] Default dashboard widgets registered', 'debug');
+    }
+
+    /**
      * Register built-in commands
      */
     registerBuiltInCommands() {
@@ -207,6 +287,110 @@ class GlobalChatCommandEngine {
             maxArgs: 0,
             category: 'System',
             handler: async (args, context) => await this.handleCommandsCommand(args, context)
+        });
+
+        // Test command - for debugging
+        this.registry.registerCommand({
+            pluginId: 'gcce',
+            name: 'cmdtest',
+            description: 'Test a command with mock data (for developers)',
+            syntax: '/cmdtest <command> [args...]',
+            permission: 'moderator',
+            enabled: true,
+            minArgs: 1,
+            maxArgs: 10,
+            category: 'System',
+            handler: async (args, context) => {
+                const [commandName, ...testArgs] = args;
+                const result = await this.commandHelpers.testCommand(commandName, testArgs, context);
+                
+                return {
+                    success: result.success,
+                    message: result.success 
+                        ? `Test completed in ${result.executionTime}ms` 
+                        : `Test failed: ${result.error}`,
+                    data: result
+                };
+            }
+        });
+
+        // Alias command - create command alias
+        this.registry.registerCommand({
+            pluginId: 'gcce',
+            name: 'alias',
+            description: 'Create an alias for a command',
+            syntax: '/alias <alias> <command>',
+            permission: 'moderator',
+            enabled: true,
+            minArgs: 2,
+            maxArgs: 2,
+            category: 'System',
+            handler: async (args, context) => {
+                const [alias, commandName] = args;
+                const success = this.registry.registerAlias(alias, commandName);
+                
+                return {
+                    success,
+                    message: success 
+                        ? `Alias '/${alias}' created for '/${commandName}'` 
+                        : `Failed to create alias (command may not exist or alias already taken)`
+                };
+            }
+        });
+
+        // Stats command - show GCCE statistics
+        this.registry.registerCommand({
+            pluginId: 'gcce',
+            name: 'stats',
+            description: 'Show GCCE system statistics',
+            syntax: '/stats',
+            permission: 'all',
+            enabled: true,
+            minArgs: 0,
+            maxArgs: 0,
+            category: 'Information',
+            handler: async (args, context) => {
+                const stats = this.registry.getStats();
+                const cacheStats = this.userDataCache.getStats();
+                
+                return {
+                    success: true,
+                    message: `📊 GCCE Stats: ${stats.registeredCommands} commands | ${stats.totalExecuted} executed | ${cacheStats.hitRate}% cache hit rate`,
+                    data: { stats, cacheStats }
+                };
+            }
+        });
+
+        // Suggest command - find similar commands
+        this.registry.registerCommand({
+            pluginId: 'gcce',
+            name: 'suggest',
+            description: 'Find commands similar to your input',
+            syntax: '/suggest <search>',
+            permission: 'all',
+            enabled: true,
+            minArgs: 1,
+            maxArgs: 1,
+            category: 'Information',
+            handler: async (args, context) => {
+                const [search] = args;
+                const similar = this.commandHelpers.findSimilarCommands(search, 3);
+                
+                if (similar.length === 0) {
+                    return {
+                        success: false,
+                        message: `No commands found similar to '${search}'`
+                    };
+                }
+
+                const suggestions = similar.slice(0, 5).map(s => `/${s.command}`).join(', ');
+                
+                return {
+                    success: true,
+                    message: `Did you mean: ${suggestions}?`,
+                    data: { similar }
+                };
+            }
         });
 
         this.api.log('[GCCE] Built-in commands registered', 'debug');
@@ -656,6 +840,104 @@ class GlobalChatCommandEngine {
         this.api.registerRoute('GET', '/api/gcce/parameters/types', async (req, res) => {
             const types = this.parameterTypes.getAllTypes();
             res.json({ success: true, types });
+        });
+
+        // ===== Phase 4: GUI & Useful Features API Endpoints =====
+
+        // API: Get all dashboard widgets
+        this.api.registerRoute('GET', '/api/gcce/dashboard/widgets', async (req, res) => {
+            const widgets = this.dashboardWidgets.getAllWidgets();
+            res.json({ success: true, widgets });
+        });
+
+        // API: Get widget data
+        this.api.registerRoute('GET', '/api/gcce/dashboard/widgets/:widgetId', async (req, res) => {
+            const { widgetId } = req.params;
+            const data = this.dashboardWidgets.getWidgetData(widgetId);
+            
+            if (data === null) {
+                res.status(404).json({ success: false, error: 'Widget not found' });
+            } else {
+                res.json({ success: true, data });
+            }
+        });
+
+        // API: Update widget data manually
+        this.api.registerRoute('POST', '/api/gcce/dashboard/widgets/:widgetId/refresh', async (req, res) => {
+            const { widgetId } = req.params;
+            try {
+                const data = await this.dashboardWidgets.updateWidget(widgetId);
+                res.json({ success: true, data });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // API: Test command
+        this.api.registerRoute('POST', '/api/gcce/helpers/test', async (req, res) => {
+            const { commandName, args, mockContext } = req.body;
+            try {
+                const result = await this.commandHelpers.testCommand(commandName, args, mockContext);
+                res.json(result);
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // API: Generate command documentation
+        this.api.registerRoute('GET', '/api/gcce/helpers/docs/:commandName', async (req, res) => {
+            const { commandName } = req.params;
+            const docs = this.commandHelpers.generateDocs(commandName);
+            
+            if (docs === null) {
+                res.status(404).json({ success: false, error: 'Command not found' });
+            } else {
+                res.json({ success: true, docs });
+            }
+        });
+
+        // API: Find similar commands
+        this.api.registerRoute('GET', '/api/gcce/helpers/similar/:input', async (req, res) => {
+            const { input } = req.params;
+            const maxDistance = parseInt(req.query.maxDistance) || 3;
+            const similar = this.commandHelpers.findSimilarCommands(input, maxDistance);
+            res.json({ success: true, similar });
+        });
+
+        // API: Validate command definition
+        this.api.registerRoute('POST', '/api/gcce/helpers/validate', async (req, res) => {
+            const validation = this.commandHelpers.validateCommandDefinition(req.body);
+            res.json(validation);
+        });
+
+        // API: Bulk import commands
+        this.api.registerRoute('POST', '/api/gcce/helpers/import', async (req, res) => {
+            const { commands } = req.body;
+            try {
+                const result = this.commandHelpers.bulkImportCommands(commands);
+                res.json({ success: true, result });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // API: Export commands
+        this.api.registerRoute('GET', '/api/gcce/helpers/export', async (req, res) => {
+            const pluginId = req.query.pluginId || null;
+            const commands = this.commandHelpers.exportCommands(pluginId);
+            res.json({ success: true, commands, count: commands.length });
+        });
+
+        // API: Get command statistics
+        this.api.registerRoute('GET', '/api/gcce/helpers/stats/:commandName', async (req, res) => {
+            const { commandName } = req.params;
+            const stats = this.commandHelpers.getCommandStats(commandName);
+            
+            if (stats === null) {
+                res.status(404).json({ success: false, error: 'Command not found' });
+            } else {
+                res.json({ success: true, stats });
+            }
         });
 
         this.api.log('[GCCE] Routes registered', 'debug');
