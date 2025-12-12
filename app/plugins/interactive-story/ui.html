@@ -659,19 +659,31 @@
 
     // Test API key
     async function testApiKey() {
+      console.log('[TEST API KEY] Button clicked');
       const btn = document.getElementById('testApiKeyBtn');
       const resultDiv = document.getElementById('apiKeyTestResult');
       
+      if (!btn || !resultDiv) {
+        console.error('[TEST API KEY] Button or result div not found!', { btn, resultDiv });
+        alert('Error: UI elements not found. Please reload the page.');
+        return;
+      }
+      
+      console.log('[TEST API KEY] Starting validation...');
       btn.disabled = true;
       btn.innerHTML = '⏳ Testing...';
       resultDiv.style.display = 'none';
       
       try {
+        console.log('[TEST API KEY] Sending request to /api/interactive-story/validate-api-key');
         const response = await fetch('/api/interactive-story/validate-api-key', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
+        
+        console.log('[TEST API KEY] Response status:', response.status);
         const result = await response.json();
+        console.log('[TEST API KEY] Response data:', result);
         
         resultDiv.style.display = 'block';
         
@@ -694,18 +706,21 @@
           } else {
             html += `<small>Error: ${result.error}</small><br>`;
             if (result.details) {
-              html += `<br><strong>Details:</strong><br>`;
-              html += `API Key Length: ${result.details.keyLength} characters<br>`;
-              html += `Prefix: ${result.details.keyPrefix}<br>`;
+              html += `<br><strong>Diagnostics:</strong><br>`;
+              html += `API Key Length: ${result.details.keyLength} characters`;
+              if (result.details.keyLength !== 64) {
+                html += ` <span style="color: #ffc107;">⚠️ Expected: ~64 characters</span>`;
+              }
+              html += `<br>Prefix: ${result.details.keyPrefix}<br>`;
               html += `Status Code: ${result.details.statusCode}<br>`;
               if (result.details.hasWhitespace) {
-                html += `⚠️ API key contains whitespace!<br>`;
+                html += `<span style="color: #ffc107;">⚠️ API key contains whitespace!</span><br>`;
               }
             }
             if (result.troubleshooting && result.troubleshooting.length > 0) {
-              html += `<br><strong>Troubleshooting:</strong><ul class="mb-0">`;
+              html += `<br><strong>Troubleshooting Steps:</strong><ul style="margin-bottom: 0; padding-left: 20px;">`;
               result.troubleshooting.forEach(tip => {
-                html += `<li>${tip}</li>`;
+                html += `<li style="margin-bottom: 5px;">${tip}</li>`;
               });
               html += `</ul>`;
             }
@@ -714,10 +729,16 @@
           resultDiv.innerHTML = html;
         }
       } catch (error) {
+        console.error('[TEST API KEY] Error:', error);
         resultDiv.style.display = 'block';
         resultDiv.className = 'alert alert-danger mt-2';
-        resultDiv.innerHTML = `<strong>❌ Error testing API key</strong><br><small>${error.message}</small>`;
+        resultDiv.innerHTML = `
+          <strong>❌ Error testing API key</strong><br>
+          <small>${error.message}</small><br>
+          <small style="color: #6c757d;">Check browser console for details</small>
+        `;
       } finally {
+        console.log('[TEST API KEY] Test complete, re-enabling button');
         btn.disabled = false;
         btn.innerHTML = '🔍 Test API Key';
       }
