@@ -11,6 +11,12 @@ const CommandRegistry = require('./commandRegistry');
 const CommandParser = require('./commandParser');
 const PermissionChecker = require('./permissionChecker');
 const UserDataCache = require('./utils/UserDataCache');
+const CommandMacroManager = require('./utils/CommandMacroManager');
+const CommandHistoryManager = require('./utils/CommandHistoryManager');
+const CommandScheduler = require('./utils/CommandScheduler');
+const AdvancedPermissionSystem = require('./utils/AdvancedPermissionSystem');
+const CommandCategoryManager = require('./utils/CommandCategoryManager');
+const CommandAutoCompleteEngine = require('./utils/CommandAutoCompleteEngine');
 const config = require('./config');
 
 class GlobalChatCommandEngine {
@@ -25,6 +31,24 @@ class GlobalChatCommandEngine {
         
         // P5: User Data Cache (80-90% fewer DB queries)
         this.userDataCache = null;
+        
+        // F5: Command Macro Manager
+        this.macroManager = null;
+        
+        // F3: Command History Manager
+        this.historyManager = null;
+        
+        // F7: Command Scheduler
+        this.scheduler = null;
+        
+        // V1: Advanced Permission System
+        this.advancedPermissions = null;
+        
+        // V3: Command Category Manager
+        this.categoryManager = null;
+        
+        // F11: Auto-Complete Engine
+        this.autoComplete = null;
         
         // Plugin configuration
         this.pluginConfig = null;
@@ -58,6 +82,14 @@ class GlobalChatCommandEngine {
             
             // P5: Initialize User Data Cache
             this.userDataCache = new UserDataCache(300000, 1000); // 5 min TTL, max 1000 users
+            
+            // Phase 2: Game Changers
+            this.macroManager = new CommandMacroManager(this.registry, this.parser);
+            this.historyManager = new CommandHistoryManager(100);
+            this.scheduler = new CommandScheduler(this.parser);
+            this.advancedPermissions = new AdvancedPermissionSystem();
+            this.categoryManager = new CommandCategoryManager();
+            this.autoComplete = new CommandAutoCompleteEngine(this.registry);
 
             // Register built-in commands
             this.registerBuiltInCommands();
@@ -366,6 +398,138 @@ class GlobalChatCommandEngine {
             }
         });
 
+        // ===== Phase 2: Game Changers API Endpoints =====
+
+        // API: Execute macro
+        this.api.registerRoute('POST', '/api/gcce/macros/:macroName/execute', async (req, res) => {
+            const { macroName } = req.params;
+            const context = req.body.context || {};
+            
+            try {
+                const result = await this.macroManager.executeMacro(macroName, context);
+                res.json({ success: true, ...result });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // API: Register macro
+        this.api.registerRoute('POST', '/api/gcce/macros', async (req, res) => {
+            try {
+                const success = this.macroManager.registerMacro(req.body);
+                res.json({ success });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // API: Get all macros
+        this.api.registerRoute('GET', '/api/gcce/macros', async (req, res) => {
+            const macros = this.macroManager.getAllMacros();
+            res.json({ success: true, macros });
+        });
+
+        // API: Get user command history
+        this.api.registerRoute('GET', '/api/gcce/history/:userId', async (req, res) => {
+            const { userId } = req.params;
+            const limit = parseInt(req.query.limit) || 10;
+            const history = this.historyManager.getUserHistory(userId, limit);
+            res.json({ success: true, history });
+        });
+
+        // API: Get global command history
+        this.api.registerRoute('GET', '/api/gcce/history', async (req, res) => {
+            const limit = parseInt(req.query.limit) || 50;
+            const history = this.historyManager.getGlobalHistory(limit);
+            res.json({ success: true, history });
+        });
+
+        // API: Undo command
+        this.api.registerRoute('POST', '/api/gcce/history/:userId/undo', async (req, res) => {
+            const { userId } = req.params;
+            try {
+                const result = await this.historyManager.undo(userId);
+                res.json({ success: true, ...result });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // API: Schedule command
+        this.api.registerRoute('POST', '/api/gcce/scheduler/schedule', async (req, res) => {
+            try {
+                const scheduleId = this.scheduler.scheduleCommand(req.body);
+                res.json({ success: true, scheduleId });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // API: Cancel scheduled command
+        this.api.registerRoute('DELETE', '/api/gcce/scheduler/:scheduleId', async (req, res) => {
+            const { scheduleId } = req.params;
+            const success = this.scheduler.cancelSchedule(parseInt(scheduleId));
+            res.json({ success });
+        });
+
+        // API: Get all schedules
+        this.api.registerRoute('GET', '/api/gcce/scheduler', async (req, res) => {
+            const schedules = this.scheduler.getAllSchedules();
+            res.json({ success: true, schedules });
+        });
+
+        // API: Define custom role
+        this.api.registerRoute('POST', '/api/gcce/roles', async (req, res) => {
+            try {
+                const success = this.advancedPermissions.defineRole(req.body);
+                res.json({ success });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // API: Assign role to user
+        this.api.registerRoute('POST', '/api/gcce/roles/:roleName/assign', async (req, res) => {
+            const { roleName } = req.params;
+            const { userId } = req.body;
+            const success = this.advancedPermissions.assignRole(userId, roleName);
+            res.json({ success });
+        });
+
+        // API: Get all roles
+        this.api.registerRoute('GET', '/api/gcce/roles', async (req, res) => {
+            const roles = this.advancedPermissions.getAllRoles();
+            res.json({ success: true, roles });
+        });
+
+        // API: Get command categories
+        this.api.registerRoute('GET', '/api/gcce/categories', async (req, res) => {
+            const categories = this.categoryManager.getAllCategories(true);
+            res.json({ success: true, categories });
+        });
+
+        // API: Get commands by category
+        this.api.registerRoute('GET', '/api/gcce/categories/:categoryId/commands', async (req, res) => {
+            const { categoryId } = req.params;
+            const allCommands = this.registry.getAllCommands();
+            const commands = this.categoryManager.getCommandsByCategory(categoryId, allCommands);
+            res.json({ success: true, commands });
+        });
+
+        // API: Get grouped commands
+        this.api.registerRoute('GET', '/api/gcce/commands/grouped', async (req, res) => {
+            const allCommands = this.registry.getAllCommands();
+            const grouped = this.categoryManager.groupCommandsByCategory(allCommands);
+            res.json({ success: true, grouped });
+        });
+
+        // API: Auto-complete suggestions
+        this.api.registerRoute('POST', '/api/gcce/autocomplete', async (req, res) => {
+            const { input, context, maxSuggestions } = req.body;
+            const suggestions = this.autoComplete.getSuggestions(input, context, maxSuggestions);
+            res.json({ success: true, suggestions });
+        });
+
         this.api.log('[GCCE] Routes registered', 'debug');
     }
 
@@ -465,6 +629,22 @@ class GlobalChatCommandEngine {
 
             // Handle result
             if (result.isCommand === false) return;
+
+            // F3: Record command in history (if successful)
+            if (result.success && result.commandName) {
+                this.historyManager.recordCommand(
+                    {
+                        name: result.commandName,
+                        args: result.args || [],
+                        undoable: false // Can be set per command
+                    },
+                    context,
+                    result
+                );
+
+                // F11: Track usage for autocomplete
+                this.autoComplete.recordUsage(result.commandName, context.userId);
+            }
 
             // Broadcast result to overlay if needed
             if (result.displayOverlay && this.pluginConfig.enableOverlayMessages) {
