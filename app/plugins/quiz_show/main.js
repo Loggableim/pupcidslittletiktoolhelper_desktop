@@ -2029,7 +2029,12 @@ class QuizShowPlugin {
                     // Round limit reached - reset game state to start a new game
                     this.api.log(`Total rounds limit (${this.config.totalRounds}) reached - resetting for new game`, 'info');
                     this.resetGameState();
-                    socket.emit('quiz-show:quiz-ended', { message: 'Quiz beendet. Klicken Sie "Quiz starten", um eine neue Runde zu beginnen.' });
+                    // Broadcast to all clients that the quiz has ended
+                    const mvp = this.getMVPPlayer();
+                    this.api.emit('quiz-show:quiz-ended', { 
+                        mvp,
+                        message: 'Quiz beendet. Klicken Sie "Quiz starten", um eine neue Runde zu beginnen.' 
+                    });
                     return;
                 }
 
