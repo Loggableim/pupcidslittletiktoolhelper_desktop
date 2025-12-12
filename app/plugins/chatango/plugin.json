@@ -6,6 +6,7 @@
   "author": "Pup Cid",
   "entry": "main.js",
   "enabled": true,
+  "devStatus": "early-version",
   "settings": {
     "enabled": true,
     "roomHandle": "pupcidsltth",

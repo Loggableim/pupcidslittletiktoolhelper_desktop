@@ -6,6 +6,7 @@
   "author": "Pup Cid",
   "entry": "main.js",
   "enabled": false,
+  "devStatus": "development-beta",
   "settings": {
     "enabled": false,
     "sendHost": "127.0.0.1",

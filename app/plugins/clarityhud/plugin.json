@@ -8,6 +8,7 @@
   "enabled": false,
   "type": "overlay",
   "uiPath": "/clarityhud/ui",
+  "devStatus": "working-beta",
   "permissions": [
     "socket.io",
     "routes",

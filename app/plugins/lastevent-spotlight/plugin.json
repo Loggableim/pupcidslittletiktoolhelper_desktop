@@ -6,6 +6,7 @@
   "author": "Plugin System",
   "entry": "main.js",
   "enabled": true,
+  "devStatus": "development-beta",
   "permissions": [
     "socket.io",
     "routes",
