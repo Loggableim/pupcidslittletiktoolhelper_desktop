@@ -356,7 +356,77 @@ func (l *Launcher) autoFixEnvFile() error {
 	return nil
 }
 
-func (l *Launcher) runLauncher(keepOpen bool) {
+func (l *Launcher) setActiveProfile(profileName string) error {
+	// Wait a bit for server to be ready
+	maxRetries := 30
+	retryDelay := 1 * time.Second
+	
+	// First, try to create the profile
+	for i := 0; i < maxRetries; i++ {
+		client := &http.Client{Timeout: 5 * time.Second}
+		
+		// Try to create profile first
+		createReqBody := fmt.Sprintf(`{"username": "%s"}`, profileName)
+		createReq, err := http.NewRequest("POST", "http://localhost:3000/api/profiles", 
+			strings.NewReader(createReqBody))
+		if err == nil {
+			createReq.Header.Set("Content-Type", "application/json")
+			
+			resp, err := client.Do(createReq)
+			if err == nil {
+				defer resp.Body.Close()
+				if resp.StatusCode == 200 || resp.StatusCode == 201 {
+					l.logAndSync("[SUCCESS] Profile created: %s", profileName)
+				} else {
+					// Profile might already exist, that's ok
+					body, _ := io.ReadAll(resp.Body)
+					l.logAndSync("[INFO] Profile creation response: %s", string(body))
+				}
+				break
+			}
+		}
+		
+		// Server not ready yet, retry
+		time.Sleep(retryDelay)
+	}
+	
+	// Now set it as active
+	for i := 0; i < maxRetries; i++ {
+		client := &http.Client{Timeout: 5 * time.Second}
+		
+		// Prepare request body
+		reqBody := fmt.Sprintf(`{"username": "%s"}`, profileName)
+		req, err := http.NewRequest("POST", "http://localhost:3000/api/profiles/switch", 
+			strings.NewReader(reqBody))
+		if err != nil {
+			return err
+		}
+		
+		req.Header.Set("Content-Type", "application/json")
+		
+		resp, err := client.Do(req)
+		if err != nil {
+			// Server not ready yet, retry
+			time.Sleep(retryDelay)
+			continue
+		}
+		defer resp.Body.Close()
+		
+		if resp.StatusCode == 200 {
+			l.logAndSync("[SUCCESS] Profile set to: %s", profileName)
+			return nil
+		}
+		
+		// Read error response
+		body, _ := io.ReadAll(resp.Body)
+		l.logAndSync("[WARNING] Failed to set profile: %s", string(body))
+		time.Sleep(retryDelay)
+	}
+	
+	return fmt.Errorf("failed to set profile after %d retries", maxRetries)
+}
+
+func (l *Launcher) runLauncher(keepOpen bool, profileName string) {
 	time.Sleep(1 * time.Second)
 
 	l.updateProgress(0, "Prüfe Node.js Installation...")
@@ -459,6 +529,16 @@ func (l *Launcher) runLauncher(keepOpen bool) {
 	l.updateProgress(100, "Server erfolgreich gestartet!")
 	l.logger.Println("[SUCCESS] Server is running!")
 	time.Sleep(500 * time.Millisecond)
+	
+	// Set active profile if provided
+	if profileName != "" {
+		l.updateProgress(100, "Setze aktives Profil...")
+		l.logger.Printf("[INFO] Setting active profile: %s", profileName)
+		if err := l.setActiveProfile(profileName); err != nil {
+			l.logAndSync("[WARNING] Could not set active profile: %v", err)
+			// Don't fail here, just log the warning
+		}
+	}
 	
 	l.updateProgress(100, "Weiterleitung zum Dashboard...")
 	time.Sleep(500 * time.Millisecond)
@@ -654,7 +734,7 @@ func main() {
 		launcher.logAndSync("Starting with profile: %s, language: %s, keepOpen: %v", req.Profile, req.Language, req.KeepOpen)
 
 		// Start the launcher process
-		go launcher.runLauncher(req.KeepOpen)
+		go launcher.runLauncher(req.KeepOpen, req.Profile)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]bool{"success": true})
@@ -1433,25 +1513,13 @@ func getJavaScript() string {
         }
 
         async function loadProfiles() {
-            try {
-                const response = await fetch('http://localhost:3000/api/profiles');
-                if (!response.ok) throw new Error('Failed to load profiles');
-                
-                const profiles = await response.json();
-                const select = document.getElementById('profileSelect');
-                
-                if (profiles.length === 0) {
-                    select.innerHTML = '<option value="">' + t('launcher.profile.no_profiles') + '</option>';
-                    document.querySelector('.profile-selector').style.display = 'none';
-                    document.getElementById('profileCreator').style.display = 'flex';
-                } else {
-                    select.innerHTML = profiles.map(p => 
-                        ` + "`" + `<option value="${p.username}">${p.username}</option>` + "`" + `
-                    ).join('');
-                }
-            } catch (error) {
-                console.log('Could not load profiles (server not started yet)');
-            }
+            // Since server is not started yet, we can't load profiles
+            // Instead, we'll just show the profile creator
+            const select = document.getElementById('profileSelect');
+            select.innerHTML = '<option value="">' + t('launcher.profile.select_profile') + '</option>';
+            
+            // For now, just enable profile creation
+            // After server starts, profiles will be managed through the dashboard
         }
 
         async function createProfile() {
@@ -1462,21 +1530,17 @@ func getJavaScript() string {
                 return;
             }
 
-            try {
-                const response = await fetch('http://localhost:3000/api/profiles', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username })
-                });
+            // Store the username for later use when server starts
+            const select = document.getElementById('profileSelect');
+            const option = document.createElement('option');
+            option.value = username;
+            option.text = username;
+            option.selected = true;
+            select.innerHTML = '';
+            select.appendChild(option);
 
-                if (!response.ok) throw new Error('Failed to create profile');
-                
-                document.getElementById('profileCreator').style.display = 'none';
-                document.querySelector('.profile-selector').style.display = 'flex';
-                loadProfiles();
-            } catch (error) {
-                alert('Error creating profile: ' + error.message);
-            }
+            document.getElementById('profileCreator').style.display = 'none';
+            document.querySelector('.profile-selector').style.display = 'flex';
         }
 
         async function toggleLogging(enabled) {
@@ -1533,8 +1597,11 @@ func getJavaScript() string {
             const selectedProfile = profileSelect.value;
             const keepOpen = document.getElementById('keepOpenCheckbox').checked;
             
-            if (!selectedProfile && profileSelect.options.length > 0) {
-                alert(t('launcher.profile.select_profile'));
+            if (!selectedProfile) {
+                alert(t('launcher.profile.username_required'));
+                // Show profile creator if no profile
+                document.querySelector('.profile-selector').style.display = 'none';
+                document.getElementById('profileCreator').style.display = 'flex';
                 return;
             }
 
