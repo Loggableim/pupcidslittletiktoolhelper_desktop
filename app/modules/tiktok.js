@@ -1523,8 +1523,14 @@ class TikTokConnector extends EventEmitter {
                 // Include timestamp rounded to nearest second to catch near-duplicate events
                 // but allow legitimate streak updates
                 if (data.timestamp) {
-                    const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
-                    components.push(roundedTime.toString());
+                    try {
+                        const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
+                        if (!isNaN(roundedTime)) {
+                            components.push(roundedTime.toString());
+                        }
+                    } catch (error) {
+                        // Ignore invalid timestamps - hash will work without timestamp component
+                    }
                 }
                 break;
             case 'like':

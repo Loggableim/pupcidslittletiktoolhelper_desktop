@@ -45,8 +45,14 @@ function generateGiftEventHash(eventType, data) {
         // Include timestamp rounded to nearest second to catch near-duplicate events
         // but allow legitimate streak updates
         if (data.timestamp) {
-            const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
-            components.push(roundedTime.toString());
+            try {
+                const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
+                if (!isNaN(roundedTime)) {
+                    components.push(roundedTime.toString());
+                }
+            } catch (error) {
+                // Ignore invalid timestamps - hash will work without timestamp component
+            }
         }
     }
     
@@ -241,6 +247,43 @@ runTest('Same gift from different users generates different hashes', () => {
     const hash2 = generateGiftEventHash('gift', gift2);
     
     assert(hash1 !== hash2, 'Same gift from different users should have different hashes');
+});
+
+// Test 8: Invalid timestamps should not cause errors
+runTest('Invalid timestamps are handled gracefully', () => {
+    const gift1 = {
+        username: 'user1',
+        giftId: 1001,
+        giftName: 'Teamherz',
+        coins: 100,
+        repeatCount: 1,
+        timestamp: 'invalid-timestamp'
+    };
+    
+    const gift2 = {
+        username: 'user1',
+        giftId: 1001,
+        giftName: 'Teamherz',
+        coins: 100,
+        repeatCount: 1,
+        timestamp: null
+    };
+    
+    // Should not throw errors
+    let hash1, hash2;
+    try {
+        hash1 = generateGiftEventHash('gift', gift1);
+        hash2 = generateGiftEventHash('gift', gift2);
+    } catch (error) {
+        assert(false, 'Invalid timestamps should not cause errors: ' + error.message);
+    }
+    
+    // Hashes should still be generated (without timestamp component)
+    assert(hash1, 'Hash should be generated even with invalid timestamp');
+    assert(hash2, 'Hash should be generated even with null timestamp');
+    
+    // They should be equal since both have same gift data (no valid timestamp)
+    assert(hash1 === hash2, 'Invalid/null timestamps should result in same hash');
 });
 
 console.log(`\n📊 Test Summary: ${passed} passed, ${failed} failed`);
