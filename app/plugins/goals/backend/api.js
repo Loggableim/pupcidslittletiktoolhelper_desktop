@@ -110,6 +110,14 @@ class GoalsAPI {
                 // Create goal in database
                 const goal = this.db.createGoal(goalData);
 
+                // Store initial target for goals with increment/double behavior
+                // This allows resetting to the original target after stream ends
+                if (goal.on_reach_action === 'double' || goal.on_reach_action === 'increment') {
+                    const settingsDb = this.api.getDatabase();
+                    settingsDb.setSetting(`goal_${goal.id}_initial_target`, goal.target_value.toString());
+                    this.api.log(`Stored initial target for goal "${goal.name}": ${goal.target_value}`, 'debug');
+                }
+
                 // Initialize state machine
                 const machine = this.stateMachineManager.getMachine(goal.id);
                 machine.initialize(goal);
@@ -137,6 +145,18 @@ class GoalsAPI {
         this.api.registerRoute('put', '/api/goals/:id', (req, res) => {
             try {
                 const goal = this.db.updateGoal(req.params.id, req.body);
+
+                // If target_value or on_reach_action changed, update the initial target
+                // This handles manual changes to the target or behavior mode
+                if ((req.body.target_value !== undefined || req.body.on_reach_action !== undefined) &&
+                    (goal.on_reach_action === 'double' || goal.on_reach_action === 'increment')) {
+                    const settingsDb = this.api.getDatabase();
+                    // Only update if target_value was explicitly changed
+                    if (req.body.target_value !== undefined) {
+                        settingsDb.setSetting(`goal_${goal.id}_initial_target`, goal.target_value.toString());
+                        this.api.log(`Updated initial target for goal "${goal.name}": ${goal.target_value}`, 'debug');
+                    }
+                }
 
                 // Update state machine
                 const machine = this.stateMachineManager.getMachine(goal.id);

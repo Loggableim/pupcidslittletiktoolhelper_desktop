@@ -271,25 +271,37 @@ class GoalsEventHandlers {
                 if (goal.on_reach_action === 'double' || goal.on_reach_action === 'increment') {
                     const machine = this.stateMachineManager.getMachine(goal.id);
                     
-                    // Get the initial target value (stored in start_value field for these goals)
-                    // If start_value is 0, use a reasonable default based on current target
-                    let initialTarget = goal.start_value;
+                    // Get the initial target value from settings
+                    // This value is stored when the goal is first created or when target is manually changed
+                    const settingsDb = this.api.getDatabase();
+                    const initialTargetStr = settingsDb.getSetting(`goal_${goal.id}_initial_target`);
+                    let initialTarget = initialTargetStr ? parseInt(initialTargetStr, 10) : null;
                     
-                    // For goals with double/increment behavior, we need to store the initial target
-                    // Since this wasn't previously stored, we'll need to check if the current target
-                    // is different from what we expect
-                    // For now, we'll just reset the current value to 0 to prepare for the next stream
+                    // If no initial target is stored, use the current target_value as the initial
+                    // This handles goals created before this fix was implemented
+                    if (initialTarget === null) {
+                        initialTarget = goal.target_value;
+                        // Store it for future use
+                        settingsDb.setSetting(`goal_${goal.id}_initial_target`, initialTarget.toString());
+                        this.api.log(`Stored initial target for goal "${goal.name}": ${initialTarget}`, 'debug');
+                    }
+                    
+                    // Reset both current_value to start_value AND target_value to initial_target
                     const updatedGoal = this.db.updateGoal(goal.id, {
-                        current_value: 0
+                        current_value: goal.start_value,
+                        target_value: initialTarget
                     });
                     
-                    // Reset the state machine
-                    machine.updateValue(0, false);
+                    // Reset the state machine with the initial target
+                    machine.data.currentValue = goal.start_value;
+                    machine.data.targetValue = initialTarget;
+                    machine.data.previousValue = goal.start_value;
+                    machine.updateValue(goal.start_value, false);
                     
                     // Broadcast the reset
                     this.plugin.broadcastGoalReset(updatedGoal);
                     
-                    this.api.log(`Reset goal "${goal.name}" after stream ended`, 'info');
+                    this.api.log(`Reset goal "${goal.name}" to initial state (current: ${goal.start_value}, target: ${initialTarget})`, 'info');
                 }
             }
         } catch (error) {
