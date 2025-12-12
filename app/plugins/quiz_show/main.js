@@ -64,6 +64,10 @@ class QuizShowPlugin {
             giftJokersEnabled: true,
             giftJokerMappings: {}, // { giftId: jokerType } - loaded from database
             giftJokerShowInHUD: true, // Show gift graphics in HUD
+            // NEW: Quiz-Start Gift Configuration
+            quizStartGiftEnabled: false,
+            quizStartGiftId: null,
+            quizStartGiftName: null
             // NEW: Custom Layout
             activeLayoutId: null, // ID of active layout from overlay_layouts table
             customLayoutEnabled: false, // Use custom layout vs default
@@ -146,6 +150,9 @@ class QuizShowPlugin {
 
         // Load gift-joker mappings from database
         this.loadGiftJokerMappings();
+
+        // Load quiz-start gift configuration from database
+        this.loadQuizStartGiftConfig();
 
         // Register routes
         this.registerRoutes();
@@ -302,6 +309,15 @@ class QuizShowPlugin {
                     end_game_display_type TEXT DEFAULT 'season' CHECK(end_game_display_type IN ('round', 'season')),
                     auto_hide_delay INTEGER DEFAULT 10,
                     animation_style TEXT DEFAULT 'fade' CHECK(animation_style IN ('fade', 'slide', 'zoom'))
+                );
+
+                CREATE TABLE IF NOT EXISTS quiz_start_gift_config (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    enabled BOOLEAN DEFAULT FALSE,
+                    gift_id INTEGER DEFAULT NULL,
+                    gift_name TEXT DEFAULT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category);
@@ -613,6 +629,20 @@ class QuizShowPlugin {
             this.api.log(`Loaded ${mappings.length} gift-joker mappings`, 'info');
         } catch (error) {
             this.api.log('Error loading gift-joker mappings: ' + error.message, 'warn');
+        }
+    }
+
+    loadQuizStartGiftConfig() {
+        try {
+            const config = this.db.prepare('SELECT * FROM quiz_start_gift_config WHERE id = 1').get();
+            if (config) {
+                this.config.quizStartGiftEnabled = config.enabled;
+                this.config.quizStartGiftId = config.gift_id;
+                this.config.quizStartGiftName = config.gift_name;
+                this.api.log(`Quiz-start gift configured: ${config.enabled ? config.gift_name : 'disabled'}`, 'info');
+            }
+        } catch (error) {
+            this.api.log('Error loading quiz-start gift config: ' + error.message, 'warn');
         }
     }
 
@@ -1602,6 +1632,51 @@ class QuizShowPlugin {
             }
         });
 
+        // ===== Quiz-Start Gift Routes =====
+        
+        // Get quiz-start gift configuration
+        this.api.registerRoute('get', '/api/quiz-show/quiz-start-gift', (req, res) => {
+            try {
+                const config = this.db.prepare('SELECT * FROM quiz_start_gift_config WHERE id = 1').get();
+                res.json({ success: true, config: config || { enabled: false, gift_id: null, gift_name: null } });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        // Save quiz-start gift configuration
+        this.api.registerRoute('post', '/api/quiz-show/quiz-start-gift', (req, res) => {
+            try {
+                const { enabled, giftId, giftName } = req.body;
+
+                // Check if config exists
+                const existing = this.db.prepare('SELECT id FROM quiz_start_gift_config WHERE id = 1').get();
+                
+                if (existing) {
+                    // Update existing config
+                    this.db.prepare(`
+                        UPDATE quiz_start_gift_config 
+                        SET enabled = ?, gift_id = ?, gift_name = ?, updated_at = CURRENT_TIMESTAMP 
+                        WHERE id = 1
+                    `).run(enabled ? 1 : 0, giftId || null, giftName || null);
+                } else {
+                    // Insert new config
+                    this.db.prepare(`
+                        INSERT INTO quiz_start_gift_config (id, enabled, gift_id, gift_name) 
+                        VALUES (1, ?, ?, ?)
+                    `).run(enabled ? 1 : 0, giftId || null, giftName || null);
+                }
+
+                // Reload quiz-start gift config into memory
+                this.loadQuizStartGiftConfig();
+
+                const config = this.db.prepare('SELECT * FROM quiz_start_gift_config WHERE id = 1').get();
+                res.json({ success: true, config });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
         // ===== NEW: Overlay Layout Routes =====
         
         // Get all layouts
@@ -2123,19 +2198,71 @@ class QuizShowPlugin {
             this.handleAnswer(userId, username, message, profilePictureUrl);
         });
 
-        // Handle gift events for joker activation
+        // Handle gift events for joker activation and quiz start
         this.api.registerTikTokEvent('gift', async (data) => {
-            if (!this.gameState.isRunning) {
-                return;
-            }
-
             const userId = data.uniqueId || data.userId;
             const username = data.nickname || data.username || userId;
             const giftId = data.giftId || data.gift_id;
 
+            // Check if this gift should start the quiz
+            if (this.config.quizStartGiftEnabled && 
+                this.config.quizStartGiftId && 
+                giftId === this.config.quizStartGiftId) {
+                
+                // Check if quiz is already running
+                if (this.gameState.isRunning) {
+                    this.api.log(`Quiz already running, ignoring quiz-start gift from ${username}`, 'info');
+                    return;
+                }
+
+                // Check if there are questions available
+                const questionCount = this.db.prepare('SELECT COUNT(*) as count FROM questions').get().count;
+                if (questionCount === 0) {
+                    this.api.log('Cannot start quiz: No questions available', 'warn');
+                    this.api.emit('quiz-show:error', { 
+                        message: 'Keine Fragen verfügbar',
+                        type: 'no_questions'
+                    });
+                    return;
+                }
+
+                try {
+                    // Enable auto mode for gift-triggered quiz
+                    const originalAutoMode = this.config.autoMode;
+                    this.config.autoMode = true;
+
+                    this.api.log(`Quiz started by gift from ${username} (Gift: ${this.config.quizStartGiftName})`, 'info');
+                    
+                    // Start the quiz
+                    await this.startRound();
+                    
+                    // Emit event to notify UI
+                    this.api.emit('quiz-show:started-by-gift', {
+                        username,
+                        giftName: this.config.quizStartGiftName
+                    });
+
+                    // Note: autoMode will remain enabled for this session
+                    // Restore original setting would require tracking, so we keep it enabled
+                } catch (error) {
+                    this.api.log(`Error starting quiz from gift: ${error.message}`, 'error');
+                    this.api.emit('quiz-show:error', { 
+                        message: error.message,
+                        type: 'quiz_start_error'
+                    });
+                }
+                
+                return; // Don't process as joker
+            }
+
+            // Only process joker gifts if quiz is running
+            if (!this.gameState.isRunning) {
+                return;
+            }
+
             // Check if this gift is mapped to a joker
-            if (this.config.giftJokers && this.config.giftJokers[giftId]) {
-                const jokerType = this.config.giftJokers[giftId];
+            if (this.config.giftJokerMappings && this.config.giftJokerMappings[giftId]) {
+                const jokerType = this.config.giftJokerMappings[giftId];
                 this.handleJokerCommand(userId, username, `!joker${jokerType}`, true);
             }
         });

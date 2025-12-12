@@ -2384,6 +2384,7 @@
             if (data.success) {
                 giftCatalog = data.gifts;
                 populateGiftSelector();
+                populateQuizStartGiftSelector();
             }
         } catch (error) {
             console.error('Error loading gift catalog:', error);
@@ -2412,6 +2413,32 @@
             if (selectedOption.value) {
                 document.getElementById('giftJokerId').value = selectedOption.value;
                 document.getElementById('giftJokerName').value = selectedOption.dataset.name;
+            }
+        });
+    }
+
+    function populateQuizStartGiftSelector() {
+        const selector = document.getElementById('quizStartGiftSelector');
+        if (!selector) return;
+
+        selector.innerHTML = '<option value="">-- Geschenk wählen --</option>' +
+            giftCatalog.map(gift => {
+                const giftId = parseInt(gift.id, 10);
+                const diamondCount = parseInt(gift.diamond_count, 10) || 0;
+                const giftName = escapeHtml(gift.name);
+                return `
+                    <option value="${giftId}" data-name="${giftName}">
+                        ${giftName} (ID: ${giftId}, 💎 ${diamondCount})
+                    </option>
+                `;
+            }).join('');
+
+        // When a gift is selected, populate the form fields
+        selector.addEventListener('change', (e) => {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            if (selectedOption.value) {
+                document.getElementById('quizStartGiftId').value = selectedOption.value;
+                document.getElementById('quizStartGiftName').value = selectedOption.dataset.name;
             }
         });
     }
@@ -2571,8 +2598,105 @@
         giftJokersTab.addEventListener('click', () => {
             loadGiftCatalog();
             loadGiftJokers();
+            loadQuizStartGiftConfig();
         });
     }
+
+    // ============================================
+    // QUIZ-START GIFT CONFIGURATION
+    // ============================================
+
+    async function loadQuizStartGiftConfig() {
+        try {
+            const response = await fetch('/api/quiz-show/quiz-start-gift');
+            const data = await response.json();
+            
+            if (data.success && data.config) {
+                const config = data.config;
+                
+                const enabledCheckbox = document.getElementById('quizStartGiftEnabled');
+                const configDiv = document.getElementById('quizStartGiftConfig');
+                const giftIdInput = document.getElementById('quizStartGiftId');
+                const giftNameInput = document.getElementById('quizStartGiftName');
+                const giftSelector = document.getElementById('quizStartGiftSelector');
+                
+                if (enabledCheckbox) {
+                    enabledCheckbox.checked = config.enabled;
+                }
+                
+                if (configDiv) {
+                    configDiv.style.display = config.enabled ? 'block' : 'none';
+                }
+                
+                if (giftIdInput && config.gift_id) {
+                    giftIdInput.value = config.gift_id;
+                }
+                
+                if (giftNameInput && config.gift_name) {
+                    giftNameInput.value = config.gift_name;
+                }
+                
+                if (giftSelector && config.gift_id) {
+                    giftSelector.value = config.gift_id;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading quiz-start gift config:', error);
+        }
+    }
+
+    async function saveQuizStartGiftConfig() {
+        const enabled = document.getElementById('quizStartGiftEnabled').checked;
+        const giftId = parseInt(document.getElementById('quizStartGiftId').value, 10);
+        const giftName = document.getElementById('quizStartGiftName').value.trim();
+
+        if (enabled && (!giftId || !giftName || isNaN(giftId))) {
+            showMessage('Bitte wählen Sie ein Geschenk aus oder geben Sie ID und Name ein', 'error', 'quizStartGiftSaveMessage');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/quiz-show/quiz-start-gift', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    enabled, 
+                    giftId: enabled ? giftId : null, 
+                    giftName: enabled ? giftName : null 
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Quiz-Start Geschenk gespeichert', 'success', 'quizStartGiftSaveMessage');
+            } else {
+                showMessage('Fehler: ' + data.error, 'error', 'quizStartGiftSaveMessage');
+            }
+        } catch (error) {
+            console.error('Error saving quiz-start gift config:', error);
+            showMessage('Fehler beim Speichern', 'error', 'quizStartGiftSaveMessage');
+        }
+    }
+
+    // Toggle quiz-start gift config visibility
+    if (document.getElementById('quizStartGiftEnabled')) {
+        document.getElementById('quizStartGiftEnabled').addEventListener('change', (e) => {
+            const configDiv = document.getElementById('quizStartGiftConfig');
+            if (configDiv) {
+                configDiv.style.display = e.target.checked ? 'block' : 'none';
+            }
+        });
+    }
+
+    // Save quiz-start gift config button
+    if (document.getElementById('saveQuizStartGiftBtn')) {
+        document.getElementById('saveQuizStartGiftBtn').addEventListener('click', saveQuizStartGiftConfig);
+    }
+
+    // ============================================
+    // END QUIZ-START GIFT CONFIGURATION
+    // ============================================
 
     // ============================================
     // END GIFT-JOKER MANAGEMENT
