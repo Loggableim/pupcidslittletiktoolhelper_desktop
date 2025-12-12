@@ -19,7 +19,7 @@ class SocketEventBatcher {
     this.stats = {
       totalEvents: 0,
       batchedEvents: 0,
-      batches Sent: 0,
+      batchesSent: 0,
       eventsReduced: 0
     };
   }
