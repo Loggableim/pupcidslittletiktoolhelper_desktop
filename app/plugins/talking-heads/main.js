@@ -48,7 +48,6 @@ class TalkingHeadsPlugin {
     const defaultConfig = {
       enabled: false,
       imageApiUrl: 'https://api.siliconflow.cn/v1/image/generations',
-      imageApiKey: '',
       defaultStyle: 'cartoon',
       cacheEnabled: true,
       cacheDuration: 2592000000, // 30 days in milliseconds
@@ -68,6 +67,24 @@ class TalkingHeadsPlugin {
 
     const savedConfig = this.api.getConfig('talking_heads_config');
     return savedConfig ? { ...defaultConfig, ...savedConfig } : defaultConfig;
+  }
+
+  /**
+   * Get SiliconFlow API key from global settings
+   * @returns {string|null} SiliconFlow API key
+   * @private
+   */
+  _getSiliconFlowApiKey() {
+    try {
+      // Try global settings (centralized key)
+      const key = this.db.getSetting('siliconflow_api_key') || 
+                 this.db.getSetting('streamalchemy_siliconflow_api_key');
+      if (key) return key;
+    } catch (error) {
+      this._log(`Failed to get SiliconFlow key from settings: ${error.message}`, 'warn');
+    }
+    // Try environment variable
+    return process.env.SILICONFLOW_API_KEY || null;
   }
 
   /**
@@ -153,26 +170,30 @@ class TalkingHeadsPlugin {
       this.roleManager = new RoleManager(this.config, this.logger);
       this._log(`Role permission: ${this.config.rolePermission}`, 'debug');
 
+      // Get API key from global settings
+      const apiKey = this._getSiliconFlowApiKey();
+
       // Initialize avatar and sprite generators if API key is configured
-      if (this.config.imageApiKey) {
+      if (apiKey) {
         this._log('Initializing AI engines...', 'debug');
         this.avatarGenerator = new AvatarGenerator(
           this.config.imageApiUrl,
-          this.config.imageApiKey,
+          apiKey,
           this.logger,
           this.config
         );
 
         this.spriteGenerator = new SpriteGenerator(
           this.config.imageApiUrl,
-          this.config.imageApiKey,
+          apiKey,
           this.logger,
           this.config
         );
 
         this._log('✅ Avatar and sprite generators initialized', 'info');
       } else {
-        this._log('⚠️  No API key configured - avatar generation disabled', 'warn');
+        this._log('⚠️  No SiliconFlow API key configured in global settings - avatar generation disabled', 'warn');
+        this._log('Configure the API key in Settings under "siliconflow_api_key"', 'info');
       }
 
       // Initialize animation controller
@@ -219,11 +240,13 @@ class TalkingHeadsPlugin {
   _registerRoutes() {
     // Get configuration
     this.api.registerRoute('get', '/api/talkingheads/config', (req, res) => {
+      const apiKey = this._getSiliconFlowApiKey();
       res.json({
         success: true,
         config: this.config,
         styleTemplates: getAllStyleTemplates(),
-        apiConfigured: !!this.config.imageApiKey
+        apiConfigured: !!apiKey,
+        apiKeySource: apiKey ? 'global_settings' : 'none'
       });
     });
 
@@ -231,6 +254,12 @@ class TalkingHeadsPlugin {
     this.api.registerRoute('post', '/api/talkingheads/config', (req, res) => {
       try {
         const newConfig = req.body;
+        
+        // Remove imageApiKey if sent (should not be stored here)
+        if (newConfig.imageApiKey !== undefined) {
+          delete newConfig.imageApiKey;
+        }
+        
         this._saveConfig(newConfig);
 
         // Update managers with new config
@@ -238,7 +267,12 @@ class TalkingHeadsPlugin {
           this.roleManager.updateConfig(this.config);
         }
 
-        res.json({ success: true, config: this.config });
+        const apiKey = this._getSiliconFlowApiKey();
+        res.json({ 
+          success: true, 
+          config: this.config,
+          apiConfigured: !!apiKey
+        });
       } catch (error) {
         this.logger.error('TalkingHeads: Failed to save config', error);
         res.status(500).json({ success: false, error: error.message });

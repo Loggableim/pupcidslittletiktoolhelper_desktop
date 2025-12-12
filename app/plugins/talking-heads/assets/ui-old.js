@@ -6,14 +6,14 @@ const socket = io();
 let currentConfig = null;
 let styleTemplates = {};
 
-// Style descriptions (DE)
+// Style descriptions
 const styleDescriptions = {
-  furry: 'Tierischer Charakter, weich, lebendig',
-  tech: 'Futuristisch, Neon/Metallic',
-  medieval: 'Fantasy/Mittelalter, Armor',
-  noble: 'Aristokratisch, elegant',
-  cartoon: 'Comic-Stil, kräftige Farben',
-  whimsical: 'Märchenhaft, verspielt',
+  furry: 'Animierter tierischer Charakter, weich, lebendig',
+  tech: 'Futuristischer High-Tech-Look, Neon/Metallic',
+  medieval: 'Fantasy/Mittelalter, Stoff/Leder/Armor',
+  noble: 'Edler aristokratischer Stil',
+  cartoon: 'Cartoon-Look, kräftige Farben',
+  whimsical: 'Märchenhafte, verspielte Gestaltung',
   realistic: 'Realistischer Portrait-Look'
 };
 
@@ -22,11 +22,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadConfig();
   setupEventListeners();
   startAnimationPolling();
-  
-  // Initialize Lucide icons
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
 });
 
 /**
@@ -44,11 +39,8 @@ async function loadConfig() {
       // Populate form fields
       populateForm(currentConfig);
       
-      // Populate style grid
-      populateStyleGrid();
-      
       // Update API status
-      updateApiStatus(data.apiConfigured, data.apiKeySource);
+      updateApiStatus(data.apiConfigured);
       
       // Load cache stats
       await loadCacheStats();
@@ -65,6 +57,9 @@ async function loadConfig() {
 function populateForm(config) {
   document.getElementById('enabledSwitch').checked = config.enabled || false;
   document.getElementById('debugLoggingSwitch').checked = config.debugLogging || false;
+  document.getElementById('imageApiUrl').value = config.imageApiUrl || '';
+  document.getElementById('imageApiKey').value = config.imageApiKey || '';
+  document.getElementById('defaultStyle').value = config.defaultStyle || 'cartoon';
   document.getElementById('rolePermission').value = config.rolePermission || 'all';
   document.getElementById('minTeamLevel').value = config.minTeamLevel || 0;
   document.getElementById('fadeInDuration').value = config.fadeInDuration || 300;
@@ -77,54 +72,14 @@ function populateForm(config) {
   const cacheDays = Math.floor((config.cacheDuration || 2592000000) / 86400000);
   document.getElementById('cacheDuration').value = cacheDays;
 
+  // Update style description
+  updateStyleDescription(config.defaultStyle);
+  
   // Show/hide team level input
   toggleTeamLevelInput(config.rolePermission);
   
   // Show/hide debug log section
   toggleDebugLogSection(config.debugLogging);
-}
-
-/**
- * Populate style grid
- */
-function populateStyleGrid() {
-  const grid = document.getElementById('styleGrid');
-  grid.innerHTML = '';
-  
-  Object.keys(styleTemplates).forEach(styleKey => {
-    const style = styleTemplates[styleKey];
-    const card = document.createElement('div');
-    card.className = 'style-card';
-    card.dataset.style = styleKey;
-    
-    if (currentConfig.defaultStyle === styleKey) {
-      card.classList.add('selected');
-    }
-    
-    card.innerHTML = `
-      <div class="style-name">${style.name}</div>
-      <div class="style-desc">${styleDescriptions[styleKey] || style.description}</div>
-    `;
-    
-    card.addEventListener('click', () => selectStyle(styleKey));
-    grid.appendChild(card);
-  });
-}
-
-/**
- * Select a style
- */
-function selectStyle(styleKey) {
-  currentConfig.defaultStyle = styleKey;
-  
-  // Update visual selection
-  document.querySelectorAll('.style-card').forEach(card => {
-    if (card.dataset.style === styleKey) {
-      card.classList.add('selected');
-    } else {
-      card.classList.remove('selected');
-    }
-  });
 }
 
 /**
@@ -137,15 +92,20 @@ function setupEventListeners() {
   // Test API button
   document.getElementById('testApiBtn').addEventListener('click', testApi);
   
-  // Clear cache button
-  document.getElementById('clearCacheBtn').addEventListener('click', clearCache);
-  
   // Debug logging toggle
   document.getElementById('debugLoggingSwitch').addEventListener('change', (e) => {
     toggleDebugLogSection(e.target.checked);
     if (e.target.checked) {
-      showNotification('Debug-Logging aktiviert', 'info');
+      showNotification('Debug-Logging aktiviert - Details werden in Log-Datei geschrieben', 'info');
     }
+  });
+  
+  // Clear cache button
+  document.getElementById('clearCacheBtn').addEventListener('click', clearCache);
+  
+  // Style change
+  document.getElementById('defaultStyle').addEventListener('change', (e) => {
+    updateStyleDescription(e.target.value);
   });
   
   // Role permission change
@@ -162,7 +122,9 @@ async function saveConfig() {
     const config = {
       enabled: document.getElementById('enabledSwitch').checked,
       debugLogging: document.getElementById('debugLoggingSwitch').checked,
-      defaultStyle: currentConfig.defaultStyle,
+      imageApiUrl: document.getElementById('imageApiUrl').value,
+      imageApiKey: document.getElementById('imageApiKey').value,
+      defaultStyle: document.getElementById('defaultStyle').value,
       rolePermission: document.getElementById('rolePermission').value,
       minTeamLevel: parseInt(document.getElementById('minTeamLevel').value) || 0,
       fadeInDuration: parseInt(document.getElementById('fadeInDuration').value) || 300,
@@ -170,7 +132,7 @@ async function saveConfig() {
       blinkInterval: parseInt(document.getElementById('blinkInterval').value) || 3000,
       obsEnabled: document.getElementById('obsEnabled').checked,
       cacheEnabled: document.getElementById('cacheEnabled').checked,
-      cacheDuration: parseInt(document.getElementById('cacheDuration').value) * 86400000
+      cacheDuration: parseInt(document.getElementById('cacheDuration').value) * 86400000 // Convert days to ms
     };
 
     const response = await fetch('/api/talkingheads/config', {
@@ -183,18 +145,13 @@ async function saveConfig() {
 
     if (data.success) {
       currentConfig = data.config;
-      showNotification('✅ Konfiguration gespeichert', 'success');
-      
-      // Refresh icons
-      if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-      }
+      showNotification('Konfiguration gespeichert', 'success');
     } else {
-      showNotification('❌ Fehler beim Speichern', 'error');
+      showNotification('Fehler beim Speichern', 'error');
     }
   } catch (error) {
     console.error('Failed to save config:', error);
-    showNotification('❌ Fehler beim Speichern der Konfiguration', 'error');
+    showNotification('Fehler beim Speichern der Konfiguration', 'error');
   }
 }
 
@@ -203,13 +160,8 @@ async function saveConfig() {
  */
 async function testApi() {
   const btn = document.getElementById('testApiBtn');
-  const originalHTML = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<i data-lucide="loader" class="inline-block w-4 h-4 mr-2 animate-spin"></i> Teste...';
-  
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
+  btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Teste...';
 
   try {
     const response = await fetch('/api/talkingheads/test-api', {
@@ -219,22 +171,19 @@ async function testApi() {
     const data = await response.json();
 
     if (data.success) {
-      showNotification('✅ API-Verbindung erfolgreich', 'success');
-      updateApiStatus(true, 'global_settings');
+      updateApiStatus(true);
+      showNotification('API-Verbindung erfolgreich', 'success');
     } else {
-      showNotification('❌ API-Verbindung fehlgeschlagen: ' + (data.error || 'Unbekannter Fehler'), 'error');
-      updateApiStatus(false, 'none');
+      updateApiStatus(false);
+      showNotification('API-Verbindung fehlgeschlagen: ' + (data.error || 'Unbekannter Fehler'), 'error');
     }
   } catch (error) {
     console.error('API test failed:', error);
-    showNotification('❌ API-Test fehlgeschlagen', 'error');
-    updateApiStatus(false, 'none');
+    updateApiStatus(false);
+    showNotification('API-Test fehlgeschlagen', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = originalHTML;
-    if (typeof lucide !== 'undefined') {
-      lucide.createIcons();
-    }
+    btn.innerHTML = '<i class="bi bi-check-circle"></i> API testen';
   }
 }
 
@@ -254,14 +203,14 @@ async function clearCache() {
     const data = await response.json();
 
     if (data.success) {
-      showNotification(`✅ ${data.deleted} Avatare gelöscht`, 'success');
+      showNotification(`${data.deleted} Avatare aus dem Cache gelöscht`, 'success');
       await loadCacheStats();
     } else {
-      showNotification('❌ Fehler beim Löschen des Cache', 'error');
+      showNotification('Fehler beim Löschen des Cache', 'error');
     }
   } catch (error) {
     console.error('Failed to clear cache:', error);
-    showNotification('❌ Fehler beim Löschen des Cache', 'error');
+    showNotification('Fehler beim Löschen des Cache', 'error');
   }
 }
 
@@ -275,7 +224,8 @@ async function loadCacheStats() {
 
     if (data.success) {
       const stats = data.stats;
-      document.getElementById('cacheCount').textContent = stats.totalAvatars || 0;
+      document.getElementById('cacheStats').textContent = 
+        `Cache: ${stats.totalAvatars} Avatare`;
     }
   } catch (error) {
     console.error('Failed to load cache stats:', error);
@@ -285,33 +235,24 @@ async function loadCacheStats() {
 /**
  * Update API status indicator
  */
-function updateApiStatus(configured, source) {
+function updateApiStatus(configured) {
   const statusBadge = document.getElementById('apiStatus');
-  const warning = document.getElementById('apiKeyWarning');
   
   if (configured) {
-    statusBadge.className = 'status-badge badge-success';
-    statusBadge.innerHTML = '<i data-lucide="check-circle" class="inline-block w-4 h-4"></i> API konfiguriert';
-    warning.style.display = 'none';
+    statusBadge.className = 'badge bg-success';
+    statusBadge.textContent = 'API konfiguriert';
   } else {
-    statusBadge.className = 'status-badge badge-warning';
-    statusBadge.innerHTML = '<i data-lucide="alert-triangle" class="inline-block w-4 h-4"></i> Kein API-Key';
-    warning.style.display = 'block';
-  }
-  
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
+    statusBadge.className = 'badge bg-warning';
+    statusBadge.textContent = 'API nicht konfiguriert';
   }
 }
 
 /**
- * Toggle debug log section visibility
+ * Update style description
  */
-function toggleDebugLogSection(show) {
-  const section = document.getElementById('debugLogSection');
-  if (section) {
-    section.style.display = show ? 'block' : 'none';
-  }
+function updateStyleDescription(styleKey) {
+  const description = styleDescriptions[styleKey] || 'Unbekannter Stil';
+  document.getElementById('styleDescription').textContent = description;
 }
 
 /**
@@ -331,24 +272,21 @@ async function loadActiveAnimations() {
     const data = await response.json();
 
     if (data.success) {
-      const container = document.getElementById('animationList');
-      const section = document.getElementById('activeAnimationsSection');
-      const countElement = document.getElementById('activeAnimations');
-      
-      countElement.textContent = data.animations.length;
+      const container = document.getElementById('activeAnimations');
       
       if (data.animations.length === 0) {
-        section.style.display = 'none';
+        container.innerHTML = '<div class="text-muted">Keine aktiven Animationen</div>';
       } else {
-        section.style.display = 'block';
         container.innerHTML = data.animations.map(anim => `
-          <div class="animation-item">
-            <div>
-              <strong>${anim.username}</strong> <span style="color: var(--color-text-secondary);">(${anim.userId})</span>
-            </div>
-            <div>
-              <span class="status-badge badge-info">${anim.state}</span>
-              <span style="color: var(--color-text-secondary); margin-left: 8px;">${Math.floor(anim.duration / 1000)}s</span>
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>${anim.username}</strong> (${anim.userId})
+              </div>
+              <div>
+                <span class="badge bg-primary">${anim.state}</span>
+                <span class="text-muted">${Math.floor(anim.duration / 1000)}s</span>
+              </div>
             </div>
           </div>
         `).join('');
@@ -364,22 +302,43 @@ async function loadActiveAnimations() {
  */
 function startAnimationPolling() {
   loadActiveAnimations();
-  setInterval(loadActiveAnimations, 2000);
+  setInterval(loadActiveAnimations, 2000); // Update every 2 seconds
 }
 
 /**
  * Show notification
  */
 function showNotification(message, type = 'info') {
+  // Create toast notification
   const toast = document.createElement('div');
-  toast.className = `alert ${type === 'error' ? 'alert-warning' : 'alert-info'}`;
-  toast.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px; animation: slideIn 0.3s ease-out;';
+  toast.className = `alert alert-${type === 'error' ? 'danger' : type} position-fixed top-0 end-0 m-3`;
+  toast.style.zIndex = '9999';
   toast.textContent = message;
   
   document.body.appendChild(toast);
   
   setTimeout(() => {
-    toast.style.animation = 'slideOut 0.3s ease-out';
-    setTimeout(() => toast.remove(), 300);
+    toast.remove();
+  }, 3000);
+}
+
+/**
+ * Toggle debug log section visibility
+ */
+function toggleDebugLogSection(show) {
+  const section = document.getElementById('debugLogSection');
+  if (section) {
+    section.style.display = show ? 'block' : 'none';
+  }
+}
+
+/**
+ * Toggle team level input visibility
+ */
+function toggleTeamLevelInput(permission) {
+  const wrapper = document.getElementById('minTeamLevelWrapper');
+  wrapper.style.display = permission === 'team' ? 'block' : 'none';
+}
+    toast.remove();
   }, 3000);
 }
