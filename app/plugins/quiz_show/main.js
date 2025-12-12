@@ -2668,35 +2668,42 @@ class QuizShowPlugin {
 
         this.api.log(`Round ended. Correct answers: ${results.correctUsers.length}/${this.gameState.answers.size}`, 'info');
 
+        // Track if leaderboard will be shown (need to check for data availability)
+        let willShowLeaderboard = false;
+        
         // Show leaderboard after question if configured
         if (this.config.leaderboardShowAfterQuestion) {
-            setTimeout(() => {
-                this.showLeaderboardAfterQuestion();
+            setTimeout(async () => {
+                await this.showLeaderboardAfterQuestion();
             }, (this.config.answerDisplayDuration || 5) * 1000); // Show after answer display duration
+            // Check if there's data to show
+            willShowLeaderboard = await this.hasLeaderboardData(this.config.leaderboardQuestionDisplayType);
         }
 
         // Show leaderboard after round if configured (only if not showing after question, to avoid duplication)
         if (this.config.leaderboardShowAfterRound && !this.config.leaderboardShowAfterQuestion) {
-            setTimeout(() => {
-                this.showLeaderboardAfterRound();
+            setTimeout(async () => {
+                await this.showLeaderboardAfterRound();
             }, (this.config.answerDisplayDuration || 5) * 1000); // Show after answer display duration
+            // Check if there's data to show
+            willShowLeaderboard = await this.hasLeaderboardData(this.config.leaderboardRoundDisplayType);
         }
 
         // Check if we've reached the total rounds limit
         const totalRoundsReached = this.config.totalRounds > 0 && this.gameState.currentRound >= this.config.totalRounds;
 
         // Debug logging for auto mode
-        this.api.log(`Auto mode check: autoMode=${this.config.autoMode}, autoRestartRound=${this.config.autoRestartRound}, totalRoundsReached=${totalRoundsReached}, currentRound=${this.gameState.currentRound}, totalRounds=${this.config.totalRounds}`, 'debug');
+        this.api.log(`Auto mode check: autoMode=${this.config.autoMode}, autoRestartRound=${this.config.autoRestartRound}, totalRoundsReached=${totalRoundsReached}, currentRound=${this.gameState.currentRound}, totalRounds=${this.config.totalRounds}, willShowLeaderboard=${willShowLeaderboard}`, 'debug');
 
         // Auto mode - automatically start next round after delay (if autoRestartRound is enabled)
-        // The total delay must account for: answer display + leaderboard display (if shown) + auto delay
+        // The total delay must account for: answer display + leaderboard display (if shown AND has data) + auto delay
         if (this.config.autoMode && this.config.autoRestartRound !== false && !totalRoundsReached) {
             const answerDisplayDuration = (this.config.answerDisplayDuration || 5) * 1000;
             const autoDelay = (this.config.autoModeDelay || 5) * 1000;
             
-            // Add leaderboard display duration if leaderboard is shown after question or round
+            // Add leaderboard display duration ONLY if configured to show AND there's data to display
             let leaderboardDisplayDuration = 0;
-            if (this.config.leaderboardShowAfterQuestion || this.config.leaderboardShowAfterRound) {
+            if (willShowLeaderboard && (this.config.leaderboardShowAfterQuestion || this.config.leaderboardShowAfterRound)) {
                 leaderboardDisplayDuration = (this.config.leaderboardAutoHideDelay || 10) * 1000;
             }
             
@@ -2719,6 +2726,43 @@ class QuizShowPlugin {
             this.api.emit('quiz-show:quiz-ended', { mvp });
         } else {
             this.api.log(`Auto mode not triggered: autoMode=${this.config.autoMode}`, 'debug');
+        }
+    }
+
+    /**
+     * Check if there's leaderboard data available to display
+     * @param {string} displayType - 'round', 'season', or 'both'
+     * @returns {boolean} True if there's data to display
+     */
+    async hasLeaderboardData(displayType = 'both') {
+        try {
+            let hasData = false;
+
+            if (displayType === 'round' || displayType === 'both') {
+                // Check if there are any correct users in the current round
+                const results = this.calculateResults();
+                if (results.correctUsers && results.correctUsers.length > 0) {
+                    hasData = true;
+                }
+            }
+
+            if (displayType === 'season' || displayType === 'both') {
+                // Check if there's any season leaderboard data
+                const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+                if (activeSeason) {
+                    const count = this.mainDb.prepare(
+                        'SELECT COUNT(*) as count FROM quiz_leaderboard_entries WHERE season_id = ?'
+                    ).get(activeSeason.id);
+                    if (count && count.count > 0) {
+                        hasData = true;
+                    }
+                }
+            }
+
+            return hasData;
+        } catch (error) {
+            this.api.log('Error checking leaderboard data: ' + error.message, 'error');
+            return false;
         }
     }
 
@@ -2755,21 +2799,32 @@ class QuizShowPlugin {
                 }
             }
 
-            // Emit leaderboard display event
-            this.api.emit('quiz-show:show-leaderboard', {
-                leaderboard,
-                displayType,
-                animationStyle
-            });
+            // Only emit if there's data to display, otherwise emit hide immediately
+            if (leaderboard && leaderboard.length > 0) {
+                // Emit leaderboard display event
+                this.api.emit('quiz-show:show-leaderboard', {
+                    leaderboard,
+                    displayType,
+                    animationStyle
+                });
 
-            // Auto-hide leaderboard after configured delay
-            if (this.config.leaderboardAutoHideDelay > 0) {
-                setTimeout(() => {
-                    this.api.emit('quiz-show:hide-leaderboard');
-                }, this.config.leaderboardAutoHideDelay * 1000);
+                // Auto-hide leaderboard after configured delay
+                if (this.config.leaderboardAutoHideDelay > 0) {
+                    setTimeout(() => {
+                        this.api.emit('quiz-show:hide-leaderboard');
+                    }, this.config.leaderboardAutoHideDelay * 1000);
+                }
+            } else {
+                // No data to display - emit hide immediately to prevent blocking
+                this.api.log('No leaderboard data available, skipping display', 'info');
+                this.api.emit('quiz-show:hide-leaderboard');
             }
+            
+            // Return whether leaderboard was shown
+            return leaderboard && leaderboard.length > 0;
         } catch (error) {
             this.api.log('Error showing leaderboard: ' + error.message, 'error');
+            return false;
         }
     }
 
@@ -2806,22 +2861,33 @@ class QuizShowPlugin {
                 }
             }
 
-            // Emit leaderboard display event
-            this.api.emit('quiz-show:show-leaderboard', {
-                leaderboard,
-                displayType,
-                animationStyle,
-                context: 'after-question'
-            });
+            // Only emit if there's data to display, otherwise emit hide immediately
+            if (leaderboard && leaderboard.length > 0) {
+                // Emit leaderboard display event
+                this.api.emit('quiz-show:show-leaderboard', {
+                    leaderboard,
+                    displayType,
+                    animationStyle,
+                    context: 'after-question'
+                });
 
-            // Auto-hide leaderboard after configured delay
-            if (this.config.leaderboardAutoHideDelay > 0) {
-                setTimeout(() => {
-                    this.api.emit('quiz-show:hide-leaderboard');
-                }, this.config.leaderboardAutoHideDelay * 1000);
+                // Auto-hide leaderboard after configured delay
+                if (this.config.leaderboardAutoHideDelay > 0) {
+                    setTimeout(() => {
+                        this.api.emit('quiz-show:hide-leaderboard');
+                    }, this.config.leaderboardAutoHideDelay * 1000);
+                }
+            } else {
+                // No data to display - emit hide immediately to prevent blocking
+                this.api.log('No leaderboard data available, skipping display', 'info');
+                this.api.emit('quiz-show:hide-leaderboard');
             }
+            
+            // Return whether leaderboard was shown
+            return leaderboard && leaderboard.length > 0;
         } catch (error) {
             this.api.log('Error showing leaderboard after question: ' + error.message, 'error');
+            return false;
         }
     }
 
