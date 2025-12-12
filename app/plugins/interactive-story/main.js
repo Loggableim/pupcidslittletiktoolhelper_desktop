@@ -110,6 +110,13 @@ class InteractiveStoryPlugin {
 
       // Get SiliconFlow API key from global settings
       const apiKey = this._getSiliconFlowApiKey();
+      
+      // DEBUG: Log exact API key details for troubleshooting
+      if (apiKey) {
+        this.logger.info(`[DEBUG] API Key retrieved from database: length=${apiKey.length}, prefix="${apiKey.substring(0, 10)}...", hasWhitespace=${/\s/.test(apiKey)}`);
+      } else {
+        this.logger.warn('[DEBUG] No API key found in database');
+      }
 
       // Initialize services
       if (apiKey) {
