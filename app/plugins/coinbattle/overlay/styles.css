@@ -234,6 +234,152 @@ body {
   color: rgba(255, 255, 255, 0.5);
 }
 
+.team-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.team-image {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid currentColor;
+}
+
+.team-players {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  max-width: 250px;
+}
+
+.team-player-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transition: transform 0.2s;
+}
+
+.team-player-avatar:hover {
+  transform: scale(1.1);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.team-red .team-player-avatar {
+  border-color: rgba(245, 101, 101, 0.5);
+}
+
+.team-blue .team-player-avatar {
+  border-color: rgba(66, 153, 225, 0.5);
+}
+
+/* ======================
+   KING OF THE HILL MODE
+   ====================== */
+
+.koth-container {
+  position: absolute;
+  top: 50%;
+  right: 40px;
+  transform: translateY(-50%);
+  width: 450px;
+  z-index: 90;
+}
+
+.koth-king {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%);
+  border: 3px solid gold;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+  text-align: center;
+}
+
+.koth-king-crown {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.koth-king-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin: 12px auto;
+  border: 4px solid gold;
+  object-fit: cover;
+}
+
+.koth-king-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: gold;
+  margin-bottom: 8px;
+}
+
+.koth-king-coins {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.koth-challengers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.koth-challenger {
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.koth-challenger-rank {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  min-width: 40px;
+}
+
+.koth-challenger-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  object-fit: cover;
+}
+
+.koth-challenger-info {
+  flex: 1;
+}
+
+.koth-challenger-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.koth-challenger-coins {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #667eea;
+}
+
 /* ======================
    LEADERBOARD
    ====================== */

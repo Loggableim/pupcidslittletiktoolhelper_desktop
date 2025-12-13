@@ -696,8 +696,19 @@ class CoinBattlePlugin {
     this.api.registerRoute('POST', '/api/plugins/coinbattle/team-names',
       withRateLimit(moderateLimit, (req, res) => {
         try {
-          const { team, name, matchId } = req.body;
-          const result = this.teamNamesManager.setTeamName(team, name, matchId);
+          const { team, name, matchId, imageUrl } = req.body;
+          const result = this.teamNamesManager.setTeamName(team, name, matchId, imageUrl);
+          
+          // Emit socket event to update all overlays
+          if (result.success) {
+            this.io.emit('coinbattle:team-names-updated', {
+              team,
+              name,
+              imageUrl,
+              matchId
+            });
+          }
+          
           res.json(result);
         } catch (error) {
           this.api.log(`Error setting team name: ${error.message}`, 'error');
@@ -918,11 +929,16 @@ class CoinBattlePlugin {
     // Gift received
     this.api.registerTikTokEvent('gift', async (data) => {
       try {
+        // FIX: Use data.coins (already calculated as diamondCount * repeatCount)
+        // instead of data.diamondCount (which is just the raw diamond value per gift)
+        const coins = data.coins || data.diamondCount || data.giftValue || 1;
+        
         const giftData = {
           giftId: data.giftId,
           giftName: data.giftName,
           diamondCount: data.diamondCount || data.giftValue || 1,
-          coins: data.diamondCount || data.giftValue || 1
+          coins: coins,
+          repeatCount: data.repeatCount || 1
         };
 
         const userData = {

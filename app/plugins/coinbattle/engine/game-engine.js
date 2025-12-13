@@ -383,7 +383,8 @@ class CoinBattleEngine {
       this.db.addMatchParticipant(this.currentMatch.id, player.id, userData.userId, team);
 
       // Calculate coins with multiplier
-      const coins = giftData.diamondCount || giftData.coins || 1;
+      // Use coins field which includes repeatCount (diamondCount * repeatCount)
+      const coins = giftData.coins || giftData.diamondCount || 1;
       const multipliedCoins = Math.floor(coins * this.activeMultiplier);
 
       // Record gift event with idempotency keys

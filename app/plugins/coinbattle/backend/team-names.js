@@ -10,8 +10,8 @@ class TeamNamesManager {
     
     // Default team names
     this.teamNames = {
-      red: 'Team Rot',
-      blue: 'Team Blau'
+      red: { name: 'Team Rot', imageUrl: null },
+      blue: { name: 'Team Blau', imageUrl: null }
     };
     
     this.logger.info('🏷️ Team Names Manager initialized');
@@ -27,10 +27,23 @@ class TeamNamesManager {
         match_id INTEGER,
         team TEXT NOT NULL,
         name TEXT NOT NULL,
+        image_url TEXT,
         created_at INTEGER DEFAULT (strftime('%s', 'now')),
         UNIQUE(match_id, team)
       )
     `).run();
+    
+    // Add image_url column if it doesn't exist (migration)
+    try {
+      this.db.prepare(`ALTER TABLE coinbattle_team_names ADD COLUMN image_url TEXT`).run();
+    } catch (error) {
+      // Column already exists - expected on subsequent runs
+      // Only ignore duplicate column errors
+      if (!error.message.includes('duplicate column name')) {
+        this.logger.error(`Failed to add image_url column: ${error.message}`);
+        throw error;
+      }
+    }
     
     // Load current team names
     this.loadTeamNames();
@@ -41,20 +54,30 @@ class TeamNamesManager {
    */
   loadTeamNames() {
     try {
-      const redName = this.db.prepare(`
-        SELECT name FROM coinbattle_team_names 
+      const redData = this.db.prepare(`
+        SELECT name, image_url FROM coinbattle_team_names 
         WHERE match_id IS NULL AND team = 'red'
         ORDER BY created_at DESC LIMIT 1
       `).get();
       
-      const blueName = this.db.prepare(`
-        SELECT name FROM coinbattle_team_names 
+      const blueData = this.db.prepare(`
+        SELECT name, image_url FROM coinbattle_team_names 
         WHERE match_id IS NULL AND team = 'blue'
         ORDER BY created_at DESC LIMIT 1
       `).get();
       
-      if (redName) this.teamNames.red = redName.name;
-      if (blueName) this.teamNames.blue = blueName.name;
+      if (redData) {
+        this.teamNames.red = { 
+          name: redData.name, 
+          imageUrl: redData.image_url 
+        };
+      }
+      if (blueData) {
+        this.teamNames.blue = { 
+          name: blueData.name, 
+          imageUrl: blueData.image_url 
+        };
+      }
       
     } catch (error) {
       this.logger.error(`Failed to load team names: ${error.message}`);
@@ -62,9 +85,9 @@ class TeamNamesManager {
   }
 
   /**
-   * Set team name
+   * Set team name and optional image
    */
-  setTeamName(team, name, matchId = null) {
+  setTeamName(team, name, matchId = null, imageUrl = null) {
     if (!['red', 'blue'].includes(team)) {
       return { success: false, error: 'Invalid team (must be "red" or "blue")' };
     }
@@ -79,17 +102,22 @@ class TeamNamesManager {
     
     try {
       this.db.prepare(`
-        INSERT INTO coinbattle_team_names (match_id, team, name)
-        VALUES (?, ?, ?)
-        ON CONFLICT(match_id, team) DO UPDATE SET name = excluded.name
-      `).run(matchId, team, name.trim());
+        INSERT INTO coinbattle_team_names (match_id, team, name, image_url)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(match_id, team) DO UPDATE SET 
+          name = excluded.name,
+          image_url = excluded.image_url
+      `).run(matchId, team, name.trim(), imageUrl);
       
       // Update in-memory cache for global names
       if (!matchId) {
-        this.teamNames[team] = name.trim();
+        this.teamNames[team] = { 
+          name: name.trim(), 
+          imageUrl: imageUrl 
+        };
       }
       
-      this.logger.info(`Team name set: ${team} = "${name}"`);
+      this.logger.info(`Team name set: ${team} = "${name}"${imageUrl ? ' with image' : ''}`);
       return { success: true };
       
     } catch (error) {
@@ -99,7 +127,7 @@ class TeamNamesManager {
   }
 
   /**
-   * Get team name
+   * Get team data (name and image)
    */
   getTeamName(team, matchId = null) {
     if (!['red', 'blue'].includes(team)) {
@@ -107,17 +135,19 @@ class TeamNamesManager {
     }
     
     try {
-      // Try to get match-specific name first
+      // Try to get match-specific data first
       if (matchId) {
         const result = this.db.prepare(`
-          SELECT name FROM coinbattle_team_names 
+          SELECT name, image_url FROM coinbattle_team_names 
           WHERE match_id = ? AND team = ?
         `).get(matchId, team);
         
-        if (result) return result.name;
+        if (result) {
+          return { name: result.name, imageUrl: result.image_url };
+        }
       }
       
-      // Fall back to global name
+      // Fall back to global data
       return this.teamNames[team];
       
     } catch (error) {
@@ -151,8 +181,8 @@ class TeamNamesManager {
         `).run();
         
         this.teamNames = {
-          red: 'Team Rot',
-          blue: 'Team Blau'
+          red: { name: 'Team Rot', imageUrl: null },
+          blue: { name: 'Team Blau', imageUrl: null }
         };
       }
       
