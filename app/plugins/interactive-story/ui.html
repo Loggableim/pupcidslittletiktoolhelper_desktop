@@ -368,21 +368,75 @@
             <div class="col-md-12">
               <div class="alert alert-info mb-3">
                 <strong>ℹ️ API Key Configuration</strong><br>
-                The SiliconFlow API key is now configured globally in <strong>Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)</strong>.<br>
-                This single API key is used for LLM chat completions, image generation, and TTS across all plugins.
+                Configure your AI provider API keys in <strong>Settings</strong>:<br>
+                • <strong>OpenAI</strong>: Settings → OpenAI API Configuration<br>
+                • <strong>SiliconFlow</strong>: Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)
               </div>
               
               <div class="mb-4">
                 <button type="button" class="btn btn-primary" id="testApiKeyBtn" onclick="testApiKey()">
                   🔍 Test API Key
                 </button>
-                <small class="form-text text-muted ml-2">Click to validate your SiliconFlow API key</small>
+                <small class="form-text text-muted ml-2">Click to validate your API key</small>
                 <div id="apiKeyTestResult" class="mt-2" style="display: none;"></div>
               </div>
             </div>
-            <div class="col-md-6">
+          </div>
+
+          <!-- Provider Selection -->
+          <div class="row">
+            <div class="col-md-12">
+              <h5 class="mb-3">🤖 AI Provider Selection</h5>
+            </div>
+            <div class="col-md-4">
               <div class="mb-3">
-                <label class="form-label">Default LLM Model</label>
+                <label class="form-label">LLM Provider</label>
+                <select class="form-select" id="llmProvider">
+                  <option value="openai">OpenAI (GPT)</option>
+                  <option value="siliconflow">SiliconFlow</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Image Provider</label>
+                <select class="form-select" id="imageProvider">
+                  <option value="openai">OpenAI (DALL-E)</option>
+                  <option value="siliconflow">SiliconFlow</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">TTS Provider</label>
+                <select class="form-select" id="ttsProvider">
+                  <option value="system">System TTS (OpenAI)</option>
+                  <option value="siliconflow">SiliconFlow TTS</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Model Selection -->
+          <div class="row">
+            <div class="col-md-12">
+              <h5 class="mb-3">🎯 Model Selection</h5>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3" id="openaiModelGroup">
+                <label class="form-label">OpenAI LLM Model</label>
+                <select class="form-select" id="openaiModel">
+                  <option value="gpt-5.2">GPT-5.2 (Latest - Best Intelligence)</option>
+                  <option value="gpt-5.2-pro">GPT-5.2 Pro (Harder Thinking)</option>
+                  <option value="gpt-5-mini">GPT-5 Mini (Cost-optimized)</option>
+                  <option value="gpt-5-nano">GPT-5 Nano (High-throughput)</option>
+                  <option value="o1">o1 (Reasoning)</option>
+                  <option value="gpt-4o">GPT-4o (Multimodal)</option>
+                </select>
+                <small class="form-text text-muted">GPT-5.2 is OpenAI's most intelligent model with improved instruction following and multimodality.</small>
+              </div>
+              <div class="mb-3" id="siliconflowModelGroup" style="display: none;">
+                <label class="form-label">SiliconFlow LLM Model</label>
                 <select class="form-select" id="defaultModel">
                   <option value="deepseek">DeepSeek V3</option>
                   <option value="qwen">Qwen 2.5-7B</option>
@@ -391,8 +445,16 @@
               </div>
             </div>
             <div class="col-md-6">
-              <div class="mb-3">
-                <label class="form-label">Image Model</label>
+              <div class="mb-3" id="openaiImageModelGroup">
+                <label class="form-label">OpenAI Image Model</label>
+                <select class="form-select" id="openaiImageModel">
+                  <option value="gpt-image-1">GPT Image 1 (Latest - Multimodal)</option>
+                  <option value="dall-e-3">DALL-E 3 (High Quality)</option>
+                  <option value="dall-e-2">DALL-E 2 (Cost-efficient)</option>
+                </select>
+              </div>
+              <div class="mb-3" id="siliconflowImageModelGroup" style="display: none;">
+                <label class="form-label">SiliconFlow Image Model</label>
                 <select class="form-select" id="defaultImageModel">
                   <option value="flux-schnell">FLUX.1 Schnell</option>
                   <option value="z-image-turbo">Z-Image Turbo</option>
@@ -400,8 +462,146 @@
               </div>
             </div>
           </div>
-          
+
+          <!-- TTS Voice Selection (when using system TTS) -->
+          <div class="row" id="systemTtsVoiceGroup">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">OpenAI TTS Voice</label>
+                <select class="form-select" id="ttsVoiceId">
+                  <option value="tts-1-alloy">Alloy (Standard - Neutral)</option>
+                  <option value="tts-1-echo">Echo (Standard - Male)</option>
+                  <option value="tts-1-fable">Fable (Standard - British)</option>
+                  <option value="tts-1-onyx">Onyx (Standard - Deep Male)</option>
+                  <option value="tts-1-nova">Nova (Standard - Female)</option>
+                  <option value="tts-1-shimmer">Shimmer (Standard - Soft Female)</option>
+                  <option value="tts-1-hd-alloy">Alloy HD (High Quality - Neutral)</option>
+                  <option value="tts-1-hd-echo">Echo HD (High Quality - Male)</option>
+                  <option value="tts-1-hd-fable">Fable HD (High Quality - British)</option>
+                  <option value="tts-1-hd-onyx">Onyx HD (High Quality - Deep Male)</option>
+                  <option value="tts-1-hd-nova">Nova HD (High Quality - Female)</option>
+                  <option value="tts-1-hd-shimmer">Shimmer HD (High Quality - Soft Female)</option>
+                </select>
+                <small class="form-text text-muted">Select voice for story narration (when TTS is enabled)</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Overlay Customization -->
           <div class="row">
+            <div class="col-md-12">
+              <h5 class="mb-3">🎨 Overlay Customization</h5>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Orientation</label>
+                <select class="form-select" id="overlayOrientation">
+                  <option value="landscape">Landscape (Horizontal)</option>
+                  <option value="portrait">Portrait (Vertical)</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Resolution</label>
+                <select class="form-select" id="overlayResolution">
+                  <option value="1920x1080">1920x1080 (Full HD)</option>
+                  <option value="1280x720">1280x720 (HD)</option>
+                  <option value="2560x1440">2560x1440 (2K)</option>
+                  <option value="3840x2160">3840x2160 (4K)</option>
+                  <option value="1080x1920">1080x1920 (Portrait Full HD)</option>
+                  <option value="720x1280">720x1280 (Portrait HD)</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Display Mode</label>
+                <select class="form-select" id="overlayDisplayMode">
+                  <option value="full">Full Chapter</option>
+                  <option value="sentence">Sentence-by-Sentence</option>
+                  <option value="scroll">Star Wars Scroll (TTS Synced)</option>
+                </select>
+                <small class="form-text text-muted">How chapter text is displayed. Scroll mode animates like Star Wars opening and syncs with TTS narration.</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Text Styling -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Font Family</label>
+                <select class="form-select" id="overlayFontFamily">
+                  <option value="Segoe UI, Tahoma, Geneva, Verdana, sans-serif">Segoe UI (Default)</option>
+                  <option value="Arial, Helvetica, sans-serif">Arial</option>
+                  <option value="Georgia, serif">Georgia</option>
+                  <option value="'Courier New', monospace">Courier New</option>
+                  <option value="'Times New Roman', serif">Times New Roman</option>
+                  <option value="'Comic Sans MS', cursive">Comic Sans</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Text Size (em)</label>
+                <input type="number" class="form-control" id="overlayFontSize" min="0.5" max="3" step="0.1" value="1.3">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Title Size (em)</label>
+                <input type="number" class="form-control" id="overlayTitleFontSize" min="1" max="5" step="0.1" value="2.5">
+              </div>
+            </div>
+          </div>
+
+          <!-- Colors -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Text Color</label>
+                <input type="color" class="form-control" id="overlayTextColor" value="#ffffff">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Title Color</label>
+                <input type="color" class="form-control" id="overlayTitleColor" value="#e94560">
+              </div>
+            </div>
+          </div>
+
+          <!-- Story Generation Settings -->
+          <div class="row">
+            <div class="col-md-12">
+              <h5 class="mb-3">📝 Story Generation Settings</h5>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Story Language</label>
+                <select class="form-select" id="storyLanguage">
+                  <option value="German">Deutsch (German)</option>
+                  <option value="English">English</option>
+                  <option value="Spanish">Español (Spanish)</option>
+                  <option value="French">Français (French)</option>
+                  <option value="Italian">Italiano (Italian)</option>
+                  <option value="Portuguese">Português (Portuguese)</option>
+                  <option value="Dutch">Nederlands (Dutch)</option>
+                  <option value="Polish">Polski (Polish)</option>
+                  <option value="Turkish">Türkçe (Turkish)</option>
+                  <option value="Russian">Русский (Russian)</option>
+                </select>
+                <small class="form-text text-muted">Language for story generation and narration</small>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Voting and Generation Settings -->
+          <div class="row">
+            <div class="col-md-12">
+              <h5 class="mb-3">⚙️ Voting & Generation Settings</h5>
+            </div>
             <div class="col-md-3">
               <div class="mb-3">
                 <label class="form-label">Voting Duration (seconds)</label>
@@ -629,16 +829,57 @@
     });
 
     // Overlay preview functions
-    function copyOverlayUrl() {
+    async function copyOverlayUrl() {
       const urlInput = document.getElementById('overlayUrl');
-      urlInput.select();
-      document.execCommand('copy');
-      alert('✅ Overlay URL kopiert!');
+      const url = urlInput.value;
+      
+      try {
+        // Modern Clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url);
+          alert('✅ Overlay URL kopiert!');
+        } else {
+          // Fallback for older browsers
+          urlInput.select();
+          urlInput.setSelectionRange(0, 99999); // For mobile devices
+          document.execCommand('copy');
+          alert('✅ Overlay URL kopiert!');
+        }
+      } catch (error) {
+        console.error('Error copying URL:', error);
+        // Final fallback - select text so user can manually copy
+        urlInput.select();
+        alert('⚠️ Kopieren fehlgeschlagen.\n\nBitte markieren Sie den Text und drücken Sie Strg+C (Windows) oder Cmd+C (Mac).');
+      }
     }
 
     function openOverlayInNewTab() {
       const url = document.getElementById('overlayUrl').value;
-      window.open(url, '_blank', 'width=1920,height=1080');
+      
+      if (!url) {
+        alert('❌ Keine URL verfügbar. Bitte laden Sie die Seite neu.');
+        return;
+      }
+      
+      try {
+        const newWindow = window.open(url, '_blank', 'width=1920,height=1080,toolbar=no,menubar=no,scrollbars=no');
+        
+        // Check if popup was blocked
+        setTimeout(() => {
+          try {
+            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+              // Popup was blocked
+              alert('⚠️ Popup wurde blockiert!\n\nBitte erlauben Sie Popups für diese Seite und versuchen Sie es erneut.\n\nOder öffnen Sie manuell:\n' + url);
+            }
+          } catch (e) {
+            // Cross-origin restriction, but window likely opened
+            console.log('Window opened (cross-origin check failed, this is normal)');
+          }
+        }, 100);
+      } catch (error) {
+        console.error('Error opening overlay:', error);
+        alert('❌ Fehler beim Öffnen des Overlays.\n\nBitte öffnen Sie manuell:\n' + url);
+      }
     }
 
     function toggleOverlayPreview() {
@@ -669,7 +910,10 @@
         return;
       }
       
-      console.log('[TEST API KEY] Starting validation...');
+      // Get the selected provider
+      const provider = document.getElementById('llmProvider')?.value || 'openai';
+      
+      console.log('[TEST API KEY] Starting validation for provider:', provider);
       btn.disabled = true;
       btn.innerHTML = '⏳ Testing...';
       resultDiv.style.display = 'none';
@@ -678,7 +922,8 @@
         console.log('[TEST API KEY] Sending request to /api/interactive-story/validate-api-key');
         const response = await fetch('/api/interactive-story/validate-api-key', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider })
         });
         
         console.log('[TEST API KEY] Response status:', response.status);
@@ -692,6 +937,7 @@
           resultDiv.innerHTML = `
             <strong>✅ ${result.message}</strong><br>
             <small>
+              Provider: ${result.provider}<br>
               API Key Length: ${result.details.keyLength} characters<br>
               Prefix: ${result.details.keyPrefix}<br>
               Tested Model: ${result.details.testedModel}
@@ -707,8 +953,10 @@
             html += `<small>Error: ${result.error}</small><br>`;
             if (result.details) {
               html += `<br><strong>Diagnostics:</strong><br>`;
+              html += `Provider: ${result.provider || 'Unknown'}<br>`;
               html += `API Key Length: ${result.details.keyLength} characters`;
-              if (result.details.keyLength !== 64) {
+              // Only show expected length warning for SiliconFlow (OpenAI keys vary in length)
+              if (result.details.keyLength !== 64 && result.provider && result.provider.toLowerCase() !== 'openai') {
                 html += ` <span style="color: #ffc107;">⚠️ Expected: ~64 characters</span>`;
               }
               html += `<br>Prefix: ${result.details.keyPrefix}<br>`;
@@ -760,40 +1008,102 @@
         const response = await fetch('/api/interactive-story/config');
         const config = await response.json();
         
-        // API key is now in global settings, not plugin config
+        // Provider selection
+        document.getElementById('llmProvider').value = config.llmProvider || 'openai';
+        document.getElementById('imageProvider').value = config.imageProvider || 'openai';
+        document.getElementById('ttsProvider').value = config.ttsProvider || 'system';
+        
+        // Model selection
+        document.getElementById('openaiModel').value = config.openaiModel || 'gpt-4o-mini';
+        document.getElementById('openaiImageModel').value = config.openaiImageModel || 'dall-e-2';
         document.getElementById('defaultModel').value = config.defaultModel || 'deepseek';
         document.getElementById('defaultImageModel').value = config.defaultImageModel || 'flux-schnell';
+        
+        // TTS voice
+        document.getElementById('ttsVoiceId').value = config.ttsVoiceId || 'tts-1-alloy';
+        
+        // Overlay customization
+        document.getElementById('overlayOrientation').value = config.overlayOrientation || 'landscape';
+        document.getElementById('overlayResolution').value = config.overlayResolution || '1920x1080';
+        document.getElementById('overlayDisplayMode').value = config.overlayDisplayMode || 'full';
+        document.getElementById('overlayFontFamily').value = config.overlayFontFamily || 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+        document.getElementById('overlayFontSize').value = config.overlayFontSize || 1.3;
+        document.getElementById('overlayTitleFontSize').value = config.overlayTitleFontSize || 2.5;
+        document.getElementById('overlayTextColor').value = config.overlayTextColor || '#ffffff';
+        document.getElementById('overlayTitleColor').value = config.overlayTitleColor || '#e94560';
+        
+        // Story generation settings
+        document.getElementById('storyLanguage').value = config.storyLanguage || 'German';
+        
+        // Settings
         document.getElementById('votingDuration').value = config.votingDuration || 60;
-        document.getElementById('numChoices').value = config.numChoices || 4;
+        document.getElementById('numChoices').value = config.numChoices || 3;
         document.getElementById('autoGenerateImages').checked = config.autoGenerateImages !== false;
-        document.getElementById('autoGenerateTTS').checked = config.autoGenerateTTS === true;
+        document.getElementById('autoGenerateTTS').checked = config.autoGenerateTTS !== false; // Default to true
         document.getElementById('offlineMode').checked = config.offlineMode === true;
         document.getElementById('debugLogging').checked = config.debugLogging === true;
         document.getElementById('apiLogging').checked = config.apiLogging === true;
         
         // Show/hide debug log card based on debug logging setting
         document.getElementById('debugLogCard').style.display = config.debugLogging ? 'block' : 'none';
+        
+        // Update provider-specific UI visibility
+        updateProviderUI();
       } catch (error) {
         console.error('Error loading config:', error);
       }
     }
+    
+    function updateProviderUI() {
+      const llmProvider = document.getElementById('llmProvider').value;
+      const imageProvider = document.getElementById('imageProvider').value;
+      const ttsProvider = document.getElementById('ttsProvider').value;
+      
+      // Show/hide LLM model selectors
+      document.getElementById('openaiModelGroup').style.display = llmProvider === 'openai' ? 'block' : 'none';
+      document.getElementById('siliconflowModelGroup').style.display = llmProvider === 'siliconflow' ? 'block' : 'none';
+      
+      // Show/hide Image model selectors
+      document.getElementById('openaiImageModelGroup').style.display = imageProvider === 'openai' ? 'block' : 'none';
+      document.getElementById('siliconflowImageModelGroup').style.display = imageProvider === 'siliconflow' ? 'block' : 'none';
+      
+      // Show/hide TTS voice selector (only for system TTS)
+      document.getElementById('systemTtsVoiceGroup').style.display = ttsProvider === 'system' ? 'block' : 'none';
+    }
 
     async function loadThemes() {
       try {
-        const response = await fetch('/api/interactive-story/themes');
-        const themes = await response.json();
+        // Try to load 5 random themes (including 2 furry themes)
+        const response = await fetch('/api/interactive-story/random-themes?count=5');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.themes || !Array.isArray(data.themes)) {
+          throw new Error('Invalid response format');
+        }
+        
+        const themes = data.themes;
         
         const themeSelector = document.getElementById('themeSelector');
         themeSelector.innerHTML = '';
         
-        for (const [key, theme] of Object.entries(themes)) {
+        if (themes.length === 0) {
+          throw new Error('No themes returned');
+        }
+        
+        for (const theme of themes) {
           const col = document.createElement('div');
           col.className = 'col-md-4 mb-3';
+          const furryBadge = theme.furry ? '<span class="badge bg-primary ms-2">🐾 Furry</span>' : '';
           col.innerHTML = `
-            <div class="card theme-card" data-theme="${key}">
+            <div class="card theme-card" data-theme="${theme.id}">
               <div class="card-body text-center">
-                <h6>${theme.name}</h6>
-                <small class="text-muted">${theme.tone}</small>
+                <h6>${theme.name}${furryBadge}</h6>
+                <small class="text-muted">${theme.description}</small>
               </div>
             </div>
           `;
@@ -809,7 +1119,44 @@
           });
         });
       } catch (error) {
-        console.error('Error loading themes:', error);
+        console.error('Error loading random themes:', error);
+        // Fallback: Load all themes from the old endpoint
+        console.log('Falling back to all themes...');
+        try {
+          const response = await fetch('/api/interactive-story/themes');
+          const allThemes = await response.json();
+          
+          const themeSelector = document.getElementById('themeSelector');
+          themeSelector.innerHTML = '';
+          
+          for (const [key, theme] of Object.entries(allThemes)) {
+            const col = document.createElement('div');
+            col.className = 'col-md-4 mb-3';
+            const furryBadge = theme.furry ? '<span class="badge bg-primary ms-2">🐾 Furry</span>' : '';
+            col.innerHTML = `
+              <div class="card theme-card" data-theme="${key}">
+                <div class="card-body text-center">
+                  <h6>${theme.name}${furryBadge}</h6>
+                  <small class="text-muted">${theme.style || theme.description}</small>
+                </div>
+              </div>
+            `;
+            themeSelector.appendChild(col);
+          }
+          
+          // Add click handlers
+          document.querySelectorAll('.theme-card').forEach(card => {
+            card.addEventListener('click', () => {
+              document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+              card.classList.add('selected');
+              selectedTheme = card.dataset.theme;
+            });
+          });
+        } catch (fallbackError) {
+          console.error('Error loading fallback themes:', fallbackError);
+          const themeSelector = document.getElementById('themeSelector');
+          themeSelector.innerHTML = '<div class="alert alert-danger">Fehler beim Laden der Themen. Bitte API-Schlüssel konfigurieren.</div>';
+        }
       }
     }
 
@@ -985,9 +1332,34 @@
       e.preventDefault();
       
       const config = {
-        // API key is now in global settings, not saved here
+        // Provider selection
+        llmProvider: document.getElementById('llmProvider').value,
+        imageProvider: document.getElementById('imageProvider').value,
+        ttsProvider: document.getElementById('ttsProvider').value,
+        
+        // Model selection
+        openaiModel: document.getElementById('openaiModel').value,
+        openaiImageModel: document.getElementById('openaiImageModel').value,
         defaultModel: document.getElementById('defaultModel').value,
         defaultImageModel: document.getElementById('defaultImageModel').value,
+        
+        // TTS voice
+        ttsVoiceId: document.getElementById('ttsVoiceId').value,
+        
+        // Overlay customization
+        overlayOrientation: document.getElementById('overlayOrientation').value,
+        overlayResolution: document.getElementById('overlayResolution').value,
+        overlayDisplayMode: document.getElementById('overlayDisplayMode').value,
+        overlayFontFamily: document.getElementById('overlayFontFamily').value,
+        overlayFontSize: parseFloat(document.getElementById('overlayFontSize').value),
+        overlayTitleFontSize: parseFloat(document.getElementById('overlayTitleFontSize').value),
+        overlayTextColor: document.getElementById('overlayTextColor').value,
+        overlayTitleColor: document.getElementById('overlayTitleColor').value,
+        
+        // Story generation settings
+        storyLanguage: document.getElementById('storyLanguage').value,
+        
+        // Settings
         votingDuration: parseInt(document.getElementById('votingDuration').value),
         numChoices: parseInt(document.getElementById('numChoices').value),
         autoGenerateImages: document.getElementById('autoGenerateImages').checked,
@@ -1163,6 +1535,11 @@
     document.getElementById('clearLogsBtn').addEventListener('click', () => {
       document.getElementById('debugLogDisplay').innerHTML = '<div class="text-muted">Keine Logs verfügbar</div>';
     });
+
+    // Provider selection change handlers
+    document.getElementById('llmProvider').addEventListener('change', updateProviderUI);
+    document.getElementById('imageProvider').addEventListener('change', updateProviderUI);
+    document.getElementById('ttsProvider').addEventListener('change', updateProviderUI);
 
     // Initialize
     loadStatus();

@@ -6,31 +6,27 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
 
 ### Story-Generierungs-Engine
 - **Multi-Thema-Unterstützung**: Fantasy, Cyberpunk, Horror, Sci-Fi, Mystery, Adventure
-- **LLM-Integration**: Nutzt SiliconFlow Chat Completions API
-  - DeepSeek-V3 (Standard)
-  - Qwen 2.5-7B-Instruct
-  - Meta-Llama 3.1-8B-Instruct
+- **Flexible LLM-Provider-Auswahl**:
+  - **OpenAI** (Standard): GPT-4o, GPT-4o Mini (empfohlen - kosteneffizient), GPT-3.5 Turbo
+  - **SiliconFlow**: DeepSeek-V3, Qwen 2.5-7B-Instruct, Meta-Llama 3.1-8B-Instruct
 - **Story-Memory-System**: Automatisches Tracking von Charakteren, Orten, Items und Ereignissen
 - **Kohärenz-Check**: Validiert neue Kapitel gegen Story-Kontext
 - **Flexible Choices**: 3-6 Wahlmöglichkeiten pro Kapitel
 
 ### Bildgenerierung
 - **Automatische Bild-Erstellung** für jedes Kapitel
-- **Modell-Auswahl**:
-  - FLUX.1-schnell (schnell, hochwertig)
-  - Z-Image-Turbo (ultra-schnell)
+- **Flexible Image-Provider-Auswahl**:
+  - **OpenAI DALL-E** (Standard): DALL-E 2 (kosteneffizient), DALL-E 3 (hohe Qualität)
+  - **SiliconFlow**: FLUX.1-schnell (schnell, hochwertig), Z-Image-Turbo (ultra-schnell)
 - **Theme-basierte Styles**: Automatische Stil-Anpassung je nach Story-Genre
 - **Lokales Caching**: Alle Bilder werden persistent gespeichert
 
 ### Multi-Voice TTS (optional)
-- **SiliconFlow TTS API Integration**
-- **6 verschiedene Stimmen**:
-  - Narrator (Erzähler)
-  - Hero (Held)
-  - Heroine (Heldin)
-  - Villain (Bösewicht)
-  - Sidekick (Begleiter)
-  - Elder (Weiser)
+- **System TTS Integration** (Standard): Nutzt das LTTH TTS-Plugin mit OpenAI TTS
+  - 6 Standard-Stimmen: Alloy, Echo, Fable, Onyx, Nova, Shimmer
+  - 6 HD-Stimmen für höhere Qualität
+  - Vollständig konfigurierbar über TTS-Plugin
+- **SiliconFlow TTS** (alternativ): 6 verschiedene Charakterstimmen
 - **Pre-Caching**: TTS wird vor Wiedergabe vollständig generiert (kein Delay)
 - **TTS-Engine-Koordination**: Pausiert die integrierte TTS während Plugin-Wiedergabe
 
@@ -49,8 +45,13 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
   - Voting-Overlay mit Echtzeit-Balken
   - Ergebnis-Anzeige
   - Generierungs-Animation
+- **Umfangreiche Anpassungsoptionen**:
+  - **Orientierung**: Landscape (Querformat) oder Portrait (Hochformat)
+  - **Auflösungen**: 1920x1080, 1280x720, 2560x1440, 3840x2160, Portrait-Varianten
+  - **Anzeigemodus**: Vollständiges Kapitel oder Satz-für-Satz
+  - **Anpassbare Schriftart, -größe und Farben**
 - **Smooth Transitions**: Weiche Überblendungen zwischen States
-- **Responsive Design**: 1920x1080 (anpassbar)
+- **Responsive Design**: Dynamisch anpassbar
 
 ### Story-Export (geplant)
 - PDF-Export für vollständige Story
@@ -60,9 +61,17 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
 ## 📋 Voraussetzungen
 
 ### API Keys
-- **SiliconFlow API Key** (erforderlich)
+Wähle deinen bevorzugten AI-Provider (oder nutze beide):
+
+- **OpenAI** (empfohlen für beste Qualität):
+  - Registrierung: https://platform.openai.com/
+  - API-Dokumentation: https://platform.openai.com/docs/
+  - Kosteneffiziente Modelle: GPT-4o Mini, DALL-E 2
+  
+- **SiliconFlow** (alternativ):
   - Registrierung: https://cloud.siliconflow.com
   - API-Dokumentation: https://docs.siliconflow.com
+  - Gute Balance zwischen Kosten und Qualität
 
 ### Systemanforderungen
 - Node.js 16+ (bereits durch LTTH vorhanden)
@@ -79,14 +88,28 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
 
 ### 1. API-Key einrichten
 
-⚠️ **Der SiliconFlow API Key wird nun zentral in den globalen Einstellungen verwaltet:**
+#### OpenAI (Standard)
+
+1. Öffne **Settings** (Einstellungen) im LTTH Dashboard
+2. Scrolle zu **OpenAI API Configuration**
+3. Gib deinen OpenAI API Key ein
+4. Wähle ein Model (GPT-4o Mini empfohlen)
+5. Klicke auf **Save OpenAI Configuration**
+
+**API Key erhalten:**
+1. Registrierung: https://platform.openai.com/signup
+2. API Keys Bereich: https://platform.openai.com/api-keys
+3. Neuen API Key erstellen ("Create new secret key")
+4. Key kopieren (sollte mit "sk-" beginnen)
+5. In LTTH Settings einfügen
+
+#### SiliconFlow (Optional)
 
 1. Öffne **Settings** (Einstellungen) im LTTH Dashboard
 2. Scrolle zu **TTS API Keys**
 3. Finde **Fish Speech 1.5 API Key (SiliconFlow)**
 4. Gib deinen SiliconFlow API Key ein
 5. Klicke auf **Save TTS API Keys**
-6. **Teste den API Key** im Interactive Story Plugin UI (siehe unten)
 
 **API Key erhalten:**
 1. Registrierung: https://cloud.siliconflow.com/
@@ -94,12 +117,6 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
 3. Neuen API Key erstellen
 4. Key kopieren (sollte mit "sk-" beginnen)
 5. In LTTH Settings einfügen
-
-**Wichtig:**
-- API Key sollte mit `sk-` beginnen
-- Keine Leerzeichen vor/nach dem Key
-- API Key sollte 60-70 Zeichen lang sein
-- Stelle sicher, dass du Credits/Quota auf SiliconFlow hast
 
 ### 1a. API Key testen
 
@@ -124,17 +141,11 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
 
 ❌ **429 Rate Limit**: Quota erschöpft
 - Warte einige Minuten
-- Prüfe dein SiliconFlow Dashboard für Quota-Status
+- Prüfe dein Dashboard für Quota-Status
 
 ❌ **Network Error**: Verbindungsprobleme
 - Prüfe deine Internetverbindung
-- Stelle sicher dass api.siliconflow.com erreichbar ist
-
-**Warum global?**
-- Ein API Key für LLM, Bilder UND TTS
-- Zentrale Verwaltung für alle SiliconFlow-Features
-- Bessere Sicherheit (masked display)
-- Keine Duplikate mehr
+- Stelle sicher dass die API erreichbar ist
 
 ### 2. Plugin-Spezifische Einstellungen
 
@@ -144,15 +155,36 @@ AI-gestütztes interaktives Story-Generierungs-Plugin für TikTok LIVE Streams m
 Dashboard -> Plugins & Tools -> Interactive Story -> Configuration
 ```
 
-**Verfügbare Optionen:**
-- Default LLM Model (DeepSeek V3 empfohlen)
-- Default Image Model (FLUX.1-schnell empfohlen)
-- Voting Duration (Standard: 60 Sekunden)
-- Number of Choices (Standard: 4)
-- Auto-generate Images (Standard: AN)
-- Auto-generate TTS (Standard: AUS)
-- **Offline/Test Mode** (Standard: AUS) - Für Testing ohne Live-Chat
-- **Debug Logging** (Standard: AUS) - Detailliertes Logging für Entwicklung
+**🤖 AI Provider Selection:**
+- **LLM Provider**: OpenAI (GPT) oder SiliconFlow
+- **Image Provider**: OpenAI (DALL-E) oder SiliconFlow  
+- **TTS Provider**: System TTS (OpenAI) oder SiliconFlow TTS
+
+**🎯 Model Selection:**
+- **OpenAI LLM**: GPT-4o Mini (empfohlen), GPT-4o, GPT-3.5 Turbo
+- **OpenAI Image**: DALL-E 2 (kosteneffizient), DALL-E 3 (hohe Qualität)
+- **SiliconFlow LLM**: DeepSeek V3, Qwen 2.5-7B, Meta-Llama 3.1-8B
+- **SiliconFlow Image**: FLUX.1-schnell, Z-Image-Turbo
+- **OpenAI TTS Voice**: 12 verschiedene Stimmen (Standard & HD)
+
+**🎨 Overlay Customization:**
+- **Orientation**: Landscape (Querformat) oder Portrait (Hochformat)
+- **Resolution**: 1920x1080, 1280x720, 2560x1440, 3840x2160, Portrait-Varianten
+- **Display Mode**: Full Chapter (gesamtes Kapitel) oder Sentence-by-Sentence
+- **Font Family**: Verschiedene Schriftarten
+- **Font Sizes**: Anpassbare Text- und Titelgrößen (in em)
+- **Colors**: Text- und Titelfarben (Farbwähler)
+
+**⚙️ Voting & Generation Settings:**
+- **Voting Duration**: 15-300 Sekunden (Standard: 60)
+- **Number of Choices**: 3-6 Optionen (Standard: 4)
+- **Auto-generate Images**: AN/AUS (Standard: AN)
+- **Auto-generate TTS**: AN/AUS (Standard: AUS)
+
+**🧪 Development Settings:**
+- **Offline/Test Mode**: Für Testing ohne Live-Chat
+- **Debug Logging**: Detailliertes Logging für Entwicklung
+- **API Logging**: Zeige API-Request-Details
 
 ### 2a. Offline/Test-Modus
 

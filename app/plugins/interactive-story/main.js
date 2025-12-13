@@ -1,10 +1,13 @@
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 
 // Engines
 const LLMService = require('./engines/llm-service');
 const ImageService = require('./engines/image-service');
 const TTSService = require('./engines/tts-service');
+const OpenAILLMService = require('./engines/openai-llm-service');
+const OpenAIImageService = require('./engines/openai-image-service');
 const StoryEngine = require('./engines/story-engine');
 
 // Utils
@@ -108,44 +111,114 @@ class InteractiveStoryPlugin {
       // Load configuration
       const config = this._loadConfig();
 
-      // Get SiliconFlow API key from global settings
-      const apiKey = this._getSiliconFlowApiKey();
+      // Create debug callback that respects debugLogging config
+      const debugCallback = (level, message, data) => this._debugLog(level, message, data);
       
-      // DEBUG: Log exact API key details for troubleshooting
-      if (apiKey) {
-        this.logger.info(`[DEBUG] API Key retrieved from database: length=${apiKey.length}, prefix="${apiKey.substring(0, 10)}...", hasWhitespace=${/\s/.test(apiKey)}`);
+      // Create LLM service options
+      const llmOptions = {
+        timeout: config.llmTimeout,
+        maxRetries: config.llmMaxRetries,
+        retryDelay: config.llmRetryDelay
+      };
+
+      // Initialize services based on provider selection
+      const llmProvider = config.llmProvider || 'openai';
+      const imageProvider = config.imageProvider || 'openai';
+      const ttsProvider = config.ttsProvider || 'system';
+
+      // Initialize LLM service
+      if (llmProvider === 'openai') {
+        const openaiApiKey = this._getOpenAIApiKey();
+        if (openaiApiKey) {
+          this.llmService = new OpenAILLMService(openaiApiKey, this.logger, debugCallback, llmOptions);
+          this.storyEngine = new StoryEngine(this.llmService, this.logger, {
+            language: config.storyLanguage || 'German',
+            platform: 'tiktok'
+          });
+          this._debugLog('info', '✅ OpenAI LLM service initialized', { 
+            apiKeyLength: openaiApiKey.length,
+            apiKeyPrefix: openaiApiKey.substring(0, 6) + '...',
+            timeout: config.llmTimeout,
+            maxRetries: config.llmMaxRetries
+          });
+          this.api.log('✅ OpenAI LLM service initialized', 'info');
+        } else {
+          this._debugLog('error', '⚠️ OpenAI API key not configured in global settings', null);
+          this.api.log('⚠️ OpenAI API key not configured in global settings', 'warn');
+          this.api.log('Please configure API key in Settings → OpenAI API Configuration', 'warn');
+        }
       } else {
-        this.logger.warn('[DEBUG] No API key found in database');
+        // SiliconFlow provider
+        const siliconFlowApiKey = this._getSiliconFlowApiKey();
+        if (siliconFlowApiKey) {
+          this.llmService = new LLMService(siliconFlowApiKey, this.logger, debugCallback, llmOptions);
+          this.storyEngine = new StoryEngine(this.llmService, this.logger, {
+            language: config.storyLanguage || 'German',
+            platform: 'tiktok'
+          });
+          this._debugLog('info', '✅ SiliconFlow LLM service initialized', { 
+            apiKeyLength: siliconFlowApiKey.length,
+            apiKeyPrefix: siliconFlowApiKey.substring(0, 6) + '...',
+            timeout: config.llmTimeout,
+            maxRetries: config.llmMaxRetries
+          });
+          this.api.log('✅ SiliconFlow LLM service initialized', 'info');
+        } else {
+          this._debugLog('error', '⚠️ SiliconFlow API key not configured in global settings', null);
+          this.api.log('⚠️ SiliconFlow API key not configured in global settings', 'warn');
+          this.api.log('Please configure API key in Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)', 'warn');
+        }
       }
 
-      // Initialize services
-      if (apiKey) {
-        // Create debug callback that respects debugLogging config
-        const debugCallback = (level, message, data) => this._debugLog(level, message, data);
-        
-        // Create LLM service options
-        const llmOptions = {
-          timeout: config.llmTimeout,
-          maxRetries: config.llmMaxRetries,
-          retryDelay: config.llmRetryDelay
-        };
-        
-        this.llmService = new LLMService(apiKey, this.logger, debugCallback, llmOptions);
-        this.imageService = new ImageService(apiKey, this.logger, this.imageCacheDir);
-        this.ttsService = new TTSService(apiKey, this.logger, this.audioCacheDir);
-        this.storyEngine = new StoryEngine(this.llmService, this.logger);
-        
-        this._debugLog('info', '✅ SiliconFlow services initialized', { 
-          apiKeyLength: apiKey.length,
-          apiKeyPrefix: apiKey.substring(0, 6) + '...',
-          timeout: config.llmTimeout,
-          maxRetries: config.llmMaxRetries
-        });
-        this.api.log('✅ SiliconFlow services initialized', 'info');
+      // Initialize Image service
+      if (imageProvider === 'openai') {
+        const openaiApiKey = this._getOpenAIApiKey();
+        if (openaiApiKey) {
+          this.imageService = new OpenAIImageService(openaiApiKey, this.logger, this.imageCacheDir);
+          this._debugLog('info', '✅ OpenAI Image service initialized', null);
+          this.api.log('✅ OpenAI Image service (DALL-E) initialized', 'info');
+        } else {
+          this._debugLog('error', '⚠️ OpenAI API key not configured for image generation', null);
+          this.api.log('⚠️ OpenAI API key not configured for image generation', 'warn');
+        }
       } else {
-        this._debugLog('error', '⚠️ SiliconFlow API key not configured in global settings', null);
-        this.api.log('⚠️ SiliconFlow API key not configured in global settings', 'warn');
-        this.api.log('Please configure API key in Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)', 'warn');
+        // SiliconFlow provider
+        const siliconFlowApiKey = this._getSiliconFlowApiKey();
+        if (siliconFlowApiKey) {
+          this.imageService = new ImageService(siliconFlowApiKey, this.logger, this.imageCacheDir);
+          this._debugLog('info', '✅ SiliconFlow Image service initialized', null);
+          this.api.log('✅ SiliconFlow Image service initialized', 'info');
+        } else {
+          this._debugLog('error', '⚠️ SiliconFlow API key not configured for image generation', null);
+          this.api.log('⚠️ SiliconFlow API key not configured for image generation', 'warn');
+        }
+      }
+
+      // Initialize TTS service (only if using SiliconFlow TTS, otherwise use system TTS)
+      if (ttsProvider === 'siliconflow') {
+        const siliconFlowApiKey = this._getSiliconFlowApiKey();
+        if (siliconFlowApiKey) {
+          this.ttsService = new TTSService(siliconFlowApiKey, this.logger, this.audioCacheDir);
+          this._debugLog('info', '✅ SiliconFlow TTS service initialized', null);
+          this.api.log('✅ SiliconFlow TTS service initialized', 'info');
+        } else {
+          this._debugLog('error', '⚠️ SiliconFlow API key not configured for TTS', null);
+          this.api.log('⚠️ SiliconFlow API key not configured for TTS', 'warn');
+        }
+      } else {
+        // Using system TTS plugin - no need to initialize TTS service
+        this.api.log('Using system TTS plugin for voice generation', 'info');
+      }
+
+      // Ensure storyEngine is always initialized (even without LLM service for theme access)
+      if (!this.storyEngine) {
+        this._debugLog('warn', '⚠️ StoryEngine not initialized - creating basic instance for theme access', null);
+        // Create a minimal storyEngine without LLM service for theme/configuration access
+        this.storyEngine = new StoryEngine(null, this.logger, {
+          language: config.storyLanguage || 'German',
+          platform: 'tiktok'
+        });
+        this.api.log('⚠️ StoryEngine initialized in limited mode (themes only - configure API keys for full functionality)', 'warn');
       }
 
       // Initialize voting system
@@ -161,10 +234,10 @@ class InteractiveStoryPlugin {
       this._registerTikTokHandlers();
 
       // Clean old cache on startup
-      if (this.imageService) {
+      if (this.imageService && this.imageService.cleanOldCache) {
         this.imageService.cleanOldCache(7);
       }
-      if (this.ttsService) {
+      if (this.ttsService && this.ttsService.cleanOldCache) {
         this.ttsService.cleanOldCache(3);
       }
 
@@ -207,23 +280,255 @@ class InteractiveStoryPlugin {
   }
 
   /**
+   * Get OpenAI API key from global settings
+   * @returns {string|null} API key or null if not configured
+   */
+  _getOpenAIApiKey() {
+    try {
+      const db = this.api.getDatabase();
+      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('openai_api_key');
+      
+      if (row && row.value) {
+        // Trim whitespace that might have been accidentally saved
+        return row.value.trim();
+      }
+      
+      return null;
+    } catch (error) {
+      this.logger.error('Error retrieving OpenAI API key from settings:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Speak text using the system TTS (LTTH TTS plugin)
+   * @param {string} text - Text to speak
+   * @param {Object} options - TTS options
+   * @returns {Promise<Object>} TTS result
+   */
+  async _speakThroughSystemTTS(text, options = {}) {
+    try {
+      const config = this._loadConfig();
+      
+      // Call the LTTH TTS plugin API
+      const response = await axios.post('http://localhost:3000/api/tts/speak', {
+        text: text,
+        username: 'Story Narrator',
+        userId: 'interactive-story',
+        voiceId: options.voiceId || config.ttsVoiceId || 'tts-1-alloy',
+        engine: 'openai', // Explicitly use OpenAI engine
+        source: 'interactive-story'
+      }, {
+        timeout: 30000
+      });
+      
+      if (response.data && response.data.success) {
+        this.logger.info('TTS generated successfully through system TTS');
+        return response.data;
+      } else {
+        throw new Error('TTS generation failed: ' + (response.data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      this.logger.error(`System TTS error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate TTS for a chapter if auto-TTS is enabled
+   * Splits chapter into sentences and sends them progressively to overlay
+   * @param {Object} chapter - Chapter object with title and content
+   * @returns {Promise<void>}
+   */
+  async _generateChapterTTS(chapter) {
+    try {
+      const config = this._loadConfig();
+      
+      if (!config.autoGenerateTTS) {
+        // If TTS disabled, just show the full chapter immediately
+        this.io.emit('story:chapter-display', { 
+          mode: 'immediate',
+          chapter: chapter
+        });
+        return;
+      }
+
+      const ttsProvider = config.ttsProvider || 'system';
+      
+      // Split content into sentences for progressive display
+      const sentences = this._splitIntoSentences(chapter.content);
+      const fullText = `${chapter.title}. ${chapter.content}`;
+      
+      // Calculate realistic timing based on TTS speed
+      const wordCount = fullText.split(/\s+/).length;
+      const totalDuration = (wordCount / 2.5) * 1000; // ~2.5 words per second
+      
+      this.logger.info(`Starting chapter TTS: ${sentences.length} sentences, ${wordCount} words, ~${Math.round(totalDuration/1000)}s total`);
+      
+      // Signal overlay that chapter TTS is starting (but don't send sentences yet)
+      this.io.emit('story:chapter-tts-start', {
+        title: chapter.title,
+        chapterNumber: chapter.chapterNumber,
+        totalSentences: sentences.length,
+        estimatedDuration: totalDuration
+      });
+      
+      // Start TTS in parallel with sentence display
+      const ttsPromise = (async () => {
+        if (ttsProvider === 'system') {
+          await this._speakThroughSystemTTS(fullText);
+          this.logger.info(`Chapter ${chapter.chapterNumber} TTS completed`);
+        } else if (ttsProvider === 'siliconflow' && this.ttsService) {
+          await this.ttsService.generateSpeech(fullText, 'narrator');
+          this.logger.info(`Chapter ${chapter.chapterNumber} TTS completed (SiliconFlow)`);
+        }
+      })();
+      
+      // Display sentences progressively WHILE TTS plays
+      // Calculate delay per sentence to match TTS duration
+      const sentenceDelay = Math.max(totalDuration / sentences.length, 1500); // At least 1.5s per sentence
+      
+      for (let i = 0; i < sentences.length; i++) {
+        // Emit each sentence for Star Wars scroll display
+        this.io.emit('story:chapter-sentence', {
+          sentence: sentences[i],
+          index: i,
+          total: sentences.length,
+          chapterNumber: chapter.chapterNumber
+        });
+        
+        // Wait before next sentence (except last one)
+        if (i < sentences.length - 1) {
+          await this._wait(sentenceDelay);
+        }
+      }
+      
+      // Wait for TTS to complete before proceeding
+      await ttsPromise;
+      
+      // Signal that TTS is complete
+      this.io.emit('story:chapter-tts-complete', {
+        chapterNumber: chapter.chapterNumber
+      });
+      
+    } catch (error) {
+      // Don't fail chapter generation if TTS fails
+      this.logger.error(`Failed to generate TTS for chapter: ${error.message}`);
+      // Show full chapter immediately if TTS fails
+      this.io.emit('story:chapter-display', { 
+        mode: 'immediate',
+        chapter: chapter
+      });
+    }
+  }
+  
+  /**
+   * Wait for specified milliseconds
+   * @param {number} ms - Milliseconds to wait
+   * @returns {Promise<void>}
+   */
+  _wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+  
+  /**
+   * Split text into sentences for progressive display
+   * @param {string} text - Text to split
+   * @returns {Array<string>} Array of sentences
+   */
+  _splitIntoSentences(text) {
+    // Split on sentence endings but keep the punctuation
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    return sentences.map(s => s.trim()).filter(s => s.length > 0);
+  }
+
+  /**
+   * Generate TTS for voting choices if auto-TTS is enabled
+   * @param {Array<string>} choices - Array of choice texts
+   * @returns {Promise<void>}
+   */
+  async _generateChoicesTTS(choices) {
+    try {
+      const config = this._loadConfig();
+      
+      if (!config.autoGenerateTTS) {
+        return; // TTS disabled
+      }
+
+      const ttsProvider = config.ttsProvider || 'system';
+      
+      // Create choice text
+      const choiceLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
+      const choiceText = choices.map((choice, index) => 
+        `Option ${choiceLetters[index]}: ${choice}`
+      ).join('. ');
+      
+      const textToSpeak = `Voting time! ${choiceText}`;
+      
+      if (ttsProvider === 'system') {
+        // Use LTTH TTS plugin (OpenAI TTS)
+        await this._speakThroughSystemTTS(textToSpeak);
+        this.logger.info(`Choices spoken through system TTS`);
+      } else if (ttsProvider === 'siliconflow' && this.ttsService) {
+        // Use SiliconFlow TTS (legacy)
+        await this.ttsService.generateSpeech(textToSpeak, 'narrator');
+        this.logger.info(`Choices TTS generated with SiliconFlow`);
+      }
+    } catch (error) {
+      // Don't fail voting if TTS fails
+      this.logger.error(`Failed to generate TTS for choices: ${error.message}`);
+    }
+  }
+
+  /**
    * Load plugin configuration
    */
   _loadConfig() {
     const defaultConfig = {
+      // Provider selection
+      llmProvider: 'openai', // 'openai' or 'siliconflow'
+      imageProvider: 'openai', // 'openai' or 'siliconflow'
+      ttsProvider: 'system', // 'system' (uses LTTH TTS plugin) or 'siliconflow'
+      
+      // OpenAI models
+      openaiModel: 'gpt-5.2',
+      openaiImageModel: 'gpt-image-1',
+      
+      // SiliconFlow models (legacy)
       defaultModel: 'deepseek',
       defaultImageModel: 'flux-schnell',
+      
+      // Voting settings
       votingDuration: 60,
       minVotes: 5,
       useMinSwing: false,
       swingThreshold: 10,
-      numChoices: 4,
+      numChoices: 3, // Default to 3 choices for TikTok (quick engagement)
+      
+      // Generation settings
       autoGenerateImages: true,
-      autoGenerateTTS: false,
+      autoGenerateTTS: true, // Enable TTS by default
+      storyLanguage: 'German', // Language for story generation
+      
+      // TTS settings
       ttsVoiceMapping: {
         narrator: 'narrator',
         default: 'narrator'
       },
+      ttsVoiceId: 'tts-1-alloy', // OpenAI TTS voice (when using system TTS)
+      
+      // Overlay customization
+      overlayOrientation: 'landscape', // 'landscape' or 'portrait'
+      overlayResolution: '1920x1080', // Common resolutions
+      overlayDisplayMode: 'scroll', // 'full' (entire chapter), 'sentence' (sentence-by-sentence), or 'scroll' (Star Wars-style)
+      overlayFontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+      overlayFontSize: 1.3, // em units
+      overlayTitleFontSize: 2.5, // em units
+      overlayTextColor: '#ffffff',
+      overlayTitleColor: '#e94560',
+      overlayBackgroundGradient: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.95) 100%)',
+      
+      // System settings
       offlineMode: false,
       debugLogging: false,
       apiLogging: false,
@@ -296,7 +601,10 @@ class InteractiveStoryPlugin {
           this.llmService = new LLMService(config.siliconFlowApiKey, this.logger, debugCallback, llmOptions);
           this.imageService = new ImageService(config.siliconFlowApiKey, this.logger, this.imageCacheDir);
           this.ttsService = new TTSService(config.siliconFlowApiKey, this.logger, this.audioCacheDir);
-          this.storyEngine = new StoryEngine(this.llmService, this.logger);
+          this.storyEngine = new StoryEngine(this.llmService, this.logger, {
+            language: config.storyLanguage || 'German',
+            platform: 'tiktok'
+          });
         } else if (!this.storyEngine) {
           // If services not initialized, check for API key in database
           const apiKey = this._getSiliconFlowApiKey();
@@ -310,7 +618,10 @@ class InteractiveStoryPlugin {
             this.llmService = new LLMService(apiKey, this.logger, debugCallback, llmOptions);
             this.imageService = new ImageService(apiKey, this.logger, this.imageCacheDir);
             this.ttsService = new TTSService(apiKey, this.logger, this.audioCacheDir);
-            this.storyEngine = new StoryEngine(this.llmService, this.logger);
+            this.storyEngine = new StoryEngine(this.llmService, this.logger, {
+              language: config.storyLanguage || 'German',
+              platform: 'tiktok'
+            });
             this._debugLog('info', '✅ SiliconFlow services initialized from database API key', { 
               apiKeyConfigured: true
             });
@@ -380,14 +691,31 @@ class InteractiveStoryPlugin {
         const config = this._loadConfig();
         if (config.autoGenerateImages && this.imageService) {
           try {
-            const style = this.imageService.getStyleForTheme(theme);
+            const imageModel = config.imageProvider === 'openai' ? config.openaiImageModel : config.defaultImageModel;
+            const style = this.imageService.getStyleForTheme ? this.imageService.getStyleForTheme(theme) : '';
             const imagePrompt = `${firstChapter.title}: ${firstChapter.content.substring(0, 200)}`;
-            firstChapter.imagePath = await this.imageService.generateImage(imagePrompt, config.defaultImageModel, style);
+            
+            this._debugLog('info', `🖼️ Starting image generation`, { 
+              provider: config.imageProvider,
+              model: imageModel,
+              promptLength: imagePrompt.length,
+              theme
+            });
+            
+            firstChapter.imagePath = await this.imageService.generateImage(imagePrompt, imageModel, style);
+            
+            this._debugLog('info', `✅ Image generated successfully`, { 
+              imagePath: firstChapter.imagePath,
+              model: imageModel
+            });
           } catch (imageError) {
-            this._debugLog('warn', `⚠️ Image generation failed, continuing without image`, { 
+            this._debugLog('error', `❌ Image generation failed`, { 
               error: imageError.message,
+              stack: imageError.stack,
               statusCode: imageError.response?.status,
-              responseData: imageError.response?.data
+              responseData: imageError.response?.data,
+              provider: config.imageProvider,
+              model: config.imageProvider === 'openai' ? config.openaiImageModel : config.defaultImageModel
             });
             firstChapter.imagePath = null;
             this.io.emit('story:image-generation-failed', { 
@@ -403,10 +731,17 @@ class InteractiveStoryPlugin {
 
         this.isGenerating = false;
 
-        // Emit chapter to clients
+        // IMPROVED FLOW: Progressive sentence-by-sentence display synchronized with TTS
+        // 1. Emit chapter data to clients (overlay prepares but doesn't show yet)
         this.io.emit('story:chapter-ready', firstChapter);
-
-        // Start voting
+        
+        // 2. Start TTS which will progressively send sentences to overlay (WAIT for completion)
+        await this._generateChapterTTS(firstChapter);
+        
+        // 3. Read the voting choices (WAIT for it to complete)
+        await this._generateChoicesTTS(firstChapter.choices);
+        
+        // 4. NOW start voting (after ALL TTS is done)
         this.votingSystem.start(firstChapter.choices, {
           votingDuration: config.votingDuration,
           minVotes: config.minVotes,
@@ -455,14 +790,30 @@ class InteractiveStoryPlugin {
         // Generate image
         if (config.autoGenerateImages && this.imageService) {
           try {
-            const style = this.imageService.getStyleForTheme(this.currentSession.theme);
+            const imageModel = config.imageProvider === 'openai' ? config.openaiImageModel : config.defaultImageModel;
+            const style = this.imageService.getStyleForTheme ? this.imageService.getStyleForTheme(this.currentSession.theme) : '';
             const imagePrompt = `${nextChapter.title}: ${nextChapter.content.substring(0, 200)}`;
-            nextChapter.imagePath = await this.imageService.generateImage(imagePrompt, config.defaultImageModel, style);
+            
+            this._debugLog('info', `🖼️ Starting image generation for chapter ${chapterNumber}`, { 
+              provider: config.imageProvider,
+              model: imageModel,
+              promptLength: imagePrompt.length
+            });
+            
+            nextChapter.imagePath = await this.imageService.generateImage(imagePrompt, imageModel, style);
+            
+            this._debugLog('info', `✅ Image generated successfully for chapter ${chapterNumber}`, { 
+              imagePath: nextChapter.imagePath,
+              model: imageModel
+            });
           } catch (imageError) {
-            this._debugLog('warn', `⚠️ Image generation failed, continuing without image`, { 
+            this._debugLog('error', `❌ Image generation failed for chapter ${chapterNumber}`, { 
               error: imageError.message,
+              stack: imageError.stack,
               statusCode: imageError.response?.status,
-              responseData: imageError.response?.data
+              responseData: imageError.response?.data,
+              provider: config.imageProvider,
+              model: config.imageProvider === 'openai' ? config.openaiImageModel : config.defaultImageModel
             });
             nextChapter.imagePath = null;
             this.io.emit('story:image-generation-failed', { 
@@ -478,10 +829,17 @@ class InteractiveStoryPlugin {
 
         this.isGenerating = false;
 
-        // Emit chapter
+        // IMPROVED FLOW: Progressive sentence-by-sentence display synchronized with TTS
+        // 1. Emit chapter data to clients (overlay prepares but doesn't show yet)
         this.io.emit('story:chapter-ready', nextChapter);
-
-        // Start voting
+        
+        // 2. Start TTS which will progressively send sentences to overlay (WAIT for completion)
+        await this._generateChapterTTS(nextChapter);
+        
+        // 3. Read the voting choices (WAIT for it to complete)
+        await this._generateChoicesTTS(nextChapter.choices);
+        
+        // 4. NOW start voting (after ALL TTS is done)
         this.votingSystem.start(nextChapter.choices, {
           votingDuration: config.votingDuration,
           minVotes: config.minVotes,
@@ -517,6 +875,27 @@ class InteractiveStoryPlugin {
         res.json({ success: true });
       } catch (error) {
         this.logger.error(`Error ending story: ${error.message}`);
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // Get random themes for selection
+    this.api.registerRoute('get', '/api/interactive-story/random-themes', (req, res) => {
+      try {
+        if (!this.storyEngine) {
+          return res.status(503).json({ error: 'Story engine not initialized' });
+        }
+        
+        const count = parseInt(req.query.count) || 5;
+        const themes = this.storyEngine.getRandomThemes(count);
+        
+        this._debugLog('info', `🎲 Generated ${themes.length} random themes`, {
+          themes: themes.map(t => t.name)
+        });
+        
+        res.json({ themes });
+      } catch (error) {
+        this.logger.error(`Error getting random themes: ${error.message}`);
         res.status(500).json({ error: error.message });
       }
     });
@@ -580,30 +959,54 @@ class InteractiveStoryPlugin {
     // Validate API key
     this.api.registerRoute('post', '/api/interactive-story/validate-api-key', async (req, res) => {
       try {
-        const apiKey = this._getSiliconFlowApiKey();
+        const config = this._loadConfig();
+        const provider = req.body?.provider || config.llmProvider || 'openai';
+        
+        let apiKey;
+        let providerName;
+        let testModel;
+        let apiUrl;
+        
+        // Determine which provider to test
+        if (provider === 'openai') {
+          apiKey = this._getOpenAIApiKey();
+          providerName = 'OpenAI';
+          testModel = 'gpt-3.5-turbo';
+          apiUrl = 'https://api.openai.com/v1/chat/completions';
+        } else {
+          apiKey = this._getSiliconFlowApiKey();
+          providerName = 'SiliconFlow';
+          testModel = 'meta-llama/Meta-Llama-3.1-8B-Instruct';
+          apiUrl = 'https://api.siliconflow.com/v1/chat/completions';
+        }
         
         if (!apiKey) {
+          const settingsPath = provider === 'openai' 
+            ? 'Settings → OpenAI API Configuration'
+            : 'Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)';
+          
           return res.json({
             valid: false,
-            error: 'No API key configured',
-            message: 'Please configure API key in Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)',
-            configured: false
+            error: `No ${providerName} API key configured`,
+            message: `Please configure API key in ${settingsPath}`,
+            configured: false,
+            provider: providerName
           });
         }
         
         // Log validation attempt
-        this._debugLog('info', '🔍 Validating SiliconFlow API key...', {
+        this._debugLog('info', `🔍 Validating ${providerName} API key...`, {
+          provider: providerName,
           keyLength: apiKey.length,
           keyPrefix: apiKey.substring(0, 6) + '...'
         });
         
         // Test API key with a minimal request
-        const axios = require('axios');
         try {
           const response = await axios.post(
-            'https://api.siliconflow.com/v1/chat/completions',  // Fixed: Use .com instead of .cn
+            apiUrl,
             {
-              model: 'meta-llama/Meta-Llama-3.1-8B-Instruct',
+              model: testModel,
               messages: [{ role: 'user', content: 'test' }],
               max_tokens: 5,
               temperature: 0.1
@@ -617,25 +1020,26 @@ class InteractiveStoryPlugin {
             }
           );
           
-          this._debugLog('info', '✅ API key validation successful', {
+          this._debugLog('info', `✅ ${providerName} API key validation successful`, {
             statusCode: response.status
           });
           
           res.json({
             valid: true,
             configured: true,
-            message: 'API key is valid and working!',
+            provider: providerName,
+            message: `${providerName} API key is valid and working!`,
             details: {
               keyLength: apiKey.length,
               keyPrefix: apiKey.substring(0, 6) + '...',
-              testedModel: 'meta-llama/Meta-Llama-3.1-8B-Instruct'
+              testedModel: testModel
             }
           });
         } catch (error) {
           const statusCode = error.response?.status || 0;
           const responseData = error.response?.data || error.message;
           
-          this._debugLog('error', '❌ API key validation failed', {
+          this._debugLog('error', `❌ ${providerName} API key validation failed`, {
             statusCode,
             error: responseData,
             keyLength: apiKey.length,
@@ -647,25 +1051,30 @@ class InteractiveStoryPlugin {
           
           if (statusCode === 401) {
             message = 'API key is invalid or not authorized';
+            const dashboardUrl = provider === 'openai' 
+              ? 'https://platform.openai.com/api-keys'
+              : 'https://cloud.siliconflow.com/';
+            
             troubleshooting = [
-              'Check that the API key is correct and active on https://cloud.siliconflow.com/',
+              `Check that the API key is correct and active on ${dashboardUrl}`,
               'Make sure you copied the entire API key without extra spaces',
               'Verify the API key hasn\'t expired',
-              'Check that you have credits/quota available on SiliconFlow',
-              'Try generating a new API key on SiliconFlow dashboard'
+              `Check that you have credits/quota available on ${providerName}`,
+              `Try generating a new API key on ${providerName} dashboard`
             ];
           } else if (statusCode === 429) {
             message = 'Rate limit exceeded or quota exhausted';
             troubleshooting = [
-              'Check your API usage quota on SiliconFlow dashboard',
+              `Check your API usage quota on ${providerName} dashboard`,
               'Wait a few minutes and try again',
               'Consider upgrading your plan if needed'
             ];
           } else if (statusCode === 0) {
-            message = 'Network error - cannot reach SiliconFlow API';
+            message = `Network error - cannot reach ${providerName} API`;
+            const apiDomain = provider === 'openai' ? 'api.openai.com' : 'api.siliconflow.com';
             troubleshooting = [
               'Check your internet connection',
-              'Verify that api.siliconflow.com is accessible',
+              `Verify that ${apiDomain} is accessible`,
               'Check firewall/proxy settings'
             ];
           }
@@ -673,6 +1082,7 @@ class InteractiveStoryPlugin {
           res.json({
             valid: false,
             configured: true,
+            provider: providerName,
             error: String(responseData),
             message,
             troubleshooting,
@@ -758,6 +1168,10 @@ class InteractiveStoryPlugin {
         
         // Emit chapter
         this.io.emit('story:chapter-ready', nextChapter);
+        
+        // NEW FLOW: TTS first (for admin choice path - no voting after)
+        // Read the chapter (WAIT for it to complete)
+        await this._generateChapterTTS(nextChapter);
         
         this._debugLog('info', `Next chapter generated`, { chapterNumber, title: nextChapter.title });
         

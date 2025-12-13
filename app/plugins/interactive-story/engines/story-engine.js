@@ -5,44 +5,132 @@ const StoryMemory = require('../utils/story-memory');
  * Orchestrates LLM calls, coherence checking, and chapter generation
  */
 class StoryEngine {
-  constructor(llmService, logger) {
+  constructor(llmService, logger, options = {}) {
     this.llmService = llmService;
     this.logger = logger;
     this.memory = new StoryMemory(logger);
+    this.language = options.language || 'German'; // Default language
+    this.platform = options.platform || 'tiktok'; // Target platform (affects chapter length)
     
     // Story themes with specific prompt styles
     this.themes = {
       fantasy: {
         name: 'Fantasy Adventure',
         style: 'epic fantasy with magic, mythical creatures, and heroic quests',
-        tone: 'adventurous and dramatic'
+        tone: 'adventurous and dramatic',
+        furry: false
       },
       cyberpunk: {
         name: 'Cyberpunk Thriller',
         style: 'futuristic cyberpunk with technology, corporations, and cyber-enhanced characters',
-        tone: 'dark and intense'
+        tone: 'dark and intense',
+        furry: false
       },
       horror: {
         name: 'Horror Mystery',
         style: 'suspenseful horror with supernatural elements and mounting dread',
-        tone: 'eerie and suspenseful'
+        tone: 'eerie and suspenseful',
+        furry: false
       },
       scifi: {
         name: 'Science Fiction',
         style: 'hard science fiction with space exploration, aliens, and advanced technology',
-        tone: 'wonder and discovery'
+        tone: 'wonder and discovery',
+        furry: false
       },
       mystery: {
         name: 'Detective Mystery',
         style: 'detective mystery with clues, suspects, and plot twists',
-        tone: 'suspenseful and clever'
+        tone: 'suspenseful and clever',
+        furry: false
       },
       adventure: {
         name: 'Action Adventure',
         style: 'thrilling adventure with danger, exploration, and exciting challenges',
-        tone: 'fast-paced and exciting'
+        tone: 'fast-paced and exciting',
+        furry: false
+      },
+      furry_fantasy: {
+        name: 'Furry Fantasy Quest',
+        style: 'fantasy adventure with anthropomorphic animal characters in a magical world',
+        tone: 'adventurous and heartwarming',
+        furry: true
+      },
+      furry_scifi: {
+        name: 'Furry Space Opera',
+        style: 'space adventure featuring anthropomorphic characters exploring the galaxy',
+        tone: 'exciting and wonder-filled',
+        furry: true
+      },
+      romance: {
+        name: 'Romantic Drama',
+        style: 'emotional romance with relationship challenges and heartfelt moments',
+        tone: 'emotional and passionate',
+        furry: false
+      },
+      superhero: {
+        name: 'Superhero Origin',
+        style: 'superhero story with powers, villains, and saving the world',
+        tone: 'action-packed and heroic',
+        furry: false
+      },
+      postapocalyptic: {
+        name: 'Post-Apocalyptic Survival',
+        style: 'survival story in a post-apocalyptic wasteland with dangers and hope',
+        tone: 'gritty and tense',
+        furry: false
+      },
+      comedy: {
+        name: 'Comedy Adventure',
+        style: 'humorous adventure with funny situations, quirky characters, and lighthearted fun',
+        tone: 'comedic and upbeat',
+        furry: false
       }
     };
+  }
+
+  /**
+   * Update story engine configuration
+   * @param {Object} options - Configuration options
+   */
+  updateConfig(options = {}) {
+    if (options.language) {
+      this.language = options.language;
+    }
+    if (options.platform) {
+      this.platform = options.platform;
+    }
+  }
+
+  /**
+   * Get random theme selection for user choice
+   * @param {number} count - Number of themes to return (default: 5)
+   * @returns {Array<Object>} - Array of theme objects with id, name, and description
+   */
+  getRandomThemes(count = 5) {
+    const allThemes = Object.keys(this.themes);
+    const furryThemes = allThemes.filter(id => this.themes[id].furry);
+    const nonFurryThemes = allThemes.filter(id => !this.themes[id].furry);
+    
+    // Select 2 random furry themes
+    const selectedFurry = [];
+    const shuffledFurry = [...furryThemes].sort(() => Math.random() - 0.5);
+    selectedFurry.push(...shuffledFurry.slice(0, Math.min(2, furryThemes.length)));
+    
+    // Select remaining themes from non-furry
+    const remaining = count - selectedFurry.length;
+    const shuffledNonFurry = [...nonFurryThemes].sort(() => Math.random() - 0.5);
+    const selectedNonFurry = shuffledNonFurry.slice(0, remaining);
+    
+    // Combine and shuffle
+    const selected = [...selectedFurry, ...selectedNonFurry].sort(() => Math.random() - 0.5);
+    
+    return selected.map(id => ({
+      id,
+      name: this.themes[id].name,
+      description: this.themes[id].style,
+      furry: this.themes[id].furry
+    }));
   }
 
   /**
@@ -99,7 +187,7 @@ Do not include specific choices - just the setup.`;
    * @param {number} numChoices - Number of choices to generate (3-6)
    * @returns {Promise<Object>} - Chapter data
    */
-  async generateChapter(chapterNumber, previousChoice = null, model = 'deepseek', numChoices = 4) {
+  async generateChapter(chapterNumber, previousChoice = null, model = 'deepseek', numChoices = 3) {
     const themeData = this.themes[this.memory.memory.theme] || this.themes.fantasy;
     const context = this.memory.getContext();
 
@@ -155,7 +243,10 @@ Do not include specific choices - just the setup.`;
    * Build chapter generation prompt
    */
   _buildChapterPrompt(themeData, context, chapterNumber, previousChoice, numChoices) {
-    let prompt = `You are writing chapter ${chapterNumber} of an interactive ${themeData.style} story.\n\n`;
+    // Determine word count based on platform
+    const wordCount = this.platform === 'tiktok' ? '30-50' : '200-400';
+    
+    let prompt = `You are writing chapter ${chapterNumber} of an interactive ${themeData.style} story in ${this.language}.\n\n`;
 
     if (context) {
       prompt += `STORY CONTEXT:\n${context}\n\n`;
@@ -165,19 +256,23 @@ Do not include specific choices - just the setup.`;
       prompt += `PREVIOUS CHOICE: ${previousChoice}\n\n`;
     }
 
-    prompt += `Write the next chapter of the story. The chapter should:\n`;
+    prompt += `Write the next chapter of the story in ${this.language}. The chapter should:\n`;
     prompt += `1. Be engaging and well-written (${themeData.tone})\n`;
-    prompt += `2. Be 200-400 words\n`;
+    prompt += `2. Be VERY SHORT: ${wordCount} words (ULTRA-SHORT and PUNCHY for ${this.platform} - low attention span!)\n`;
     prompt += `3. Continue logically from previous events\n`;
-    prompt += `4. End with ${numChoices} distinct choices for readers\n`;
-    prompt += `5. Include memory tags for characters, locations, and items\n\n`;
+    prompt += `4. End with EXACTLY ${numChoices} COMPLETELY DIFFERENT AND UNIQUE choices for readers\n`;
+    prompt += `5. Include memory tags for characters, locations, and items\n`;
+    prompt += `6. Be written ENTIRELY in ${this.language}\n\n`;
+    
+    prompt += `CRITICAL FOR TIKTOK: Keep it EXTREMELY brief and impactful. Each sentence must hook the viewer!\n`;
+    prompt += `IMPORTANT: Each choice MUST be different from the others. Do NOT repeat or duplicate choices!\n\n`;
 
     prompt += `Format your response EXACTLY as follows:\n\n`;
-    prompt += `TITLE: [Chapter title]\n\n`;
-    prompt += `CONTENT:\n[Chapter text here]\n\n`;
+    prompt += `TITLE: [Chapter title in ${this.language}]\n\n`;
+    prompt += `CONTENT:\n[Chapter text here in ${this.language} - VERY SHORT, MAX ${wordCount} WORDS]\n\n`;
     prompt += `CHOICES:\n`;
     for (let i = 1; i <= numChoices; i++) {
-      prompt += `${i}. [Choice ${i}]\n`;
+      prompt += `${i}. [Unique choice ${i} in ${this.language} - MUST BE DIFFERENT FROM OTHER CHOICES]\n`;
     }
     prompt += `\nMEMORY_TAGS:\n`;
     prompt += `CHARACTERS: [comma-separated character names]\n`;
