@@ -37,23 +37,18 @@ class OpenAIImageService {
    */
   async generateImage(prompt, model = 'gpt-image-1', style = '', width = 1024, height = 1024) {
     try {
-      const modelName = this.models[model] || this.models['gpt-image-1'];
+      let modelName = this.models[model] || this.models['dall-e-2']; // Fallback to dall-e-2 if model not found
+      
+      // gpt-image-1 may not be available yet - fallback to dall-e-3
+      if (modelName === 'gpt-image-1') {
+        this.logger.warn('gpt-image-1 requested but may not be available - attempting, will fallback to dall-e-3 if fails');
+      }
       
       // Different models support different sizes
       let size = '1024x1024';
       
-      if (modelName === 'gpt-image-1') {
-        // GPT Image 1 supports flexible sizes - use as provided
-        // Common sizes: 1024x1024, 1792x1024, 1024x1792
-        if (width === 1792 && height === 1024) {
-          size = '1792x1024';
-        } else if (width === 1024 && height === 1792) {
-          size = '1024x1792';
-        } else {
-          size = '1024x1024';
-        }
-      } else if (modelName === 'dall-e-3') {
-        // DALL-E 3 only supports 1024x1024, 1792x1024, or 1024x1792
+      if (modelName === 'gpt-image-1' || modelName === 'dall-e-3') {
+        // Both support: 1024x1024, 1792x1024, 1024x1792
         if (width === 1792 && height === 1024) {
           size = '1792x1024';
         } else if (width === 1024 && height === 1792) {
@@ -74,25 +69,47 @@ class OpenAIImageService {
       
       this.logger.info(`Generating image with ${modelName} (${size}): ${prompt.substring(0, 100)}...`);
 
-      // Build parameters based on model capabilities
+      // Build parameters - only include what the model supports
       const params = {
-        model: modelName,
         prompt: prompt,
         n: 1,
         size: size
       };
       
-      // Only add quality for DALL-E 3 (not supported by gpt-image-1 or dall-e-2)
+      // Only add model parameter for known models (gpt-image-1 might not exist)
+      if (modelName === 'dall-e-2' || modelName === 'dall-e-3') {
+        params.model = modelName;
+      } else if (modelName === 'gpt-image-1') {
+        // Try with gpt-image-1, but catch errors and fallback
+        params.model = modelName;
+      }
+      
+      // Only add quality for DALL-E 3
       if (modelName === 'dall-e-3') {
         params.quality = 'standard';
       }
       
-      // response_format is NOT supported by gpt-image-1 or dall-e-2
-      // OpenAI API returns URLs by default, so we don't need to specify it
+      // NEVER add response_format - causes errors with gpt-image-1 and dall-e-2
+      // OpenAI API returns URLs by default
       
       this.logger.info(`Image API parameters: ${JSON.stringify(params)}`);
       
-      const response = await this.client.images.generate(params);
+      let response;
+      try {
+        response = await this.client.images.generate(params);
+      } catch (err) {
+        // If gpt-image-1 fails, fallback to dall-e-3
+        if (modelName === 'gpt-image-1' && (err.message.includes('model') || err.message.includes('parameter'))) {
+          this.logger.warn(`gpt-image-1 not available, falling back to dall-e-3: ${err.message}`);
+          modelName = 'dall-e-3';
+          params.model = 'dall-e-3';
+          params.quality = 'standard';
+          this.logger.info(`Retrying with DALL-E 3: ${JSON.stringify(params)}`);
+          response = await this.client.images.generate(params);
+        } else {
+          throw err;
+        }
+      }
 
       if (!response.data || response.data.length === 0) {
         throw new Error('No images returned from OpenAI DALL-E API');

@@ -359,31 +359,52 @@ class InteractiveStoryPlugin {
       const sentences = this._splitIntoSentences(chapter.content);
       const fullText = `${chapter.title}. ${chapter.content}`;
       
-      // Estimate timing: ~2.5 words per second for TTS
+      // Calculate realistic timing based on TTS speed
       const wordCount = fullText.split(/\s+/).length;
-      const estimatedDuration = (wordCount / 2.5) * 1000; // milliseconds
-      const sentenceDelay = estimatedDuration / sentences.length;
+      const totalDuration = (wordCount / 2.5) * 1000; // ~2.5 words per second
       
-      this.logger.info(`Starting chapter TTS: ${sentences.length} sentences, ~${Math.round(estimatedDuration/1000)}s duration`);
+      this.logger.info(`Starting chapter TTS: ${sentences.length} sentences, ${wordCount} words, ~${Math.round(totalDuration/1000)}s total`);
       
-      // Signal overlay to start displaying sentences progressively
+      // Signal overlay that chapter TTS is starting (but don't send sentences yet)
       this.io.emit('story:chapter-tts-start', {
-        sentences: sentences,
         title: chapter.title,
         chapterNumber: chapter.chapterNumber,
-        sentenceDelay: Math.max(sentenceDelay, 1000), // At least 1 second per sentence
-        totalDuration: estimatedDuration
+        totalSentences: sentences.length,
+        estimatedDuration: totalDuration
       });
       
-      if (ttsProvider === 'system') {
-        // Use LTTH TTS plugin (OpenAI TTS) - this blocks until audio completes
-        await this._speakThroughSystemTTS(fullText);
-        this.logger.info(`Chapter ${chapter.chapterNumber} spoken through system TTS`);
-      } else if (ttsProvider === 'siliconflow' && this.ttsService) {
-        // Use SiliconFlow TTS (legacy)
-        await this.ttsService.generateSpeech(fullText, 'narrator');
-        this.logger.info(`Chapter ${chapter.chapterNumber} TTS generated with SiliconFlow`);
+      // Start TTS in parallel with sentence display
+      const ttsPromise = (async () => {
+        if (ttsProvider === 'system') {
+          await this._speakThroughSystemTTS(fullText);
+          this.logger.info(`Chapter ${chapter.chapterNumber} TTS completed`);
+        } else if (ttsProvider === 'siliconflow' && this.ttsService) {
+          await this.ttsService.generateSpeech(fullText, 'narrator');
+          this.logger.info(`Chapter ${chapter.chapterNumber} TTS completed (SiliconFlow)`);
+        }
+      })();
+      
+      // Display sentences progressively WHILE TTS plays
+      // Calculate delay per sentence to match TTS duration
+      const sentenceDelay = Math.max(totalDuration / sentences.length, 1500); // At least 1.5s per sentence
+      
+      for (let i = 0; i < sentences.length; i++) {
+        // Emit each sentence for Star Wars scroll display
+        this.io.emit('story:chapter-sentence', {
+          sentence: sentences[i],
+          index: i,
+          total: sentences.length,
+          chapterNumber: chapter.chapterNumber
+        });
+        
+        // Wait before next sentence (except last one)
+        if (i < sentences.length - 1) {
+          await this._wait(sentenceDelay);
+        }
       }
+      
+      // Wait for TTS to complete before proceeding
+      await ttsPromise;
       
       // Signal that TTS is complete
       this.io.emit('story:chapter-tts-complete', {
@@ -399,6 +420,15 @@ class InteractiveStoryPlugin {
         chapter: chapter
       });
     }
+  }
+  
+  /**
+   * Wait for specified milliseconds
+   * @param {number} ms - Milliseconds to wait
+   * @returns {Promise<void>}
+   */
+  _wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
   
   /**
