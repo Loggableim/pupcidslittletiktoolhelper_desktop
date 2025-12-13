@@ -79,12 +79,53 @@ class TalkingHeadsPlugin {
       // Try global settings (centralized key)
       const key = this.db.getSetting('siliconflow_api_key') || 
                  this.db.getSetting('streamalchemy_siliconflow_api_key');
-      if (key) return key;
+      if (key) {
+        this._log(`Found SiliconFlow API key in database`, 'debug');
+        return key;
+      }
     } catch (error) {
       this._log(`Failed to get SiliconFlow key from settings: ${error.message}`, 'warn');
     }
     // Try environment variable
-    return process.env.SILICONFLOW_API_KEY || null;
+    const envKey = process.env.SILICONFLOW_API_KEY || null;
+    if (envKey) {
+      this._log(`Found SiliconFlow API key in environment`, 'debug');
+    }
+    return envKey;
+  }
+
+  /**
+   * Initialize or re-initialize avatar and sprite generators with current API key
+   * @returns {boolean} True if generators were successfully initialized
+   * @private
+   */
+  _initializeGenerators() {
+    const apiKey = this._getSiliconFlowApiKey();
+    
+    if (!apiKey) {
+      this._log('⚠️  No SiliconFlow API key configured - avatar generation disabled', 'warn');
+      this._log('Configure the API key in Dashboard > Settings > TTS API Keys > SiliconFlow API Key', 'info');
+      return false;
+    }
+
+    this._log('Initializing AI engines...', 'debug');
+    
+    this.avatarGenerator = new AvatarGenerator(
+      this.config.imageApiUrl,
+      apiKey,
+      this.logger,
+      this.config
+    );
+
+    this.spriteGenerator = new SpriteGenerator(
+      this.config.imageApiUrl,
+      apiKey,
+      this.logger,
+      this.config
+    );
+
+    this._log('✅ Avatar and sprite generators initialized', 'info');
+    return true;
   }
 
   /**
@@ -186,31 +227,8 @@ class TalkingHeadsPlugin {
       this.roleManager = new RoleManager(this.config, this.logger);
       this._log(`Role permission: ${this.config.rolePermission}`, 'debug');
 
-      // Get API key from global settings
-      const apiKey = this._getSiliconFlowApiKey();
-
       // Initialize avatar and sprite generators if API key is configured
-      if (apiKey) {
-        this._log('Initializing AI engines...', 'debug');
-        this.avatarGenerator = new AvatarGenerator(
-          this.config.imageApiUrl,
-          apiKey,
-          this.logger,
-          this.config
-        );
-
-        this.spriteGenerator = new SpriteGenerator(
-          this.config.imageApiUrl,
-          apiKey,
-          this.logger,
-          this.config
-        );
-
-        this._log('✅ Avatar and sprite generators initialized', 'info');
-      } else {
-        this._log('⚠️  No SiliconFlow API key configured in global settings - avatar generation disabled', 'warn');
-        this._log('Configure the API key in Settings under "siliconflow_api_key"', 'info');
-      }
+      this._initializeGenerators();
 
       // Initialize animation controller
       this._log('Initializing animation controller...', 'debug');
@@ -318,12 +336,31 @@ class TalkingHeadsPlugin {
     // Test API connection
     this.api.registerRoute('post', '/api/talkingheads/test-api', async (req, res) => {
       try {
+        // Try to initialize generators if they don't exist yet
         if (!this.avatarGenerator) {
-          return res.json({ success: false, error: 'API key not configured' });
+          this._log('Avatar generator not initialized, attempting to initialize...', 'debug');
+          const initialized = this._initializeGenerators();
+          
+          if (!initialized) {
+            return res.json({ 
+              success: false, 
+              error: 'API key not configured. Please configure the SiliconFlow API key in Dashboard > Settings > TTS API Keys and reload the plugin.' 
+            });
+          }
         }
 
         const connected = await this.avatarGenerator.testConnection();
-        res.json({ success: connected, message: connected ? 'API connection successful' : 'API connection failed' });
+        
+        if (connected) {
+          this._log('API connection test successful', 'info');
+        } else {
+          this._log('API connection test failed', 'warn');
+        }
+        
+        res.json({ 
+          success: connected, 
+          message: connected ? 'API connection successful' : 'API connection failed - check API key and network connection' 
+        });
       } catch (error) {
         this._log(`Test API error: ${error.message}`, 'error');
         res.status(500).json({ success: false, error: error.message || 'Unknown error' });
@@ -333,8 +370,17 @@ class TalkingHeadsPlugin {
     // Test avatar generation
     this.api.registerRoute('post', '/api/talkingheads/test-generate', async (req, res) => {
       try {
-        if (!this.avatarGenerator) {
-          return res.json({ success: false, error: 'API key not configured' });
+        // Try to initialize generators if they don't exist yet
+        if (!this.avatarGenerator || !this.spriteGenerator) {
+          this._log('Generators not initialized, attempting to initialize...', 'debug');
+          const initialized = this._initializeGenerators();
+          
+          if (!initialized) {
+            return res.json({ 
+              success: false, 
+              error: 'API key not configured. Please configure the SiliconFlow API key in Dashboard > Settings > TTS API Keys and reload the plugin.' 
+            });
+          }
         }
 
         const { styleKey } = req.body;
