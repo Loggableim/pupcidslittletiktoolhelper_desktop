@@ -525,7 +525,7 @@
       
       // Display content based on mode
       if (config && config.overlayDisplayMode === 'sentence') {
-        displaySentenceBysentence(chapter.content);
+        displaySentenceBySentence(chapter.content);
       } else {
         displayFullChapter(chapter.content);
       }
@@ -544,7 +544,7 @@
       document.getElementById('chapterContent').textContent = content;
     }
 
-    function displaySentenceBysentence(content) {
+    function displaySentenceBySentence(content) {
       // Split content into sentences
       sentences = splitIntoSentences(content);
       currentSentenceIndex = 0;
@@ -563,6 +563,8 @@
         sentenceTimer = setInterval(() => {
           currentSentenceIndex++;
           if (currentSentenceIndex < sentences.length) {
+            // Using textContent for security (prevents XSS from LLM output)
+            // join(' ') maintains proper sentence spacing
             contentEl.textContent = sentences.slice(0, currentSentenceIndex + 1).join(' ');
           } else {
             clearInterval(sentenceTimer);
