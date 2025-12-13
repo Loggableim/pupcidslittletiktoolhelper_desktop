@@ -139,6 +139,21 @@ Parameters:
 - **Particle Limit**: Configurable (default 1000)
 - **Frame Rate**: Targets 60 FPS
 - **Memory**: Particle pooling prevents allocation
+- **Freeze Protection**: Auto-reload failsafe when FPS drops to 0 for 3+ seconds
+
+### Automatic Freeze Recovery
+
+The plugin includes an automatic failsafe mechanism to prevent complete crashes:
+
+- **FPS Monitoring**: Continuously tracks rendering performance
+- **Freeze Detection**: Detects when FPS drops to 0 (complete freeze)
+- **Auto-Recovery**: After 3 consecutive seconds of 0 FPS:
+  1. Logs error to console
+  2. Shows visual warning overlay
+  3. Automatically reloads the overlay after 2 seconds
+- **Smart Recovery**: If FPS recovers before reload, the failsafe resets and normal operation continues
+
+This ensures that even during extreme gift spam scenarios, the overlay will automatically recover without requiring a full system restart.
 
 ## OBS BrowserSource Compatibility
 

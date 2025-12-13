@@ -33,6 +33,19 @@ Das verbesserte Emoji Rain Plugin bietet jetzt **zwei separate Overlays** mit un
 - **Memory-Management**: Proper Cleanup bei Page Unload
 - **Object Pooling**: Partikel-Wiederverwendung für weniger GC
 - **Optimierte DOM-Updates**: Effizientere Transform-Updates
+- **Freeze Protection**: Auto-reload Failsafe bei FPS-Einbruch auf 0 für 3+ Sekunden
+
+#### Automatische Freeze-Recovery
+Das Plugin enthält einen Schutzmechanismus gegen komplette Abstürze:
+- **FPS-Überwachung**: Kontinuierliche Performance-Überwachung
+- **Freeze-Erkennung**: Erkennt, wenn FPS auf 0 fällt (kompletter Freeze)
+- **Auto-Wiederherstellung**: Nach 3 aufeinanderfolgenden Sekunden bei 0 FPS:
+  1. Fehler wird in Konsole geloggt
+  2. Visuelle Warnung wird angezeigt
+  3. Overlay lädt sich nach 2 Sekunden automatisch neu
+- **Intelligente Wiederherstellung**: Wenn FPS sich vor dem Reload erholt, wird der Failsafe zurückgesetzt und der Normalbetrieb fortgesetzt
+
+Dies stellt sicher, dass das Overlay auch bei extremem Gift-Spam automatisch wiederhergestellt wird, ohne dass ein vollständiger System-Neustart erforderlich ist.
 
 ### 🎨 Grafische Verbesserungen
 - **Glow-Effekte**: Leuchtende Emojis bei Aufprall (aktivierbar)
