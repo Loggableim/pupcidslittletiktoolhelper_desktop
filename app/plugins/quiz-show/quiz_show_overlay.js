@@ -558,7 +558,7 @@
 
             case States.TIME_UP:
                 stopTimer();
-                // Ensure timer shows 0 and update display
+                // Explicitly update timer to 0 to ensure visual consistency across all timer variants
                 updateTimerDisplay(0, gameData.totalTime);
                 animateTimeUp();
                 // Turn timer completely red at 0
