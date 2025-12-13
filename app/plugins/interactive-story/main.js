@@ -443,7 +443,7 @@ class InteractiveStoryPlugin {
       // Overlay customization
       overlayOrientation: 'landscape', // 'landscape' or 'portrait'
       overlayResolution: '1920x1080', // Common resolutions
-      overlayDisplayMode: 'full', // 'full' (entire chapter) or 'sentence' (sentence-by-sentence)
+      overlayDisplayMode: 'scroll', // 'full' (entire chapter), 'sentence' (sentence-by-sentence), or 'scroll' (Star Wars-style)
       overlayFontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
       overlayFontSize: 1.3, // em units
       overlayTitleFontSize: 2.5, // em units
@@ -654,17 +654,20 @@ class InteractiveStoryPlugin {
 
         this.isGenerating = false;
 
-        // Emit chapter to clients
-        this.io.emit('story:chapter-ready', firstChapter);
-
-        // NEW FLOW: TTS first, then voting
-        // 1. Read the chapter (WAIT for it to complete)
-        await this._generateChapterTTS(firstChapter);
+        // NEW FLOW: TTS synchronized with display
+        // 1. Start TTS for chapter (non-blocking, so overlay can show simultaneously)
+        const ttsPromise = this._generateChapterTTS(firstChapter);
         
-        // 2. Read the voting choices (WAIT for it to complete)
+        // 2. Emit chapter to clients (overlay will show text while TTS plays)
+        this.io.emit('story:chapter-ready', firstChapter);
+        
+        // 3. Wait for chapter TTS to complete
+        await ttsPromise;
+        
+        // 4. Read the voting choices (WAIT for it to complete)
         await this._generateChoicesTTS(firstChapter.choices);
         
-        // 3. NOW start voting (after TTS is done)
+        // 5. NOW start voting (after ALL TTS is done)
         this.votingSystem.start(firstChapter.choices, {
           votingDuration: config.votingDuration,
           minVotes: config.minVotes,
@@ -752,17 +755,20 @@ class InteractiveStoryPlugin {
 
         this.isGenerating = false;
 
-        // Emit chapter
-        this.io.emit('story:chapter-ready', nextChapter);
-
-        // NEW FLOW: TTS first, then voting
-        // 1. Read the chapter (WAIT for it to complete)
-        await this._generateChapterTTS(nextChapter);
+        // NEW FLOW: TTS synchronized with display
+        // 1. Start TTS for chapter (non-blocking, so overlay can show simultaneously)
+        const ttsPromise = this._generateChapterTTS(nextChapter);
         
-        // 2. Read the voting choices (WAIT for it to complete)
+        // 2. Emit chapter to clients (overlay will show text while TTS plays)
+        this.io.emit('story:chapter-ready', nextChapter);
+        
+        // 3. Wait for chapter TTS to complete
+        await ttsPromise;
+        
+        // 4. Read the voting choices (WAIT for it to complete)
         await this._generateChoicesTTS(nextChapter.choices);
         
-        // 3. NOW start voting (after TTS is done)
+        // 5. NOW start voting (after ALL TTS is done)
         this.votingSystem.start(nextChapter.choices, {
           votingDuration: config.votingDuration,
           minVotes: config.minVotes,

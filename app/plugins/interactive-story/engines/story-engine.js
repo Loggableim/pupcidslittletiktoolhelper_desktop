@@ -244,7 +244,7 @@ Do not include specific choices - just the setup.`;
    */
   _buildChapterPrompt(themeData, context, chapterNumber, previousChoice, numChoices) {
     // Determine word count based on platform
-    const wordCount = this.platform === 'tiktok' ? '50-100' : '200-400';
+    const wordCount = this.platform === 'tiktok' ? '30-50' : '200-400';
     
     let prompt = `You are writing chapter ${chapterNumber} of an interactive ${themeData.style} story in ${this.language}.\n\n`;
 
@@ -258,17 +258,18 @@ Do not include specific choices - just the setup.`;
 
     prompt += `Write the next chapter of the story in ${this.language}. The chapter should:\n`;
     prompt += `1. Be engaging and well-written (${themeData.tone})\n`;
-    prompt += `2. Be ${wordCount} words (SHORT and punchy for ${this.platform})\n`;
+    prompt += `2. Be VERY SHORT: ${wordCount} words (ULTRA-SHORT and PUNCHY for ${this.platform} - low attention span!)\n`;
     prompt += `3. Continue logically from previous events\n`;
     prompt += `4. End with EXACTLY ${numChoices} COMPLETELY DIFFERENT AND UNIQUE choices for readers\n`;
     prompt += `5. Include memory tags for characters, locations, and items\n`;
     prompt += `6. Be written ENTIRELY in ${this.language}\n\n`;
     
+    prompt += `CRITICAL FOR TIKTOK: Keep it EXTREMELY brief and impactful. Each sentence must hook the viewer!\n`;
     prompt += `IMPORTANT: Each choice MUST be different from the others. Do NOT repeat or duplicate choices!\n\n`;
 
     prompt += `Format your response EXACTLY as follows:\n\n`;
     prompt += `TITLE: [Chapter title in ${this.language}]\n\n`;
-    prompt += `CONTENT:\n[Chapter text here in ${this.language} - KEEP IT SHORT AND ENGAGING]\n\n`;
+    prompt += `CONTENT:\n[Chapter text here in ${this.language} - VERY SHORT, MAX ${wordCount} WORDS]\n\n`;
     prompt += `CHOICES:\n`;
     for (let i = 1; i <= numChoices; i++) {
       prompt += `${i}. [Unique choice ${i} in ${this.language} - MUST BE DIFFERENT FROM OTHER CHOICES]\n`;

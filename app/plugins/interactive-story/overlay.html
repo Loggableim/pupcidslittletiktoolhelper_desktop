@@ -95,6 +95,35 @@
       font-size: calc(var(--text-font-size, 1.3em) * 1.2);
     }
 
+    /* Star Wars scroll mode */
+    #chapterContent.scroll-mode {
+      max-height: none;
+      overflow-y: visible;
+      position: relative;
+      animation: starWarsScroll var(--scroll-duration, 10s) linear forwards;
+      transform: translateY(100px);
+      opacity: 0;
+      font-size: calc(var(--text-font-size, 1.3em) * 1.3);
+      line-height: 1.8;
+    }
+
+    @keyframes starWarsScroll {
+      0% {
+        transform: translateY(100px);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+    }
+
     /* Voting Overlay */
     #votingOverlay {
       position: absolute;
@@ -401,7 +430,7 @@
         config = {
           overlayOrientation: 'landscape',
           overlayResolution: '1920x1080',
-          overlayDisplayMode: 'full',
+          overlayDisplayMode: 'scroll',
           overlayFontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
           overlayFontSize: 1.3,
           overlayTitleFontSize: 2.5,
@@ -440,10 +469,17 @@
       
       // Apply display mode class
       const contentEl = document.getElementById('chapterContent');
+      contentEl.classList.remove('sentence-mode', 'scroll-mode');
+      
       if (cfg.overlayDisplayMode === 'sentence') {
         contentEl.classList.add('sentence-mode');
-      } else {
-        contentEl.classList.remove('sentence-mode');
+      } else if (cfg.overlayDisplayMode === 'scroll') {
+        contentEl.classList.add('scroll-mode');
+        // Calculate scroll duration based on estimated TTS time (approx 2-3 words/second)
+        const avgWordsPerSecond = 2.5;
+        const estimatedWords = 40; // Average for 30-50 word chapters
+        const ttsDuration = estimatedWords / avgWordsPerSecond;
+        root.style.setProperty('--scroll-duration', `${ttsDuration}s`);
       }
       
       console.log('Configuration applied:', cfg);
@@ -526,6 +562,8 @@
       // Display content based on mode
       if (config && config.overlayDisplayMode === 'sentence') {
         displaySentenceBySentence(chapter.content);
+      } else if (config && config.overlayDisplayMode === 'scroll') {
+        displayScrollingChapter(chapter.content);
       } else {
         displayFullChapter(chapter.content);
       }
@@ -541,7 +579,27 @@
         sentenceTimer = null;
       }
       
-      document.getElementById('chapterContent').textContent = content;
+      const contentEl = document.getElementById('chapterContent');
+      contentEl.classList.remove('scroll-mode');
+      contentEl.textContent = content;
+    }
+
+    function displayScrollingChapter(content) {
+      // Clear any sentence timer
+      if (sentenceTimer) {
+        clearInterval(sentenceTimer);
+        sentenceTimer = null;
+      }
+      
+      const contentEl = document.getElementById('chapterContent');
+      contentEl.classList.add('scroll-mode');
+      
+      // Reset animation by removing and re-adding the class
+      contentEl.style.animation = 'none';
+      setTimeout(() => {
+        contentEl.style.animation = '';
+        contentEl.textContent = content;
+      }, 10);
     }
 
     function displaySentenceBySentence(content) {
