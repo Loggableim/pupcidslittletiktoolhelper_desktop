@@ -1,5 +1,8 @@
 const StoryMemory = require('../utils/story-memory');
 
+// Configuration constants
+const MAX_GENERATION_ATTEMPTS = 3; // Maximum retry attempts for chapter generation
+
 /**
  * Story Generation Engine
  * Orchestrates LLM calls, coherence checking, and chapter generation
@@ -204,8 +207,8 @@ Do not include specific choices - just the setup.`;
     let attempts = 0;
     let chapter = null;
 
-    // Try to generate a coherent chapter (up to 3 attempts)
-    while (attempts < 3 && !chapter) {
+    // Try to generate a coherent chapter (up to MAX_GENERATION_ATTEMPTS)
+    while (attempts < MAX_GENERATION_ATTEMPTS && !chapter) {
       attempts++;
       
       try {
@@ -228,12 +231,12 @@ Do not include specific choices - just the setup.`;
         }
       } catch (error) {
         this.logger.error(`Error generating chapter: ${error.message}`);
-        if (attempts >= 3) throw error;
+        if (attempts >= MAX_GENERATION_ATTEMPTS) throw error;
       }
     }
 
     if (!chapter) {
-      throw new Error('Failed to generate coherent chapter after 3 attempts');
+      throw new Error(`Failed to generate coherent chapter after ${MAX_GENERATION_ATTEMPTS} attempts`);
     }
 
     return chapter;
@@ -262,8 +265,8 @@ Do not include specific choices - just the setup.`;
     let attempts = 0;
     let chapter = null;
 
-    // Try to generate a coherent final chapter (up to 3 attempts)
-    while (attempts < 3 && !chapter) {
+    // Try to generate a coherent final chapter (up to MAX_GENERATION_ATTEMPTS)
+    while (attempts < MAX_GENERATION_ATTEMPTS && !chapter) {
       attempts++;
       
       try {
@@ -288,12 +291,12 @@ Do not include specific choices - just the setup.`;
         }
       } catch (error) {
         this.logger.error(`Error generating final chapter: ${error.message}`);
-        if (attempts >= 3) throw error;
+        if (attempts >= MAX_GENERATION_ATTEMPTS) throw error;
       }
     }
 
     if (!chapter) {
-      throw new Error('Failed to generate coherent final chapter after 3 attempts');
+      throw new Error(`Failed to generate coherent final chapter after ${MAX_GENERATION_ATTEMPTS} attempts`);
     }
 
     return chapter;

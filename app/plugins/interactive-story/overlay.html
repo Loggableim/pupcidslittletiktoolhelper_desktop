@@ -475,6 +475,9 @@
     let sentences = [];
     let sentenceTimer = null;
     let scrollingInProgress = false;
+    
+    // Configuration constants
+    const MAX_VISIBLE_PAST_SENTENCES = 2; // How many past sentences to keep visible before hiding
 
     // Load configuration and apply styles
     async function loadConfiguration() {
@@ -637,7 +640,7 @@
         // Remove all state classes
         sentenceEl.classList.remove('past', 'current', 'future', 'hidden');
         
-        if (index < currentIndex - 2) {
+        if (index < currentIndex - MAX_VISIBLE_PAST_SENTENCES) {
           // Very old sentences - remove from view completely
           sentenceEl.style.display = 'none';
         } else {

@@ -49,6 +49,9 @@ class InteractiveStoryPlugin {
     this.isGenerating = false;
     this.ttsPaused = false;
     
+    // Configuration constants
+    this.FINAL_CHAPTER_DELAY_MS = 5000; // Delay before auto-ending session after final chapter
+    
     // Debug logs for offline testing
     this.debugLogs = [];
     this.maxDebugLogs = 100;
@@ -931,7 +934,7 @@ class InteractiveStoryPlugin {
         setTimeout(() => {
           this.db.updateSessionStatus(this.currentSession.id, 'completed');
           this.io.emit('story:ended', { message: 'Story completed!' });
-        }, 5000);
+        }, this.FINAL_CHAPTER_DELAY_MS);
 
         res.json({ success: true, chapter: finalChapter, isFinal: true });
       } catch (error) {
