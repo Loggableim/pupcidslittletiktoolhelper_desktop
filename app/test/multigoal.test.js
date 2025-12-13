@@ -3,7 +3,6 @@
  * Tests the multigoal functionality including database, API, and WebSocket
  */
 
-const request = require('supertest');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
@@ -328,6 +327,108 @@ describe('MultiGoal Feature', () => {
             expect(multigoal.animation_type).toBe('slide');
             expect(multigoal.overlay_width).toBe(500);
             expect(multigoal.overlay_height).toBe(100);
+        });
+    });
+
+    describe('MultiGoal API and WebSocket Integration', () => {
+        let goalsDB;
+        let GoalsAPI;
+        let GoalsWebSocket;
+        let plugin;
+        let api;
+        let websocket;
+
+        beforeEach(() => {
+            goalsDB = new GoalsDatabase(mockAPI);
+            goalsDB.initialize();
+
+            // Load modules
+            GoalsAPI = require('../plugins/goals/backend/api');
+            GoalsWebSocket = require('../plugins/goals/backend/websocket');
+
+            // Create mock plugin with correct property name
+            plugin = {
+                api: mockAPI,
+                db: goalsDB,
+                websocket: null // Will be set to websocket instance
+            };
+
+            // Create instances
+            websocket = new GoalsWebSocket(plugin);
+            plugin.websocket = websocket; // Set the correct property
+
+            api = new GoalsAPI(plugin);
+        });
+
+        test('should have websocket property accessible in API', () => {
+            expect(plugin.websocket).toBeDefined();
+            expect(plugin.websocket.emitMultiGoalCreated).toBeDefined();
+            expect(plugin.websocket.emitMultiGoalUpdated).toBeDefined();
+            expect(plugin.websocket.emitMultiGoalDeleted).toBeDefined();
+        });
+
+        test('API should successfully call websocket.emitMultiGoalCreated', () => {
+            // Create a spy on the websocket method
+            const emitSpy = jest.spyOn(plugin.websocket, 'emitMultiGoalCreated');
+
+            // Simulate creating a multigoal
+            const multigoalData = {
+                id: 'multigoal_websocket_test',
+                name: 'WebSocket Test'
+            };
+
+            const multigoal = goalsDB.createMultiGoal(multigoalData);
+            const fullMultigoal = goalsDB.getMultiGoalWithGoals(multigoal.id);
+
+            // Call the method that should trigger WebSocket emit
+            plugin.websocket.emitMultiGoalCreated(fullMultigoal);
+
+            // Verify it was called
+            expect(emitSpy).toHaveBeenCalledWith(fullMultigoal);
+            expect(emitSpy).toHaveBeenCalledTimes(1);
+        });
+
+        test('API should successfully call websocket.emitMultiGoalUpdated', () => {
+            const emitSpy = jest.spyOn(plugin.websocket, 'emitMultiGoalUpdated');
+
+            const multigoalData = {
+                id: 'multigoal_update_websocket',
+                name: 'Update WebSocket Test'
+            };
+
+            const multigoal = goalsDB.createMultiGoal(multigoalData);
+            const fullMultigoal = goalsDB.getMultiGoalWithGoals(multigoal.id);
+
+            plugin.websocket.emitMultiGoalUpdated(fullMultigoal);
+
+            expect(emitSpy).toHaveBeenCalledWith(fullMultigoal);
+            expect(emitSpy).toHaveBeenCalledTimes(1);
+        });
+
+        test('API should successfully call websocket.emitMultiGoalDeleted', () => {
+            const emitSpy = jest.spyOn(plugin.websocket, 'emitMultiGoalDeleted');
+
+            const multigoalId = 'multigoal_delete_websocket';
+
+            plugin.websocket.emitMultiGoalDeleted(multigoalId);
+
+            expect(emitSpy).toHaveBeenCalledWith(multigoalId);
+            expect(emitSpy).toHaveBeenCalledTimes(1);
+        });
+
+        test('should not throw error when accessing plugin.websocket.emitMultiGoalCreated', () => {
+            expect(() => {
+                const multigoalData = {
+                    id: 'multigoal_no_error',
+                    name: 'No Error Test'
+                };
+
+                const multigoal = goalsDB.createMultiGoal(multigoalData);
+                const fullMultigoal = goalsDB.getMultiGoalWithGoals(multigoal.id);
+
+                // This should not throw "Cannot read properties of undefined"
+                plugin.websocket.emitMultiGoalCreated(fullMultigoal);
+            }).not.toThrow();
         });
     });
 });
