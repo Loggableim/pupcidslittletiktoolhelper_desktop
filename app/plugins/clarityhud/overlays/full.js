@@ -361,7 +361,25 @@ function addEvent(type, data) {
   // Check for duplicate events using a composite key
   // Round timestamp to nearest 500ms to catch rapid duplicates
   const roundedTime = Math.floor(timestamp / 500) * 500;
-  const duplicateKey = `${type}_${data.user?.uniqueId || data.uniqueId}_${data.message || data.giftName || ''}_${roundedTime}`;
+  
+  // Build duplicate key based on event type
+  let uniqueIdentifier = '';
+  if (type === 'chat') {
+    uniqueIdentifier = data.message || data.comment || '';
+  } else if (type === 'gift' || type === 'treasure') {
+    // For gifts, include both name and coins to prevent legitimate different gifts from being marked as duplicates
+    const giftName = data.gift?.name || data.giftName || '';
+    const coins = data.gift?.coins || data.coins || 0;
+    uniqueIdentifier = `${giftName}_${coins}`;
+  } else if (type === 'like') {
+    // For likes, include the like count
+    uniqueIdentifier = `${data.likeCount || 1}`;
+  } else {
+    // For other events (follow, share, subscribe, join), type and user is enough
+    uniqueIdentifier = type;
+  }
+  
+  const duplicateKey = `${type}_${data.user?.uniqueId || data.uniqueId}_${uniqueIdentifier}_${roundedTime}`;
   
   // Prevent duplicates within a 2 second window
   if (STATE.eventIds.has(duplicateKey)) {
