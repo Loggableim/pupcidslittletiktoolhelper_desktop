@@ -424,7 +424,7 @@ class GoalsAPI {
                 const fullMultigoal = this.db.getMultiGoalWithGoals(multigoal.id);
 
                 // Emit WebSocket event
-                this.plugin.websocketHandler.emitMultiGoalCreated(fullMultigoal);
+                this.plugin.websocket.emitMultiGoalCreated(fullMultigoal);
 
                 res.json({
                     success: true,
@@ -463,7 +463,7 @@ class GoalsAPI {
                 const multigoal = this.db.getMultiGoalWithGoals(id);
 
                 // Emit WebSocket event
-                this.plugin.websocketHandler.emitMultiGoalUpdated(multigoal);
+                this.plugin.websocket.emitMultiGoalUpdated(multigoal);
 
                 res.json({
                     success: true,
@@ -494,7 +494,7 @@ class GoalsAPI {
 
                 if (deleted) {
                     // Emit WebSocket event
-                    this.plugin.websocketHandler.emitMultiGoalDeleted(id);
+                    this.plugin.websocket.emitMultiGoalDeleted(id);
 
                     res.json({
                         success: true,
