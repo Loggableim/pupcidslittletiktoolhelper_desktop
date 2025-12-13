@@ -570,6 +570,31 @@
               </div>
             </div>
           </div>
+
+          <!-- Story Generation Settings -->
+          <div class="row">
+            <div class="col-md-12">
+              <h5 class="mb-3">📝 Story Generation Settings</h5>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Story Language</label>
+                <select class="form-select" id="storyLanguage">
+                  <option value="German">Deutsch (German)</option>
+                  <option value="English">English</option>
+                  <option value="Spanish">Español (Spanish)</option>
+                  <option value="French">Français (French)</option>
+                  <option value="Italian">Italiano (Italian)</option>
+                  <option value="Portuguese">Português (Portuguese)</option>
+                  <option value="Dutch">Nederlands (Dutch)</option>
+                  <option value="Polish">Polski (Polish)</option>
+                  <option value="Turkish">Türkçe (Turkish)</option>
+                  <option value="Russian">Русский (Russian)</option>
+                </select>
+                <small class="form-text text-muted">Language for story generation and narration</small>
+              </div>
+            </div>
+          </div>
           
           <!-- Voting and Generation Settings -->
           <div class="row">
@@ -965,11 +990,14 @@
         document.getElementById('overlayTextColor').value = config.overlayTextColor || '#ffffff';
         document.getElementById('overlayTitleColor').value = config.overlayTitleColor || '#e94560';
         
+        // Story generation settings
+        document.getElementById('storyLanguage').value = config.storyLanguage || 'German';
+        
         // Settings
         document.getElementById('votingDuration').value = config.votingDuration || 60;
-        document.getElementById('numChoices').value = config.numChoices || 4;
+        document.getElementById('numChoices').value = config.numChoices || 3;
         document.getElementById('autoGenerateImages').checked = config.autoGenerateImages !== false;
-        document.getElementById('autoGenerateTTS').checked = config.autoGenerateTTS === true;
+        document.getElementById('autoGenerateTTS').checked = config.autoGenerateTTS !== false; // Default to true
         document.getElementById('offlineMode').checked = config.offlineMode === true;
         document.getElementById('debugLogging').checked = config.debugLogging === true;
         document.getElementById('apiLogging').checked = config.apiLogging === true;
@@ -1231,6 +1259,9 @@
         overlayTitleFontSize: parseFloat(document.getElementById('overlayTitleFontSize').value),
         overlayTextColor: document.getElementById('overlayTextColor').value,
         overlayTitleColor: document.getElementById('overlayTitleColor').value,
+        
+        // Story generation settings
+        storyLanguage: document.getElementById('storyLanguage').value,
         
         // Settings
         votingDuration: parseInt(document.getElementById('votingDuration').value),

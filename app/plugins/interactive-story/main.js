@@ -131,7 +131,10 @@ class InteractiveStoryPlugin {
         const openaiApiKey = this._getOpenAIApiKey();
         if (openaiApiKey) {
           this.llmService = new OpenAILLMService(openaiApiKey, this.logger, debugCallback, llmOptions);
-          this.storyEngine = new StoryEngine(this.llmService, this.logger);
+          this.storyEngine = new StoryEngine(this.llmService, this.logger, {
+            language: config.storyLanguage || 'German',
+            platform: 'tiktok'
+          });
           this._debugLog('info', '✅ OpenAI LLM service initialized', { 
             apiKeyLength: openaiApiKey.length,
             apiKeyPrefix: openaiApiKey.substring(0, 6) + '...',
@@ -149,7 +152,10 @@ class InteractiveStoryPlugin {
         const siliconFlowApiKey = this._getSiliconFlowApiKey();
         if (siliconFlowApiKey) {
           this.llmService = new LLMService(siliconFlowApiKey, this.logger, debugCallback, llmOptions);
-          this.storyEngine = new StoryEngine(this.llmService, this.logger);
+          this.storyEngine = new StoryEngine(this.llmService, this.logger, {
+            language: config.storyLanguage || 'German',
+            platform: 'tiktok'
+          });
           this._debugLog('info', '✅ SiliconFlow LLM service initialized', { 
             apiKeyLength: siliconFlowApiKey.length,
             apiKeyPrefix: siliconFlowApiKey.substring(0, 6) + '...',
@@ -409,11 +415,12 @@ class InteractiveStoryPlugin {
       minVotes: 5,
       useMinSwing: false,
       swingThreshold: 10,
-      numChoices: 4,
+      numChoices: 3, // Default to 3 choices for TikTok (quick engagement)
       
       // Generation settings
       autoGenerateImages: true,
-      autoGenerateTTS: false,
+      autoGenerateTTS: true, // Enable TTS by default
+      storyLanguage: 'German', // Language for story generation
       
       // TTS settings
       ttsVoiceMapping: {
@@ -506,7 +513,10 @@ class InteractiveStoryPlugin {
           this.llmService = new LLMService(config.siliconFlowApiKey, this.logger, debugCallback, llmOptions);
           this.imageService = new ImageService(config.siliconFlowApiKey, this.logger, this.imageCacheDir);
           this.ttsService = new TTSService(config.siliconFlowApiKey, this.logger, this.audioCacheDir);
-          this.storyEngine = new StoryEngine(this.llmService, this.logger);
+          this.storyEngine = new StoryEngine(this.llmService, this.logger, {
+            language: config.storyLanguage || 'German',
+            platform: 'tiktok'
+          });
         } else if (!this.storyEngine) {
           // If services not initialized, check for API key in database
           const apiKey = this._getSiliconFlowApiKey();
@@ -520,7 +530,10 @@ class InteractiveStoryPlugin {
             this.llmService = new LLMService(apiKey, this.logger, debugCallback, llmOptions);
             this.imageService = new ImageService(apiKey, this.logger, this.imageCacheDir);
             this.ttsService = new TTSService(apiKey, this.logger, this.audioCacheDir);
-            this.storyEngine = new StoryEngine(this.llmService, this.logger);
+            this.storyEngine = new StoryEngine(this.llmService, this.logger, {
+              language: config.storyLanguage || 'German',
+              platform: 'tiktok'
+            });
             this._debugLog('info', '✅ SiliconFlow services initialized from database API key', { 
               apiKeyConfigured: true
             });

@@ -5,10 +5,12 @@ const StoryMemory = require('../utils/story-memory');
  * Orchestrates LLM calls, coherence checking, and chapter generation
  */
 class StoryEngine {
-  constructor(llmService, logger) {
+  constructor(llmService, logger, options = {}) {
     this.llmService = llmService;
     this.logger = logger;
     this.memory = new StoryMemory(logger);
+    this.language = options.language || 'German'; // Default language
+    this.platform = options.platform || 'tiktok'; // Target platform (affects chapter length)
     
     // Story themes with specific prompt styles
     this.themes = {
@@ -43,6 +45,19 @@ class StoryEngine {
         tone: 'fast-paced and exciting'
       }
     };
+  }
+
+  /**
+   * Update story engine configuration
+   * @param {Object} options - Configuration options
+   */
+  updateConfig(options = {}) {
+    if (options.language) {
+      this.language = options.language;
+    }
+    if (options.platform) {
+      this.platform = options.platform;
+    }
   }
 
   /**
@@ -155,7 +170,10 @@ Do not include specific choices - just the setup.`;
    * Build chapter generation prompt
    */
   _buildChapterPrompt(themeData, context, chapterNumber, previousChoice, numChoices) {
-    let prompt = `You are writing chapter ${chapterNumber} of an interactive ${themeData.style} story.\n\n`;
+    // Determine word count based on platform
+    const wordCount = this.platform === 'tiktok' ? '50-100' : '200-400';
+    
+    let prompt = `You are writing chapter ${chapterNumber} of an interactive ${themeData.style} story in ${this.language}.\n\n`;
 
     if (context) {
       prompt += `STORY CONTEXT:\n${context}\n\n`;
@@ -165,19 +183,20 @@ Do not include specific choices - just the setup.`;
       prompt += `PREVIOUS CHOICE: ${previousChoice}\n\n`;
     }
 
-    prompt += `Write the next chapter of the story. The chapter should:\n`;
+    prompt += `Write the next chapter of the story in ${this.language}. The chapter should:\n`;
     prompt += `1. Be engaging and well-written (${themeData.tone})\n`;
-    prompt += `2. Be 200-400 words\n`;
+    prompt += `2. Be ${wordCount} words (SHORT and punchy for ${this.platform})\n`;
     prompt += `3. Continue logically from previous events\n`;
-    prompt += `4. End with ${numChoices} distinct choices for readers\n`;
-    prompt += `5. Include memory tags for characters, locations, and items\n\n`;
+    prompt += `4. End with EXACTLY ${numChoices} distinct choices for readers\n`;
+    prompt += `5. Include memory tags for characters, locations, and items\n`;
+    prompt += `6. Be written ENTIRELY in ${this.language}\n\n`;
 
     prompt += `Format your response EXACTLY as follows:\n\n`;
-    prompt += `TITLE: [Chapter title]\n\n`;
-    prompt += `CONTENT:\n[Chapter text here]\n\n`;
+    prompt += `TITLE: [Chapter title in ${this.language}]\n\n`;
+    prompt += `CONTENT:\n[Chapter text here in ${this.language} - KEEP IT SHORT AND ENGAGING]\n\n`;
     prompt += `CHOICES:\n`;
     for (let i = 1; i <= numChoices; i++) {
-      prompt += `${i}. [Choice ${i}]\n`;
+      prompt += `${i}. [Choice ${i} in ${this.language}]\n`;
     }
     prompt += `\nMEMORY_TAGS:\n`;
     prompt += `CHARACTERS: [comma-separated character names]\n`;
