@@ -671,7 +671,10 @@
       // Hide text overlay when voting starts
       document.getElementById('textOverlay').classList.remove('visible');
       
-      displayVoting(data.choices, data.duration);
+      // Only display voting if we have choices (not for final chapter)
+      if (data.choices && data.choices.length > 0) {
+        displayVoting(data.choices, data.duration);
+      }
     });
 
     // Handle vote updates

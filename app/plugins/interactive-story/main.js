@@ -855,6 +855,92 @@ class InteractiveStoryPlugin {
       }
     });
 
+    // Generate final chapter (ending)
+    this.api.registerRoute('post', '/api/interactive-story/final-chapter', async (req, res) => {
+      try {
+        if (!this.currentSession || !this.storyEngine) {
+          return res.status(400).json({ error: 'No active story session' });
+        }
+
+        const { choiceIndex } = req.body;
+        const previousChoice = this.currentChapter.choices[choiceIndex];
+
+        this.isGenerating = true;
+        this.io.emit('story:generation-started', {});
+
+        const config = this._loadConfig();
+        const chapterNumber = this.currentChapter.chapterNumber + 1;
+
+        // Generate final chapter (no choices)
+        const finalChapter = await this.storyEngine.generateFinalChapter(
+          chapterNumber,
+          previousChoice,
+          this.currentSession.model
+        );
+
+        // Generate image
+        if (config.autoGenerateImages && this.imageService) {
+          try {
+            const imageModel = config.imageProvider === 'openai' ? config.openaiImageModel : config.defaultImageModel;
+            const style = this.imageService.getStyleForTheme ? this.imageService.getStyleForTheme(this.currentSession.theme) : '';
+            const imagePrompt = `${finalChapter.title}: ${finalChapter.content.substring(0, 200)}`;
+            
+            this._debugLog('info', `🖼️ Starting image generation for FINAL chapter ${chapterNumber}`, { 
+              provider: config.imageProvider,
+              model: imageModel,
+              promptLength: imagePrompt.length
+            });
+            
+            finalChapter.imagePath = await this.imageService.generateImage(imagePrompt, imageModel, style);
+            
+            this._debugLog('info', `✅ Image generated successfully for FINAL chapter ${chapterNumber}`, { 
+              imagePath: finalChapter.imagePath,
+              model: imageModel
+            });
+          } catch (imageError) {
+            this._debugLog('error', `❌ Image generation failed for FINAL chapter ${chapterNumber}`, { 
+              error: imageError.message,
+              stack: imageError.stack,
+              statusCode: imageError.response?.status,
+              responseData: imageError.response?.data,
+              provider: config.imageProvider,
+              model: config.imageProvider === 'openai' ? config.openaiImageModel : config.defaultImageModel
+            });
+            finalChapter.imagePath = null;
+            this.io.emit('story:image-generation-failed', { 
+              message: 'Image generation failed, but story continues',
+              error: imageError.message 
+            });
+          }
+        }
+
+        // Save final chapter
+        this.db.saveChapter(this.currentSession.id, finalChapter);
+        this.currentChapter = finalChapter;
+
+        this.isGenerating = false;
+
+        // Show final chapter with TTS
+        this.io.emit('story:chapter-ready', finalChapter);
+        
+        // Read the final chapter (WAIT for completion)
+        await this._generateChapterTTS(finalChapter);
+        
+        // No voting for final chapter - story is complete
+        // Automatically end the session after a delay
+        setTimeout(() => {
+          this.db.updateSessionStatus(this.currentSession.id, 'completed');
+          this.io.emit('story:ended', { message: 'Story completed!' });
+        }, 5000);
+
+        res.json({ success: true, chapter: finalChapter, isFinal: true });
+      } catch (error) {
+        this.isGenerating = false;
+        this.logger.error(`Error generating final chapter: ${error.message}`);
+        res.status(500).json({ error: error.message });
+      }
+    });
+
     // End story
     this.api.registerRoute('post', '/api/interactive-story/end', (req, res) => {
       try {
