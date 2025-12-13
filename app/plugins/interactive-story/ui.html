@@ -837,7 +837,16 @@
 
     function openOverlayInNewTab() {
       const url = document.getElementById('overlayUrl').value;
-      window.open(url, '_blank', 'width=1920,height=1080');
+      try {
+        const newWindow = window.open(url, '_blank', 'width=1920,height=1080');
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+          // Popup was blocked
+          alert('⚠️ Popup wurde blockiert!\n\nBitte erlauben Sie Popups für diese Seite und versuchen Sie es erneut.\n\nOder öffnen Sie manuell:\n' + url);
+        }
+      } catch (error) {
+        console.error('Error opening overlay:', error);
+        alert('❌ Fehler beim Öffnen des Overlays.\n\nBitte öffnen Sie manuell:\n' + url);
+      }
     }
 
     function toggleOverlayPreview() {
@@ -1031,13 +1040,27 @@
 
     async function loadThemes() {
       try {
-        // Load 5 random themes (including 2 furry themes)
+        // Try to load 5 random themes (including 2 furry themes)
         const response = await fetch('/api/interactive-story/random-themes?count=5');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
+        
+        if (!data.themes || !Array.isArray(data.themes)) {
+          throw new Error('Invalid response format');
+        }
+        
         const themes = data.themes;
         
         const themeSelector = document.getElementById('themeSelector');
         themeSelector.innerHTML = '';
+        
+        if (themes.length === 0) {
+          throw new Error('No themes returned');
+        }
         
         for (const theme of themes) {
           const col = document.createElement('div');
@@ -1063,7 +1086,44 @@
           });
         });
       } catch (error) {
-        console.error('Error loading themes:', error);
+        console.error('Error loading random themes:', error);
+        // Fallback: Load all themes from the old endpoint
+        console.log('Falling back to all themes...');
+        try {
+          const response = await fetch('/api/interactive-story/themes');
+          const allThemes = await response.json();
+          
+          const themeSelector = document.getElementById('themeSelector');
+          themeSelector.innerHTML = '';
+          
+          for (const [key, theme] of Object.entries(allThemes)) {
+            const col = document.createElement('div');
+            col.className = 'col-md-4 mb-3';
+            const furryBadge = theme.furry ? '<span class="badge bg-primary ms-2">🐾 Furry</span>' : '';
+            col.innerHTML = `
+              <div class="card theme-card" data-theme="${key}">
+                <div class="card-body text-center">
+                  <h6>${theme.name}${furryBadge}</h6>
+                  <small class="text-muted">${theme.style || theme.description}</small>
+                </div>
+              </div>
+            `;
+            themeSelector.appendChild(col);
+          }
+          
+          // Add click handlers
+          document.querySelectorAll('.theme-card').forEach(card => {
+            card.addEventListener('click', () => {
+              document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+              card.classList.add('selected');
+              selectedTheme = card.dataset.theme;
+            });
+          });
+        } catch (fallbackError) {
+          console.error('Error loading fallback themes:', fallbackError);
+          const themeSelector = document.getElementById('themeSelector');
+          themeSelector.innerHTML = '<div class="alert alert-danger">Fehler beim Laden der Themen. Bitte API-Schlüssel konfigurieren.</div>';
+        }
       }
     }
 

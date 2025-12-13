@@ -210,6 +210,17 @@ class InteractiveStoryPlugin {
         this.api.log('Using system TTS plugin for voice generation', 'info');
       }
 
+      // Ensure storyEngine is always initialized (even without LLM service for theme access)
+      if (!this.storyEngine) {
+        this._debugLog('warn', '⚠️ StoryEngine not initialized - creating basic instance for theme access', null);
+        // Create a minimal storyEngine without LLM service for theme/configuration access
+        this.storyEngine = new StoryEngine(null, this.logger, {
+          language: config.storyLanguage || 'German',
+          platform: 'tiktok'
+        });
+        this.api.log('⚠️ StoryEngine initialized in limited mode (themes only - configure API keys for full functionality)', 'warn');
+      }
+
       // Initialize voting system
       this.votingSystem = new VotingSystem(this.logger, this.io);
 
