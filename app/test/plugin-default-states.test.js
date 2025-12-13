@@ -19,7 +19,7 @@ console.log('==========================\n');
 console.log('Test 1: Verify plugin.json default states');
 console.log('-------------------------------------------');
 
-const expectedActive = ['advanced-timer', 'coinbattle', 'config-import', 'goals', 'lastevent-spotlight', 'leaderboard', 'openshock', 'quiz_show', 'soundboard', 'tts', 'webgpu-emoji-rain'];
+const expectedActive = ['advanced-timer', 'coinbattle', 'config-import', 'goals', 'lastevent-spotlight', 'leaderboard', 'openshock', 'quiz-show', 'soundboard', 'tts', 'webgpu-emoji-rain'];
 const entries = fs.readdirSync(pluginsDir, { withFileTypes: true });
 
 let activeCount = 0;

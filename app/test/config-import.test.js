@@ -252,8 +252,8 @@ runTest('Should include WAL and SHM files in legacy database detection', () => {
 
 // Test 19: Should validate plugins directory
 const tmpDirWithPlugins = fs.mkdtempSync(path.join(os.tmpdir(), 'config-import-plugins-'));
-fs.mkdirSync(path.join(tmpDirWithPlugins, 'plugins', 'quiz_show', 'data'), { recursive: true });
-fs.writeFileSync(path.join(tmpDirWithPlugins, 'plugins', 'quiz_show', 'data', 'quiz_show.db'), 'sqlite3 mock data');
+fs.mkdirSync(path.join(tmpDirWithPlugins, 'plugins', 'quiz-show', 'data'), { recursive: true });
+fs.writeFileSync(path.join(tmpDirWithPlugins, 'plugins', 'quiz-show', 'data', 'quiz_show.db'), 'sqlite3 mock data');
 
 runTest('Should validate directory with plugins folder as valid', () => {
     const validation = plugin.validateImportPath(tmpDirWithPlugins);
@@ -267,22 +267,22 @@ runTest('Should correctly detect plugin data files', () => {
     const validation = plugin.validateImportPath(tmpDirWithPlugins);
     assert(validation.valid === true, 'Should be valid');
     assert(validation.findings.plugins === true, 'Should find plugins');
-    assert(validation.findings.files.includes('plugins/quiz_show/data/quiz_show.db'), 
+    assert(validation.findings.files.includes('plugins/quiz-show/data/quiz_show.db'), 
            'Should include quiz_show.db in files list');
 });
 
 // Test 21: Should validate directory with multiple plugins
 const tmpDirWithMultiplePlugins = fs.mkdtempSync(path.join(os.tmpdir(), 'config-import-multi-plugins-'));
-fs.mkdirSync(path.join(tmpDirWithMultiplePlugins, 'plugins', 'quiz_show', 'data'), { recursive: true });
+fs.mkdirSync(path.join(tmpDirWithMultiplePlugins, 'plugins', 'quiz-show', 'data'), { recursive: true });
 fs.mkdirSync(path.join(tmpDirWithMultiplePlugins, 'plugins', 'another_plugin', 'data'), { recursive: true });
-fs.writeFileSync(path.join(tmpDirWithMultiplePlugins, 'plugins', 'quiz_show', 'data', 'quiz.db'), 'data1');
+fs.writeFileSync(path.join(tmpDirWithMultiplePlugins, 'plugins', 'quiz-show', 'data', 'quiz.db'), 'data1');
 fs.writeFileSync(path.join(tmpDirWithMultiplePlugins, 'plugins', 'another_plugin', 'data', 'plugin.db'), 'data2');
 
 runTest('Should validate directory with multiple plugins', () => {
     const validation = plugin.validateImportPath(tmpDirWithMultiplePlugins);
     assert(validation.valid === true, 'Directory with multiple plugins should be valid');
     assert(validation.findings.plugins === true, 'Should find plugins');
-    assert(validation.findings.files.some(f => f.includes('quiz_show')), 'Should include quiz_show files');
+    assert(validation.findings.files.some(f => f.includes('quiz-show')), 'Should include quiz-show files');
     assert(validation.findings.files.some(f => f.includes('another_plugin')), 'Should include another_plugin files');
 });
 
