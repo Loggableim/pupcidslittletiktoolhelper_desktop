@@ -966,7 +966,8 @@ func main() {
 		}
 
 		var req struct {
-			URL string `json:"url"`
+			URL        string `json:"url"`
+			UseDefault bool   `json:"useDefault"`
 		}
 		
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -974,8 +975,12 @@ func main() {
 			return
 		}
 
-		// Open in minimal Edge browser
-		go openMinimalBrowser(req.URL)
+		// Open in default browser or minimal Edge based on preference
+		if req.UseDefault {
+			go browser.OpenURL(req.URL)
+		} else {
+			go openMinimalBrowser(req.URL)
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]bool{"success": true})
@@ -1189,15 +1194,22 @@ func getStyles() string {
             padding: 20px; border: 2px solid #e0e0e0;
             border-radius: 10px; cursor: pointer;
             transition: all 0.2s; background: white;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         .language-option:hover {
             border-color: #667eea; transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            background: #f8f9ff;
         }
 
         .language-flag {
-            font-size: 40px; margin-bottom: 10px;
+            font-size: 48px; margin-bottom: 10px;
+            line-height: 1;
         }
 
         .language-name {
@@ -1725,26 +1737,38 @@ func getJavaScript() string {
                     setTimeout(() => {
                         if (keepOpen) {
                             if (useDefaultBrowser) {
-                                window.open(data.redirect, '_blank');
+                                // Open in default browser via backend API
+                                fetch('/api/open-dashboard', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ url: data.redirect, useDefault: true })
+                                });
                             } else {
                                 // Open in minimal Edge window (backend handles this)
                                 fetch('/api/open-dashboard', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ url: data.redirect })
+                                    body: JSON.stringify({ url: data.redirect, useDefault: false })
                                 });
                             }
                         } else {
                             // Not keeping launcher open - redirect based on browser preference
                             if (useDefaultBrowser) {
-                                // Use default browser by opening URL and closing launcher
-                                window.location.href = data.redirect;
+                                // Open in default browser via backend, then close launcher
+                                fetch('/api/open-dashboard', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ url: data.redirect, useDefault: true })
+                                }).then(() => {
+                                    // Give the dashboard time to open, then close launcher
+                                    setTimeout(() => window.close(), 1500);
+                                });
                             } else {
                                 // Open in minimal Edge window and close launcher
                                 fetch('/api/open-dashboard', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ url: data.redirect })
+                                    body: JSON.stringify({ url: data.redirect, useDefault: false })
                                 }).then(() => {
                                     // Give the dashboard time to open, then close launcher
                                     setTimeout(() => window.close(), 1500);
