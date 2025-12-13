@@ -426,10 +426,13 @@
               <div class="mb-3" id="openaiModelGroup">
                 <label class="form-label">OpenAI LLM Model</label>
                 <select class="form-select" id="openaiModel">
-                  <option value="gpt-4o-mini">GPT-4o Mini (Recommended - Cost-efficient)</option>
-                  <option value="gpt-4o">GPT-4o (High Quality)</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast & Cheap)</option>
+                  <option value="o1">o1 (Latest - Advanced Reasoning)</option>
+                  <option value="o1-mini">o1-mini (Fast Reasoning)</option>
+                  <option value="gpt-4o">GPT-4o (Recommended - Multimodal)</option>
+                  <option value="gpt-4o-mini">GPT-4o Mini (Cost-efficient)</option>
+                  <option value="gpt-4-turbo">GPT-4 Turbo</option>
                 </select>
+                <small class="form-text text-muted">Latest models from OpenAI. o1 series offers advanced reasoning capabilities.</small>
               </div>
               <div class="mb-3" id="siliconflowModelGroup" style="display: none;">
                 <label class="form-label">SiliconFlow LLM Model</label>
@@ -838,7 +841,10 @@
         return;
       }
       
-      console.log('[TEST API KEY] Starting validation...');
+      // Get the selected provider
+      const provider = document.getElementById('llmProvider')?.value || 'openai';
+      
+      console.log('[TEST API KEY] Starting validation for provider:', provider);
       btn.disabled = true;
       btn.innerHTML = '⏳ Testing...';
       resultDiv.style.display = 'none';
@@ -847,7 +853,8 @@
         console.log('[TEST API KEY] Sending request to /api/interactive-story/validate-api-key');
         const response = await fetch('/api/interactive-story/validate-api-key', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider })
         });
         
         console.log('[TEST API KEY] Response status:', response.status);
@@ -861,6 +868,7 @@
           resultDiv.innerHTML = `
             <strong>✅ ${result.message}</strong><br>
             <small>
+              Provider: ${result.provider}<br>
               API Key Length: ${result.details.keyLength} characters<br>
               Prefix: ${result.details.keyPrefix}<br>
               Tested Model: ${result.details.testedModel}
@@ -876,8 +884,9 @@
             html += `<small>Error: ${result.error}</small><br>`;
             if (result.details) {
               html += `<br><strong>Diagnostics:</strong><br>`;
+              html += `Provider: ${result.provider || 'Unknown'}<br>`;
               html += `API Key Length: ${result.details.keyLength} characters`;
-              if (result.details.keyLength !== 64) {
+              if (result.details.keyLength !== 64 && result.provider !== 'OpenAI') {
                 html += ` <span style="color: #ffc107;">⚠️ Expected: ~64 characters</span>`;
               }
               html += `<br>Prefix: ${result.details.keyPrefix}<br>`;

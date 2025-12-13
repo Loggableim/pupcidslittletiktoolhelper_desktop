@@ -321,6 +321,11 @@ class InteractiveStoryPlugin {
    * Generate TTS for a chapter if auto-TTS is enabled
    * @param {Object} chapter - Chapter object with title and content
    */
+  /**
+   * Generate TTS for a chapter if auto-TTS is enabled
+   * @param {Object} chapter - Chapter object with title and content
+   * @returns {Promise<void>}
+   */
   async _generateChapterTTS(chapter) {
     try {
       const config = this._loadConfig();
@@ -348,6 +353,44 @@ class InteractiveStoryPlugin {
   }
 
   /**
+   * Generate TTS for voting choices if auto-TTS is enabled
+   * @param {Array<string>} choices - Array of choice texts
+   * @returns {Promise<void>}
+   */
+  async _generateChoicesTTS(choices) {
+    try {
+      const config = this._loadConfig();
+      
+      if (!config.autoGenerateTTS) {
+        return; // TTS disabled
+      }
+
+      const ttsProvider = config.ttsProvider || 'system';
+      
+      // Create choice text
+      const choiceLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
+      const choiceText = choices.map((choice, index) => 
+        `Option ${choiceLetters[index]}: ${choice}`
+      ).join('. ');
+      
+      const textToSpeak = `Voting time! ${choiceText}`;
+      
+      if (ttsProvider === 'system') {
+        // Use LTTH TTS plugin (OpenAI TTS)
+        await this._speakThroughSystemTTS(textToSpeak);
+        this.logger.info(`Choices spoken through system TTS`);
+      } else if (ttsProvider === 'siliconflow' && this.ttsService) {
+        // Use SiliconFlow TTS (legacy)
+        await this.ttsService.generateSpeech(textToSpeak, 'narrator');
+        this.logger.info(`Choices TTS generated with SiliconFlow`);
+      }
+    } catch (error) {
+      // Don't fail voting if TTS fails
+      this.logger.error(`Failed to generate TTS for choices: ${error.message}`);
+    }
+  }
+
+  /**
    * Load plugin configuration
    */
   _loadConfig() {
@@ -358,7 +401,7 @@ class InteractiveStoryPlugin {
       ttsProvider: 'system', // 'system' (uses LTTH TTS plugin) or 'siliconflow'
       
       // OpenAI models
-      openaiModel: 'gpt-4o-mini',
+      openaiModel: 'o1-mini',
       openaiImageModel: 'dall-e-2',
       
       // SiliconFlow models (legacy)
@@ -577,12 +620,14 @@ class InteractiveStoryPlugin {
         // Emit chapter to clients
         this.io.emit('story:chapter-ready', firstChapter);
 
-        // Generate TTS if enabled (non-blocking)
-        this._generateChapterTTS(firstChapter).catch(err => {
-          this.logger.warn(`TTS generation failed (non-critical): ${err.message}`);
-        });
-
-        // Start voting
+        // NEW FLOW: TTS first, then voting
+        // 1. Read the chapter (WAIT for it to complete)
+        await this._generateChapterTTS(firstChapter);
+        
+        // 2. Read the voting choices (WAIT for it to complete)
+        await this._generateChoicesTTS(firstChapter.choices);
+        
+        // 3. NOW start voting (after TTS is done)
         this.votingSystem.start(firstChapter.choices, {
           votingDuration: config.votingDuration,
           minVotes: config.minVotes,
@@ -657,12 +702,14 @@ class InteractiveStoryPlugin {
         // Emit chapter
         this.io.emit('story:chapter-ready', nextChapter);
 
-        // Generate TTS if enabled (non-blocking)
-        this._generateChapterTTS(nextChapter).catch(err => {
-          this.logger.warn(`TTS generation failed (non-critical): ${err.message}`);
-        });
-
-        // Start voting
+        // NEW FLOW: TTS first, then voting
+        // 1. Read the chapter (WAIT for it to complete)
+        await this._generateChapterTTS(nextChapter);
+        
+        // 2. Read the voting choices (WAIT for it to complete)
+        await this._generateChoicesTTS(nextChapter.choices);
+        
+        // 3. NOW start voting (after TTS is done)
         this.votingSystem.start(nextChapter.choices, {
           votingDuration: config.votingDuration,
           minVotes: config.minVotes,
@@ -761,30 +808,54 @@ class InteractiveStoryPlugin {
     // Validate API key
     this.api.registerRoute('post', '/api/interactive-story/validate-api-key', async (req, res) => {
       try {
-        const apiKey = this._getSiliconFlowApiKey();
+        const config = this._loadConfig();
+        const provider = req.body?.provider || config.llmProvider || 'openai';
+        
+        let apiKey;
+        let providerName;
+        let testModel;
+        let apiUrl;
+        
+        // Determine which provider to test
+        if (provider === 'openai') {
+          apiKey = this._getOpenAIApiKey();
+          providerName = 'OpenAI';
+          testModel = 'gpt-3.5-turbo';
+          apiUrl = 'https://api.openai.com/v1/chat/completions';
+        } else {
+          apiKey = this._getSiliconFlowApiKey();
+          providerName = 'SiliconFlow';
+          testModel = 'meta-llama/Meta-Llama-3.1-8B-Instruct';
+          apiUrl = 'https://api.siliconflow.com/v1/chat/completions';
+        }
         
         if (!apiKey) {
+          const settingsPath = provider === 'openai' 
+            ? 'Settings → OpenAI API Configuration'
+            : 'Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)';
+          
           return res.json({
             valid: false,
-            error: 'No API key configured',
-            message: 'Please configure API key in Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)',
-            configured: false
+            error: `No ${providerName} API key configured`,
+            message: `Please configure API key in ${settingsPath}`,
+            configured: false,
+            provider: providerName
           });
         }
         
         // Log validation attempt
-        this._debugLog('info', '🔍 Validating SiliconFlow API key...', {
+        this._debugLog('info', `🔍 Validating ${providerName} API key...`, {
+          provider: providerName,
           keyLength: apiKey.length,
           keyPrefix: apiKey.substring(0, 6) + '...'
         });
         
         // Test API key with a minimal request
-        const axios = require('axios');
         try {
           const response = await axios.post(
-            'https://api.siliconflow.com/v1/chat/completions',  // Fixed: Use .com instead of .cn
+            apiUrl,
             {
-              model: 'meta-llama/Meta-Llama-3.1-8B-Instruct',
+              model: testModel,
               messages: [{ role: 'user', content: 'test' }],
               max_tokens: 5,
               temperature: 0.1
@@ -798,25 +869,26 @@ class InteractiveStoryPlugin {
             }
           );
           
-          this._debugLog('info', '✅ API key validation successful', {
+          this._debugLog('info', `✅ ${providerName} API key validation successful`, {
             statusCode: response.status
           });
           
           res.json({
             valid: true,
             configured: true,
-            message: 'API key is valid and working!',
+            provider: providerName,
+            message: `${providerName} API key is valid and working!`,
             details: {
               keyLength: apiKey.length,
               keyPrefix: apiKey.substring(0, 6) + '...',
-              testedModel: 'meta-llama/Meta-Llama-3.1-8B-Instruct'
+              testedModel: testModel
             }
           });
         } catch (error) {
           const statusCode = error.response?.status || 0;
           const responseData = error.response?.data || error.message;
           
-          this._debugLog('error', '❌ API key validation failed', {
+          this._debugLog('error', `❌ ${providerName} API key validation failed`, {
             statusCode,
             error: responseData,
             keyLength: apiKey.length,
@@ -828,25 +900,30 @@ class InteractiveStoryPlugin {
           
           if (statusCode === 401) {
             message = 'API key is invalid or not authorized';
+            const dashboardUrl = provider === 'openai' 
+              ? 'https://platform.openai.com/api-keys'
+              : 'https://cloud.siliconflow.com/';
+            
             troubleshooting = [
-              'Check that the API key is correct and active on https://cloud.siliconflow.com/',
+              `Check that the API key is correct and active on ${dashboardUrl}`,
               'Make sure you copied the entire API key without extra spaces',
               'Verify the API key hasn\'t expired',
-              'Check that you have credits/quota available on SiliconFlow',
-              'Try generating a new API key on SiliconFlow dashboard'
+              `Check that you have credits/quota available on ${providerName}`,
+              `Try generating a new API key on ${providerName} dashboard`
             ];
           } else if (statusCode === 429) {
             message = 'Rate limit exceeded or quota exhausted';
             troubleshooting = [
-              'Check your API usage quota on SiliconFlow dashboard',
+              `Check your API usage quota on ${providerName} dashboard`,
               'Wait a few minutes and try again',
               'Consider upgrading your plan if needed'
             ];
           } else if (statusCode === 0) {
-            message = 'Network error - cannot reach SiliconFlow API';
+            message = `Network error - cannot reach ${providerName} API`;
+            const apiDomain = provider === 'openai' ? 'api.openai.com' : 'api.siliconflow.com';
             troubleshooting = [
               'Check your internet connection',
-              'Verify that api.siliconflow.com is accessible',
+              `Verify that ${apiDomain} is accessible`,
               'Check firewall/proxy settings'
             ];
           }
@@ -854,6 +931,7 @@ class InteractiveStoryPlugin {
           res.json({
             valid: false,
             configured: true,
+            provider: providerName,
             error: String(responseData),
             message,
             troubleshooting,
@@ -940,10 +1018,9 @@ class InteractiveStoryPlugin {
         // Emit chapter
         this.io.emit('story:chapter-ready', nextChapter);
         
-        // Generate TTS if enabled (non-blocking)
-        this._generateChapterTTS(nextChapter).catch(err => {
-          this.logger.warn(`TTS generation failed (non-critical): ${err.message}`);
-        });
+        // NEW FLOW: TTS first (for admin choice path - no voting after)
+        // Read the chapter (WAIT for it to complete)
+        await this._generateChapterTTS(nextChapter);
         
         this._debugLog('info', `Next chapter generated`, { chapterNumber, title: nextChapter.title });
         
