@@ -431,6 +431,7 @@
         socket.on('quiz-show:quiz-ended', handleQuizEnded);
         socket.on('quiz-show:brand-kit-updated', handleBrandKitUpdated);
         socket.on('quiz-show:error', handleQuizError);
+        socket.on('quiz-show:hide-timer', handleHideTimer);
         
         // NEW: Leaderboard events
         socket.on('quiz-show:show-leaderboard', handleShowLeaderboard);
@@ -453,6 +454,18 @@
             }
         } catch (error) {
             console.error('Error handling quiz error:', error);
+        }
+    }
+
+    function handleHideTimer() {
+        try {
+            const timerSection = document.getElementById('timerSection');
+            if (timerSection) {
+                timerSection.style.display = 'none';
+            }
+            console.log('Timer hidden');
+        } catch (error) {
+            console.error('Error hiding timer:', error);
         }
     }
 

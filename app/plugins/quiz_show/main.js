@@ -2674,6 +2674,8 @@ class QuizShowPlugin {
         // Show leaderboard after question if configured
         if (this.config.leaderboardShowAfterQuestion) {
             setTimeout(async () => {
+                // Hide timer before showing leaderboard
+                this.api.emit('quiz-show:hide-timer');
                 await this.showLeaderboardAfterQuestion();
             }, (this.config.answerDisplayDuration || 5) * 1000); // Show after answer display duration
             // Check if there's data to show
@@ -2683,6 +2685,8 @@ class QuizShowPlugin {
         // Show leaderboard after round if configured (only if not showing after question, to avoid duplication)
         if (this.config.leaderboardShowAfterRound && !this.config.leaderboardShowAfterQuestion) {
             setTimeout(async () => {
+                // Hide timer before showing leaderboard
+                this.api.emit('quiz-show:hide-timer');
                 await this.showLeaderboardAfterRound();
             }, (this.config.answerDisplayDuration || 5) * 1000); // Show after answer display duration
             // Check if there's data to show
@@ -2702,9 +2706,10 @@ class QuizShowPlugin {
             const autoDelay = (this.config.autoModeDelay || 5) * 1000;
             
             // Add leaderboard display duration ONLY if configured to show AND there's data to display
+            // Fixed duration of 6 seconds for round leaderboard
             let leaderboardDisplayDuration = 0;
             if (willShowLeaderboard && (this.config.leaderboardShowAfterQuestion || this.config.leaderboardShowAfterRound)) {
-                leaderboardDisplayDuration = (this.config.leaderboardAutoHideDelay || 10) * 1000;
+                leaderboardDisplayDuration = 6000; // Fixed 6 seconds as per requirement
             }
             
             const totalDelay = answerDisplayDuration + leaderboardDisplayDuration + autoDelay;
@@ -2721,9 +2726,38 @@ class QuizShowPlugin {
         } else if (totalRoundsReached) {
             // Round limit reached - show final leaderboard and end game
             this.api.log(`Total rounds limit (${this.config.totalRounds}) reached - game ending`, 'info');
-            await this.showLeaderboardAtEnd();
-            const mvp = this.getMVPPlayer();
-            this.api.emit('quiz-show:quiz-ended', { mvp });
+            
+            // Show Match Leaderboard for 30 seconds, then Season Leaderboard for 30 seconds
+            setTimeout(async () => {
+                // Hide timer before showing leaderboards
+                this.api.emit('quiz-show:hide-timer');
+                await this.showMatchLeaderboard();
+            }, (this.config.answerDisplayDuration || 5) * 1000);
+            
+            setTimeout(async () => {
+                await this.showSeasonLeaderboard();
+            }, (this.config.answerDisplayDuration || 5) * 1000 + 30000); // After answer display + 30s match leaderboard
+            
+            // After both leaderboards (30s + 30s), either hide everything or start new round if auto-play is active
+            const totalLeaderboardDelay = (this.config.answerDisplayDuration || 5) * 1000 + 60000; // answer display + 60s (30s match + 30s season)
+            setTimeout(async () => {
+                this.api.emit('quiz-show:hide-leaderboard');
+                
+                // Check if auto-play with new round start is active
+                if (this.config.autoMode && this.config.autoRestartRound !== false) {
+                    const autoDelay = (this.config.autoModeDelay || 5) * 1000;
+                    setTimeout(() => {
+                        this.api.log('Auto mode: starting new round after game end', 'info');
+                        this.startRound().catch(err => {
+                            this.api.log('Error auto-starting next round after game end: ' + err.message, 'error');
+                        });
+                    }, autoDelay);
+                } else {
+                    // No auto-play, emit quiz ended event
+                    const mvp = this.getMVPPlayer();
+                    this.api.emit('quiz-show:quiz-ended', { mvp });
+                }
+            }, totalLeaderboardDelay);
         } else {
             this.api.log(`Auto mode not triggered: autoMode=${this.config.autoMode}`, 'debug');
         }
@@ -2808,12 +2842,10 @@ class QuizShowPlugin {
                     animationStyle
                 });
 
-                // Auto-hide leaderboard after configured delay
-                if (this.config.leaderboardAutoHideDelay > 0) {
-                    setTimeout(() => {
-                        this.api.emit('quiz-show:hide-leaderboard');
-                    }, this.config.leaderboardAutoHideDelay * 1000);
-                }
+                // Auto-hide leaderboard after FIXED 6 seconds (as per requirement)
+                setTimeout(() => {
+                    this.api.emit('quiz-show:hide-leaderboard');
+                }, 6000);
             } else {
                 // No data to display - emit hide immediately to prevent blocking
                 this.api.log('No leaderboard data available, skipping display', 'info');
@@ -2871,12 +2903,10 @@ class QuizShowPlugin {
                     context: 'after-question'
                 });
 
-                // Auto-hide leaderboard after configured delay
-                if (this.config.leaderboardAutoHideDelay > 0) {
-                    setTimeout(() => {
-                        this.api.emit('quiz-show:hide-leaderboard');
-                    }, this.config.leaderboardAutoHideDelay * 1000);
-                }
+                // Auto-hide leaderboard after FIXED 6 seconds (as per requirement)
+                setTimeout(() => {
+                    this.api.emit('quiz-show:hide-leaderboard');
+                }, 6000);
             } else {
                 // No data to display - emit hide immediately to prevent blocking
                 this.api.log('No leaderboard data available, skipping display', 'info');
@@ -2930,6 +2960,78 @@ class QuizShowPlugin {
             });
         } catch (error) {
             this.api.log('Error showing end game leaderboard: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * Show Match Leaderboard (current round/match results)
+     */
+    async showMatchLeaderboard() {
+        try {
+            const animationStyle = this.config.leaderboardAnimationStyle || 'fade';
+            
+            // Get round leaderboard (current question results)
+            const results = this.calculateResults();
+            const leaderboard = results.correctUsers.map((user, index) => ({
+                username: user.username,
+                points: index === 0 ? this.config.pointsFirstCorrect : this.config.pointsOtherCorrect,
+                rank: index + 1
+            }));
+
+            if (leaderboard && leaderboard.length > 0) {
+                // Emit match leaderboard display event
+                this.api.emit('quiz-show:show-leaderboard', {
+                    leaderboard,
+                    displayType: 'Match',
+                    animationStyle,
+                    context: 'end-game-match'
+                });
+                
+                this.api.log('Match leaderboard displayed for 30 seconds', 'info');
+            } else {
+                this.api.log('No match leaderboard data available', 'info');
+            }
+        } catch (error) {
+            this.api.log('Error showing match leaderboard: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * Show Season Leaderboard (overall season standings)
+     */
+    async showSeasonLeaderboard() {
+        try {
+            const animationStyle = this.config.leaderboardAnimationStyle || 'fade';
+            
+            // Get season leaderboard
+            const activeSeason = this.db.prepare('SELECT id FROM leaderboard_seasons WHERE is_active = 1').get();
+            if (activeSeason) {
+                const seasonLeaderboard = this.mainDb.prepare(
+                    'SELECT user_id, username, points FROM quiz_leaderboard_entries WHERE season_id = ? ORDER BY points DESC LIMIT 10'
+                ).all(activeSeason.id);
+                
+                const leaderboard = seasonLeaderboard.map((entry, index) => ({
+                    username: entry.username,
+                    points: entry.points,
+                    rank: index + 1
+                }));
+
+                if (leaderboard && leaderboard.length > 0) {
+                    // Emit season leaderboard display event
+                    this.api.emit('quiz-show:show-leaderboard', {
+                        leaderboard,
+                        displayType: 'Season',
+                        animationStyle,
+                        context: 'end-game-season'
+                    });
+                    
+                    this.api.log('Season leaderboard displayed for 30 seconds', 'info');
+                } else {
+                    this.api.log('No season leaderboard data available', 'info');
+                }
+            }
+        } catch (error) {
+            this.api.log('Error showing season leaderboard: ' + error.message, 'error');
         }
     }
 
