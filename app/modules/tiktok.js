@@ -954,7 +954,22 @@ class TikTokConnector extends EventEmitter {
             trackEarliestEventTime(data);
             
             const userData = this.extractUserData(data);
+            const eventData = {
+                uniqueId: userData.username,
+                username: userData.username,
+                nickname: userData.nickname,
+                userId: userData.userId,
+                profilePictureUrl: userData.profilePictureUrl,
+                teamMemberLevel: userData.teamMemberLevel,
+                isModerator: userData.isModerator,
+                isSubscriber: userData.isSubscriber,
+                timestamp: new Date().toISOString()
+            };
+
             this.logger.info(`👋 User joined: ${userData.username || userData.nickname}`);
+            
+            this.handleEvent('join', eventData);
+            this.db.logEvent('join', eventData.username, eventData);
         });
     }
 
@@ -1547,6 +1562,7 @@ class TikTokConnector extends EventEmitter {
             case 'follow':
             case 'share':
             case 'subscribe':
+            case 'join':
                 if (data.timestamp) {
                     const roundedTime = Math.floor(new Date(data.timestamp).getTime() / 1000);
                     components.push(roundedTime.toString());
