@@ -62,7 +62,11 @@ const CONFIG = {
     // Combo throttling to prevent extreme lag
     comboThrottleMinInterval: 100, // Minimum ms between combo triggers
     comboSkipRocketsThreshold: 5, // Skip rockets when combo >= this value
-    comboInstantExplodeThreshold: 8 // Instant explosions (no rockets) when combo >= this
+    comboInstantExplodeThreshold: 8, // Instant explosions (no rockets) when combo >= this
+    // Performance constants
+    IDEAL_FRAME_TIME: 16.67, // Ideal frame time for 60 FPS (1000ms / 60fps)
+    FPS_TIMING_TOLERANCE: 1, // Tolerance in ms for FPS throttling timing jitter
+    ALPHA_CULL_THRESHOLD: 0.01 // Alpha threshold below which particles are not rendered
 };
 
 // ============================================================================
@@ -234,7 +238,7 @@ class Particle {
         this.ay += this.gravity;
     }
     
-    update() {
+    update(deltaTime = 1.0) {
         // Handle despawn fade effect
         if (this.isDespawning) {
             const despawnDuration = CONFIG.despawnFadeDuration * 1000; // Convert to ms
@@ -250,28 +254,29 @@ class Particle {
             }
         }
         
-        // Apply air resistance
-        this.vx *= this.drag;
-        this.vy *= this.drag;
+        // Apply air resistance (frame-independent)
+        const dragFactor = Math.pow(this.drag, deltaTime);
+        this.vx *= dragFactor;
+        this.vy *= dragFactor;
         
-        // Update velocity
-        this.vx += this.ax;
-        this.vy += this.ay;
+        // Update velocity with deltaTime
+        this.vx += this.ax * deltaTime;
+        this.vy += this.ay * deltaTime;
         
-        // Update position
-        this.x += this.vx;
-        this.y += this.vy;
+        // Update position with deltaTime
+        this.x += this.vx * deltaTime;
+        this.y += this.vy * deltaTime;
         
         // Clear acceleration
         this.ax = 0;
         this.ay = 0;
         
-        // Update rotation
-        this.rotation += this.rotationSpeed;
+        // Update rotation with deltaTime
+        this.rotation += this.rotationSpeed * deltaTime;
         
-        // Update lifespan for explosion particles
+        // Update lifespan for explosion particles with deltaTime
         if (!this.isSeed && !this.isDespawning) {
-            this.lifespan -= this.decay;
+            this.lifespan -= this.decay * deltaTime;
             this.alpha = Math.max(0, this.lifespan / this.maxLifespan);
             
             // Add sparkle flicker effect
@@ -285,10 +290,11 @@ class Particle {
             this.trail.shift();
         }
         
-        // Fade trail points based on their age
+        // Fade trail points based on their age (frame-independent)
+        const trailFadeFactor = 1 - (CONFIG.trailFadeSpeed * deltaTime);
         for (let i = 0; i < this.trail.length; i++) {
             if (this.trail[i].alpha) {
-                this.trail[i].alpha *= (1 - CONFIG.trailFadeSpeed);
+                this.trail[i].alpha *= trailFadeFactor;
             }
         }
         
@@ -299,7 +305,7 @@ class Particle {
             size: this.size * 0.7
         });
         
-        this.age++;
+        this.age += deltaTime;
     }
     
     isDone() {
@@ -589,6 +595,13 @@ class Firework {
             baseParticles *= 0.7; // 70% particles for combo >= 5
         }
         
+        // Additional FPS-based reduction - reduce particles when FPS is low
+        if (this.engineFps < 30) {
+            baseParticles *= 0.5; // 50% reduction when FPS < 30
+        } else if (this.engineFps < 45) {
+            baseParticles *= 0.75; // 25% reduction when FPS < 45
+        }
+        
         const particleCount = Math.floor(baseParticles * this.intensity * tierMult * comboMult);
         
         // Get velocities from shape generator
@@ -683,7 +696,7 @@ class Firework {
         }
     }
     
-    update() {
+    update(deltaTime = 1.0) {
         // Handle instant explode mode
         if (this.shouldExplodeImmediately && !this.exploded) {
             this.explode();
@@ -694,7 +707,7 @@ class Firework {
         // Update rocket (if exists and not exploded)
         if (!this.exploded && this.rocket) {
             this.rocket.applyGravity();
-            this.rocket.update();
+            this.rocket.update(deltaTime);
             
             if (this.shouldExplode()) {
                 this.explode();
@@ -705,7 +718,7 @@ class Firework {
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
             p.applyGravity();
-            p.update();
+            p.update(deltaTime);
             
             // Check for secondary mini-burst (burst shape)
             if (p.willBurst && !p.hasBurst && performance.now() - p.burstTime >= p.burstDelay) {
@@ -748,7 +761,7 @@ class Firework {
         for (let i = this.secondaryExplosions.length - 1; i >= 0; i--) {
             const p = this.secondaryExplosions[i];
             p.applyGravity();
-            p.update();
+            p.update(deltaTime);
             
             if (p.isDone()) {
                 if (globalParticlePool) {
@@ -1510,6 +1523,7 @@ class FireworksEngine {
         this.particlePool = globalParticlePool;
         
         this.lastTime = performance.now();
+        this.lastRenderTime = performance.now(); // Track last actual render time for FPS limiting
         this.frameCount = 0;
         this.fps = 0;
         this.fpsUpdateTime = performance.now();
@@ -2093,8 +2107,22 @@ class FireworksEngine {
         if (!this.running) return;
 
         const now = performance.now();
-        const deltaTime = Math.min((now - this.lastTime) / 16.67, 3);
+        
+        // FPS Throttling: Calculate target frame time based on targetFps
+        const targetFps = this.config.targetFps || CONFIG.targetFps;
+        const targetFrameTime = 1000 / targetFps; // ms per frame
+        const timeSinceLastRender = now - this.lastRenderTime;
+        
+        // Skip this frame if we're rendering too fast (with tolerance for timing jitter)
+        if (timeSinceLastRender < targetFrameTime - CONFIG.FPS_TIMING_TOLERANCE) {
+            requestAnimationFrame(() => this.render());
+            return;
+        }
+        
+        // Calculate deltaTime for frame-independent physics (capped at 3x normal for extreme lag)
+        const deltaTime = Math.min((now - this.lastTime) / CONFIG.IDEAL_FRAME_TIME, 3);
         this.lastTime = now;
+        this.lastRenderTime = now;
 
         // Clear with configurable background for trail effect
         const bgColor = this.config.backgroundColor || CONFIG.backgroundColor;
@@ -2102,9 +2130,9 @@ class FireworksEngine {
         this.ctx.fillStyle = bgColor;
         this.ctx.fillRect(0, 0, this.width, this.height);
 
-        // Update and render all fireworks
+        // Update and render all fireworks with deltaTime for frame-independent physics
         for (let i = this.fireworks.length - 1; i >= 0; i--) {
-            this.fireworks[i].update();
+            this.fireworks[i].update(deltaTime);
             this.renderFirework(this.fireworks[i]);
             
             if (this.fireworks[i].isDone()) {
@@ -2386,6 +2414,9 @@ class FireworksEngine {
     }
     
     isParticleVisible(p) {
+        // Alpha culling - skip nearly invisible particles
+        if (p.alpha < CONFIG.ALPHA_CULL_THRESHOLD) return false;
+        
         // Viewport Culling - skip particles outside viewport with margin
         const margin = 100;
         return !(p.x < -margin || p.x > this.width + margin || p.y < -margin || p.y > this.height + margin);
