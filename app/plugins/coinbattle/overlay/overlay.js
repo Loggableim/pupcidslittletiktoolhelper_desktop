@@ -251,7 +251,7 @@
     const redImageEl = document.getElementById('team-red-image');
     const blueImageEl = document.getElementById('team-blue-image');
     
-    if (currentState.teamNames) {
+    if (currentState.teamNames && redNameEl && blueNameEl && redImageEl && blueImageEl) {
       redNameEl.textContent = currentState.teamNames.red.name || 'RED TEAM';
       blueNameEl.textContent = currentState.teamNames.blue.name || 'BLUE TEAM';
       
@@ -690,12 +690,35 @@
     // Update King (1st place)
     if (leaderboard.length > 0) {
       const king = leaderboard[0];
-      kingContainer.innerHTML = `
-        <div class="koth-king-crown">👑</div>
-        ${king.profile_picture_url ? `<img class="koth-king-avatar" src="${king.profile_picture_url}" alt="${king.nickname}" onerror="this.style.display='none';">` : ''}
-        <div class="koth-king-name">${king.nickname || king.unique_id}</div>
-        <div class="koth-king-coins">${(king.coins || 0).toLocaleString()} 🪙</div>
-      `;
+      kingContainer.innerHTML = ''; // Clear existing content
+      
+      // Crown icon
+      const crownDiv = document.createElement('div');
+      crownDiv.className = 'koth-king-crown';
+      crownDiv.textContent = '👑';
+      kingContainer.appendChild(crownDiv);
+      
+      // Avatar (if available)
+      if (king.profile_picture_url) {
+        const avatar = document.createElement('img');
+        avatar.className = 'koth-king-avatar';
+        avatar.src = king.profile_picture_url;
+        avatar.alt = king.nickname || king.unique_id || 'King';
+        avatar.onerror = () => { avatar.style.display = 'none'; };
+        kingContainer.appendChild(avatar);
+      }
+      
+      // Name (escaped via textContent)
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'koth-king-name';
+      nameDiv.textContent = king.nickname || king.unique_id || 'Unknown';
+      kingContainer.appendChild(nameDiv);
+      
+      // Coins
+      const coinsDiv = document.createElement('div');
+      coinsDiv.className = 'koth-king-coins';
+      coinsDiv.textContent = `${(king.coins || 0).toLocaleString()} 🪙`;
+      kingContainer.appendChild(coinsDiv);
     }
     
     // Update Challengers (2nd, 3rd, 4th place)
@@ -704,14 +727,40 @@
       const challenger = leaderboard[i];
       const challengerEl = document.createElement('div');
       challengerEl.className = 'koth-challenger';
-      challengerEl.innerHTML = `
-        <div class="koth-challenger-rank">#${i + 1}</div>
-        ${challenger.profile_picture_url ? `<img class="koth-challenger-avatar" src="${challenger.profile_picture_url}" alt="${challenger.nickname}" onerror="this.style.display='none';">` : ''}
-        <div class="koth-challenger-info">
-          <div class="koth-challenger-name">${challenger.nickname || challenger.unique_id}</div>
-          <div class="koth-challenger-coins">${(challenger.coins || 0).toLocaleString()} 🪙</div>
-        </div>
-      `;
+      
+      // Rank badge
+      const rankDiv = document.createElement('div');
+      rankDiv.className = 'koth-challenger-rank';
+      rankDiv.textContent = `#${i + 1}`;
+      challengerEl.appendChild(rankDiv);
+      
+      // Avatar (if available)
+      if (challenger.profile_picture_url) {
+        const avatar = document.createElement('img');
+        avatar.className = 'koth-challenger-avatar';
+        avatar.src = challenger.profile_picture_url;
+        avatar.alt = challenger.nickname || challenger.unique_id || 'Challenger';
+        avatar.onerror = () => { avatar.style.display = 'none'; };
+        challengerEl.appendChild(avatar);
+      }
+      
+      // Info container
+      const infoDiv = document.createElement('div');
+      infoDiv.className = 'koth-challenger-info';
+      
+      // Name (escaped via textContent)
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'koth-challenger-name';
+      nameDiv.textContent = challenger.nickname || challenger.unique_id || 'Unknown';
+      infoDiv.appendChild(nameDiv);
+      
+      // Coins
+      const coinsDiv = document.createElement('div');
+      coinsDiv.className = 'koth-challenger-coins';
+      coinsDiv.textContent = `${(challenger.coins || 0).toLocaleString()} 🪙`;
+      infoDiv.appendChild(coinsDiv);
+      
+      challengerEl.appendChild(infoDiv);
       challengersContainer.appendChild(challengerEl);
     }
   }

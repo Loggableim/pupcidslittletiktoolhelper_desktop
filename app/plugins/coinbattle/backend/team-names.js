@@ -37,7 +37,12 @@ class TeamNamesManager {
     try {
       this.db.prepare(`ALTER TABLE coinbattle_team_names ADD COLUMN image_url TEXT`).run();
     } catch (error) {
-      // Column already exists, ignore
+      // Column already exists - expected on subsequent runs
+      // Only ignore duplicate column errors
+      if (!error.message.includes('duplicate column name')) {
+        this.logger.error(`Failed to add image_url column: ${error.message}`);
+        throw error;
+      }
     }
     
     // Load current team names
