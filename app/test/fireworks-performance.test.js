@@ -39,8 +39,8 @@ describe('Fireworks Performance Optimizations', () => {
             const fs = require('fs');
             const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
             
-            // Verify deltaTime is calculated
-            expect(engineCode).toContain('deltaTime = Math.min((now - this.lastTime) / 16.67, 3)');
+            // Verify deltaTime is calculated using IDEAL_FRAME_TIME constant
+            expect(engineCode).toContain('deltaTime = Math.min((now - this.lastTime) / CONFIG.IDEAL_FRAME_TIME, 3)');
             
             // Verify deltaTime is passed to firework update
             expect(engineCode).toContain('.update(deltaTime)');
@@ -50,8 +50,8 @@ describe('Fireworks Performance Optimizations', () => {
             const fs = require('fs');
             const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
             
-            // Find Particle class update method
-            expect(engineCode).toMatch(/update\(deltaTime = 1\.0\)/);
+            // Find Particle class update method - use string contains for clarity
+            expect(engineCode).toContain('update(deltaTime = 1.0)');
         });
 
         test('should apply deltaTime to physics calculations', () => {
@@ -120,13 +120,40 @@ describe('Fireworks Performance Optimizations', () => {
     });
 
     describe('Rendering Optimizations', () => {
-        test('should cull nearly invisible particles (alpha < 0.01)', () => {
+        test('should cull nearly invisible particles using ALPHA_CULL_THRESHOLD', () => {
             const fs = require('fs');
             const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
             
-            // Verify alpha culling
+            // Verify alpha culling with constant
             expect(engineCode).toContain('Alpha culling');
-            expect(engineCode).toContain('if (p.alpha < 0.01) return false');
+            expect(engineCode).toContain('ALPHA_CULL_THRESHOLD');
+            expect(engineCode).toContain('if (p.alpha < CONFIG.ALPHA_CULL_THRESHOLD) return false');
+        });
+
+        test('should define performance constants', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify performance constants are defined
+            expect(engineCode).toContain('IDEAL_FRAME_TIME: 16.67');
+            expect(engineCode).toContain('FPS_TIMING_TOLERANCE: 1');
+            expect(engineCode).toContain('ALPHA_CULL_THRESHOLD: 0.01');
+        });
+
+        test('should use IDEAL_FRAME_TIME constant for deltaTime calculation', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify IDEAL_FRAME_TIME is used in deltaTime calculation
+            expect(engineCode).toContain('(now - this.lastTime) / CONFIG.IDEAL_FRAME_TIME');
+        });
+
+        test('should use FPS_TIMING_TOLERANCE for frame skipping', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify FPS_TIMING_TOLERANCE is used
+            expect(engineCode).toContain('CONFIG.FPS_TIMING_TOLERANCE');
         });
 
         test('should have viewport culling', () => {

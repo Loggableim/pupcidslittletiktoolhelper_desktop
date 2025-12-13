@@ -62,7 +62,11 @@ const CONFIG = {
     // Combo throttling to prevent extreme lag
     comboThrottleMinInterval: 100, // Minimum ms between combo triggers
     comboSkipRocketsThreshold: 5, // Skip rockets when combo >= this value
-    comboInstantExplodeThreshold: 8 // Instant explosions (no rockets) when combo >= this
+    comboInstantExplodeThreshold: 8, // Instant explosions (no rockets) when combo >= this
+    // Performance constants
+    IDEAL_FRAME_TIME: 16.67, // Ideal frame time for 60 FPS (1000ms / 60fps)
+    FPS_TIMING_TOLERANCE: 1, // Tolerance in ms for FPS throttling timing jitter
+    ALPHA_CULL_THRESHOLD: 0.01 // Alpha threshold below which particles are not rendered
 };
 
 // ============================================================================
@@ -2109,14 +2113,14 @@ class FireworksEngine {
         const targetFrameTime = 1000 / targetFps; // ms per frame
         const timeSinceLastRender = now - this.lastRenderTime;
         
-        // Skip this frame if we're rendering too fast
-        if (timeSinceLastRender < targetFrameTime - 1) { // -1ms tolerance for timing jitter
+        // Skip this frame if we're rendering too fast (with tolerance for timing jitter)
+        if (timeSinceLastRender < targetFrameTime - CONFIG.FPS_TIMING_TOLERANCE) {
             requestAnimationFrame(() => this.render());
             return;
         }
         
         // Calculate deltaTime for frame-independent physics (capped at 3x normal for extreme lag)
-        const deltaTime = Math.min((now - this.lastTime) / 16.67, 3);
+        const deltaTime = Math.min((now - this.lastTime) / CONFIG.IDEAL_FRAME_TIME, 3);
         this.lastTime = now;
         this.lastRenderTime = now;
 
@@ -2411,7 +2415,7 @@ class FireworksEngine {
     
     isParticleVisible(p) {
         // Alpha culling - skip nearly invisible particles
-        if (p.alpha < 0.01) return false;
+        if (p.alpha < CONFIG.ALPHA_CULL_THRESHOLD) return false;
         
         // Viewport Culling - skip particles outside viewport with margin
         const margin = 100;
