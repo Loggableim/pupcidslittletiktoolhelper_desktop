@@ -75,9 +75,27 @@ describe('Quiz Show Overlay - Display Improvements', () => {
             expect(questionIntroMatch).toBeTruthy();
         });
 
-        test('JavaScript should hide timer on TIME_UP', () => {
+        test('JavaScript should turn timer red at TIME_UP', () => {
+            expect(overlayCode).toContain("timerSectionTimeUp.classList.add('timer-at-zero')");
+        });
+
+        test('JavaScript should fade out timer after turning red', () => {
+            expect(overlayCode).toContain("timerSectionTimeUp.classList.add('timer-fade-out')");
+        });
+
+        test('JavaScript should hide timer after fade-out completes', () => {
             const timeUpMatch = overlayCode.match(/case States\.TIME_UP:[\s\S]*?timerSection\.style\.display = 'none'/);
             expect(timeUpMatch).toBeTruthy();
+        });
+
+        test('CSS should have timer-at-zero class for red styling', () => {
+            expect(cssCode).toContain('.timer-section.timer-at-zero');
+            expect(cssCode).toContain('var(--color-danger)');
+        });
+
+        test('CSS should have timer-fade-out animation', () => {
+            expect(cssCode).toContain('.timer-section.timer-fade-out');
+            expect(cssCode).toContain('@keyframes timerFadeOut');
         });
     });
 
