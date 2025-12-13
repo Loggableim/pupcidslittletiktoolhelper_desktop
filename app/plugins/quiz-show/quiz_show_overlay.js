@@ -1015,7 +1015,6 @@
                     card.classList.remove(wrongAnimClass);
                 }, 500 / hudConfig.animationSpeed);
             }
-            }
         });
     }
 
