@@ -320,10 +320,6 @@ class InteractiveStoryPlugin {
   /**
    * Generate TTS for a chapter if auto-TTS is enabled
    * @param {Object} chapter - Chapter object with title and content
-   */
-  /**
-   * Generate TTS for a chapter if auto-TTS is enabled
-   * @param {Object} chapter - Chapter object with title and content
    * @returns {Promise<void>}
    */
   async _generateChapterTTS(chapter) {

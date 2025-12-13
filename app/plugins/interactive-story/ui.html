@@ -886,7 +886,8 @@
               html += `<br><strong>Diagnostics:</strong><br>`;
               html += `Provider: ${result.provider || 'Unknown'}<br>`;
               html += `API Key Length: ${result.details.keyLength} characters`;
-              if (result.details.keyLength !== 64 && result.provider !== 'OpenAI') {
+              // Only show expected length warning for SiliconFlow (OpenAI keys vary in length)
+              if (result.details.keyLength !== 64 && result.provider && result.provider.toLowerCase() !== 'openai') {
                 html += ` <span style="color: #ffc107;">⚠️ Expected: ~64 characters</span>`;
               }
               html += `<br>Prefix: ${result.details.keyPrefix}<br>`;
