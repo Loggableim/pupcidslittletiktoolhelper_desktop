@@ -290,8 +290,7 @@ class InteractiveStoryPlugin {
             this.ttsService = new TTSService(apiKey, this.logger, this.audioCacheDir);
             this.storyEngine = new StoryEngine(this.llmService, this.logger);
             this._debugLog('info', '✅ SiliconFlow services initialized from database API key', { 
-              apiKeyLength: apiKey.length,
-              apiKeyPrefix: apiKey.substring(0, 6) + '...'
+              apiKeyConfigured: true
             });
           }
         }
