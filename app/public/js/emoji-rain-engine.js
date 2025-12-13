@@ -136,6 +136,12 @@ let fpsHistory = [];
 const FPS_HISTORY_SIZE = 60;
 const COLOR_UPDATE_THROTTLE_MS = 100; // Throttle non-rainbow color updates for performance
 
+// Freeze detection and failsafe
+let freezeDetectionEnabled = true; // Can be disabled for debugging
+let frozenFrameCount = 0; // Count consecutive frames with 0 FPS
+const MAX_FROZEN_FRAMES = 3; // Reload after 3 consecutive seconds of 0 FPS
+let freezeWarningShown = false;
+
 // Rate limiting for spawn events to prevent overwhelming the system
 let spawnQueue = [];
 let lastSpawnTime = 0;
@@ -642,6 +648,38 @@ function updateLoop(currentTime) {
             fpsHistory = fpsHistory.slice(-FPS_HISTORY_SIZE);
         }
         
+        // Freeze detection failsafe
+        if (freezeDetectionEnabled) {
+            if (currentFPS === 0) {
+                frozenFrameCount++;
+                
+                // Show warning after first frozen frame
+                if (frozenFrameCount === 1 && !freezeWarningShown) {
+                    console.warn('[Emoji Rain] ⚠️ FPS dropped to 0, monitoring for freeze...');
+                    freezeWarningShown = true;
+                }
+                
+                // Auto-reload after sustained freeze
+                if (frozenFrameCount >= MAX_FROZEN_FRAMES) {
+                    console.error('[Emoji Rain] 🔄 FPS frozen for ' + MAX_FROZEN_FRAMES + ' seconds, auto-reloading overlay to recover...');
+                    // Show visual warning before reload
+                    showFreezeWarning();
+                    // Reload after 2 seconds to allow warning to be visible
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                    return; // Stop processing this frame
+                }
+            } else {
+                // FPS recovered, reset freeze counter
+                if (frozenFrameCount > 0) {
+                    console.log('[Emoji Rain] ✅ FPS recovered (was frozen for ' + frozenFrameCount + 's)');
+                }
+                frozenFrameCount = 0;
+                freezeWarningShown = false;
+            }
+        }
+        
         // Check if FPS optimization is needed
         if (config.fps_optimization_enabled) {
             checkAndOptimizeFPS();
@@ -779,6 +817,36 @@ function checkAndOptimizeFPS() {
         // Reload config to restore settings
         loadConfig();
     }
+}
+
+/**
+ * Show freeze warning overlay before auto-reload
+ */
+function showFreezeWarning() {
+    // Create a visual warning overlay
+    const warning = document.createElement('div');
+    warning.id = 'freeze-warning';
+    warning.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255, 0, 0, 0.9);
+        color: white;
+        padding: 30px 50px;
+        border-radius: 15px;
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        z-index: 10000;
+        border: 3px solid white;
+        box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+    `;
+    warning.innerHTML = `
+        <div>⚠️ OVERLAY FROZEN ⚠️</div>
+        <div style="font-size: 18px; margin-top: 10px;">Auto-reloading in 2 seconds...</div>
+    `;
+    document.body.appendChild(warning);
 }
 
 /**
