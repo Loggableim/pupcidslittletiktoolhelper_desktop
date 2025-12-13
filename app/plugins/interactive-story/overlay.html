@@ -610,8 +610,8 @@
         // Prepare content for Star Wars scroll
         const contentEl = document.getElementById('chapterContent');
         contentEl.classList.add('scroll-mode');
-        // Clear content safely using modern API
-        contentEl.replaceChildren();
+        // Clear content safely (compatible with all browsers)
+        contentEl.textContent = '';
         
         // Show text overlay
         document.getElementById('textOverlay').classList.add('visible');

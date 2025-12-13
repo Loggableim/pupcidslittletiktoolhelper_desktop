@@ -49,6 +49,7 @@ class InteractiveStoryPlugin {
     this.isGenerating = false;
     this.ttsPaused = false;
     this.finalChapterEndTimer = null; // Timer for auto-ending after final chapter
+    this.finalChapterEndPending = false; // Flag to prevent race conditions
     
     // Configuration constants
     this.FINAL_CHAPTER_DELAY_MS = 5000; // Delay before auto-ending session after final chapter
@@ -932,9 +933,10 @@ class InteractiveStoryPlugin {
         
         // No voting for final chapter - story is complete
         // Automatically end the session after a delay
-        const timerId = setTimeout(() => {
-          // Check if this timer is still the active one (not cleared externally)
-          if (this.finalChapterEndTimer === timerId) {
+        this.finalChapterEndPending = true;
+        this.finalChapterEndTimer = setTimeout(() => {
+          // Check if end is still pending (not cancelled externally)
+          if (this.finalChapterEndPending) {
             try {
               if (this.currentSession) {
                 this.db.updateSessionStatus(this.currentSession.id, 'completed');
@@ -945,11 +947,10 @@ class InteractiveStoryPlugin {
               this.logger.error(`Error in final chapter auto-end: ${error.message}`);
             } finally {
               this.finalChapterEndTimer = null;
+              this.finalChapterEndPending = false;
             }
           }
         }, this.FINAL_CHAPTER_DELAY_MS);
-        
-        this.finalChapterEndTimer = timerId;
 
         res.json({ success: true, chapter: finalChapter, isFinal: true });
       } catch (error) {
@@ -967,6 +968,7 @@ class InteractiveStoryPlugin {
           clearTimeout(this.finalChapterEndTimer);
           this.finalChapterEndTimer = null;
         }
+        this.finalChapterEndPending = false;
         
         if (this.currentSession) {
           this.db.updateSessionStatus(this.currentSession.id, 'completed');
