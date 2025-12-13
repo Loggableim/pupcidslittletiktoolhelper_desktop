@@ -558,12 +558,24 @@
 
             case States.TIME_UP:
                 stopTimer();
+                // Explicitly update timer to 0 to ensure visual consistency across all timer variants
+                updateTimerDisplay(0, gameData.totalTime);
                 animateTimeUp();
-                // Hide timer explicitly when time is up for immediate visual feedback
-                // (also hidden later in WAIT_NEXT via hideQuizSections, but this ensures immediate hiding)
+                // Turn timer completely red at 0
                 const timerSectionTimeUp = document.getElementById('timerSection');
                 if (timerSectionTimeUp) {
-                    timerSectionTimeUp.style.display = 'none';
+                    timerSectionTimeUp.classList.add('timer-at-zero');
+                    
+                    // After brief pause, fade out the timer
+                    setTimeout(() => {
+                        timerSectionTimeUp.classList.add('timer-fade-out');
+                        
+                        // Hide timer after fade-out completes
+                        setTimeout(() => {
+                            timerSectionTimeUp.style.display = 'none';
+                            timerSectionTimeUp.classList.remove('timer-at-zero', 'timer-fade-out');
+                        }, 500 / hudConfig.animationSpeed);
+                    }, 300 / hudConfig.animationSpeed);
                 }
                 stateTimeout = setTimeout(() => {
                     transitionToState(States.REVEAL_CORRECT);
