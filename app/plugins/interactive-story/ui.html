@@ -1031,20 +1031,23 @@
 
     async function loadThemes() {
       try {
-        const response = await fetch('/api/interactive-story/themes');
-        const themes = await response.json();
+        // Load 5 random themes (including 2 furry themes)
+        const response = await fetch('/api/interactive-story/random-themes?count=5');
+        const data = await response.json();
+        const themes = data.themes;
         
         const themeSelector = document.getElementById('themeSelector');
         themeSelector.innerHTML = '';
         
-        for (const [key, theme] of Object.entries(themes)) {
+        for (const theme of themes) {
           const col = document.createElement('div');
           col.className = 'col-md-4 mb-3';
+          const furryBadge = theme.furry ? '<span class="badge bg-primary ms-2">🐾 Furry</span>' : '';
           col.innerHTML = `
-            <div class="card theme-card" data-theme="${key}">
+            <div class="card theme-card" data-theme="${theme.id}">
               <div class="card-body text-center">
-                <h6>${theme.name}</h6>
-                <small class="text-muted">${theme.tone}</small>
+                <h6>${theme.name}${furryBadge}</h6>
+                <small class="text-muted">${theme.description}</small>
               </div>
             </div>
           `;

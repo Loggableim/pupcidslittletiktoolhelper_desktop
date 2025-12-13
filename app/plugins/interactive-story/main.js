@@ -603,14 +603,31 @@ class InteractiveStoryPlugin {
         const config = this._loadConfig();
         if (config.autoGenerateImages && this.imageService) {
           try {
-            const style = this.imageService.getStyleForTheme(theme);
+            const imageModel = config.imageProvider === 'openai' ? config.openaiImageModel : config.defaultImageModel;
+            const style = this.imageService.getStyleForTheme ? this.imageService.getStyleForTheme(theme) : '';
             const imagePrompt = `${firstChapter.title}: ${firstChapter.content.substring(0, 200)}`;
-            firstChapter.imagePath = await this.imageService.generateImage(imagePrompt, config.defaultImageModel, style);
+            
+            this._debugLog('info', `🖼️ Starting image generation`, { 
+              provider: config.imageProvider,
+              model: imageModel,
+              promptLength: imagePrompt.length,
+              theme
+            });
+            
+            firstChapter.imagePath = await this.imageService.generateImage(imagePrompt, imageModel, style);
+            
+            this._debugLog('info', `✅ Image generated successfully`, { 
+              imagePath: firstChapter.imagePath,
+              model: imageModel
+            });
           } catch (imageError) {
-            this._debugLog('warn', `⚠️ Image generation failed, continuing without image`, { 
+            this._debugLog('error', `❌ Image generation failed`, { 
               error: imageError.message,
+              stack: imageError.stack,
               statusCode: imageError.response?.status,
-              responseData: imageError.response?.data
+              responseData: imageError.response?.data,
+              provider: config.imageProvider,
+              model: config.imageProvider === 'openai' ? config.openaiImageModel : config.defaultImageModel
             });
             firstChapter.imagePath = null;
             this.io.emit('story:image-generation-failed', { 
@@ -685,14 +702,30 @@ class InteractiveStoryPlugin {
         // Generate image
         if (config.autoGenerateImages && this.imageService) {
           try {
-            const style = this.imageService.getStyleForTheme(this.currentSession.theme);
+            const imageModel = config.imageProvider === 'openai' ? config.openaiImageModel : config.defaultImageModel;
+            const style = this.imageService.getStyleForTheme ? this.imageService.getStyleForTheme(this.currentSession.theme) : '';
             const imagePrompt = `${nextChapter.title}: ${nextChapter.content.substring(0, 200)}`;
-            nextChapter.imagePath = await this.imageService.generateImage(imagePrompt, config.defaultImageModel, style);
+            
+            this._debugLog('info', `🖼️ Starting image generation for chapter ${chapterNumber}`, { 
+              provider: config.imageProvider,
+              model: imageModel,
+              promptLength: imagePrompt.length
+            });
+            
+            nextChapter.imagePath = await this.imageService.generateImage(imagePrompt, imageModel, style);
+            
+            this._debugLog('info', `✅ Image generated successfully for chapter ${chapterNumber}`, { 
+              imagePath: nextChapter.imagePath,
+              model: imageModel
+            });
           } catch (imageError) {
-            this._debugLog('warn', `⚠️ Image generation failed, continuing without image`, { 
+            this._debugLog('error', `❌ Image generation failed for chapter ${chapterNumber}`, { 
               error: imageError.message,
+              stack: imageError.stack,
               statusCode: imageError.response?.status,
-              responseData: imageError.response?.data
+              responseData: imageError.response?.data,
+              provider: config.imageProvider,
+              model: config.imageProvider === 'openai' ? config.openaiImageModel : config.defaultImageModel
             });
             nextChapter.imagePath = null;
             this.io.emit('story:image-generation-failed', { 
@@ -754,6 +787,27 @@ class InteractiveStoryPlugin {
         res.json({ success: true });
       } catch (error) {
         this.logger.error(`Error ending story: ${error.message}`);
+        res.status(500).json({ error: error.message });
+      }
+    });
+
+    // Get random themes for selection
+    this.api.registerRoute('get', '/api/interactive-story/random-themes', (req, res) => {
+      try {
+        if (!this.storyEngine) {
+          return res.status(503).json({ error: 'Story engine not initialized' });
+        }
+        
+        const count = parseInt(req.query.count) || 5;
+        const themes = this.storyEngine.getRandomThemes(count);
+        
+        this._debugLog('info', `🎲 Generated ${themes.length} random themes`, {
+          themes: themes.map(t => t.name)
+        });
+        
+        res.json({ themes });
+      } catch (error) {
+        this.logger.error(`Error getting random themes: ${error.message}`);
         res.status(500).json({ error: error.message });
       }
     });
