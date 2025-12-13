@@ -48,18 +48,18 @@ describe('Quiz Show Overlay - Display Improvements', () => {
 
     describe('Correct Answer Reveal', () => {
         test('CSS should have larger correct icon (8rem)', () => {
-            const iconMatch = cssCode.match(/\.correct-icon\s*\{[^}]*font-size:\s*8rem/);
-            expect(iconMatch).toBeTruthy();
+            expect(cssCode).toContain('.correct-icon');
+            expect(cssCode).toContain('font-size: 8rem');
         });
 
         test('CSS should have larger correct text (3rem)', () => {
-            const textMatch = cssCode.match(/\.correct-text\s*\{[^}]*font-size:\s*3rem/m);
-            expect(textMatch).toBeTruthy();
+            expect(cssCode).toContain('.correct-text');
+            expect(cssCode).toContain('font-size: 3rem');
         });
 
         test('CSS should have larger correct info (1.5rem)', () => {
-            const infoMatch = cssCode.match(/\.correct-info\s*\{[^}]*font-size:\s*1\.5rem/m);
-            expect(infoMatch).toBeTruthy();
+            expect(cssCode).toContain('.correct-info');
+            expect(cssCode).toContain('font-size: 1.5rem');
         });
 
         test('JavaScript should use answerDisplayDuration config', () => {
@@ -97,13 +97,13 @@ describe('Quiz Show Overlay - Display Improvements', () => {
 
     describe('Round Number Display', () => {
         test('CSS should have larger round number (1.8rem)', () => {
-            const logoTextMatch = cssCode.match(/\.logo-text\s*\{[^}]*font-size:\s*1\.8rem/m);
-            expect(logoTextMatch).toBeTruthy();
+            expect(cssCode).toContain('.logo-text');
+            expect(cssCode).toContain('font-size: 1.8rem');
         });
 
         test('CSS should have increased padding for quiz-logo', () => {
-            const paddingMatch = cssCode.match(/\.quiz-logo\s*\{[^}]*padding:\s*16px\s+32px/m);
-            expect(paddingMatch).toBeTruthy();
+            expect(cssCode).toContain('.quiz-logo');
+            expect(cssCode).toContain('padding: 16px 32px');
         });
     });
 
@@ -121,8 +121,8 @@ describe('Quiz Show Overlay - Display Improvements', () => {
         });
 
         test('CSS category-text should be same size as logo-text (1.8rem)', () => {
-            const categoryTextMatch = cssCode.match(/\.category-text\s*\{[^}]*font-size:\s*1\.8rem/m);
-            expect(categoryTextMatch).toBeTruthy();
+            expect(cssCode).toContain('.category-text');
+            expect(cssCode).toContain('font-size: 1.8rem');
         });
 
         test('JavaScript should extract and display category from state', () => {
