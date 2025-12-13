@@ -696,24 +696,28 @@
         "required": "Requis",
         "optional": "Optionnel",
         "tiktok": {
-          "title": "Session TikTok",
+          "title": "eulerstream",
           "description": "Requis pour la connexion TikTok LIVE",
-          "link": "Comment obtenir l'ID de session"
+          "link": "Comment obtenir l'ID de session",
+          "url": "https://eulerstream.com/"
         },
         "openai": {
           "title": "Clé API OpenAI",
           "description": "Optionnel pour les fonctionnalités TTS et IA avancées",
-          "link": "Obtenir une clé API"
+          "link": "Obtenir une clé API",
+          "url": "https://platform.openai.com/api-keys"
         },
         "elevenlabs": {
           "title": "Clé API ElevenLabs",
           "description": "Optionnel pour des voix TTS de haute qualité",
-          "link": "Obtenir une clé API"
+          "link": "Obtenir une clé API",
+          "url": "https://elevenlabs.io/app/settings/api-keys"
         },
         "obs": {
           "title": "OBS WebSocket",
           "description": "Optionnel pour l'intégration OBS",
-          "link": "Guide de configuration"
+          "link": "Guide de configuration",
+          "url": "https://obsproject.com/kb/remote-control-guide"
         }
       }
     },
@@ -778,7 +782,9 @@
     },
     "options": {
       "keep_launcher_open": "Garder le lanceur ouvert après le démarrage",
-      "keep_launcher_hint": "Lorsqu'activé, le tableau de bord s'ouvre dans un nouvel onglet/fenêtre"
+      "keep_launcher_hint": "Lorsqu'activé, le tableau de bord s'ouvre dans un nouvel onglet/fenêtre",
+      "use_default_browser": "Démarrer l'application dans le navigateur par défaut",
+      "use_default_browser_hint": "Lorsque désactivé, une fenêtre Edge minimale est utilisée"
     },
     "status": {
       "initializing": "Initialisation...",

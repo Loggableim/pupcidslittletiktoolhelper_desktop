@@ -25,17 +25,18 @@ const (
 )
 
 type Launcher struct {
-	nodePath       string
-	appDir         string
-	progress       int
-	status         string
-	clients        map[chan string]bool
-	logFile        *os.File
-	logger         *log.Logger
-	envFileFixed   bool
-	serverCmd      *exec.Cmd
-	serverLogs     []string
-	loggingEnabled bool
+	nodePath           string
+	appDir             string
+	progress           int
+	status             string
+	clients            map[chan string]bool
+	logFile            *os.File
+	logger             *log.Logger
+	envFileFixed       bool
+	serverCmd          *exec.Cmd
+	serverLogs         []string
+	loggingEnabled     bool
+	useDefaultBrowser  bool
 }
 
 type Language struct {
@@ -149,8 +150,8 @@ func (l *Launcher) updateProgress(value int, status string) {
 	}
 }
 
-func (l *Launcher) sendRedirect(keepOpen bool) {
-	msg := fmt.Sprintf(`{"redirect": "http://localhost:3000/dashboard.html", "keepOpen": %t}`, keepOpen)
+func (l *Launcher) sendRedirect(keepOpen bool, useDefaultBrowser bool) {
+	msg := fmt.Sprintf(`{"redirect": "http://localhost:3000/dashboard.html", "keepOpen": %t, "useDefaultBrowser": %t}`, keepOpen, useDefaultBrowser)
 	for client := range l.clients {
 		select {
 		case client <- msg:
@@ -425,8 +426,11 @@ func (l *Launcher) setActiveProfile(profileName string) error {
 	return fmt.Errorf("failed to set profile after %d retries", maxRetries)
 }
 
-func (l *Launcher) runLauncher(keepOpen bool, profileName string) {
+func (l *Launcher) runLauncher(keepOpen bool, profileName string, useDefaultBrowser bool) {
 	time.Sleep(1 * time.Second)
+	
+	// Store the browser preference
+	l.useDefaultBrowser = useDefaultBrowser
 
 	l.updateProgress(0, "Checking Node.js installation...")
 	l.logAndSync("[Phase 1] Checking Node.js installation...")
@@ -541,7 +545,7 @@ func (l *Launcher) runLauncher(keepOpen bool, profileName string) {
 	
 	l.updateProgress(100, "Redirecting to dashboard...")
 	time.Sleep(500 * time.Millisecond)
-	l.sendRedirect(keepOpen)
+	l.sendRedirect(keepOpen, useDefaultBrowser)
 
 	if !keepOpen {
 		time.Sleep(3 * time.Second)
@@ -612,6 +616,48 @@ func parseChangelogToHTML(markdown string) string {
 	}
 	
 	return html.String()
+}
+
+// openMinimalBrowser opens a URL in a minimal, frameless Edge browser window
+func openMinimalBrowser(url string) error {
+	var cmd *exec.Cmd
+	
+	if runtime.GOOS == "windows" {
+		// Try to find Edge
+		edgePaths := []string{
+			"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+			"C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+		}
+		
+		var edgePath string
+		for _, path := range edgePaths {
+			if _, err := os.Stat(path); err == nil {
+				edgePath = path
+				break
+			}
+		}
+		
+		if edgePath != "" {
+			// Launch Edge in app mode (minimal UI, no tabs)
+			cmd = exec.Command(edgePath, 
+				"--app="+url,
+				"--window-size=1000,800",
+				"--window-position=100,100",
+			)
+		} else {
+			// Fallback to default browser
+			return browser.OpenURL(url)
+		}
+	} else {
+		// On non-Windows, just use default browser
+		return browser.OpenURL(url)
+	}
+	
+	if cmd != nil {
+		return cmd.Start()
+	}
+	
+	return browser.OpenURL(url)
 }
 
 func main() {
@@ -720,9 +766,10 @@ func main() {
 		}
 
 		var req struct {
-			KeepOpen bool   `json:"keepOpen"`
-			Profile  string `json:"profile"`
-			Language string `json:"language"`
+			KeepOpen          bool   `json:"keepOpen"`
+			Profile           string `json:"profile"`
+			Language          string `json:"language"`
+			UseDefaultBrowser bool   `json:"useDefaultBrowser"`
 		}
 		
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -730,10 +777,10 @@ func main() {
 			return
 		}
 
-		launcher.logAndSync("Starting with profile: %s, language: %s, keepOpen: %v", req.Profile, req.Language, req.KeepOpen)
+		launcher.logAndSync("Starting with profile: %s, language: %s, keepOpen: %v, useDefaultBrowser: %v", req.Profile, req.Language, req.KeepOpen, req.UseDefaultBrowser)
 
 		// Start the launcher process
-		go launcher.runLauncher(req.KeepOpen, req.Profile)
+		go launcher.runLauncher(req.KeepOpen, req.Profile, req.UseDefaultBrowser)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]bool{"success": true})
@@ -774,6 +821,28 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]bool{"success": true})
 	})
 
+	http.HandleFunc("/api/open-dashboard", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req struct {
+			URL string `json:"url"`
+		}
+		
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+
+		// Open in minimal Edge browser
+		go openMinimalBrowser(req.URL)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{"success": true})
+	})
+
 	// Start HTTP server
 	go func() {
 		if err := http.ListenAndServe("127.0.0.1:58734", nil); err != nil {
@@ -782,7 +851,11 @@ func main() {
 	}()
 
 	time.Sleep(500 * time.Millisecond)
-	browser.OpenURL("http://127.0.0.1:58734")
+	// Open launcher in minimal Edge browser window
+	if err := openMinimalBrowser("http://127.0.0.1:58734"); err != nil {
+		// Fallback to default browser if Edge launch fails
+		browser.OpenURL("http://127.0.0.1:58734")
+	}
 
 	select {}
 }
@@ -909,10 +982,16 @@ func getMainPageHTML() string {
 
         <!-- Bottom Options -->
         <div class="options-section">
-            <label class="checkbox-label">
-                <input type="checkbox" id="keepOpenCheckbox">
-                <span id="keepOpenLabel">Keep launcher open after starting</span>
-            </label>
+            <div class="options-column">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="keepOpenCheckbox">
+                    <span id="keepOpenLabel">Keep launcher open after starting</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="useDefaultBrowserCheckbox">
+                    <span id="useDefaultBrowserLabel">Start app in default browser</span>
+                </label>
+            </div>
             <button id="startBtn" class="start-button">Start</button>
         </div>
     </div>
@@ -1156,6 +1235,11 @@ func getStyles() string {
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
+        .options-column {
+            display: flex; flex-direction: column;
+            gap: 10px;
+        }
+
         .checkbox-label {
             display: flex; align-items: center; gap: 10px;
             cursor: pointer; font-size: 14px; color: #333;
@@ -1359,6 +1443,7 @@ func getJavaScript() string {
 
             // Options
             document.getElementById('keepOpenLabel').textContent = t('launcher.options.keep_launcher_open');
+            document.getElementById('useDefaultBrowserLabel').textContent = t('launcher.options.use_default_browser');
             document.getElementById('startBtn').textContent = t('launcher.profile.continue_button');
         }
 
@@ -1396,14 +1481,14 @@ func getJavaScript() string {
                 <div>
                     <h4>${res.api_keys.required}:</h4>
                     <ul>
-                        <li><strong>${res.api_keys.tiktok.title}:</strong> ${res.api_keys.tiktok.description}</li>
+                        <li><strong><a href="${res.api_keys.tiktok.url}" target="_blank" style="color: #667eea; text-decoration: none;">${res.api_keys.tiktok.title}</a>:</strong> ${res.api_keys.tiktok.description}</li>
                     </ul>
                     
                     <h4>${res.api_keys.optional}:</h4>
                     <ul>
-                        <li><strong>${res.api_keys.openai.title}:</strong> ${res.api_keys.openai.description}</li>
-                        <li><strong>${res.api_keys.elevenlabs.title}:</strong> ${res.api_keys.elevenlabs.description}</li>
-                        <li><strong>${res.api_keys.obs.title}:</strong> ${res.api_keys.obs.description}</li>
+                        <li><strong><a href="${res.api_keys.openai.url}" target="_blank" style="color: #667eea; text-decoration: none;">${res.api_keys.openai.title}</a>:</strong> ${res.api_keys.openai.description}</li>
+                        <li><strong><a href="${res.api_keys.elevenlabs.url}" target="_blank" style="color: #667eea; text-decoration: none;">${res.api_keys.elevenlabs.title}</a>:</strong> ${res.api_keys.elevenlabs.description}</li>
+                        <li><strong><a href="${res.api_keys.obs.url}" target="_blank" style="color: #667eea; text-decoration: none;">${res.api_keys.obs.title}</a>:</strong> ${res.api_keys.obs.description}</li>
                     </ul>
                 </div>
             ` + "`" + `;
@@ -1485,9 +1570,20 @@ func getJavaScript() string {
                 if (data.redirect) {
                     evtSource.close();
                     const keepOpen = data.keepOpen;
+                    const useDefaultBrowser = data.useDefaultBrowser;
+                    
                     setTimeout(() => {
                         if (keepOpen) {
-                            window.open(data.redirect, '_blank');
+                            if (useDefaultBrowser) {
+                                window.open(data.redirect, '_blank');
+                            } else {
+                                // Open in minimal Edge window (backend handles this)
+                                fetch('/api/open-dashboard', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ url: data.redirect })
+                                });
+                            }
                         } else {
                             window.location.replace(data.redirect);
                         }
@@ -1595,6 +1691,7 @@ func getJavaScript() string {
             const profileSelect = document.getElementById('profileSelect');
             const selectedProfile = profileSelect.value;
             const keepOpen = document.getElementById('keepOpenCheckbox').checked;
+            const useDefaultBrowser = document.getElementById('useDefaultBrowserCheckbox').checked;
             
             if (!selectedProfile) {
                 alert(t('launcher.profile.username_required'));
@@ -1614,7 +1711,8 @@ func getJavaScript() string {
                     body: JSON.stringify({
                         profile: selectedProfile,
                         language: selectedLanguage,
-                        keepOpen: keepOpen
+                        keepOpen: keepOpen,
+                        useDefaultBrowser: useDefaultBrowser
                     })
                 });
             } catch (error) {

@@ -800,24 +800,28 @@
         "required": "Erforderlich",
         "optional": "Optional",
         "tiktok": {
-          "title": "TikTok Sitzung",
+          "title": "eulerstream",
           "description": "Erforderlich für TikTok LIVE Verbindung",
-          "link": "Wie man die Session-ID erhält"
+          "link": "Wie man die Session-ID erhält",
+          "url": "https://eulerstream.com/"
         },
         "openai": {
           "title": "OpenAI API-Schlüssel",
           "description": "Optional für erweiterte TTS und KI-Funktionen",
-          "link": "API-Schlüssel erhalten"
+          "link": "API-Schlüssel erhalten",
+          "url": "https://platform.openai.com/api-keys"
         },
         "elevenlabs": {
           "title": "ElevenLabs API-Schlüssel",
           "description": "Optional für hochwertige TTS-Stimmen",
-          "link": "API-Schlüssel erhalten"
+          "link": "API-Schlüssel erhalten",
+          "url": "https://elevenlabs.io/app/settings/api-keys"
         },
         "obs": {
           "title": "OBS WebSocket",
           "description": "Optional für OBS-Integration",
-          "link": "Setup-Anleitung"
+          "link": "Setup-Anleitung",
+          "url": "https://obsproject.com/kb/remote-control-guide"
         }
       }
     },
@@ -882,7 +886,9 @@
     },
     "options": {
       "keep_launcher_open": "Launcher nach dem Start geöffnet lassen",
-      "keep_launcher_hint": "Wenn aktiviert, öffnet sich das Dashboard in einem neuen Tab/Fenster"
+      "keep_launcher_hint": "Wenn aktiviert, öffnet sich das Dashboard in einem neuen Tab/Fenster",
+      "use_default_browser": "App im Standard-Browser starten",
+      "use_default_browser_hint": "Wenn deaktiviert, wird ein minimales Edge-Fenster verwendet"
     },
     "status": {
       "initializing": "Initialisiere...",

@@ -773,24 +773,28 @@
         "required": "Required",
         "optional": "Optional",
         "tiktok": {
-          "title": "TikTok Session",
+          "title": "eulerstream",
           "description": "Required for TikTok LIVE connection",
-          "link": "How to get session ID"
+          "link": "How to get session ID",
+          "url": "https://eulerstream.com/"
         },
         "openai": {
           "title": "OpenAI API Key",
           "description": "Optional for advanced TTS and AI features",
-          "link": "Get API Key"
+          "link": "Get API Key",
+          "url": "https://platform.openai.com/api-keys"
         },
         "elevenlabs": {
           "title": "ElevenLabs API Key",
           "description": "Optional for high-quality TTS voices",
-          "link": "Get API Key"
+          "link": "Get API Key",
+          "url": "https://elevenlabs.io/app/settings/api-keys"
         },
         "obs": {
           "title": "OBS WebSocket",
           "description": "Optional for OBS integration",
-          "link": "Setup Guide"
+          "link": "Setup Guide",
+          "url": "https://obsproject.com/kb/remote-control-guide"
         }
       }
     },
@@ -855,7 +859,9 @@
     },
     "options": {
       "keep_launcher_open": "Keep launcher open after starting",
-      "keep_launcher_hint": "When enabled, the dashboard opens in a new tab/window"
+      "keep_launcher_hint": "When enabled, the dashboard opens in a new tab/window",
+      "use_default_browser": "Start app in default browser",
+      "use_default_browser_hint": "When disabled, a minimal Edge window is used"
     },
     "status": {
       "initializing": "Initializing...",
