@@ -291,9 +291,13 @@
     const redPlayersEl = document.getElementById('team-red-players');
     const bluePlayersEl = document.getElementById('team-blue-players');
     
-    // Clear existing avatars
-    redPlayersEl.innerHTML = '';
-    bluePlayersEl.innerHTML = '';
+    if (!redPlayersEl || !bluePlayersEl) {
+      return; // Elements don't exist, exit safely
+    }
+    
+    // Clear existing avatars (safe method)
+    redPlayersEl.textContent = '';
+    bluePlayersEl.textContent = '';
     
     // Group players by team
     const redPlayers = leaderboard.filter(p => p.team === 'red').slice(0, 8);
@@ -370,8 +374,8 @@
       });
     }
 
-    // Render leaderboard
-    container.innerHTML = '';
+    // Render leaderboard (safe clear)
+    container.textContent = '';
 
     leaderboard.forEach((player, index) => {
       const entry = createLeaderboardEntry(player, index, previousPositions, mode);
@@ -687,10 +691,14 @@
     const kingContainer = document.getElementById('koth-king');
     const challengersContainer = document.getElementById('koth-challengers');
     
+    if (!kingContainer || !challengersContainer) {
+      return; // Elements don't exist, exit safely
+    }
+    
     // Update King (1st place)
     if (leaderboard.length > 0) {
       const king = leaderboard[0];
-      kingContainer.innerHTML = ''; // Clear existing content
+      kingContainer.textContent = ''; // Clear existing content (safe)
       
       // Crown icon
       const crownDiv = document.createElement('div');
@@ -722,7 +730,7 @@
     }
     
     // Update Challengers (2nd, 3rd, 4th place)
-    challengersContainer.innerHTML = '';
+    challengersContainer.textContent = ''; // Safe clear
     for (let i = 1; i <= 3 && i < leaderboard.length; i++) {
       const challenger = leaderboard[i];
       const challengerEl = document.createElement('div');
