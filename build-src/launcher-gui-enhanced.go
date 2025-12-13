@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -809,21 +810,72 @@ func main() {
 			return
 		}
 
-		// List user config directories
-		userConfigsPath := filepath.Join(launcher.appDir, "user_configs")
-		entries, err := os.ReadDir(userConfigsPath)
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode([]string{})
-			return
+		// Scan multiple locations for user profiles (old and new)
+		profileLocations := []string{
+			// Current location (app/user_configs)
+			filepath.Join(launcher.appDir, "user_configs"),
 		}
-
-		var profiles []string
-		for _, entry := range entries {
-			if entry.IsDir() {
-				profiles = append(profiles, entry.Name())
+		
+		// Add platform-specific legacy locations
+		if runtime.GOOS == "windows" {
+			// New persistent location: %LOCALAPPDATA%/pupcidslittletiktokhelper/user_configs
+			localAppData := os.Getenv("LOCALAPPDATA")
+			if localAppData != "" {
+				profileLocations = append(profileLocations, 
+					filepath.Join(localAppData, "pupcidslittletiktokhelper", "user_configs"))
+			}
+			
+			// Legacy location: User's home directory
+			homeDir, err := os.UserHomeDir()
+			if err == nil {
+				profileLocations = append(profileLocations,
+					filepath.Join(homeDir, "AppData", "Local", "pupcidslittletiktokhelper", "user_configs"))
+			}
+		} else if runtime.GOOS == "darwin" {
+			// macOS: ~/Library/Application Support/pupcidslittletiktokhelper/user_configs
+			homeDir, err := os.UserHomeDir()
+			if err == nil {
+				profileLocations = append(profileLocations,
+					filepath.Join(homeDir, "Library", "Application Support", "pupcidslittletiktokhelper", "user_configs"))
+			}
+		} else {
+			// Linux: ~/.local/share/pupcidslittletiktokhelper/user_configs
+			homeDir, err := os.UserHomeDir()
+			if err == nil {
+				profileLocations = append(profileLocations,
+					filepath.Join(homeDir, ".local", "share", "pupcidslittletiktokhelper", "user_configs"))
 			}
 		}
+
+		// Collect all unique profiles from all locations
+		// Scan both directories and .db files
+		profileMap := make(map[string]bool)
+		for _, location := range profileLocations {
+			entries, err := os.ReadDir(location)
+			if err != nil {
+				continue // Skip locations that don't exist
+			}
+
+			for _, entry := range entries {
+				// Accept both directories and .db files as profiles
+				if entry.IsDir() {
+					profileMap[entry.Name()] = true
+				} else if strings.HasSuffix(entry.Name(), ".db") {
+					// Extract profile name from .db file
+					profileName := strings.TrimSuffix(entry.Name(), ".db")
+					profileMap[profileName] = true
+				}
+			}
+		}
+
+		// Convert map to sorted list
+		var profiles []string
+		for profile := range profileMap {
+			profiles = append(profiles, profile)
+		}
+		
+		// Sort alphabetically for consistency
+		sort.Strings(profiles)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(profiles)
