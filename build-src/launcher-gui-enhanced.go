@@ -37,6 +37,10 @@ type Launcher struct {
 	serverLogs         []string
 	loggingEnabled     bool
 	useDefaultBrowser  bool
+	initComplete       bool
+	initError          error
+	nodeChecked        bool
+	depsInstalled      bool
 }
 
 type Language struct {
@@ -168,6 +172,55 @@ func (l *Launcher) checkNodeJS() error {
 	l.nodePath = nodePath
 	return nil
 }
+
+// initializeInBackground performs Node.js checks and npm install in background
+func (l *Launcher) initializeInBackground() {
+	l.logAndSync("[Background Init] Starting initialization...")
+	l.updateProgress(0, "Initializing...")
+	
+	// Check Node.js
+	l.logAndSync("[Background Init] Checking Node.js...")
+	err := l.checkNodeJS()
+	if err != nil {
+		l.logAndSync("[Background Init ERROR] Node.js check failed: %v", err)
+		l.initError = err
+		l.initComplete = true
+		return
+	}
+	l.nodeChecked = true
+	l.logAndSync("[Background Init] Node.js found at: %s", l.nodePath)
+	
+	version := l.getNodeVersion()
+	l.logAndSync("[Background Init] Node.js version: %s", version)
+	
+	// Check and install dependencies
+	l.logAndSync("[Background Init] Checking dependencies...")
+	if !l.checkNodeModules() {
+		l.logAndSync("[Background Init] Installing dependencies...")
+		l.updateProgress(10, "Installing dependencies in background...")
+		err = l.installDependencies()
+		if err != nil {
+			l.logAndSync("[Background Init ERROR] Dependency installation failed: %v", err)
+			l.initError = err
+			l.initComplete = true
+			return
+		}
+		l.logAndSync("[Background Init] Dependencies installed successfully")
+	} else {
+		l.logAndSync("[Background Init] Dependencies already installed")
+	}
+	l.depsInstalled = true
+	
+	// Auto-fix .env file
+	if err := l.autoFixEnvFile(); err != nil {
+		l.logAndSync("[Background Init WARNING] Could not auto-create .env: %v", err)
+	}
+	
+	l.initComplete = true
+	l.updateProgress(0, "Ready")
+	l.logAndSync("[Background Init] Initialization complete!")
+}
+
 
 func (l *Launcher) getNodeVersion() string {
 	cmd := exec.Command(l.nodePath, "--version")
@@ -432,53 +485,42 @@ func (l *Launcher) runLauncher(keepOpen bool, profileName string, useDefaultBrow
 	// Store the browser preference
 	l.useDefaultBrowser = useDefaultBrowser
 
-	l.updateProgress(0, "Checking Node.js installation...")
-	l.logAndSync("[Phase 1] Checking Node.js installation...")
-	time.Sleep(500 * time.Millisecond)
-
-	err := l.checkNodeJS()
-	if err != nil {
-		l.logAndSync("[ERROR] Node.js check failed: %v", err)
-		l.updateProgress(0, "ERROR: Node.js is not installed!")
+	// Wait for background initialization to complete if it's still running
+	if !l.initComplete {
+		l.updateProgress(5, "Waiting for initialization to complete...")
+		l.logAndSync("[Launcher] Waiting for background initialization...")
+		
+		// Wait up to 60 seconds for init to complete
+		timeout := time.After(60 * time.Second)
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+		
+		for !l.initComplete {
+			select {
+			case <-timeout:
+				l.logAndSync("[Launcher ERROR] Initialization timeout")
+				l.updateProgress(0, "ERROR: Initialization timeout!")
+				time.Sleep(5 * time.Second)
+				l.closeLogging()
+				os.Exit(1)
+			case <-ticker.C:
+				// Continue waiting
+			}
+		}
+	}
+	
+	// Check if there was an error during background initialization
+	if l.initError != nil {
+		l.logAndSync("[Launcher ERROR] Background initialization failed: %v", l.initError)
+		l.updateProgress(0, fmt.Sprintf("ERROR: %v", l.initError))
 		time.Sleep(5 * time.Second)
 		l.closeLogging()
 		os.Exit(1)
 	}
-
-	l.updateProgress(10, "Node.js found...")
-	l.logAndSync("[SUCCESS] Node.js found at: %s", l.nodePath)
-	time.Sleep(300 * time.Millisecond)
-
-	version := l.getNodeVersion()
-	l.updateProgress(20, fmt.Sprintf("Node.js Version: %s", version))
-	l.logger.Printf("[INFO] Node.js version: %s\n", version)
-	time.Sleep(300 * time.Millisecond)
-
-	l.updateProgress(30, "Checking dependencies...")
-	time.Sleep(300 * time.Millisecond)
-
-	if !l.checkNodeModules() {
-		l.updateProgress(40, "Installing dependencies...")
-		err = l.installDependencies()
-		if err != nil {
-			l.logger.Printf("[ERROR] Dependency installation failed: %v\n", err)
-			l.updateProgress(45, fmt.Sprintf("ERROR: %v", err))
-			time.Sleep(5 * time.Second)
-			l.closeLogging()
-			os.Exit(1)
-		}
-		l.updateProgress(80, "Installation complete!")
-	} else {
-		l.updateProgress(80, "Dependencies already installed...")
-	}
-	time.Sleep(300 * time.Millisecond)
-
-	l.updateProgress(82, "Checking configuration...")
-	if err := l.autoFixEnvFile(); err != nil {
-		l.logger.Printf("[WARNING] Could not auto-create .env: %v\n", err)
-	}
 	
-	l.updateProgress(90, "Starting server...")
+	// If we get here, Node.js is checked and dependencies are installed
+	l.updateProgress(85, "Starting server...")
+	l.logAndSync("[Launcher] Background initialization complete, starting server...")
 	time.Sleep(500 * time.Millisecond)
 
 	cmd, err := l.startTool()
@@ -757,6 +799,22 @@ func main() {
 				return
 			}
 		}
+	})
+
+	http.HandleFunc("/api/init", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Start background initialization if not already started
+		if !launcher.initComplete && launcher.initError == nil && !launcher.nodeChecked {
+			launcher.logAndSync("Starting background initialization...")
+			go launcher.initializeInBackground()
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{"success": true})
 	})
 
 	http.HandleFunc("/api/start", func(w http.ResponseWriter, r *http.Request) {
@@ -1351,8 +1409,19 @@ func getJavaScript() string {
         let translations = {};
         let serverStarted = false;
 
-        // Initialize
+        // Initialize - start background initialization immediately
         (async function init() {
+            // Start background initialization (Node.js check + npm install)
+            try {
+                await fetch('/api/init', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                console.log('Background initialization started');
+            } catch (error) {
+                console.error('Failed to start background initialization:', error);
+            }
+            
             await loadLanguages();
         })();
 
