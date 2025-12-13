@@ -610,10 +610,8 @@
         // Prepare content for Star Wars scroll
         const contentEl = document.getElementById('chapterContent');
         contentEl.classList.add('scroll-mode');
-        // Clear content safely (prevent XSS)
-        while (contentEl.firstChild) {
-          contentEl.removeChild(contentEl.firstChild);
-        }
+        // Clear content safely using modern API
+        contentEl.replaceChildren();
         
         // Show text overlay
         document.getElementById('textOverlay').classList.add('visible');
@@ -675,9 +673,9 @@
       console.log('TTS complete for chapter', data.chapterNumber);
       scrollingInProgress = false;
       
-      // Show all sentences as past (fade out)
+      // Keep last sentence visible as current (not marked as past)
       if (sentences.length > 0) {
-        updateSentenceStates(sentences.length);
+        updateSentenceStates(sentences.length - 1);
       }
       
       // Ready for voting to start - text will fade out when voting overlay appears
@@ -693,13 +691,13 @@
     // Handle voting started
     socket.on('story:voting-started', (data) => {
       votingActive = true;
-      voteCounts = new Array(data.choices.length).fill(0);
       
       // Hide text overlay when voting starts
       document.getElementById('textOverlay').classList.remove('visible');
       
-      // Only display voting if we have choices (not for final chapter)
+      // Only display voting if we have choices (not for final chapter where choices would be null or empty)
       if (data.choices && data.choices.length > 0) {
+        voteCounts = new Array(data.choices.length).fill(0);
         displayVoting(data.choices, data.duration);
       }
     });

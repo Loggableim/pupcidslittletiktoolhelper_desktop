@@ -301,7 +301,7 @@ Do not include specific choices - just the setup.`;
           chapter.chapterNumber = chapterNumber;
           chapter.model = model;
           chapter.isFinal = true;
-          chapter.choices = []; // No choices for final chapter
+          chapter.choices = null; // No choices for final chapter (null = semantically different from empty array)
           
           // Update memory
           this.memory.updateFromChapter(chapter.content, {
@@ -486,7 +486,7 @@ Do not include specific choices - just the setup.`;
     const chapter = {
       title: '',
       content: '',
-      choices: [],
+      choices: null, // null = final chapter (semantically different from empty array)
       isFinal: true,
       memoryTags: {
         characters: [],
