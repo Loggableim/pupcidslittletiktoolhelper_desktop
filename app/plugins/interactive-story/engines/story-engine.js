@@ -104,6 +104,19 @@ class StoryEngine {
       this.platform = options.platform;
     }
   }
+  
+  /**
+   * Get word count range based on platform and chapter type
+   * @param {boolean} isFinal - Is this the final chapter
+   * @returns {string} Word count range (e.g., "30-50")
+   */
+  _getWordCount(isFinal = false) {
+    if (this.platform === 'tiktok') {
+      return isFinal ? '50-80' : '30-50';
+    } else {
+      return isFinal ? '300-500' : '200-400';
+    }
+  }
 
   /**
    * Get random theme selection for user choice
@@ -307,7 +320,7 @@ Do not include specific choices - just the setup.`;
    */
   _buildChapterPrompt(themeData, context, chapterNumber, previousChoice, numChoices) {
     // Determine word count based on platform
-    const wordCount = this.platform === 'tiktok' ? '30-50' : '200-400';
+    const wordCount = this._getWordCount(false);
     
     let prompt = `You are writing chapter ${chapterNumber} of an interactive ${themeData.style} story in ${this.language}.\n\n`;
 
@@ -350,7 +363,7 @@ Do not include specific choices - just the setup.`;
    */
   _buildFinalChapterPrompt(themeData, context, chapterNumber, previousChoice) {
     // Final chapters can be longer to properly resolve the story
-    const wordCount = this.platform === 'tiktok' ? '50-80' : '300-500';
+    const wordCount = this._getWordCount(true);
     
     let prompt = `You are writing the FINAL chapter (chapter ${chapterNumber}) of an interactive ${themeData.style} story in ${this.language}.\n\n`;
 

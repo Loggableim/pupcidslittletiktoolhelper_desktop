@@ -169,6 +169,11 @@
       opacity: 0;
       transform: translateY(100px) scale(0.7);
     }
+    
+    /* Visibility control classes */
+    .scroll-sentence.completely-hidden {
+      display: none;
+    }
 
     /* Voting Overlay */
     #votingOverlay {
@@ -478,6 +483,7 @@
     
     // Configuration constants
     const MAX_VISIBLE_PAST_SENTENCES = 2; // How many past sentences to keep visible before hiding
+    const SENTENCE_ANIMATION_DELAY_MS = 100; // Delay before animating sentence entrance
 
     // Load configuration and apply styles
     async function loadConfiguration() {
@@ -631,34 +637,30 @@
       // Animate entrance after brief delay
       setTimeout(() => {
         updateSentenceStates(data.index);
-      }, 100);
+      }, SENTENCE_ANIMATION_DELAY_MS);
     });
     
     // Update sentence states based on current index
     function updateSentenceStates(currentIndex) {
       sentences.forEach((sentenceEl, index) => {
         // Remove all state classes
-        sentenceEl.classList.remove('past', 'current', 'future', 'hidden');
+        sentenceEl.classList.remove('past', 'current', 'future', 'hidden', 'completely-hidden');
         
         if (index < currentIndex - MAX_VISIBLE_PAST_SENTENCES) {
-          // Very old sentences - remove from view completely
-          sentenceEl.style.display = 'none';
+          // Very old sentences - remove from view completely using CSS class
+          sentenceEl.classList.add('completely-hidden');
+        } else if (index < currentIndex) {
+          // Past sentences - fade out upwards
+          sentenceEl.classList.add('past');
+        } else if (index === currentIndex) {
+          // Current sentence - fully visible and prominent
+          sentenceEl.classList.add('current');
+        } else if (index === currentIndex + 1) {
+          // Next sentence - slightly visible
+          sentenceEl.classList.add('future');
         } else {
-          sentenceEl.style.display = '';
-          
-          if (index < currentIndex) {
-            // Past sentences - fade out upwards
-            sentenceEl.classList.add('past');
-          } else if (index === currentIndex) {
-            // Current sentence - fully visible and prominent
-            sentenceEl.classList.add('current');
-          } else if (index === currentIndex + 1) {
-            // Next sentence - slightly visible
-            sentenceEl.classList.add('future');
-          } else {
-            // Future sentences - hidden
-            sentenceEl.classList.add('hidden');
-          }
+          // Future sentences - hidden
+          sentenceEl.classList.add('hidden');
         }
       });
       
