@@ -933,12 +933,17 @@ class InteractiveStoryPlugin {
         // No voting for final chapter - story is complete
         // Automatically end the session after a delay
         this.finalChapterEndTimer = setTimeout(() => {
-          if (this.currentSession) {
-            this.db.updateSessionStatus(this.currentSession.id, 'completed');
-            this.io.emit('story:ended', { message: 'Story completed!' });
-            this.currentSession = null;
+          try {
+            if (this.currentSession) {
+              this.db.updateSessionStatus(this.currentSession.id, 'completed');
+              this.io.emit('story:ended', { message: 'Story completed!' });
+              this.currentSession = null;
+            }
+          } catch (error) {
+            this.logger.error(`Error in final chapter auto-end: ${error.message}`);
+          } finally {
+            this.finalChapterEndTimer = null;
           }
-          this.finalChapterEndTimer = null;
         }, this.FINAL_CHAPTER_DELAY_MS);
 
         res.json({ success: true, chapter: finalChapter, isFinal: true });

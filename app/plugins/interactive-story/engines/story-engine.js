@@ -3,6 +3,18 @@ const StoryMemory = require('../utils/story-memory');
 // Configuration constants
 const MAX_GENERATION_ATTEMPTS = 3; // Maximum retry attempts for chapter generation
 
+// Word count ranges by platform and chapter type
+const WORD_COUNT = {
+  tiktok: {
+    regular: '30-50',
+    final: '50-80'
+  },
+  default: {
+    regular: '200-400',
+    final: '300-500'
+  }
+};
+
 /**
  * Story Generation Engine
  * Orchestrates LLM calls, coherence checking, and chapter generation
@@ -111,11 +123,8 @@ class StoryEngine {
    * @returns {string} Word count range (e.g., "30-50")
    */
   _getWordCount(isFinal = false) {
-    if (this.platform === 'tiktok') {
-      return isFinal ? '50-80' : '30-50';
-    } else {
-      return isFinal ? '300-500' : '200-400';
-    }
+    const platform = this.platform === 'tiktok' ? 'tiktok' : 'default';
+    return isFinal ? WORD_COUNT[platform].final : WORD_COUNT[platform].regular;
   }
 
   /**

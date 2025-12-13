@@ -610,7 +610,10 @@
         // Prepare content for Star Wars scroll
         const contentEl = document.getElementById('chapterContent');
         contentEl.classList.add('scroll-mode');
-        contentEl.innerHTML = ''; // Clear content, sentences will arrive one by one
+        // Clear content safely (prevent XSS)
+        while (contentEl.firstChild) {
+          contentEl.removeChild(contentEl.firstChild);
+        }
         
         // Show text overlay
         document.getElementById('textOverlay').classList.add('visible');
