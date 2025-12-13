@@ -535,6 +535,11 @@
             case States.QUESTION_INTRO:
                 showOverlay();
                 animateQuestionIntro();
+                // Show timer when question intro starts
+                const timerSection = document.getElementById('timerSection');
+                if (timerSection) {
+                    timerSection.style.display = '';
+                }
                 stateTimeout = setTimeout(() => {
                     transitionToState(States.RUNNING);
                 }, 1500 / hudConfig.animationSpeed);
@@ -551,6 +556,11 @@
             case States.TIME_UP:
                 stopTimer();
                 animateTimeUp();
+                // Hide timer after time is up
+                const timerSectionTimeUp = document.getElementById('timerSection');
+                if (timerSectionTimeUp) {
+                    timerSectionTimeUp.style.display = 'none';
+                }
                 stateTimeout = setTimeout(() => {
                     transitionToState(States.REVEAL_CORRECT);
                 }, 1000 / hudConfig.animationSpeed);
@@ -566,6 +576,9 @@
                 break;
 
             case States.WAIT_NEXT:
+                // Hide question and answer sections, show current game leaderboard
+                hideQuizSections();
+                showCurrentGameLeaderboard();
                 break;
         }
     }
@@ -590,6 +603,7 @@
                 hiddenAnswers: state.hiddenAnswers || [],
                 revealedWrongAnswer: state.revealedWrongAnswer,
                 info: state.currentQuestion.info || null,
+                category: state.currentQuestion.category || null,
                 votersPerAnswer: state.votersPerAnswer || { 0: [], 1: [], 2: [], 3: [] },
                 voterIconsConfig: state.voterIconsConfig || {
                     enabled: true,
@@ -625,6 +639,17 @@
                 }
             } else if (roundNumberDisplay) {
                 roundNumberDisplay.style.display = 'none';
+            }
+
+            // Update category display
+            const categoryDisplay = document.getElementById('categoryDisplay');
+            const categoryText = document.getElementById('categoryText');
+            
+            if (gameData.category && categoryDisplay && categoryText) {
+                categoryDisplay.style.display = 'flex';
+                categoryText.textContent = gameData.category;
+            } else if (categoryDisplay) {
+                categoryDisplay.style.display = 'none';
             }
 
             if (gameData.hiddenAnswers.length > 0) {
@@ -763,12 +788,15 @@
             if (element) {
                 element.textContent = answer;
 
-                // Dynamic font sizing
+                // Remove previous classes
+                element.classList.remove('long-text');
+
+                // For long answers, use 2-line layout with tighter spacing instead of shrinking
                 const length = answer.length;
-                if (length > 50) {
-                    element.style.fontSize = '0.9rem';
-                } else if (length > 30) {
-                    element.style.fontSize = '1rem';
+                if (length > 30) {
+                    element.classList.add('long-text');
+                    // Don't change font size, use CSS to handle wrapping
+                    element.style.fontSize = '';
                 } else {
                     element.style.fontSize = hudConfig.fonts.sizeAnswer;
                 }
@@ -969,10 +997,12 @@
             correctReveal.classList.remove('hidden');
             correctReveal.classList.add('animate-reveal');
 
+            // Display longer (use answerDisplayDuration from server config, default to 5 seconds)
+            const displayDuration = (gameData.answerDisplayDuration || 5) * 1000;
             setTimeout(() => {
                 correctReveal.classList.add('hidden');
                 correctReveal.classList.remove('animate-reveal');
-            }, 2000 / hudConfig.animationSpeed);
+            }, displayDuration / hudConfig.animationSpeed);
         }
 
         // Mark wrong answers with shake animation
@@ -984,6 +1014,7 @@
                 setTimeout(() => {
                     card.classList.remove(wrongAnimClass);
                 }, 500 / hudConfig.animationSpeed);
+            }
             }
         });
     }
@@ -1495,6 +1526,32 @@
             }
         } catch (error) {
             console.error('Error updating leaderboard:', error);
+        }
+    }
+
+    // ============================================
+    // CURRENT GAME LEADERBOARD
+    // ============================================
+
+    async function showCurrentGameLeaderboard() {
+        try {
+            // Fetch current game leaderboard from server
+            const response = await fetch('/api/quiz-show/leaderboard?type=round');
+            if (!response.ok) {
+                console.error('Failed to fetch current game leaderboard');
+                return;
+            }
+
+            const data = await response.json();
+            if (data.success && data.leaderboard) {
+                handleShowLeaderboard({
+                    leaderboard: data.leaderboard,
+                    displayType: 'round',
+                    animationStyle: 'fade'
+                });
+            }
+        } catch (error) {
+            console.error('Error showing current game leaderboard:', error);
         }
     }
 
