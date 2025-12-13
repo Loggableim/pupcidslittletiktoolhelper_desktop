@@ -336,6 +336,7 @@ class InteractiveStoryPlugin {
 
   /**
    * Generate TTS for a chapter if auto-TTS is enabled
+   * Splits chapter into sentences and sends them progressively to overlay
    * @param {Object} chapter - Chapter object with title and content
    * @returns {Promise<void>}
    */
@@ -344,25 +345,71 @@ class InteractiveStoryPlugin {
       const config = this._loadConfig();
       
       if (!config.autoGenerateTTS) {
-        return; // TTS disabled
+        // If TTS disabled, just show the full chapter immediately
+        this.io.emit('story:chapter-display', { 
+          mode: 'immediate',
+          chapter: chapter
+        });
+        return;
       }
 
       const ttsProvider = config.ttsProvider || 'system';
-      const textToSpeak = `${chapter.title}. ${chapter.content}`;
+      
+      // Split content into sentences for progressive display
+      const sentences = this._splitIntoSentences(chapter.content);
+      const fullText = `${chapter.title}. ${chapter.content}`;
+      
+      // Estimate timing: ~2.5 words per second for TTS
+      const wordCount = fullText.split(/\s+/).length;
+      const estimatedDuration = (wordCount / 2.5) * 1000; // milliseconds
+      const sentenceDelay = estimatedDuration / sentences.length;
+      
+      this.logger.info(`Starting chapter TTS: ${sentences.length} sentences, ~${Math.round(estimatedDuration/1000)}s duration`);
+      
+      // Signal overlay to start displaying sentences progressively
+      this.io.emit('story:chapter-tts-start', {
+        sentences: sentences,
+        title: chapter.title,
+        chapterNumber: chapter.chapterNumber,
+        sentenceDelay: Math.max(sentenceDelay, 1000), // At least 1 second per sentence
+        totalDuration: estimatedDuration
+      });
       
       if (ttsProvider === 'system') {
-        // Use LTTH TTS plugin (OpenAI TTS)
-        await this._speakThroughSystemTTS(textToSpeak);
+        // Use LTTH TTS plugin (OpenAI TTS) - this blocks until audio completes
+        await this._speakThroughSystemTTS(fullText);
         this.logger.info(`Chapter ${chapter.chapterNumber} spoken through system TTS`);
       } else if (ttsProvider === 'siliconflow' && this.ttsService) {
         // Use SiliconFlow TTS (legacy)
-        await this.ttsService.generateSpeech(textToSpeak, 'narrator');
+        await this.ttsService.generateSpeech(fullText, 'narrator');
         this.logger.info(`Chapter ${chapter.chapterNumber} TTS generated with SiliconFlow`);
       }
+      
+      // Signal that TTS is complete
+      this.io.emit('story:chapter-tts-complete', {
+        chapterNumber: chapter.chapterNumber
+      });
+      
     } catch (error) {
       // Don't fail chapter generation if TTS fails
       this.logger.error(`Failed to generate TTS for chapter: ${error.message}`);
+      // Show full chapter immediately if TTS fails
+      this.io.emit('story:chapter-display', { 
+        mode: 'immediate',
+        chapter: chapter
+      });
     }
+  }
+  
+  /**
+   * Split text into sentences for progressive display
+   * @param {string} text - Text to split
+   * @returns {Array<string>} Array of sentences
+   */
+  _splitIntoSentences(text) {
+    // Split on sentence endings but keep the punctuation
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    return sentences.map(s => s.trim()).filter(s => s.length > 0);
   }
 
   /**
@@ -654,20 +701,17 @@ class InteractiveStoryPlugin {
 
         this.isGenerating = false;
 
-        // NEW FLOW: TTS synchronized with display
-        // 1. Start TTS for chapter (non-blocking, so overlay can show simultaneously)
-        const ttsPromise = this._generateChapterTTS(firstChapter);
-        
-        // 2. Emit chapter to clients (overlay will show text while TTS plays)
+        // IMPROVED FLOW: Progressive sentence-by-sentence display synchronized with TTS
+        // 1. Emit chapter data to clients (overlay prepares but doesn't show yet)
         this.io.emit('story:chapter-ready', firstChapter);
         
-        // 3. Wait for chapter TTS to complete
-        await ttsPromise;
+        // 2. Start TTS which will progressively send sentences to overlay (WAIT for completion)
+        await this._generateChapterTTS(firstChapter);
         
-        // 4. Read the voting choices (WAIT for it to complete)
+        // 3. Read the voting choices (WAIT for it to complete)
         await this._generateChoicesTTS(firstChapter.choices);
         
-        // 5. NOW start voting (after ALL TTS is done)
+        // 4. NOW start voting (after ALL TTS is done)
         this.votingSystem.start(firstChapter.choices, {
           votingDuration: config.votingDuration,
           minVotes: config.minVotes,
@@ -755,20 +799,17 @@ class InteractiveStoryPlugin {
 
         this.isGenerating = false;
 
-        // NEW FLOW: TTS synchronized with display
-        // 1. Start TTS for chapter (non-blocking, so overlay can show simultaneously)
-        const ttsPromise = this._generateChapterTTS(nextChapter);
-        
-        // 2. Emit chapter to clients (overlay will show text while TTS plays)
+        // IMPROVED FLOW: Progressive sentence-by-sentence display synchronized with TTS
+        // 1. Emit chapter data to clients (overlay prepares but doesn't show yet)
         this.io.emit('story:chapter-ready', nextChapter);
         
-        // 3. Wait for chapter TTS to complete
-        await ttsPromise;
+        // 2. Start TTS which will progressively send sentences to overlay (WAIT for completion)
+        await this._generateChapterTTS(nextChapter);
         
-        // 4. Read the voting choices (WAIT for it to complete)
+        // 3. Read the voting choices (WAIT for it to complete)
         await this._generateChoicesTTS(nextChapter.choices);
         
-        // 5. NOW start voting (after ALL TTS is done)
+        // 4. NOW start voting (after ALL TTS is done)
         this.votingSystem.start(nextChapter.choices, {
           votingDuration: config.votingDuration,
           minVotes: config.minVotes,

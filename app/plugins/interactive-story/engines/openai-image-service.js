@@ -74,14 +74,25 @@ class OpenAIImageService {
       
       this.logger.info(`Generating image with ${modelName} (${size}): ${prompt.substring(0, 100)}...`);
 
-      const response = await this.client.images.generate({
+      // Build parameters based on model capabilities
+      const params = {
         model: modelName,
         prompt: prompt,
         n: 1,
-        size: size,
-        quality: modelName === 'dall-e-3' ? 'standard' : undefined, // quality only for DALL-E 3
-        response_format: 'url'
-      });
+        size: size
+      };
+      
+      // Only add quality for DALL-E 3 (not supported by gpt-image-1 or dall-e-2)
+      if (modelName === 'dall-e-3') {
+        params.quality = 'standard';
+      }
+      
+      // response_format is NOT supported by gpt-image-1 or dall-e-2
+      // OpenAI API returns URLs by default, so we don't need to specify it
+      
+      this.logger.info(`Image API parameters: ${JSON.stringify(params)}`);
+      
+      const response = await this.client.images.generate(params);
 
       if (!response.data || response.data.length === 0) {
         throw new Error('No images returned from OpenAI DALL-E API');

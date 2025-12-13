@@ -488,7 +488,88 @@
     // Handle chapter ready
     socket.on('story:chapter-ready', (chapter) => {
       currentChapter = chapter;
-      displayChapter(chapter);
+      // Don't display yet - wait for TTS to start
+      // Just prepare the overlay
+      document.getElementById('generatingOverlay').classList.remove('active');
+      const overlay = document.getElementById('storyOverlay');
+      overlay.classList.add('active');
+      
+      // Update title
+      document.getElementById('chapterTitle').textContent = chapter.title;
+      
+      // Update image if available
+      const imageContainer = document.getElementById('imageContainer');
+      const storyImage = document.getElementById('storyImage');
+      
+      if (chapter.imagePath) {
+        const filename = chapter.imagePath.split('/').pop();
+        storyImage.src = `/api/interactive-story/image/${filename}`;
+        imageContainer.classList.add('visible');
+      } else {
+        imageContainer.classList.remove('visible');
+      }
+    });
+    
+    // Handle progressive TTS sentence display
+    socket.on('story:chapter-tts-start', (data) => {
+      console.log('TTS started - displaying sentences progressively', data);
+      sentences = data.sentences || [];
+      currentSentenceIndex = 0;
+      
+      if (sentences.length === 0) return;
+      
+      const contentEl = document.getElementById('chapterContent');
+      contentEl.classList.add('scroll-mode');
+      
+      // Clear any existing timer
+      if (sentenceTimer) {
+        clearInterval(sentenceTimer);
+      }
+      
+      // Display first sentence immediately
+      contentEl.textContent = sentences[0];
+      document.getElementById('textOverlay').classList.add('visible');
+      
+      // Calculate delay between sentences
+      const sentenceDelay = data.sentenceDelay || 2000; // milliseconds
+      
+      // Set up timer to add sentences progressively (Star Wars scroll style)
+      if (sentences.length > 1) {
+        sentenceTimer = setInterval(() => {
+          currentSentenceIndex++;
+          if (currentSentenceIndex < sentences.length) {
+            // Add next sentence with space separator (for security, using textContent)
+            contentEl.textContent = sentences.slice(0, currentSentenceIndex + 1).join(' ');
+          } else {
+            // All sentences displayed
+            clearInterval(sentenceTimer);
+            sentenceTimer = null;
+          }
+        }, sentenceDelay);
+      }
+    });
+    
+    // Handle TTS complete (ready for voting)
+    socket.on('story:chapter-tts-complete', (data) => {
+      console.log('TTS complete for chapter', data.chapterNumber);
+      // Clear sentence timer if still running
+      if (sentenceTimer) {
+        clearInterval(sentenceTimer);
+        sentenceTimer = null;
+      }
+      
+      // Ensure all sentences are displayed
+      if (sentences.length > 0) {
+        const contentEl = document.getElementById('chapterContent');
+        contentEl.textContent = sentences.join(' ');
+      }
+    });
+    
+    // Handle immediate chapter display (fallback when TTS disabled)
+    socket.on('story:chapter-display', (data) => {
+      if (data.mode === 'immediate' && data.chapter) {
+        displayChapter(data.chapter);
+      }
     });
 
     // Handle voting started

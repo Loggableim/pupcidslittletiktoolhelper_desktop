@@ -829,21 +829,53 @@
     });
 
     // Overlay preview functions
-    function copyOverlayUrl() {
+    async function copyOverlayUrl() {
       const urlInput = document.getElementById('overlayUrl');
-      urlInput.select();
-      document.execCommand('copy');
-      alert('✅ Overlay URL kopiert!');
+      const url = urlInput.value;
+      
+      try {
+        // Modern Clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url);
+          alert('✅ Overlay URL kopiert!');
+        } else {
+          // Fallback for older browsers
+          urlInput.select();
+          urlInput.setSelectionRange(0, 99999); // For mobile devices
+          document.execCommand('copy');
+          alert('✅ Overlay URL kopiert!');
+        }
+      } catch (error) {
+        console.error('Error copying URL:', error);
+        // Final fallback - select text so user can manually copy
+        urlInput.select();
+        alert('⚠️ Kopieren fehlgeschlagen.\n\nBitte markieren Sie den Text und drücken Sie Strg+C (Windows) oder Cmd+C (Mac).');
+      }
     }
 
     function openOverlayInNewTab() {
       const url = document.getElementById('overlayUrl').value;
+      
+      if (!url) {
+        alert('❌ Keine URL verfügbar. Bitte laden Sie die Seite neu.');
+        return;
+      }
+      
       try {
-        const newWindow = window.open(url, '_blank', 'width=1920,height=1080');
-        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-          // Popup was blocked
-          alert('⚠️ Popup wurde blockiert!\n\nBitte erlauben Sie Popups für diese Seite und versuchen Sie es erneut.\n\nOder öffnen Sie manuell:\n' + url);
-        }
+        const newWindow = window.open(url, '_blank', 'width=1920,height=1080,toolbar=no,menubar=no,scrollbars=no');
+        
+        // Check if popup was blocked
+        setTimeout(() => {
+          try {
+            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+              // Popup was blocked
+              alert('⚠️ Popup wurde blockiert!\n\nBitte erlauben Sie Popups für diese Seite und versuchen Sie es erneut.\n\nOder öffnen Sie manuell:\n' + url);
+            }
+          } catch (e) {
+            // Cross-origin restriction, but window likely opened
+            console.log('Window opened (cross-origin check failed, this is normal)');
+          }
+        }, 100);
       } catch (error) {
         console.error('Error opening overlay:', error);
         alert('❌ Fehler beim Öffnen des Overlays.\n\nBitte öffnen Sie manuell:\n' + url);
