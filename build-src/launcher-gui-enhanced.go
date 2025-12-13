@@ -929,6 +929,7 @@ func getMainPageHTML() string {
 <head>
     <meta charset="UTF-8">
     <title>TikTok Stream Tool - Launcher</title>
+    <link rel="icon" type="image/png" href="/logo">
     <style>` + getStyles() + `</style>
 </head>
 <body>
@@ -1654,7 +1655,21 @@ func getJavaScript() string {
                                 });
                             }
                         } else {
-                            window.location.replace(data.redirect);
+                            // Not keeping launcher open - redirect based on browser preference
+                            if (useDefaultBrowser) {
+                                // Use default browser
+                                window.location.href = data.redirect;
+                            } else {
+                                // Open in minimal Edge window and close launcher
+                                fetch('/api/open-dashboard', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ url: data.redirect })
+                                }).then(() => {
+                                    // Give the dashboard time to open, then close launcher
+                                    setTimeout(() => window.close(), 1000);
+                                });
+                            }
                         }
                     }, 2000);
                     return;
@@ -1677,13 +1692,34 @@ func getJavaScript() string {
         }
 
         async function loadProfiles() {
-            // Since server is not started yet, we can't load profiles
-            // Instead, we'll just show the profile creator
+            // Try to load existing profiles from the server
+            // Note: Server may not be running yet, so we handle that gracefully
             const select = document.getElementById('profileSelect');
             select.innerHTML = '<option value="">' + t('launcher.profile.select_profile') + '</option>';
             
-            // For now, just enable profile creation
-            // After server starts, profiles will be managed through the dashboard
+            try {
+                // Try to fetch profiles from the server if it's running
+                const response = await fetch('http://localhost:3000/api/profiles', {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const profiles = await response.json();
+                    if (profiles && profiles.length > 0) {
+                        profiles.forEach(profile => {
+                            const option = document.createElement('option');
+                            option.value = profile.username || profile.name || profile;
+                            option.text = profile.username || profile.name || profile;
+                            select.appendChild(option);
+                        });
+                        console.log('Loaded ' + profiles.length + ' profiles from server');
+                    }
+                }
+            } catch (error) {
+                // Server not running yet, that's okay - profiles will be managed after server starts
+                console.log('Server not running yet, profile will be created on start');
+            }
         }
 
         async function createProfile() {
@@ -1693,8 +1729,14 @@ func getJavaScript() string {
                 alert(t('launcher.profile.username_required'));
                 return;
             }
+            
+            // Validate username format
+            if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+                alert('Username can only contain letters, numbers, underscores and dashes');
+                return;
+            }
 
-            // Store the username for later use when server starts
+            // Add to the select dropdown
             const select = document.getElementById('profileSelect');
             const option = document.createElement('option');
             option.value = username;
@@ -1703,8 +1745,10 @@ func getJavaScript() string {
             select.innerHTML = '';
             select.appendChild(option);
 
+            // Hide creator, show selector
             document.getElementById('profileCreator').style.display = 'none';
             document.querySelector('.profile-selector').style.display = 'flex';
+            document.getElementById('usernameInput').value = '';
         }
 
         async function toggleLogging(enabled) {
