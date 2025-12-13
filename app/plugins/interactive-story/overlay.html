@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Interactive Story - OBS Overlay</title>
-  <style>
+  <style id="dynamicStyles">
+    /* Styles will be injected based on configuration */
     * {
       margin: 0;
       padding: 0;
@@ -13,10 +14,10 @@
 
     body {
       background: transparent;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: var(--font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
       overflow: hidden;
-      width: 1920px;
-      height: 1080px;
+      width: var(--overlay-width, 1920px);
+      height: var(--overlay-height, 1080px);
     }
 
     #storyOverlay {
@@ -58,7 +59,7 @@
       bottom: 15%;
       left: 5%;
       right: 5%;
-      background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.95) 100%);
+      background: var(--overlay-background, linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.95) 100%));
       padding: 30px;
       border-radius: 10px;
       opacity: 0;
@@ -70,8 +71,8 @@
     }
 
     #chapterTitle {
-      color: #e94560;
-      font-size: 2.5em;
+      color: var(--title-color, #e94560);
+      font-size: var(--title-font-size, 2.5em);
       font-weight: bold;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
       margin-bottom: 15px;
@@ -79,13 +80,19 @@
     }
 
     #chapterContent {
-      color: #ffffff;
-      font-size: 1.3em;
+      color: var(--text-color, #ffffff);
+      font-size: var(--text-font-size, 1.3em);
       line-height: 1.6;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
       max-height: 250px;
       overflow-y: auto;
       animation: fadeInSlide 1.2s ease-out;
+    }
+
+    /* Sentence-by-sentence display mode */
+    #chapterContent.sentence-mode {
+      max-height: 150px;
+      font-size: calc(var(--text-font-size, 1.3em) * 1.2);
     }
 
     /* Voting Overlay */
@@ -108,7 +115,7 @@
 
     .voting-header {
       text-align: center;
-      color: #e94560;
+      color: var(--title-color, #e94560);
       font-size: 2em;
       font-weight: bold;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
@@ -128,7 +135,7 @@
       background: linear-gradient(90deg, rgba(233,69,96,0.3) 0%, rgba(15,52,96,0.3) 100%);
       padding: 20px;
       border-radius: 10px;
-      border-left: 5px solid #e94560;
+      border-left: 5px solid var(--title-color, #e94560);
       backdrop-filter: blur(10px);
       position: relative;
       overflow: hidden;
@@ -148,7 +155,7 @@
     }
 
     .choice-letter {
-      background: #e94560;
+      background: var(--title-color, #e94560);
       color: white;
       font-size: 1.5em;
       font-weight: bold;
@@ -179,7 +186,7 @@
       bottom: 0;
       left: 0;
       height: 5px;
-      background: linear-gradient(90deg, #e94560, #c73a52);
+      background: linear-gradient(90deg, var(--title-color, #e94560), #c73a52);
       transition: width 0.5s ease-out;
       border-radius: 0 0 10px 0;
     }
@@ -197,7 +204,7 @@
     }
 
     .timer-display.urgent {
-      color: #e94560;
+      color: var(--title-color, #e94560);
       animation: pulse 1s infinite;
     }
 
@@ -219,7 +226,7 @@
       width: 100px;
       height: 100px;
       border: 8px solid rgba(233,69,96,0.2);
-      border-top: 8px solid #e94560;
+      border-top: 8px solid var(--title-color, #e94560);
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 0 auto 20px;
@@ -315,6 +322,23 @@
         transform: translate(-50%, -50%) scale(1);
       }
     }
+
+    /* Portrait orientation adjustments */
+    body.portrait {
+      width: var(--overlay-width, 1080px);
+      height: var(--overlay-height, 1920px);
+    }
+
+    body.portrait #imageContainer {
+      top: 5%;
+      width: 90%;
+    }
+
+    body.portrait #textOverlay {
+      bottom: 10%;
+      left: 5%;
+      right: 5%;
+    }
   </style>
 </head>
 <body>
@@ -360,6 +384,70 @@
     let votingActive = false;
     let voteTimer = null;
     let voteCounts = [];
+    let config = null;
+    let currentSentenceIndex = 0;
+    let sentences = [];
+    let sentenceTimer = null;
+
+    // Load configuration and apply styles
+    async function loadConfiguration() {
+      try {
+        const response = await fetch('/api/interactive-story/config');
+        config = await response.json();
+        applyConfiguration(config);
+      } catch (error) {
+        console.error('Failed to load configuration:', error);
+        // Use defaults if config fails
+        config = {
+          overlayOrientation: 'landscape',
+          overlayResolution: '1920x1080',
+          overlayDisplayMode: 'full',
+          overlayFontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+          overlayFontSize: 1.3,
+          overlayTitleFontSize: 2.5,
+          overlayTextColor: '#ffffff',
+          overlayTitleColor: '#e94560',
+          overlayBackgroundGradient: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.95) 100%)'
+        };
+      }
+    }
+
+    function applyConfiguration(cfg) {
+      const root = document.documentElement;
+      const body = document.body;
+      
+      // Parse resolution
+      const [width, height] = cfg.overlayResolution.split('x').map(Number);
+      
+      // Apply orientation
+      if (cfg.overlayOrientation === 'portrait') {
+        body.classList.add('portrait');
+        root.style.setProperty('--overlay-width', `${height}px`);
+        root.style.setProperty('--overlay-height', `${width}px`);
+      } else {
+        body.classList.remove('portrait');
+        root.style.setProperty('--overlay-width', `${width}px`);
+        root.style.setProperty('--overlay-height', `${height}px`);
+      }
+      
+      // Apply font and colors
+      root.style.setProperty('--font-family', cfg.overlayFontFamily);
+      root.style.setProperty('--text-font-size', `${cfg.overlayFontSize}em`);
+      root.style.setProperty('--title-font-size', `${cfg.overlayTitleFontSize}em`);
+      root.style.setProperty('--text-color', cfg.overlayTextColor);
+      root.style.setProperty('--title-color', cfg.overlayTitleColor);
+      root.style.setProperty('--overlay-background', cfg.overlayBackgroundGradient);
+      
+      // Apply display mode class
+      const contentEl = document.getElementById('chapterContent');
+      if (cfg.overlayDisplayMode === 'sentence') {
+        contentEl.classList.add('sentence-mode');
+      } else {
+        contentEl.classList.remove('sentence-mode');
+      }
+      
+      console.log('Configuration applied:', cfg);
+    }
 
     // Handle chapter ready
     socket.on('story:chapter-ready', (chapter) => {
@@ -407,6 +495,11 @@
       }
     });
 
+    function splitIntoSentences(text) {
+      // Split on periods, exclamation marks, and question marks followed by space or end
+      return text.match(/[^.!?]+[.!?]+/g) || [text];
+    }
+
     function displayChapter(chapter) {
       // Hide generating overlay
       document.getElementById('generatingOverlay').classList.remove('active');
@@ -415,9 +508,8 @@
       const overlay = document.getElementById('storyOverlay');
       overlay.classList.add('active');
       
-      // Update title and content
+      // Update title
       document.getElementById('chapterTitle').textContent = chapter.title;
-      document.getElementById('chapterContent').textContent = chapter.content;
       
       // Update image if available
       const imageContainer = document.getElementById('imageContainer');
@@ -431,11 +523,62 @@
         imageContainer.classList.remove('visible');
       }
       
+      // Display content based on mode
+      if (config && config.overlayDisplayMode === 'sentence') {
+        displaySentenceBysentence(chapter.content);
+      } else {
+        displayFullChapter(chapter.content);
+      }
+      
       // Show text overlay
       document.getElementById('textOverlay').classList.add('visible');
     }
 
+    function displayFullChapter(content) {
+      // Clear any sentence timer
+      if (sentenceTimer) {
+        clearInterval(sentenceTimer);
+        sentenceTimer = null;
+      }
+      
+      document.getElementById('chapterContent').textContent = content;
+    }
+
+    function displaySentenceBysentence(content) {
+      // Split content into sentences
+      sentences = splitIntoSentences(content);
+      currentSentenceIndex = 0;
+      
+      // Clear any existing timer
+      if (sentenceTimer) {
+        clearInterval(sentenceTimer);
+      }
+      
+      // Display first sentence
+      const contentEl = document.getElementById('chapterContent');
+      contentEl.textContent = sentences[0] || '';
+      
+      // Set up timer to show sentences one by one (every 5 seconds)
+      if (sentences.length > 1) {
+        sentenceTimer = setInterval(() => {
+          currentSentenceIndex++;
+          if (currentSentenceIndex < sentences.length) {
+            contentEl.textContent = sentences.slice(0, currentSentenceIndex + 1).join(' ');
+          } else {
+            clearInterval(sentenceTimer);
+            sentenceTimer = null;
+          }
+        }, 5000);
+      }
+    }
+
     function displayVoting(choices, duration) {
+      // Clear sentence timer when voting starts
+      if (sentenceTimer) {
+        clearInterval(sentenceTimer);
+        sentenceTimer = null;
+      }
+      
       const votingOverlay = document.getElementById('votingOverlay');
       const choiceContainer = document.getElementById('choiceContainer');
       
@@ -516,7 +659,9 @@
     }
 
     // Initialize
-    console.log('Interactive Story Overlay loaded');
+    loadConfiguration().then(() => {
+      console.log('Interactive Story Overlay loaded and configured');
+    });
   </script>
 </body>
 </html>
