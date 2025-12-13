@@ -379,9 +379,22 @@ class InteractiveStoryPlugin {
         // Generate image if enabled
         const config = this._loadConfig();
         if (config.autoGenerateImages && this.imageService) {
-          const style = this.imageService.getStyleForTheme(theme);
-          const imagePrompt = `${firstChapter.title}: ${firstChapter.content.substring(0, 200)}`;
-          firstChapter.imagePath = await this.imageService.generateImage(imagePrompt, config.defaultImageModel, style);
+          try {
+            const style = this.imageService.getStyleForTheme(theme);
+            const imagePrompt = `${firstChapter.title}: ${firstChapter.content.substring(0, 200)}`;
+            firstChapter.imagePath = await this.imageService.generateImage(imagePrompt, config.defaultImageModel, style);
+          } catch (imageError) {
+            this._debugLog('warn', `⚠️ Image generation failed, continuing without image`, { 
+              error: imageError.message,
+              statusCode: imageError.response?.status,
+              responseData: imageError.response?.data
+            });
+            firstChapter.imagePath = null;
+            this.io.emit('story:image-generation-failed', { 
+              message: 'Image generation failed, but story continues',
+              error: imageError.message 
+            });
+          }
         }
 
         // Save chapter
@@ -441,9 +454,22 @@ class InteractiveStoryPlugin {
 
         // Generate image
         if (config.autoGenerateImages && this.imageService) {
-          const style = this.imageService.getStyleForTheme(this.currentSession.theme);
-          const imagePrompt = `${nextChapter.title}: ${nextChapter.content.substring(0, 200)}`;
-          nextChapter.imagePath = await this.imageService.generateImage(imagePrompt, config.defaultImageModel, style);
+          try {
+            const style = this.imageService.getStyleForTheme(this.currentSession.theme);
+            const imagePrompt = `${nextChapter.title}: ${nextChapter.content.substring(0, 200)}`;
+            nextChapter.imagePath = await this.imageService.generateImage(imagePrompt, config.defaultImageModel, style);
+          } catch (imageError) {
+            this._debugLog('warn', `⚠️ Image generation failed, continuing without image`, { 
+              error: imageError.message,
+              statusCode: imageError.response?.status,
+              responseData: imageError.response?.data
+            });
+            nextChapter.imagePath = null;
+            this.io.emit('story:image-generation-failed', { 
+              message: 'Image generation failed, but story continues',
+              error: imageError.message 
+            });
+          }
         }
 
         // Save chapter
@@ -705,9 +731,22 @@ class InteractiveStoryPlugin {
         
         // Generate image
         if (config.autoGenerateImages && this.imageService) {
-          const style = this.imageService.getStyleForTheme(this.currentSession.theme);
-          const imagePrompt = `${nextChapter.title}: ${nextChapter.content.substring(0, 200)}`;
-          nextChapter.imagePath = await this.imageService.generateImage(imagePrompt, config.defaultImageModel, style);
+          try {
+            const style = this.imageService.getStyleForTheme(this.currentSession.theme);
+            const imagePrompt = `${nextChapter.title}: ${nextChapter.content.substring(0, 200)}`;
+            nextChapter.imagePath = await this.imageService.generateImage(imagePrompt, config.defaultImageModel, style);
+          } catch (imageError) {
+            this._debugLog('warn', `⚠️ Image generation failed, continuing without image`, { 
+              error: imageError.message,
+              statusCode: imageError.response?.status,
+              responseData: imageError.response?.data
+            });
+            nextChapter.imagePath = null;
+            this.io.emit('story:image-generation-failed', { 
+              message: 'Image generation failed, but story continues',
+              error: imageError.message 
+            });
+          }
         }
         
         // Save chapter with admin choice
