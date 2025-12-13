@@ -23,6 +23,9 @@
         WAIT_NEXT: 'wait_next'
     };
 
+    // UI Constants
+    const LONG_ANSWER_THRESHOLD = 30; // Characters threshold for multi-line wrapping
+
     let currentState = States.IDLE;
     let stateTimeout = null;
 
@@ -556,7 +559,8 @@
             case States.TIME_UP:
                 stopTimer();
                 animateTimeUp();
-                // Hide timer after time is up
+                // Hide timer explicitly when time is up for immediate visual feedback
+                // (also hidden later in WAIT_NEXT via hideQuizSections, but this ensures immediate hiding)
                 const timerSectionTimeUp = document.getElementById('timerSection');
                 if (timerSectionTimeUp) {
                     timerSectionTimeUp.style.display = 'none';
@@ -793,7 +797,7 @@
 
                 // For long answers, use 2-line layout with tighter spacing instead of shrinking
                 const length = answer.length;
-                if (length > 30) {
+                if (length > LONG_ANSWER_THRESHOLD) {
                     element.classList.add('long-text');
                     // Don't change font size, use CSS to handle wrapping
                     element.style.fontSize = '';

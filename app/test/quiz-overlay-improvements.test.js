@@ -41,7 +41,8 @@ describe('Quiz Show Overlay - Display Improvements', () => {
         });
 
         test('JavaScript should apply long-text class for answers > 30 chars', () => {
-            expect(overlayCode).toContain("if (length > 30)");
+            expect(overlayCode).toContain("LONG_ANSWER_THRESHOLD");
+            expect(overlayCode).toContain("if (length > LONG_ANSWER_THRESHOLD)");
             expect(overlayCode).toContain("element.classList.add('long-text')");
         });
     });
