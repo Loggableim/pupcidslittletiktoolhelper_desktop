@@ -14,7 +14,7 @@ describe('Quiz Show Overlay - Theme Mapping', () => {
 
     beforeAll(() => {
         // Read the overlay JavaScript file
-        const overlayPath = path.join(__dirname, '../plugins/quiz_show/quiz_show_overlay.js');
+        const overlayPath = path.join(__dirname, '../plugins/quiz-show/quiz_show_overlay.js');
         overlayCode = fs.readFileSync(overlayPath, 'utf8');
     });
 
