@@ -123,14 +123,23 @@ class InteractiveStoryPlugin {
         // Create debug callback that respects debugLogging config
         const debugCallback = (level, message, data) => this._debugLog(level, message, data);
         
-        this.llmService = new LLMService(apiKey, this.logger, debugCallback);
+        // Create LLM service options
+        const llmOptions = {
+          timeout: config.llmTimeout,
+          maxRetries: config.llmMaxRetries,
+          retryDelay: config.llmRetryDelay
+        };
+        
+        this.llmService = new LLMService(apiKey, this.logger, debugCallback, llmOptions);
         this.imageService = new ImageService(apiKey, this.logger, this.imageCacheDir);
         this.ttsService = new TTSService(apiKey, this.logger, this.audioCacheDir);
         this.storyEngine = new StoryEngine(this.llmService, this.logger);
         
         this._debugLog('info', '✅ SiliconFlow services initialized', { 
           apiKeyLength: apiKey.length,
-          apiKeyPrefix: apiKey.substring(0, 6) + '...'
+          apiKeyPrefix: apiKey.substring(0, 6) + '...',
+          timeout: config.llmTimeout,
+          maxRetries: config.llmMaxRetries
         });
         this.api.log('✅ SiliconFlow services initialized', 'info');
       } else {
@@ -217,7 +226,10 @@ class InteractiveStoryPlugin {
       },
       offlineMode: false,
       debugLogging: false,
-      apiLogging: false
+      apiLogging: false,
+      llmTimeout: 120000, // 120 seconds timeout for LLM API calls
+      llmMaxRetries: 3, // Maximum retry attempts for failed API calls
+      llmRetryDelay: 2000 // Initial retry delay in milliseconds
     };
 
     const savedConfig = this.api.getConfig('story-config');
@@ -273,10 +285,15 @@ class InteractiveStoryPlugin {
         const config = req.body;
         this._saveConfig(config);
         
-        // Reinitialize services if API key changed
+        // Reinitialize services if API key changed or if timeout settings changed
         if (config.siliconFlowApiKey && config.siliconFlowApiKey !== '***configured***') {
           const debugCallback = (level, message, data) => this._debugLog(level, message, data);
-          this.llmService = new LLMService(config.siliconFlowApiKey, this.logger, debugCallback);
+          const llmOptions = {
+            timeout: config.llmTimeout || 120000,
+            maxRetries: config.llmMaxRetries || 3,
+            retryDelay: config.llmRetryDelay || 2000
+          };
+          this.llmService = new LLMService(config.siliconFlowApiKey, this.logger, debugCallback, llmOptions);
           this.imageService = new ImageService(config.siliconFlowApiKey, this.logger, this.imageCacheDir);
           this.ttsService = new TTSService(config.siliconFlowApiKey, this.logger, this.audioCacheDir);
           this.storyEngine = new StoryEngine(this.llmService, this.logger);
@@ -285,7 +302,12 @@ class InteractiveStoryPlugin {
           const apiKey = this._getSiliconFlowApiKey();
           if (apiKey) {
             const debugCallback = (level, message, data) => this._debugLog(level, message, data);
-            this.llmService = new LLMService(apiKey, this.logger, debugCallback);
+            const llmOptions = {
+              timeout: config.llmTimeout || 120000,
+              maxRetries: config.llmMaxRetries || 3,
+              retryDelay: config.llmRetryDelay || 2000
+            };
+            this.llmService = new LLMService(apiKey, this.logger, debugCallback, llmOptions);
             this.imageService = new ImageService(apiKey, this.logger, this.imageCacheDir);
             this.ttsService = new TTSService(apiKey, this.logger, this.audioCacheDir);
             this.storyEngine = new StoryEngine(this.llmService, this.logger);
@@ -293,6 +315,16 @@ class InteractiveStoryPlugin {
               apiKeyConfigured: true
             });
           }
+        } else if (this.llmService && (config.llmTimeout || config.llmMaxRetries || config.llmRetryDelay)) {
+          // Update timeout settings in existing service
+          if (config.llmTimeout) this.llmService.timeout = config.llmTimeout;
+          if (config.llmMaxRetries) this.llmService.maxRetries = config.llmMaxRetries;
+          if (config.llmRetryDelay) this.llmService.retryDelay = config.llmRetryDelay;
+          this._debugLog('info', '✅ LLM service settings updated', {
+            timeout: this.llmService.timeout,
+            maxRetries: this.llmService.maxRetries,
+            retryDelay: this.llmService.retryDelay
+          });
         }
 
         res.json({ success: true });
