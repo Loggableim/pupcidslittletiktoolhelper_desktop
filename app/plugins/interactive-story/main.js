@@ -283,6 +283,71 @@ class InteractiveStoryPlugin {
   }
 
   /**
+   * Speak text using the system TTS (LTTH TTS plugin)
+   * @param {string} text - Text to speak
+   * @param {Object} options - TTS options
+   * @returns {Promise<Object>} TTS result
+   */
+  async _speakThroughSystemTTS(text, options = {}) {
+    try {
+      const config = this._loadConfig();
+      const axios = require('axios');
+      
+      // Call the LTTH TTS plugin API
+      const response = await axios.post('http://localhost:3000/api/tts/speak', {
+        text: text,
+        username: 'Story Narrator',
+        userId: 'interactive-story',
+        voiceId: options.voiceId || config.ttsVoiceId || 'tts-1-alloy',
+        engine: 'openai', // Explicitly use OpenAI engine
+        source: 'interactive-story'
+      }, {
+        timeout: 30000
+      });
+      
+      if (response.data && response.data.success) {
+        this.logger.info('TTS generated successfully through system TTS');
+        return response.data;
+      } else {
+        throw new Error('TTS generation failed: ' + (response.data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      this.logger.error(`System TTS error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate TTS for a chapter if auto-TTS is enabled
+   * @param {Object} chapter - Chapter object with title and content
+   */
+  async _generateChapterTTS(chapter) {
+    try {
+      const config = this._loadConfig();
+      
+      if (!config.autoGenerateTTS) {
+        return; // TTS disabled
+      }
+
+      const ttsProvider = config.ttsProvider || 'system';
+      const textToSpeak = `${chapter.title}. ${chapter.content}`;
+      
+      if (ttsProvider === 'system') {
+        // Use LTTH TTS plugin (OpenAI TTS)
+        await this._speakThroughSystemTTS(textToSpeak);
+        this.logger.info(`Chapter ${chapter.chapterNumber} spoken through system TTS`);
+      } else if (ttsProvider === 'siliconflow' && this.ttsService) {
+        // Use SiliconFlow TTS (legacy)
+        await this.ttsService.generateSpeech(textToSpeak, 'narrator');
+        this.logger.info(`Chapter ${chapter.chapterNumber} TTS generated with SiliconFlow`);
+      }
+    } catch (error) {
+      // Don't fail chapter generation if TTS fails
+      this.logger.error(`Failed to generate TTS for chapter: ${error.message}`);
+    }
+  }
+
+  /**
    * Load plugin configuration
    */
   _loadConfig() {
@@ -512,6 +577,11 @@ class InteractiveStoryPlugin {
         // Emit chapter to clients
         this.io.emit('story:chapter-ready', firstChapter);
 
+        // Generate TTS if enabled (non-blocking)
+        this._generateChapterTTS(firstChapter).catch(err => {
+          this.logger.warn(`TTS generation failed (non-critical): ${err.message}`);
+        });
+
         // Start voting
         this.votingSystem.start(firstChapter.choices, {
           votingDuration: config.votingDuration,
@@ -586,6 +656,11 @@ class InteractiveStoryPlugin {
 
         // Emit chapter
         this.io.emit('story:chapter-ready', nextChapter);
+
+        // Generate TTS if enabled (non-blocking)
+        this._generateChapterTTS(nextChapter).catch(err => {
+          this.logger.warn(`TTS generation failed (non-critical): ${err.message}`);
+        });
 
         // Start voting
         this.votingSystem.start(nextChapter.choices, {
@@ -864,6 +939,11 @@ class InteractiveStoryPlugin {
         
         // Emit chapter
         this.io.emit('story:chapter-ready', nextChapter);
+        
+        // Generate TTS if enabled (non-blocking)
+        this._generateChapterTTS(nextChapter).catch(err => {
+          this.logger.warn(`TTS generation failed (non-critical): ${err.message}`);
+        });
         
         this._debugLog('info', `Next chapter generated`, { chapterNumber, title: nextChapter.title });
         
