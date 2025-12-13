@@ -1228,6 +1228,45 @@ body {
 }
 
 /* ============================================
+   TIMER AT ZERO - RED AND FADE OUT
+   ============================================ */
+
+.timer-section.timer-at-zero .timer-progress {
+    stroke: var(--color-danger) !important;
+    filter: drop-shadow(0 0 calc(30px * var(--glow-intensity)) var(--color-danger));
+}
+
+.timer-section.timer-at-zero .timer-value,
+.timer-section.timer-at-zero .timer-bar-text,
+.timer-section.timer-at-zero .timer-neon-value,
+.timer-section.timer-at-zero .timer-ring-value {
+    color: var(--color-danger);
+    text-shadow: 0 0 calc(20px * var(--glow-intensity)) var(--color-danger);
+}
+
+.timer-section.timer-at-zero .timer-bar {
+    background: var(--color-danger) !important;
+}
+
+.timer-section.timer-at-zero .timer-ring-progress {
+    stroke: var(--color-danger) !important;
+    filter: drop-shadow(0 0 calc(30px * var(--glow-intensity)) var(--color-danger));
+}
+
+.timer-section.timer-fade-out {
+    animation: timerFadeOut calc(0.5s / var(--animation-speed)) ease-out forwards;
+}
+
+@keyframes timerFadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* ============================================
    RESPONSIVE DESIGN
    ============================================ */
 
