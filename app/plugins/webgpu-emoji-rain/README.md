@@ -153,6 +153,21 @@ Der Vertex-Shader verwendet instanziertes Rendering:
 | Draw Calls | ~200 | 1 |
 | CPU Last | Hoch | Niedrig |
 | FPS (volle Last) | 30-45 | 60 |
+| Freeze Protection | ✅ | ✅ |
+
+### Automatic Freeze Recovery
+
+Beide Plugin-Versionen (Original und WebGPU) enthalten einen Schutzmechanismus gegen komplette Abstürze:
+
+- **FPS-Überwachung**: Kontinuierliche Performance-Überwachung
+- **Freeze-Erkennung**: Erkennt, wenn FPS auf 0 fällt (kompletter Freeze)
+- **Auto-Wiederherstellung**: Nach 3 aufeinanderfolgenden Sekunden bei 0 FPS:
+  1. Fehler wird in Konsole geloggt
+  2. Visuelle Warnung wird angezeigt
+  3. Overlay lädt sich nach 2 Sekunden automatisch neu
+- **Intelligente Wiederherstellung**: Wenn FPS sich vor dem Reload erholt, wird der Failsafe zurückgesetzt und der Normalbetrieb fortgesetzt
+
+Dies stellt sicher, dass das Overlay auch bei extremem Gift-Spam automatisch wiederhergestellt wird, ohne dass ein vollständiger System-Neustart erforderlich ist.
 
 ### Partikel-Daten
 

@@ -1015,6 +1015,12 @@ class FireworksEngine {
         this.fpsHistory = [];
         this.performanceMode = 'normal';
         
+        // Freeze detection and failsafe
+        this.freezeDetectionEnabled = true; // Can be disabled for debugging
+        this.frozenFrameCount = 0; // Count consecutive frames with 0 FPS
+        this.maxFrozenFrames = 3; // Reload after 3 consecutive seconds of 0 FPS
+        this.freezeWarningShown = false;
+        
         // Combo throttling
         this.lastComboTriggerTime = 0;
         this.comboTriggerQueue = [];
@@ -1289,6 +1295,38 @@ class FireworksEngine {
                 this.fpsHistory.shift();
             }
             
+            // Freeze detection failsafe
+            if (this.freezeDetectionEnabled) {
+                if (this.fps === 0) {
+                    this.frozenFrameCount++;
+                    
+                    // Show warning after first frozen frame
+                    if (this.frozenFrameCount === 1 && !this.freezeWarningShown) {
+                        console.warn('[WebGPU Fireworks] ⚠️ FPS dropped to 0, monitoring for freeze...');
+                        this.freezeWarningShown = true;
+                    }
+                    
+                    // Auto-reload after sustained freeze
+                    if (this.frozenFrameCount >= this.maxFrozenFrames) {
+                        console.error(`[WebGPU Fireworks] 🔄 FPS frozen for ${this.maxFrozenFrames} seconds, auto-reloading overlay to recover...`);
+                        // Show visual warning before reload
+                        this.showFreezeWarning();
+                        // Reload after 2 seconds to allow warning to be visible
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                        return; // Stop processing this frame
+                    }
+                } else {
+                    // FPS recovered, reset freeze counter
+                    if (this.frozenFrameCount > 0) {
+                        console.log(`[WebGPU Fireworks] ✅ FPS recovered (was frozen for ${this.frozenFrameCount}s)`);
+                    }
+                    this.frozenFrameCount = 0;
+                    this.freezeWarningShown = false;
+                }
+            }
+            
             // Calculate average FPS over last 5 seconds
             const avgFps = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
             const targetFps = this.config.targetFps;
@@ -1427,6 +1465,33 @@ class FireworksEngine {
                 break; // Wait for despawn to complete
             }
         }
+    }
+    
+    showFreezeWarning() {
+        // Create a visual warning overlay
+        const warning = document.createElement('div');
+        warning.id = 'freeze-warning';
+        warning.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            z-index: 10000;
+            border: 3px solid white;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+        `;
+        warning.innerHTML = `
+            <div>⚠️ OVERLAY FROZEN ⚠️</div>
+            <div style="font-size: 18px; margin-top: 10px;">Auto-reloading in 2 seconds...</div>
+        `;
+        document.body.appendChild(warning);
     }
     
     getTotalParticles() {
