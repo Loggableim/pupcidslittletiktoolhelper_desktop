@@ -2,7 +2,7 @@ const OpenAI = require('openai');
 
 /**
  * OpenAI LLM Service for Chat Completions API
- * Supports all OpenAI models including o1, GPT-4o, and GPT-4 series
+ * Supports GPT-5 family and previous models
  */
 class OpenAILLMService {
   constructor(apiKey, logger, debugCallback = null, options = {}) {
@@ -12,6 +12,13 @@ class OpenAILLMService {
     this.client = new OpenAI({ apiKey });
     
     this.models = {
+      'gpt-5.2': 'gpt-5.2',
+      'gpt-5.2-pro': 'gpt-5.2-pro',
+      'gpt-5.2-chat-latest': 'gpt-5.2-chat-latest',
+      'gpt-5.1': 'gpt-5.1',
+      'gpt-5.1-codex-max': 'gpt-5.1-codex-max',
+      'gpt-5-mini': 'gpt-5-mini',
+      'gpt-5-nano': 'gpt-5-nano',
       'o1': 'o1',
       'o1-mini': 'o1-mini',
       'gpt-4o': 'gpt-4o',

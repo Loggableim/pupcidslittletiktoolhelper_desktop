@@ -397,7 +397,7 @@ class InteractiveStoryPlugin {
       ttsProvider: 'system', // 'system' (uses LTTH TTS plugin) or 'siliconflow'
       
       // OpenAI models
-      openaiModel: 'o1-mini',
+      openaiModel: 'gpt-5.2',
       openaiImageModel: 'gpt-image-1',
       
       // SiliconFlow models (legacy)
