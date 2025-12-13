@@ -341,7 +341,11 @@
             
             <div id="apiKeyWarning" class="alert alert-warning" style="display: none;">
                 <strong>⚠️ Kein API-Schlüssel konfiguriert!</strong><br>
-                Bitte konfigurieren Sie den <code>siliconflow_api_key</code> in den globalen Einstellungen.<br>
+                Bitte konfigurieren Sie den SiliconFlow API-Schlüssel:<br>
+                1. Gehen Sie zu <strong>Dashboard > Einstellungen > TTS API Keys</strong><br>
+                2. Geben Sie Ihren SiliconFlow API Key ein<br>
+                3. Klicken Sie auf "Save TTS API Keys"<br>
+                4. Klicken Sie hier auf "API testen" um die Verbindung zu prüfen<br>
                 <small>Der API-Schlüssel wird zentral verwaltet und mit anderen Plugins geteilt (TTS Fish Speech, StreamAlchemy).</small>
             </div>
             
@@ -486,13 +490,11 @@
             <div class="section-title">
                 <i data-lucide="terminal"></i>
                 Debug Log
-                <button class="btn btn-secondary ml-auto" id="refreshLogBtn" style="margin-left: auto;">
-                    <i data-lucide="refresh-cw" class="inline-block w-4 h-4"></i>
-                    Aktualisieren
-                </button>
             </div>
-            <div id="debugLog" class="debug-log">
-                Debug-Logging aktivieren, um Logs zu sehen...
+            <div class="alert alert-info">
+                <strong>ℹ️ Debug-Logs anzeigen</strong><br>
+                Debug-Logs werden im Server-Terminal ausgegeben. Öffnen Sie das Terminal/Konsole, in dem der Server läuft, um die Logs zu sehen.<br>
+                <small>Die Logs enthalten detaillierte Informationen über API-Aufrufe, Cache-Zugriffe und Avatar-Generierung.</small>
             </div>
         </div>
 
