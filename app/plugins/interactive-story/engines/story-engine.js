@@ -1,5 +1,20 @@
 const StoryMemory = require('../utils/story-memory');
 
+// Configuration constants
+const MAX_GENERATION_ATTEMPTS = 3; // Maximum retry attempts for chapter generation
+
+// Word count ranges by platform and chapter type
+const WORD_COUNT = {
+  tiktok: {
+    regular: '30-50',
+    final: '50-80'
+  },
+  default: {
+    regular: '200-400',
+    final: '300-500'
+  }
+};
+
 /**
  * Story Generation Engine
  * Orchestrates LLM calls, coherence checking, and chapter generation
@@ -100,6 +115,16 @@ class StoryEngine {
     if (options.platform) {
       this.platform = options.platform;
     }
+  }
+  
+  /**
+   * Get word count range based on platform and chapter type
+   * @param {boolean} isFinal - Is this the final chapter
+   * @returns {string} Word count range (e.g., "30-50")
+   */
+  _getWordCount(isFinal = false) {
+    const platform = this.platform === 'tiktok' ? 'tiktok' : 'default';
+    return isFinal ? WORD_COUNT[platform].final : WORD_COUNT[platform].regular;
   }
 
   /**
@@ -204,8 +229,8 @@ Do not include specific choices - just the setup.`;
     let attempts = 0;
     let chapter = null;
 
-    // Try to generate a coherent chapter (up to 3 attempts)
-    while (attempts < 3 && !chapter) {
+    // Try to generate a coherent chapter (up to MAX_GENERATION_ATTEMPTS)
+    while (attempts < MAX_GENERATION_ATTEMPTS && !chapter) {
       attempts++;
       
       try {
@@ -228,12 +253,72 @@ Do not include specific choices - just the setup.`;
         }
       } catch (error) {
         this.logger.error(`Error generating chapter: ${error.message}`);
-        if (attempts >= 3) throw error;
+        if (attempts >= MAX_GENERATION_ATTEMPTS) throw error;
       }
     }
 
     if (!chapter) {
-      throw new Error('Failed to generate coherent chapter after 3 attempts');
+      throw new Error(`Failed to generate coherent chapter after ${MAX_GENERATION_ATTEMPTS} attempts`);
+    }
+
+    return chapter;
+  }
+
+  /**
+   * Generate a final chapter that resolves the story
+   * @param {number} chapterNumber - Chapter number
+   * @param {string} previousChoice - The choice that led to this ending
+   * @param {string} model - LLM model to use
+   * @returns {Promise<Object>} Chapter object without choices (ending)
+   */
+  async generateFinalChapter(chapterNumber, previousChoice = null, model = 'deepseek') {
+    const themeData = this.themes[this.memory.memory.theme] || this.themes.fantasy;
+    const context = this.memory.getContext();
+
+    const prompt = this._buildFinalChapterPrompt(
+      themeData,
+      context,
+      chapterNumber,
+      previousChoice
+    );
+
+    this.logger.info(`Generating FINAL chapter ${chapterNumber} with ${model}...`);
+    
+    let attempts = 0;
+    let chapter = null;
+
+    // Try to generate a coherent final chapter (up to MAX_GENERATION_ATTEMPTS)
+    while (attempts < MAX_GENERATION_ATTEMPTS && !chapter) {
+      attempts++;
+      
+      try {
+        const response = await this.llmService.generateCompletion(prompt, model, 2000, 0.7);
+        const parsed = this._parseFinalChapterResponse(response);
+        
+        // Coherence check
+        if (await this._checkCoherence(parsed, context)) {
+          chapter = parsed;
+          chapter.chapterNumber = chapterNumber;
+          chapter.model = model;
+          chapter.isFinal = true;
+          chapter.choices = []; // Empty array for final chapter (use isFinal flag to distinguish)
+          
+          // Update memory
+          this.memory.updateFromChapter(chapter.content, {
+            tags: chapter.memoryTags
+          });
+          this.memory.nextChapter();
+        } else {
+          this.logger.warn(`Final chapter ${chapterNumber} failed coherence check, attempt ${attempts}`);
+        }
+      } catch (error) {
+        this.logger.error(`Error generating final chapter: ${error.message}`);
+        if (attempts >= MAX_GENERATION_ATTEMPTS) throw error;
+      }
+    }
+
+    if (!chapter) {
+      throw new Error(`Failed to generate coherent final chapter after ${MAX_GENERATION_ATTEMPTS} attempts`);
     }
 
     return chapter;
@@ -244,7 +329,7 @@ Do not include specific choices - just the setup.`;
    */
   _buildChapterPrompt(themeData, context, chapterNumber, previousChoice, numChoices) {
     // Determine word count based on platform
-    const wordCount = this.platform === 'tiktok' ? '30-50' : '200-400';
+    const wordCount = this._getWordCount(false);
     
     let prompt = `You are writing chapter ${chapterNumber} of an interactive ${themeData.style} story in ${this.language}.\n\n`;
 
@@ -275,6 +360,45 @@ Do not include specific choices - just the setup.`;
       prompt += `${i}. [Unique choice ${i} in ${this.language} - MUST BE DIFFERENT FROM OTHER CHOICES]\n`;
     }
     prompt += `\nMEMORY_TAGS:\n`;
+    prompt += `CHARACTERS: [comma-separated character names]\n`;
+    prompt += `LOCATIONS: [comma-separated location names]\n`;
+    prompt += `ITEMS: [comma-separated item names]\n`;
+
+    return prompt;
+  }
+
+  /**
+   * Build final chapter generation prompt (no choices, resolves story)
+   */
+  _buildFinalChapterPrompt(themeData, context, chapterNumber, previousChoice) {
+    // Final chapters can be longer to properly resolve the story
+    const wordCount = this._getWordCount(true);
+    
+    let prompt = `You are writing the FINAL chapter (chapter ${chapterNumber}) of an interactive ${themeData.style} story in ${this.language}.\n\n`;
+
+    if (context) {
+      prompt += `STORY CONTEXT:\n${context}\n\n`;
+    }
+
+    if (previousChoice) {
+      prompt += `PREVIOUS CHOICE: ${previousChoice}\n\n`;
+    }
+
+    prompt += `Write the FINAL chapter that CONCLUDES and RESOLVES the story in ${this.language}. The chapter should:\n`;
+    prompt += `1. Be engaging and satisfying (${themeData.tone})\n`;
+    prompt += `2. Be ${wordCount} words (can be slightly longer to properly resolve the story)\n`;
+    prompt += `3. Continue logically from previous events\n`;
+    prompt += `4. RESOLVE all major plot threads and character arcs\n`;
+    prompt += `5. Provide a SATISFYING CONCLUSION to the story\n`;
+    prompt += `6. Include memory tags for characters, locations, and items\n`;
+    prompt += `7. Be written ENTIRELY in ${this.language}\n\n`;
+    
+    prompt += `IMPORTANT: This is the ENDING. Make it memorable and conclusive!\n\n`;
+
+    prompt += `Format your response EXACTLY as follows:\n\n`;
+    prompt += `TITLE: [Final chapter title in ${this.language}]\n\n`;
+    prompt += `CONTENT:\n[Final chapter text here in ${this.language} - ${wordCount} WORDS, MUST RESOLVE THE STORY]\n\n`;
+    prompt += `MEMORY_TAGS:\n`;
     prompt += `CHARACTERS: [comma-separated character names]\n`;
     prompt += `LOCATIONS: [comma-separated location names]\n`;
     prompt += `ITEMS: [comma-separated item names]\n`;
@@ -326,6 +450,62 @@ Do not include specific choices - just the setup.`;
       chapter.choices.push('Continue the adventure');
     }
     chapter.choices = chapter.choices.slice(0, numChoices);
+
+    // Extract memory tags
+    const charactersMatch = response.match(/CHARACTERS:\s*(.+)/i);
+    if (charactersMatch) {
+      chapter.memoryTags.characters = charactersMatch[1]
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s);
+    }
+
+    const locationsMatch = response.match(/LOCATIONS:\s*(.+)/i);
+    if (locationsMatch) {
+      chapter.memoryTags.locations = locationsMatch[1]
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s);
+    }
+
+    const itemsMatch = response.match(/ITEMS:\s*(.+)/i);
+    if (itemsMatch) {
+      chapter.memoryTags.items = itemsMatch[1]
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s);
+    }
+
+    return chapter;
+  }
+
+  /**
+   * Parse LLM response into structured final chapter (no choices)
+   */
+  _parseFinalChapterResponse(response) {
+    const chapter = {
+      title: '',
+      content: '',
+      choices: [], // Empty array for final chapter (use isFinal flag to distinguish)
+      isFinal: true,
+      memoryTags: {
+        characters: [],
+        locations: [],
+        items: []
+      }
+    };
+
+    // Extract title
+    const titleMatch = response.match(/TITLE:\s*(.+)/i);
+    if (titleMatch) {
+      chapter.title = titleMatch[1].trim();
+    }
+
+    // Extract content (no CHOICES section for final chapter)
+    const contentMatch = response.match(/CONTENT:\s*([\s\S]+?)(?=MEMORY_TAGS:|$)/i);
+    if (contentMatch) {
+      chapter.content = contentMatch[1].trim();
+    }
 
     // Extract memory tags
     const charactersMatch = response.match(/CHARACTERS:\s*(.+)/i);
