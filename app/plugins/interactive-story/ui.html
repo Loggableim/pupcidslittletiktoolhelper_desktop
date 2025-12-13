@@ -368,21 +368,71 @@
             <div class="col-md-12">
               <div class="alert alert-info mb-3">
                 <strong>ℹ️ API Key Configuration</strong><br>
-                The SiliconFlow API key is now configured globally in <strong>Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)</strong>.<br>
-                This single API key is used for LLM chat completions, image generation, and TTS across all plugins.
+                Configure your AI provider API keys in <strong>Settings</strong>:<br>
+                • <strong>OpenAI</strong>: Settings → OpenAI API Configuration<br>
+                • <strong>SiliconFlow</strong>: Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)
               </div>
               
               <div class="mb-4">
                 <button type="button" class="btn btn-primary" id="testApiKeyBtn" onclick="testApiKey()">
                   🔍 Test API Key
                 </button>
-                <small class="form-text text-muted ml-2">Click to validate your SiliconFlow API key</small>
+                <small class="form-text text-muted ml-2">Click to validate your API key</small>
                 <div id="apiKeyTestResult" class="mt-2" style="display: none;"></div>
               </div>
             </div>
-            <div class="col-md-6">
+          </div>
+
+          <!-- Provider Selection -->
+          <div class="row">
+            <div class="col-md-12">
+              <h5 class="mb-3">🤖 AI Provider Selection</h5>
+            </div>
+            <div class="col-md-4">
               <div class="mb-3">
-                <label class="form-label">Default LLM Model</label>
+                <label class="form-label">LLM Provider</label>
+                <select class="form-select" id="llmProvider">
+                  <option value="openai">OpenAI (GPT)</option>
+                  <option value="siliconflow">SiliconFlow</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Image Provider</label>
+                <select class="form-select" id="imageProvider">
+                  <option value="openai">OpenAI (DALL-E)</option>
+                  <option value="siliconflow">SiliconFlow</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">TTS Provider</label>
+                <select class="form-select" id="ttsProvider">
+                  <option value="system">System TTS (OpenAI)</option>
+                  <option value="siliconflow">SiliconFlow TTS</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Model Selection -->
+          <div class="row">
+            <div class="col-md-12">
+              <h5 class="mb-3">🎯 Model Selection</h5>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3" id="openaiModelGroup">
+                <label class="form-label">OpenAI LLM Model</label>
+                <select class="form-select" id="openaiModel">
+                  <option value="gpt-4o-mini">GPT-4o Mini (Recommended - Cost-efficient)</option>
+                  <option value="gpt-4o">GPT-4o (High Quality)</option>
+                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast & Cheap)</option>
+                </select>
+              </div>
+              <div class="mb-3" id="siliconflowModelGroup" style="display: none;">
+                <label class="form-label">SiliconFlow LLM Model</label>
                 <select class="form-select" id="defaultModel">
                   <option value="deepseek">DeepSeek V3</option>
                   <option value="qwen">Qwen 2.5-7B</option>
@@ -391,8 +441,15 @@
               </div>
             </div>
             <div class="col-md-6">
-              <div class="mb-3">
-                <label class="form-label">Image Model</label>
+              <div class="mb-3" id="openaiImageModelGroup">
+                <label class="form-label">OpenAI Image Model</label>
+                <select class="form-select" id="openaiImageModel">
+                  <option value="dall-e-2">DALL-E 2 (Cost-efficient)</option>
+                  <option value="dall-e-3">DALL-E 3 (High Quality)</option>
+                </select>
+              </div>
+              <div class="mb-3" id="siliconflowImageModelGroup" style="display: none;">
+                <label class="form-label">SiliconFlow Image Model</label>
                 <select class="form-select" id="defaultImageModel">
                   <option value="flux-schnell">FLUX.1 Schnell</option>
                   <option value="z-image-turbo">Z-Image Turbo</option>
@@ -400,8 +457,120 @@
               </div>
             </div>
           </div>
-          
+
+          <!-- TTS Voice Selection (when using system TTS) -->
+          <div class="row" id="systemTtsVoiceGroup">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">OpenAI TTS Voice</label>
+                <select class="form-select" id="ttsVoiceId">
+                  <option value="tts-1-alloy">Alloy (Standard - Neutral)</option>
+                  <option value="tts-1-echo">Echo (Standard - Male)</option>
+                  <option value="tts-1-fable">Fable (Standard - British)</option>
+                  <option value="tts-1-onyx">Onyx (Standard - Deep Male)</option>
+                  <option value="tts-1-nova">Nova (Standard - Female)</option>
+                  <option value="tts-1-shimmer">Shimmer (Standard - Soft Female)</option>
+                  <option value="tts-1-hd-alloy">Alloy HD (High Quality - Neutral)</option>
+                  <option value="tts-1-hd-echo">Echo HD (High Quality - Male)</option>
+                  <option value="tts-1-hd-fable">Fable HD (High Quality - British)</option>
+                  <option value="tts-1-hd-onyx">Onyx HD (High Quality - Deep Male)</option>
+                  <option value="tts-1-hd-nova">Nova HD (High Quality - Female)</option>
+                  <option value="tts-1-hd-shimmer">Shimmer HD (High Quality - Soft Female)</option>
+                </select>
+                <small class="form-text text-muted">Select voice for story narration (when TTS is enabled)</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Overlay Customization -->
           <div class="row">
+            <div class="col-md-12">
+              <h5 class="mb-3">🎨 Overlay Customization</h5>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Orientation</label>
+                <select class="form-select" id="overlayOrientation">
+                  <option value="landscape">Landscape (Horizontal)</option>
+                  <option value="portrait">Portrait (Vertical)</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Resolution</label>
+                <select class="form-select" id="overlayResolution">
+                  <option value="1920x1080">1920x1080 (Full HD)</option>
+                  <option value="1280x720">1280x720 (HD)</option>
+                  <option value="2560x1440">2560x1440 (2K)</option>
+                  <option value="3840x2160">3840x2160 (4K)</option>
+                  <option value="1080x1920">1080x1920 (Portrait Full HD)</option>
+                  <option value="720x1280">720x1280 (Portrait HD)</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Display Mode</label>
+                <select class="form-select" id="overlayDisplayMode">
+                  <option value="full">Full Chapter</option>
+                  <option value="sentence">Sentence-by-Sentence</option>
+                </select>
+                <small class="form-text text-muted">How chapter text is displayed</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Text Styling -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Font Family</label>
+                <select class="form-select" id="overlayFontFamily">
+                  <option value="Segoe UI, Tahoma, Geneva, Verdana, sans-serif">Segoe UI (Default)</option>
+                  <option value="Arial, Helvetica, sans-serif">Arial</option>
+                  <option value="Georgia, serif">Georgia</option>
+                  <option value="'Courier New', monospace">Courier New</option>
+                  <option value="'Times New Roman', serif">Times New Roman</option>
+                  <option value="'Comic Sans MS', cursive">Comic Sans</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Text Size (em)</label>
+                <input type="number" class="form-control" id="overlayFontSize" min="0.5" max="3" step="0.1" value="1.3">
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Title Size (em)</label>
+                <input type="number" class="form-control" id="overlayTitleFontSize" min="1" max="5" step="0.1" value="2.5">
+              </div>
+            </div>
+          </div>
+
+          <!-- Colors -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Text Color</label>
+                <input type="color" class="form-control" id="overlayTextColor" value="#ffffff">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Title Color</label>
+                <input type="color" class="form-control" id="overlayTitleColor" value="#e94560">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Voting and Generation Settings -->
+          <div class="row">
+            <div class="col-md-12">
+              <h5 class="mb-3">⚙️ Voting & Generation Settings</h5>
+            </div>
             <div class="col-md-3">
               <div class="mb-3">
                 <label class="form-label">Voting Duration (seconds)</label>
@@ -760,9 +929,31 @@
         const response = await fetch('/api/interactive-story/config');
         const config = await response.json();
         
-        // API key is now in global settings, not plugin config
+        // Provider selection
+        document.getElementById('llmProvider').value = config.llmProvider || 'openai';
+        document.getElementById('imageProvider').value = config.imageProvider || 'openai';
+        document.getElementById('ttsProvider').value = config.ttsProvider || 'system';
+        
+        // Model selection
+        document.getElementById('openaiModel').value = config.openaiModel || 'gpt-4o-mini';
+        document.getElementById('openaiImageModel').value = config.openaiImageModel || 'dall-e-2';
         document.getElementById('defaultModel').value = config.defaultModel || 'deepseek';
         document.getElementById('defaultImageModel').value = config.defaultImageModel || 'flux-schnell';
+        
+        // TTS voice
+        document.getElementById('ttsVoiceId').value = config.ttsVoiceId || 'tts-1-alloy';
+        
+        // Overlay customization
+        document.getElementById('overlayOrientation').value = config.overlayOrientation || 'landscape';
+        document.getElementById('overlayResolution').value = config.overlayResolution || '1920x1080';
+        document.getElementById('overlayDisplayMode').value = config.overlayDisplayMode || 'full';
+        document.getElementById('overlayFontFamily').value = config.overlayFontFamily || 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+        document.getElementById('overlayFontSize').value = config.overlayFontSize || 1.3;
+        document.getElementById('overlayTitleFontSize').value = config.overlayTitleFontSize || 2.5;
+        document.getElementById('overlayTextColor').value = config.overlayTextColor || '#ffffff';
+        document.getElementById('overlayTitleColor').value = config.overlayTitleColor || '#e94560';
+        
+        // Settings
         document.getElementById('votingDuration').value = config.votingDuration || 60;
         document.getElementById('numChoices').value = config.numChoices || 4;
         document.getElementById('autoGenerateImages').checked = config.autoGenerateImages !== false;
@@ -773,9 +964,29 @@
         
         // Show/hide debug log card based on debug logging setting
         document.getElementById('debugLogCard').style.display = config.debugLogging ? 'block' : 'none';
+        
+        // Update provider-specific UI visibility
+        updateProviderUI();
       } catch (error) {
         console.error('Error loading config:', error);
       }
+    }
+    
+    function updateProviderUI() {
+      const llmProvider = document.getElementById('llmProvider').value;
+      const imageProvider = document.getElementById('imageProvider').value;
+      const ttsProvider = document.getElementById('ttsProvider').value;
+      
+      // Show/hide LLM model selectors
+      document.getElementById('openaiModelGroup').style.display = llmProvider === 'openai' ? 'block' : 'none';
+      document.getElementById('siliconflowModelGroup').style.display = llmProvider === 'siliconflow' ? 'block' : 'none';
+      
+      // Show/hide Image model selectors
+      document.getElementById('openaiImageModelGroup').style.display = imageProvider === 'openai' ? 'block' : 'none';
+      document.getElementById('siliconflowImageModelGroup').style.display = imageProvider === 'siliconflow' ? 'block' : 'none';
+      
+      // Show/hide TTS voice selector (only for system TTS)
+      document.getElementById('systemTtsVoiceGroup').style.display = ttsProvider === 'system' ? 'block' : 'none';
     }
 
     async function loadThemes() {
@@ -985,9 +1196,31 @@
       e.preventDefault();
       
       const config = {
-        // API key is now in global settings, not saved here
+        // Provider selection
+        llmProvider: document.getElementById('llmProvider').value,
+        imageProvider: document.getElementById('imageProvider').value,
+        ttsProvider: document.getElementById('ttsProvider').value,
+        
+        // Model selection
+        openaiModel: document.getElementById('openaiModel').value,
+        openaiImageModel: document.getElementById('openaiImageModel').value,
         defaultModel: document.getElementById('defaultModel').value,
         defaultImageModel: document.getElementById('defaultImageModel').value,
+        
+        // TTS voice
+        ttsVoiceId: document.getElementById('ttsVoiceId').value,
+        
+        // Overlay customization
+        overlayOrientation: document.getElementById('overlayOrientation').value,
+        overlayResolution: document.getElementById('overlayResolution').value,
+        overlayDisplayMode: document.getElementById('overlayDisplayMode').value,
+        overlayFontFamily: document.getElementById('overlayFontFamily').value,
+        overlayFontSize: parseFloat(document.getElementById('overlayFontSize').value),
+        overlayTitleFontSize: parseFloat(document.getElementById('overlayTitleFontSize').value),
+        overlayTextColor: document.getElementById('overlayTextColor').value,
+        overlayTitleColor: document.getElementById('overlayTitleColor').value,
+        
+        // Settings
         votingDuration: parseInt(document.getElementById('votingDuration').value),
         numChoices: parseInt(document.getElementById('numChoices').value),
         autoGenerateImages: document.getElementById('autoGenerateImages').checked,
@@ -1163,6 +1396,11 @@
     document.getElementById('clearLogsBtn').addEventListener('click', () => {
       document.getElementById('debugLogDisplay').innerHTML = '<div class="text-muted">Keine Logs verfügbar</div>';
     });
+
+    // Provider selection change handlers
+    document.getElementById('llmProvider').addEventListener('change', updateProviderUI);
+    document.getElementById('imageProvider').addEventListener('change', updateProviderUI);
+    document.getElementById('ttsProvider').addEventListener('change', updateProviderUI);
 
     // Initialize
     loadStatus();
