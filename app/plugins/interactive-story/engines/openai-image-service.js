@@ -4,8 +4,8 @@ const path = require('path');
 const axios = require('axios');
 
 /**
- * OpenAI Image Generation Service for DALL-E API
- * Supports DALL-E 2 and DALL-E 3
+ * OpenAI Image Generation Service
+ * Supports GPT Image 1, DALL-E 2 and DALL-E 3
  */
 class OpenAIImageService {
   constructor(apiKey, logger, cacheDir) {
@@ -15,8 +15,9 @@ class OpenAIImageService {
     this.client = new OpenAI({ apiKey });
     
     this.models = {
-      'dall-e-2': 'dall-e-2',  // Cost-efficient, faster
-      'dall-e-3': 'dall-e-3'   // Higher quality, more expensive
+      'gpt-image-1': 'gpt-image-1',  // Latest multimodal image model
+      'dall-e-3': 'dall-e-3',        // High quality
+      'dall-e-2': 'dall-e-2'         // Cost-efficient
     };
 
     // Ensure cache directory exists
@@ -26,22 +27,33 @@ class OpenAIImageService {
   }
 
   /**
-   * Generate image from text prompt using DALL-E
+   * Generate image from text prompt
    * @param {string} prompt - Image description
-   * @param {string} model - Model to use (dall-e-2 or dall-e-3)
+   * @param {string} model - Model to use (gpt-image-1, dall-e-2, or dall-e-3)
    * @param {string} style - Additional style prompt (ignored, for API compatibility)
-   * @param {number} width - Image width (1024, 1792, or 512 for DALL-E 2)
-   * @param {number} height - Image height (1024, 1792, or 512 for DALL-E 2)
+   * @param {number} width - Image width
+   * @param {number} height - Image height
    * @returns {Promise<string>} - Path to cached image file
    */
-  async generateImage(prompt, model = 'dall-e-2', style = '', width = 1024, height = 1024) {
+  async generateImage(prompt, model = 'gpt-image-1', style = '', width = 1024, height = 1024) {
     try {
-      const modelName = this.models[model] || this.models['dall-e-2'];
+      const modelName = this.models[model] || this.models['gpt-image-1'];
       
-      // DALL-E 3 only supports 1024x1024, 1792x1024, or 1024x1792
-      // DALL-E 2 supports 256x256, 512x512, or 1024x1024
+      // Different models support different sizes
       let size = '1024x1024';
-      if (modelName === 'dall-e-3') {
+      
+      if (modelName === 'gpt-image-1') {
+        // GPT Image 1 supports flexible sizes - use as provided
+        // Common sizes: 1024x1024, 1792x1024, 1024x1792
+        if (width === 1792 && height === 1024) {
+          size = '1792x1024';
+        } else if (width === 1024 && height === 1792) {
+          size = '1024x1792';
+        } else {
+          size = '1024x1024';
+        }
+      } else if (modelName === 'dall-e-3') {
+        // DALL-E 3 only supports 1024x1024, 1792x1024, or 1024x1792
         if (width === 1792 && height === 1024) {
           size = '1792x1024';
         } else if (width === 1024 && height === 1792) {

@@ -398,7 +398,7 @@ class InteractiveStoryPlugin {
       
       // OpenAI models
       openaiModel: 'o1-mini',
-      openaiImageModel: 'dall-e-2',
+      openaiImageModel: 'gpt-image-1',
       
       // SiliconFlow models (legacy)
       defaultModel: 'deepseek',
