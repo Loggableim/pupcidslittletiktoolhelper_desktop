@@ -661,7 +661,7 @@ function updateLoop(currentTime) {
                 
                 // Auto-reload after sustained freeze
                 if (frozenFrameCount >= MAX_FROZEN_FRAMES) {
-                    console.error('[Emoji Rain] 🔄 FPS frozen for ' + MAX_FROZEN_FRAMES + ' seconds, auto-reloading overlay to recover...');
+                    console.error(`[Emoji Rain] 🔄 FPS frozen for ${MAX_FROZEN_FRAMES} seconds, auto-reloading overlay to recover...`);
                     // Show visual warning before reload
                     showFreezeWarning();
                     // Reload after 2 seconds to allow warning to be visible
@@ -673,7 +673,7 @@ function updateLoop(currentTime) {
             } else {
                 // FPS recovered, reset freeze counter
                 if (frozenFrameCount > 0) {
-                    console.log('[Emoji Rain] ✅ FPS recovered (was frozen for ' + frozenFrameCount + 's)');
+                    console.log(`[Emoji Rain] ✅ FPS recovered (was frozen for ${frozenFrameCount}s)`);
                 }
                 frozenFrameCount = 0;
                 freezeWarningShown = false;

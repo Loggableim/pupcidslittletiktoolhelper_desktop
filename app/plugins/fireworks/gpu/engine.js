@@ -2138,7 +2138,7 @@ class FireworksEngine {
                     
                     // Auto-reload after sustained freeze
                     if (this.frozenFrameCount >= this.maxFrozenFrames) {
-                        console.error('[Fireworks] 🔄 FPS frozen for ' + this.maxFrozenFrames + ' seconds, auto-reloading overlay to recover...');
+                        console.error(`[Fireworks] 🔄 FPS frozen for ${this.maxFrozenFrames} seconds, auto-reloading overlay to recover...`);
                         // Show visual warning before reload
                         this.showFreezeWarning();
                         // Reload after 2 seconds to allow warning to be visible
@@ -2150,7 +2150,7 @@ class FireworksEngine {
                 } else {
                     // FPS recovered, reset freeze counter
                     if (this.frozenFrameCount > 0) {
-                        console.log('[Fireworks] ✅ FPS recovered (was frozen for ' + this.frozenFrameCount + 's)');
+                        console.log(`[Fireworks] ✅ FPS recovered (was frozen for ${this.frozenFrameCount}s)`);
                     }
                     this.frozenFrameCount = 0;
                     this.freezeWarningShown = false;
