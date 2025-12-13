@@ -5,6 +5,8 @@ const fs = require('fs');
 const LLMService = require('./engines/llm-service');
 const ImageService = require('./engines/image-service');
 const TTSService = require('./engines/tts-service');
+const OpenAILLMService = require('./engines/openai-llm-service');
+const OpenAIImageService = require('./engines/openai-image-service');
 const StoryEngine = require('./engines/story-engine');
 
 // Utils
@@ -108,44 +110,97 @@ class InteractiveStoryPlugin {
       // Load configuration
       const config = this._loadConfig();
 
-      // Get SiliconFlow API key from global settings
-      const apiKey = this._getSiliconFlowApiKey();
+      // Create debug callback that respects debugLogging config
+      const debugCallback = (level, message, data) => this._debugLog(level, message, data);
       
-      // DEBUG: Log exact API key details for troubleshooting
-      if (apiKey) {
-        this.logger.info(`[DEBUG] API Key retrieved from database: length=${apiKey.length}, prefix="${apiKey.substring(0, 10)}...", hasWhitespace=${/\s/.test(apiKey)}`);
+      // Create LLM service options
+      const llmOptions = {
+        timeout: config.llmTimeout,
+        maxRetries: config.llmMaxRetries,
+        retryDelay: config.llmRetryDelay
+      };
+
+      // Initialize services based on provider selection
+      const llmProvider = config.llmProvider || 'openai';
+      const imageProvider = config.imageProvider || 'openai';
+      const ttsProvider = config.ttsProvider || 'system';
+
+      // Initialize LLM service
+      if (llmProvider === 'openai') {
+        const openaiApiKey = this._getOpenAIApiKey();
+        if (openaiApiKey) {
+          this.llmService = new OpenAILLMService(openaiApiKey, this.logger, debugCallback, llmOptions);
+          this.storyEngine = new StoryEngine(this.llmService, this.logger);
+          this._debugLog('info', '✅ OpenAI LLM service initialized', { 
+            apiKeyLength: openaiApiKey.length,
+            apiKeyPrefix: openaiApiKey.substring(0, 6) + '...',
+            timeout: config.llmTimeout,
+            maxRetries: config.llmMaxRetries
+          });
+          this.api.log('✅ OpenAI LLM service initialized', 'info');
+        } else {
+          this._debugLog('error', '⚠️ OpenAI API key not configured in global settings', null);
+          this.api.log('⚠️ OpenAI API key not configured in global settings', 'warn');
+          this.api.log('Please configure API key in Settings → OpenAI API Configuration', 'warn');
+        }
       } else {
-        this.logger.warn('[DEBUG] No API key found in database');
+        // SiliconFlow provider
+        const siliconFlowApiKey = this._getSiliconFlowApiKey();
+        if (siliconFlowApiKey) {
+          this.llmService = new LLMService(siliconFlowApiKey, this.logger, debugCallback, llmOptions);
+          this.storyEngine = new StoryEngine(this.llmService, this.logger);
+          this._debugLog('info', '✅ SiliconFlow LLM service initialized', { 
+            apiKeyLength: siliconFlowApiKey.length,
+            apiKeyPrefix: siliconFlowApiKey.substring(0, 6) + '...',
+            timeout: config.llmTimeout,
+            maxRetries: config.llmMaxRetries
+          });
+          this.api.log('✅ SiliconFlow LLM service initialized', 'info');
+        } else {
+          this._debugLog('error', '⚠️ SiliconFlow API key not configured in global settings', null);
+          this.api.log('⚠️ SiliconFlow API key not configured in global settings', 'warn');
+          this.api.log('Please configure API key in Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)', 'warn');
+        }
       }
 
-      // Initialize services
-      if (apiKey) {
-        // Create debug callback that respects debugLogging config
-        const debugCallback = (level, message, data) => this._debugLog(level, message, data);
-        
-        // Create LLM service options
-        const llmOptions = {
-          timeout: config.llmTimeout,
-          maxRetries: config.llmMaxRetries,
-          retryDelay: config.llmRetryDelay
-        };
-        
-        this.llmService = new LLMService(apiKey, this.logger, debugCallback, llmOptions);
-        this.imageService = new ImageService(apiKey, this.logger, this.imageCacheDir);
-        this.ttsService = new TTSService(apiKey, this.logger, this.audioCacheDir);
-        this.storyEngine = new StoryEngine(this.llmService, this.logger);
-        
-        this._debugLog('info', '✅ SiliconFlow services initialized', { 
-          apiKeyLength: apiKey.length,
-          apiKeyPrefix: apiKey.substring(0, 6) + '...',
-          timeout: config.llmTimeout,
-          maxRetries: config.llmMaxRetries
-        });
-        this.api.log('✅ SiliconFlow services initialized', 'info');
+      // Initialize Image service
+      if (imageProvider === 'openai') {
+        const openaiApiKey = this._getOpenAIApiKey();
+        if (openaiApiKey) {
+          this.imageService = new OpenAIImageService(openaiApiKey, this.logger, this.imageCacheDir);
+          this._debugLog('info', '✅ OpenAI Image service initialized', null);
+          this.api.log('✅ OpenAI Image service (DALL-E) initialized', 'info');
+        } else {
+          this._debugLog('error', '⚠️ OpenAI API key not configured for image generation', null);
+          this.api.log('⚠️ OpenAI API key not configured for image generation', 'warn');
+        }
       } else {
-        this._debugLog('error', '⚠️ SiliconFlow API key not configured in global settings', null);
-        this.api.log('⚠️ SiliconFlow API key not configured in global settings', 'warn');
-        this.api.log('Please configure API key in Settings → TTS API Keys → Fish Speech 1.5 API Key (SiliconFlow)', 'warn');
+        // SiliconFlow provider
+        const siliconFlowApiKey = this._getSiliconFlowApiKey();
+        if (siliconFlowApiKey) {
+          this.imageService = new ImageService(siliconFlowApiKey, this.logger, this.imageCacheDir);
+          this._debugLog('info', '✅ SiliconFlow Image service initialized', null);
+          this.api.log('✅ SiliconFlow Image service initialized', 'info');
+        } else {
+          this._debugLog('error', '⚠️ SiliconFlow API key not configured for image generation', null);
+          this.api.log('⚠️ SiliconFlow API key not configured for image generation', 'warn');
+        }
+      }
+
+      // Initialize TTS service (only if using SiliconFlow TTS, otherwise use system TTS)
+      if (ttsProvider === 'siliconflow') {
+        const siliconFlowApiKey = this._getSiliconFlowApiKey();
+        if (siliconFlowApiKey) {
+          this.ttsService = new TTSService(siliconFlowApiKey, this.logger, this.audioCacheDir);
+          this._debugLog('info', '✅ SiliconFlow TTS service initialized', null);
+          this.api.log('✅ SiliconFlow TTS service initialized', 'info');
+        } else {
+          this._debugLog('error', '⚠️ SiliconFlow API key not configured for TTS', null);
+          this.api.log('⚠️ SiliconFlow API key not configured for TTS', 'warn');
+        }
+      } else {
+        // Using system TTS plugin - no need to initialize TTS service
+        this.api.log('Using system TTS plugin for voice generation', 'info');
       }
 
       // Initialize voting system
@@ -161,10 +216,10 @@ class InteractiveStoryPlugin {
       this._registerTikTokHandlers();
 
       // Clean old cache on startup
-      if (this.imageService) {
+      if (this.imageService && this.imageService.cleanOldCache) {
         this.imageService.cleanOldCache(7);
       }
-      if (this.ttsService) {
+      if (this.ttsService && this.ttsService.cleanOldCache) {
         this.ttsService.cleanOldCache(3);
       }
 
@@ -207,23 +262,74 @@ class InteractiveStoryPlugin {
   }
 
   /**
+   * Get OpenAI API key from global settings
+   * @returns {string|null} API key or null if not configured
+   */
+  _getOpenAIApiKey() {
+    try {
+      const db = this.api.getDatabase();
+      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('openai_api_key');
+      
+      if (row && row.value) {
+        // Trim whitespace that might have been accidentally saved
+        return row.value.trim();
+      }
+      
+      return null;
+    } catch (error) {
+      this.logger.error('Error retrieving OpenAI API key from settings:', error);
+      return null;
+    }
+  }
+
+  /**
    * Load plugin configuration
    */
   _loadConfig() {
     const defaultConfig = {
+      // Provider selection
+      llmProvider: 'openai', // 'openai' or 'siliconflow'
+      imageProvider: 'openai', // 'openai' or 'siliconflow'
+      ttsProvider: 'system', // 'system' (uses LTTH TTS plugin) or 'siliconflow'
+      
+      // OpenAI models
+      openaiModel: 'gpt-4o-mini',
+      openaiImageModel: 'dall-e-2',
+      
+      // SiliconFlow models (legacy)
       defaultModel: 'deepseek',
       defaultImageModel: 'flux-schnell',
+      
+      // Voting settings
       votingDuration: 60,
       minVotes: 5,
       useMinSwing: false,
       swingThreshold: 10,
       numChoices: 4,
+      
+      // Generation settings
       autoGenerateImages: true,
       autoGenerateTTS: false,
+      
+      // TTS settings
       ttsVoiceMapping: {
         narrator: 'narrator',
         default: 'narrator'
       },
+      ttsVoiceId: 'tts-1-alloy', // OpenAI TTS voice (when using system TTS)
+      
+      // Overlay customization
+      overlayOrientation: 'landscape', // 'landscape' or 'portrait'
+      overlayResolution: '1920x1080', // Common resolutions
+      overlayDisplayMode: 'full', // 'full' (entire chapter) or 'sentence' (sentence-by-sentence)
+      overlayFontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+      overlayFontSize: 1.3, // em units
+      overlayTitleFontSize: 2.5, // em units
+      overlayTextColor: '#ffffff',
+      overlayTitleColor: '#e94560',
+      overlayBackgroundGradient: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.95) 100%)',
+      
+      // System settings
       offlineMode: false,
       debugLogging: false,
       apiLogging: false,
