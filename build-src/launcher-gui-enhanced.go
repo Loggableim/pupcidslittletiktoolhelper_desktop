@@ -1209,7 +1209,7 @@ func getStyles() string {
 
         .language-flag {
             font-size: 48px; margin-bottom: 10px;
-            line-height: 1;
+            line-height: 1.2;
         }
 
         .language-name {
