@@ -17,7 +17,8 @@
     showAvatars: true,
     showBadges: true,
     animationSpeed: 'normal',
-    toasterMode: false
+    toasterMode: false,
+    kothMode: false
   };
 
   // State
@@ -27,7 +28,8 @@
     leaderboard: [],
     teamScores: null,
     multiplier: { active: false },
-    previousLeaderboard: []
+    previousLeaderboard: [],
+    teamNames: { red: { name: 'RED TEAM', imageUrl: null }, blue: { name: 'BLUE TEAM', imageUrl: null } }
   };
 
   // Timer state
@@ -59,6 +61,7 @@
     config.showAvatars = params.get('showAvatars') !== 'false';
     config.showBadges = params.get('showBadges') !== 'false';
     config.toasterMode = params.get('toasterMode') === 'true';
+    config.kothMode = params.get('kothMode') === 'true';
   }
 
   /**
@@ -117,6 +120,11 @@
     socket.on('coinbattle:badges-awarded', (data) => {
       showBadgeNotification(data);
     });
+    
+    // Team names updated
+    socket.on('coinbattle:team-names-updated', (data) => {
+      updateTeamNames(data);
+    });
   }
 
   /**
@@ -125,27 +133,40 @@
   function handleMatchState(state) {
     // Preserve previousLeaderboard when updating state
     const previousLeaderboard = currentState.previousLeaderboard || [];
+    const previousTeamNames = currentState.teamNames || { red: { name: 'RED TEAM', imageUrl: null }, blue: { name: 'BLUE TEAM', imageUrl: null } };
     currentState = state;
     currentState.previousLeaderboard = currentState.previousLeaderboard || previousLeaderboard;
+    currentState.teamNames = currentState.teamNames || previousTeamNames;
 
     if (state.active) {
       // Show match UI
       showMatchUI();
       
+      // Check if KOTH mode
+      if (config.kothMode) {
+        showKOTHMode();
+      } else {
+        hideKOTHMode();
+      }
+      
       // Update team scores if team mode
       if (state.match.mode === 'team' && state.teamScores) {
-        updateTeamScores(state.teamScores);
+        updateTeamScores(state.teamScores, state.leaderboard);
       } else {
         hideTeamScores();
       }
 
-      // Update leaderboard
+      // Update leaderboard (hide if KOTH mode is active)
       if (state.leaderboard) {
-        updateLeaderboard({
-          leaderboard: state.leaderboard,
-          teamScores: state.teamScores,
-          mode: state.match.mode
-        });
+        if (config.kothMode) {
+          updateKOTHLeaderboard(state.leaderboard);
+        } else {
+          updateLeaderboard({
+            leaderboard: state.leaderboard,
+            teamScores: state.teamScores,
+            mode: state.match.mode
+          });
+        }
       }
 
       // Update multiplier
@@ -213,9 +234,9 @@
   }
 
   /**
-   * Update team scores
+   * Update team scores with player avatars
    */
-  function updateTeamScores(teamScores) {
+  function updateTeamScores(teamScores, leaderboard = []) {
     const container = document.getElementById('team-scores-container');
     container.style.display = 'flex';
 
@@ -224,6 +245,31 @@
     const redScore = document.querySelector('.team-score.team-red');
     const blueScore = document.querySelector('.team-score.team-blue');
 
+    // Update team names
+    const redNameEl = document.getElementById('team-red-name');
+    const blueNameEl = document.getElementById('team-blue-name');
+    const redImageEl = document.getElementById('team-red-image');
+    const blueImageEl = document.getElementById('team-blue-image');
+    
+    if (currentState.teamNames) {
+      redNameEl.textContent = currentState.teamNames.red.name || 'RED TEAM';
+      blueNameEl.textContent = currentState.teamNames.blue.name || 'BLUE TEAM';
+      
+      if (currentState.teamNames.red.imageUrl) {
+        redImageEl.src = currentState.teamNames.red.imageUrl;
+        redImageEl.style.display = 'block';
+      } else {
+        redImageEl.style.display = 'none';
+      }
+      
+      if (currentState.teamNames.blue.imageUrl) {
+        blueImageEl.src = currentState.teamNames.blue.imageUrl;
+        blueImageEl.style.display = 'block';
+      } else {
+        blueImageEl.style.display = 'none';
+      }
+    }
+
     // Animate coin changes
     animateValue(redCoins, parseInt(redCoins.textContent) || 0, teamScores.red, 500);
     animateValue(blueCoins, parseInt(blueCoins.textContent) || 0, teamScores.blue, 500);
@@ -231,6 +277,73 @@
     // Highlight leading team
     redScore.classList.toggle('leading', teamScores.red > teamScores.blue);
     blueScore.classList.toggle('leading', teamScores.blue > teamScores.red);
+    
+    // Update team player avatars
+    if (leaderboard && leaderboard.length > 0) {
+      updateTeamPlayerAvatars(leaderboard);
+    }
+  }
+
+  /**
+   * Update team player avatars
+   */
+  function updateTeamPlayerAvatars(leaderboard) {
+    const redPlayersEl = document.getElementById('team-red-players');
+    const bluePlayersEl = document.getElementById('team-blue-players');
+    
+    // Clear existing avatars
+    redPlayersEl.innerHTML = '';
+    bluePlayersEl.innerHTML = '';
+    
+    // Group players by team
+    const redPlayers = leaderboard.filter(p => p.team === 'red').slice(0, 8);
+    const bluePlayers = leaderboard.filter(p => p.team === 'blue').slice(0, 8);
+    
+    // Add red team avatars
+    redPlayers.forEach(player => {
+      if (player.profile_picture_url) {
+        const avatar = document.createElement('img');
+        avatar.className = 'team-player-avatar';
+        avatar.src = player.profile_picture_url;
+        avatar.alt = player.nickname;
+        avatar.title = player.nickname;
+        avatar.onerror = () => { avatar.style.display = 'none'; };
+        redPlayersEl.appendChild(avatar);
+      }
+    });
+    
+    // Add blue team avatars
+    bluePlayers.forEach(player => {
+      if (player.profile_picture_url) {
+        const avatar = document.createElement('img');
+        avatar.className = 'team-player-avatar';
+        avatar.src = player.profile_picture_url;
+        avatar.alt = player.nickname;
+        avatar.title = player.nickname;
+        avatar.onerror = () => { avatar.style.display = 'none'; };
+        bluePlayersEl.appendChild(avatar);
+      }
+    });
+  }
+  
+  /**
+   * Update team names
+   */
+  function updateTeamNames(data) {
+    if (!currentState.teamNames) {
+      currentState.teamNames = { red: { name: 'RED TEAM', imageUrl: null }, blue: { name: 'BLUE TEAM', imageUrl: null } };
+    }
+    
+    if (data.team === 'red') {
+      currentState.teamNames.red = { name: data.name, imageUrl: data.imageUrl };
+    } else if (data.team === 'blue') {
+      currentState.teamNames.blue = { name: data.name, imageUrl: data.imageUrl };
+    }
+    
+    // Refresh team scores display if active
+    if (currentState.active && currentState.match && currentState.match.mode === 'team') {
+      updateTeamScores(currentState.teamScores, currentState.leaderboard);
+    }
   }
 
   /**
@@ -546,6 +659,60 @@
           confetti.remove();
         }, 3000);
       }, i * 30);
+    }
+  }
+
+  /**
+   * Show KOTH mode container
+   */
+  function showKOTHMode() {
+    document.getElementById('koth-container').style.display = 'block';
+    document.getElementById('leaderboard-container').style.display = 'none';
+  }
+
+  /**
+   * Hide KOTH mode container
+   */
+  function hideKOTHMode() {
+    document.getElementById('koth-container').style.display = 'none';
+    document.getElementById('leaderboard-container').style.display = 'block';
+  }
+
+  /**
+   * Update KOTH leaderboard (pyramid: 1 king at top, 3 challengers below)
+   */
+  function updateKOTHLeaderboard(leaderboard) {
+    if (!leaderboard || leaderboard.length === 0) return;
+    
+    const kingContainer = document.getElementById('koth-king');
+    const challengersContainer = document.getElementById('koth-challengers');
+    
+    // Update King (1st place)
+    if (leaderboard.length > 0) {
+      const king = leaderboard[0];
+      kingContainer.innerHTML = `
+        <div class="koth-king-crown">👑</div>
+        ${king.profile_picture_url ? `<img class="koth-king-avatar" src="${king.profile_picture_url}" alt="${king.nickname}" onerror="this.style.display='none';">` : ''}
+        <div class="koth-king-name">${king.nickname || king.unique_id}</div>
+        <div class="koth-king-coins">${(king.coins || 0).toLocaleString()} 🪙</div>
+      `;
+    }
+    
+    // Update Challengers (2nd, 3rd, 4th place)
+    challengersContainer.innerHTML = '';
+    for (let i = 1; i <= 3 && i < leaderboard.length; i++) {
+      const challenger = leaderboard[i];
+      const challengerEl = document.createElement('div');
+      challengerEl.className = 'koth-challenger';
+      challengerEl.innerHTML = `
+        <div class="koth-challenger-rank">#${i + 1}</div>
+        ${challenger.profile_picture_url ? `<img class="koth-challenger-avatar" src="${challenger.profile_picture_url}" alt="${challenger.nickname}" onerror="this.style.display='none';">` : ''}
+        <div class="koth-challenger-info">
+          <div class="koth-challenger-name">${challenger.nickname || challenger.unique_id}</div>
+          <div class="koth-challenger-coins">${(challenger.coins || 0).toLocaleString()} 🪙</div>
+        </div>
+      `;
+      challengersContainer.appendChild(challengerEl);
     }
   }
 

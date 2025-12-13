@@ -34,13 +34,25 @@
         <!-- Team Scores (for team mode) -->
         <div id="team-scores-container" class="team-scores-container" style="display: none;">
             <div class="team-score team-red">
-                <div class="team-name">RED TEAM</div>
+                <div class="team-header">
+                    <img id="team-red-image" class="team-image" style="display: none;" alt="Red Team">
+                    <div class="team-name" id="team-red-name">RED TEAM</div>
+                </div>
                 <div class="team-coins" id="team-red-coins">0</div>
+                <div class="team-players" id="team-red-players">
+                    <!-- Player avatars will be added here -->
+                </div>
             </div>
             <div class="vs-divider">VS</div>
             <div class="team-score team-blue">
-                <div class="team-name">BLUE TEAM</div>
+                <div class="team-header">
+                    <img id="team-blue-image" class="team-image" style="display: none;" alt="Blue Team">
+                    <div class="team-name" id="team-blue-name">BLUE TEAM</div>
+                </div>
                 <div class="team-coins" id="team-blue-coins">0</div>
+                <div class="team-players" id="team-blue-players">
+                    <!-- Player avatars will be added here -->
+                </div>
             </div>
         </div>
 
@@ -51,6 +63,16 @@
             </div>
             <div id="leaderboard-content" class="leaderboard-content">
                 <!-- Dynamic leaderboard entries -->
+            </div>
+        </div>
+        
+        <!-- King of the Hill Mode -->
+        <div id="koth-container" class="koth-container" style="display: none;">
+            <div class="koth-king" id="koth-king">
+                <!-- King position -->
+            </div>
+            <div class="koth-challengers" id="koth-challengers">
+                <!-- 3 challenger positions -->
             </div>
         </div>
 
