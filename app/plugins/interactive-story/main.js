@@ -279,6 +279,20 @@ class InteractiveStoryPlugin {
           this.imageService = new ImageService(config.siliconFlowApiKey, this.logger, this.imageCacheDir);
           this.ttsService = new TTSService(config.siliconFlowApiKey, this.logger, this.audioCacheDir);
           this.storyEngine = new StoryEngine(this.llmService, this.logger);
+        } else if (!this.storyEngine) {
+          // If services not initialized, check for API key in database
+          const apiKey = this._getSiliconFlowApiKey();
+          if (apiKey) {
+            const debugCallback = (level, message, data) => this._debugLog(level, message, data);
+            this.llmService = new LLMService(apiKey, this.logger, debugCallback);
+            this.imageService = new ImageService(apiKey, this.logger, this.imageCacheDir);
+            this.ttsService = new TTSService(apiKey, this.logger, this.audioCacheDir);
+            this.storyEngine = new StoryEngine(this.llmService, this.logger);
+            this._debugLog('info', '✅ SiliconFlow services initialized from database API key', { 
+              apiKeyLength: apiKey.length,
+              apiKeyPrefix: apiKey.substring(0, 6) + '...'
+            });
+          }
         }
 
         res.json({ success: true });
