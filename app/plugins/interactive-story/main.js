@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 
 // Engines
 const LLMService = require('./engines/llm-service');
@@ -291,7 +292,6 @@ class InteractiveStoryPlugin {
   async _speakThroughSystemTTS(text, options = {}) {
     try {
       const config = this._loadConfig();
-      const axios = require('axios');
       
       // Call the LTTH TTS plugin API
       const response = await axios.post('http://localhost:3000/api/tts/speak', {
