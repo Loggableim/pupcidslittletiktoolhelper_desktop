@@ -117,50 +117,57 @@
       text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
       text-align: center;
       position: absolute;
-      bottom: 0;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
+      transform: translate(-50%, -50%);
       width: 80%;
       max-width: 900px;
+      height: 70%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
     }
 
     /* Star Wars scroll mode - sentence container */
     #chapterContent.scroll-mode {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       gap: 1.2em;
     }
     
     /* Individual sentence styling */
     .scroll-sentence {
       opacity: 0;
-      transform: translateY(50px) scale(0.9);
-      transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: translateY(100px) scale(0.8);
+      transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
       width: 100%;
+      min-height: 1.5em;
     }
     
     .scroll-sentence.past {
-      opacity: 0.3;
-      transform: translateY(-30px) scale(0.85);
+      opacity: 0.2;
+      transform: translateY(-80px) scale(0.8);
+      filter: blur(1px);
     }
     
     .scroll-sentence.current {
       opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translateY(0) scale(1.1);
       font-weight: bold;
       color: #ffffff;
-      text-shadow: 3px 3px 6px rgba(0,0,0,1);
+      text-shadow: 3px 3px 8px rgba(0,0,0,1);
+      filter: blur(0);
     }
     
     .scroll-sentence.future {
-      opacity: 0.2;
-      transform: translateY(30px) scale(0.9);
+      opacity: 0.4;
+      transform: translateY(50px) scale(0.9);
+      filter: blur(0.5px);
     }
     
     .scroll-sentence.hidden {
       opacity: 0;
-      transform: translateY(50px) scale(0.8);
+      transform: translateY(100px) scale(0.7);
     }
 
     /* Voting Overlay */
@@ -406,7 +413,12 @@
     }
     
     body.portrait #chapterContent {
-      width: 85%;
+      width: 90%;
+      height: 60%;
+    }
+    
+    body.portrait #titleOverlay h1 {
+      font-size: calc(var(--title-font-size, 2.5em) * 1.2);
     }
   </style>
 </head>
@@ -625,18 +637,25 @@
         // Remove all state classes
         sentenceEl.classList.remove('past', 'current', 'future', 'hidden');
         
-        if (index < currentIndex) {
-          // Past sentences - fade out upwards
-          sentenceEl.classList.add('past');
-        } else if (index === currentIndex) {
-          // Current sentence - fully visible and prominent
-          sentenceEl.classList.add('current');
-        } else if (index === currentIndex + 1) {
-          // Next sentence - slightly visible
-          sentenceEl.classList.add('future');
+        if (index < currentIndex - 2) {
+          // Very old sentences - remove from view completely
+          sentenceEl.style.display = 'none';
         } else {
-          // Future sentences - hidden
-          sentenceEl.classList.add('hidden');
+          sentenceEl.style.display = '';
+          
+          if (index < currentIndex) {
+            // Past sentences - fade out upwards
+            sentenceEl.classList.add('past');
+          } else if (index === currentIndex) {
+            // Current sentence - fully visible and prominent
+            sentenceEl.classList.add('current');
+          } else if (index === currentIndex + 1) {
+            // Next sentence - slightly visible
+            sentenceEl.classList.add('future');
+          } else {
+            // Future sentences - hidden
+            sentenceEl.classList.add('hidden');
+          }
         }
       });
       
