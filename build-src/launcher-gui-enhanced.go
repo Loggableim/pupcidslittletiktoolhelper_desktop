@@ -681,10 +681,12 @@ func openMinimalBrowser(url string) error {
 		
 		if edgePath != "" {
 			// Launch Edge in app mode (minimal UI, no tabs)
+			// Added flags to handle new windows/tabs within Edge
 			cmd = exec.Command(edgePath, 
 				"--app="+url,
 				"--window-size=1000,800",
 				"--window-position=100,100",
+				"--new-window",  // Force new window instead of tab
 			)
 		} else {
 			// Fallback to default browser
@@ -799,6 +801,32 @@ func main() {
 				return
 			}
 		}
+	})
+
+	http.HandleFunc("/api/list-user-configs", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// List user config directories
+		userConfigsPath := filepath.Join(launcher.appDir, "user_configs")
+		entries, err := os.ReadDir(userConfigsPath)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode([]string{})
+			return
+		}
+
+		var profiles []string
+		for _, entry := range entries {
+			if entry.IsDir() {
+				profiles = append(profiles, entry.Name())
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(profiles)
 	})
 
 	http.HandleFunc("/api/init", func(w http.ResponseWriter, r *http.Request) {
@@ -1657,7 +1685,7 @@ func getJavaScript() string {
                         } else {
                             // Not keeping launcher open - redirect based on browser preference
                             if (useDefaultBrowser) {
-                                // Use default browser
+                                // Use default browser by opening URL and closing launcher
                                 window.location.href = data.redirect;
                             } else {
                                 // Open in minimal Edge window and close launcher
@@ -1667,11 +1695,11 @@ func getJavaScript() string {
                                     body: JSON.stringify({ url: data.redirect })
                                 }).then(() => {
                                     // Give the dashboard time to open, then close launcher
-                                    setTimeout(() => window.close(), 1000);
+                                    setTimeout(() => window.close(), 1500);
                                 });
                             }
                         }
-                    }, 2000);
+                    }, 1000);  // Reduced from 2000ms to 1000ms for faster response
                     return;
                 }
                 
@@ -1692,14 +1720,13 @@ func getJavaScript() string {
         }
 
         async function loadProfiles() {
-            // Try to load existing profiles from the server
-            // Note: Server may not be running yet, so we handle that gracefully
+            // Load existing profiles from the launcher's file system
             const select = document.getElementById('profileSelect');
             select.innerHTML = '<option value="">' + t('launcher.profile.select_profile') + '</option>';
             
             try {
-                // Try to fetch profiles from the server if it's running
-                const response = await fetch('http://localhost:3000/api/profiles', {
+                // Fetch profiles from launcher's filesystem endpoint
+                const response = await fetch('/api/list-user-configs', {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' }
                 });
@@ -1707,18 +1734,23 @@ func getJavaScript() string {
                 if (response.ok) {
                     const profiles = await response.json();
                     if (profiles && profiles.length > 0) {
-                        profiles.forEach(profile => {
+                        profiles.forEach(profileName => {
                             const option = document.createElement('option');
-                            option.value = profile.username || profile.name || profile;
-                            option.text = profile.username || profile.name || profile;
+                            option.value = profileName;
+                            option.text = profileName;
                             select.appendChild(option);
                         });
-                        console.log('Loaded ' + profiles.length + ' profiles from server');
+                        console.log('Loaded ' + profiles.length + ' profiles from filesystem');
+                        
+                        // If profiles exist, hide profile creator and show selector
+                        if (profiles.length > 0) {
+                            document.getElementById('profileCreator').style.display = 'none';
+                            document.querySelector('.profile-selector').style.display = 'flex';
+                        }
                     }
                 }
             } catch (error) {
-                // Server not running yet, that's okay - profiles will be managed after server starts
-                console.log('Server not running yet, profile will be created on start');
+                console.log('Error loading profiles:', error);
             }
         }
 
