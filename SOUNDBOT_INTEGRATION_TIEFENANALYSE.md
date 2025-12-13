@@ -92,7 +92,7 @@ Alle Methoden sind nach **Priorität, Aufwand, Impact und Machbarkeit** bewertet
 
 #### Methode 2: !soundlist Command
 **Beschreibung:** Zeigt verfügbare Sounds in Overlay
-**Priorität:** �� HOCH (P2)
+**Priorität:** 🔥 HOCH (P2)
 **Aufwand:** 3-4 Stunden
 **Impact:** ⭐⭐⭐⭐
 
