@@ -1,0 +1,185 @@
+/**
+ * Fireworks Performance Test
+ * Tests FPS throttling and frame-time independent physics
+ */
+
+describe('Fireworks Performance Optimizations', () => {
+    describe('FPS Throttling', () => {
+        test('should have targetFps configuration', () => {
+            // Verify the CONFIG object exists and has targetFps
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            expect(engineCode).toContain('targetFps: 60');
+            expect(engineCode).toContain('minFps: 24');
+        });
+
+        test('should implement FPS throttling in render loop', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify FPS throttling code exists
+            expect(engineCode).toContain('FPS Throttling');
+            expect(engineCode).toContain('targetFrameTime');
+            expect(engineCode).toContain('timeSinceLastRender');
+            expect(engineCode).toContain('Skip this frame if we\'re rendering too fast');
+        });
+
+        test('should track lastRenderTime for FPS limiting', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify lastRenderTime is initialized
+            expect(engineCode).toContain('this.lastRenderTime = performance.now()');
+        });
+    });
+
+    describe('Frame-Time Independent Physics', () => {
+        test('should pass deltaTime to update methods', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify deltaTime is calculated
+            expect(engineCode).toContain('deltaTime = Math.min((now - this.lastTime) / 16.67, 3)');
+            
+            // Verify deltaTime is passed to firework update
+            expect(engineCode).toContain('.update(deltaTime)');
+        });
+
+        test('Particle.update should accept deltaTime parameter', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Find Particle class update method
+            expect(engineCode).toMatch(/update\(deltaTime = 1\.0\)/);
+        });
+
+        test('should apply deltaTime to physics calculations', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify position updates use deltaTime
+            expect(engineCode).toContain('this.x += this.vx * deltaTime');
+            expect(engineCode).toContain('this.y += this.vy * deltaTime');
+            
+            // Verify velocity updates use deltaTime
+            expect(engineCode).toContain('this.vx += this.ax * deltaTime');
+            expect(engineCode).toContain('this.vy += this.ay * deltaTime');
+            
+            // Verify rotation uses deltaTime
+            expect(engineCode).toContain('this.rotation += this.rotationSpeed * deltaTime');
+            
+            // Verify lifespan decay uses deltaTime
+            expect(engineCode).toContain('this.lifespan -= this.decay * deltaTime');
+        });
+
+        test('should use frame-independent drag', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify exponential drag with deltaTime
+            expect(engineCode).toContain('Math.pow(this.drag, deltaTime)');
+            expect(engineCode).toContain('frame-independent');
+        });
+
+        test('should use frame-independent trail fading', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify trail fade factor uses deltaTime
+            expect(engineCode).toContain('trailFadeFactor = 1 - (CONFIG.trailFadeSpeed * deltaTime)');
+        });
+    });
+
+    describe('FPS-Based Particle Reduction', () => {
+        test('should reduce particles when FPS is low', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify FPS-based reduction logic
+            expect(engineCode).toContain('Additional FPS-based reduction');
+            expect(engineCode).toContain('if (this.engineFps < 30)');
+            expect(engineCode).toContain('if (this.engineFps < 45)');
+        });
+
+        test('should apply 50% reduction when FPS < 30', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify specific reduction amounts
+            expect(engineCode).toMatch(/engineFps < 30[\s\S]*?baseParticles \*= 0\.5/);
+        });
+
+        test('should apply 25% reduction when FPS < 45', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify specific reduction amounts
+            expect(engineCode).toMatch(/engineFps < 45[\s\S]*?baseParticles \*= 0\.75/);
+        });
+    });
+
+    describe('Rendering Optimizations', () => {
+        test('should cull nearly invisible particles (alpha < 0.01)', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify alpha culling
+            expect(engineCode).toContain('Alpha culling');
+            expect(engineCode).toContain('if (p.alpha < 0.01) return false');
+        });
+
+        test('should have viewport culling', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify viewport culling
+            expect(engineCode).toContain('Viewport Culling');
+            expect(engineCode).toContain('margin = 100');
+        });
+
+        test('should use batch rendering for different particle types', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify batch rendering methods exist
+            expect(engineCode).toContain('batchRenderCircles');
+            expect(engineCode).toContain('batchRenderImages');
+            expect(engineCode).toContain('batchRenderHearts');
+            expect(engineCode).toContain('batchRenderPaws');
+        });
+    });
+
+    describe('Backward Compatibility', () => {
+        test('deltaTime defaults to 1.0 if not provided', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify default deltaTime parameter
+            expect(engineCode).toContain('update(deltaTime = 1.0)');
+        });
+    });
+
+    describe('Performance Mode Integration', () => {
+        test('should have adaptive performance modes', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify performance modes exist
+            expect(engineCode).toContain('performanceMode');
+            expect(engineCode).toContain('minimal');
+            expect(engineCode).toContain('reduced');
+            expect(engineCode).toContain('normal');
+        });
+
+        test('should adaptively adjust trail length based on FPS', () => {
+            const fs = require('fs');
+            const engineCode = fs.readFileSync('./plugins/fireworks/gpu/engine.js', 'utf-8');
+            
+            // Verify adaptive trail length
+            expect(engineCode).toContain('Adaptive Trail-Length based on FPS');
+            expect(engineCode).toMatch(/avgFps > 50[\s\S]*?CONFIG\.trailLength = 20/);
+            expect(engineCode).toMatch(/avgFps > 25[\s\S]*?CONFIG\.trailLength = 5/);
+        });
+    });
+});

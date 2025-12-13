@@ -2410,6 +2410,9 @@ class FireworksEngine {
     }
     
     isParticleVisible(p) {
+        // Alpha culling - skip nearly invisible particles
+        if (p.alpha < 0.01) return false;
+        
         // Viewport Culling - skip particles outside viewport with margin
         const margin = 100;
         return !(p.x < -margin || p.x > this.width + margin || p.y < -margin || p.y > this.height + margin);
