@@ -2,7 +2,7 @@ const OpenAI = require('openai');
 
 /**
  * OpenAI LLM Service for Chat Completions API
- * Supports GPT models: gpt-4o, gpt-4o-mini, gpt-3.5-turbo
+ * Supports all OpenAI models including o1, GPT-4o, and GPT-4 series
  */
 class OpenAILLMService {
   constructor(apiKey, logger, debugCallback = null, options = {}) {
